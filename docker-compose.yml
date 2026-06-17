@@ -1,0 +1,164 @@
+services:
+  postgres:
+    image: postgres:16
+    container_name: edge-mes-postgres
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: ${POSTGRES_DB:-edge_mes}
+      POSTGRES_USER: ${POSTGRES_USER:-edge_mes}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-edge_mes_password}
+      TZ: Asia/Shanghai
+    volumes:
+      - ./data/postgres:/var/lib/postgresql/data
+      - ./db/init:/docker-entrypoint-initdb.d:ro
+    ports:
+      - "5432:5432"
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-edge_mes} -d ${POSTGRES_DB:-edge_mes}"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+
+  simulator:
+    build: ./simulator
+    container_name: edge-mes-simulator
+    restart: unless-stopped
+    environment:
+      TZ: Asia/Shanghai
+    volumes:
+      - ./config:/app/config:ro
+    ports:
+      - "8100:8100"
+
+  s7-plc-sim:
+    build: ./s7_plc_sim
+    container_name: edge-mes-s7-plc-sim
+    restart: unless-stopped
+    environment:
+      TZ: Asia/Shanghai
+      SIMULATOR_URL: http://simulator:8100
+      S7_PORT: "1102"
+      VPLC_CONTROL_PORT: "8200"
+    volumes:
+      - ./config:/app/config:ro
+    ports:
+      - "1102:1102"
+      - "8200:8200"
+    depends_on:
+      simulator:
+        condition: service_started
+
+  collector:
+    build: ./collector
+    container_name: edge-mes-collector
+    restart: unless-stopped
+    environment:
+      TZ: Asia/Shanghai
+      DATABASE_URL: postgresql://edge_mes:edge_mes_password@postgres:5432/edge_mes
+      SIMULATOR_URL: http://simulator:8100
+      SNAP7_HOST: s7-plc-sim
+      SNAP7_PORT: "1102"
+    volumes:
+      - ./config:/app/config:ro
+    depends_on:
+      postgres:
+        condition: service_healthy
+      s7-plc-sim:
+        condition: service_started
+
+  api:
+    build: ./api
+    container_name: edge-mes-api
+    restart: unless-stopped
+    environment:
+      TZ: Asia/Shanghai
+      DATABASE_URL: postgresql://edge_mes:edge_mes_password@postgres:5432/edge_mes
+    volumes:
+      - ./config:/app/config:ro
+    ports:
+      - "8000:8000"
+    depends_on:
+      postgres:
+        condition: service_healthy
+
+  grafana:
+    image: grafana/grafana:latest
+    container_name: edge-mes-grafana
+    restart: unless-stopped
+    user: "0:0"
+    environment:
+      TZ: Asia/Shanghai
+      GF_SECURITY_ADMIN_USER: ${GRAFANA_ADMIN_USER:-admin}
+      GF_SECURITY_ADMIN_PASSWORD: ${GRAFANA_ADMIN_PASSWORD:-admin}
+      GF_USERS_DEFAULT_THEME: light
+      GF_AUTH_ANONYMOUS_ENABLED: "true"
+      GF_AUTH_ANONYMOUS_ORG_ROLE: Viewer
+      GF_PLUGINS_PREINSTALL_DISABLED: "true"
+      GF_PLUGINS_PLUGIN_ADMIN_ENABLED: "false"
+    entrypoint:
+      - /bin/sh
+      - -c
+      - |
+        set -e
+        if ! grep -q "grafana-custom-font.css" /usr/share/grafana/public/views/index.html; then
+          sed -i 's#</head>#<link rel="stylesheet" href="public/custom/grafana-custom-font.css"></head>#' /usr/share/grafana/public/views/index.html
+        fi
+        exec /run.sh
+    volumes:
+      - ./data/grafana:/var/lib/grafana
+      - ./config/grafana:/etc/grafana/provisioning:ro
+      - ./config/grafana/custom:/usr/share/grafana/public/custom:ro
+    ports:
+      - "3000:3000"
+    depends_on:
+      postgres:
+        condition: service_healthy
+
+  prometheus:
+    image: prom/prometheus:latest
+    container_name: edge-mes-prometheus
+    restart: unless-stopped
+    user: "0:0"
+    environment:
+      TZ: Asia/Shanghai
+    command:
+      - "--config.file=/etc/prometheus/prometheus.yml"
+      - "--storage.tsdb.path=/prometheus"
+      - "--storage.tsdb.retention.time=30d"
+      - "--web.enable-lifecycle"
+    volumes:
+      - ./config/prometheus:/etc/prometheus:ro
+      - ./data/prometheus:/prometheus
+    ports:
+      - "9090:9090"
+
+  node-exporter:
+    image: prom/node-exporter:latest
+    container_name: edge-mes-node-exporter
+    restart: unless-stopped
+    pid: host
+    command:
+      - "--path.procfs=/host/proc"
+      - "--path.sysfs=/host/sys"
+      - "--path.rootfs=/rootfs"
+      - "--collector.filesystem.mount-points-exclude=^/(sys|proc|dev|host|etc)($$|/)"
+    volumes:
+      - /proc:/host/proc:ro
+      - /sys:/host/sys:ro
+      - /:/rootfs:ro,rslave
+    ports:
+      - "9100:9100"
+
+  sync-worker:
+    build: ./sync_worker
+    container_name: edge-mes-sync-worker
+    restart: unless-stopped
+    environment:
+      TZ: Asia/Shanghai
+      DATABASE_URL: postgresql://edge_mes:edge_mes_password@postgres:5432/edge_mes
+      SYNC_MOCK_MODE: "true"
+    volumes:
+      - ./config:/app/config:ro
+    depends_on:
+      postgres:
+        condition: service_healthy

@@ -1,0 +1,866 @@
+{
+  "id": null,
+  "uid": "edge-mes-station-traceability",
+  "title": "Edge MES 三工站追溯与采集监控",
+  "tags": [
+    "edge-mes",
+    "traceability",
+    "plc"
+  ],
+  "timezone": "browser",
+  "editable": true,
+  "graphTooltip": 1,
+  "refresh": "10s",
+  "schemaVersion": 39,
+  "version": 1,
+  "time": {
+    "from": "now-3h",
+    "to": "now"
+  },
+  "annotations": {
+    "list": [
+      {
+        "builtIn": 1,
+        "datasource": {
+          "type": "grafana",
+          "uid": "-- Grafana --"
+        },
+        "enable": true,
+        "hide": true,
+        "iconColor": "rgba(0, 211, 255, 1)",
+        "name": "Annotations & Alerts",
+        "type": "dashboard"
+      }
+    ]
+  },
+  "templating": {
+    "list": [
+      {
+        "name": "station",
+        "type": "custom",
+        "label": "工站",
+        "query": "WS01,WS02,WS03",
+        "current": {
+          "selected": true,
+          "text": [
+            "WS01",
+            "WS02",
+            "WS03"
+          ],
+          "value": [
+            "WS01",
+            "WS02",
+            "WS03"
+          ]
+        },
+        "options": [
+          {
+            "selected": true,
+            "text": "WS01",
+            "value": "WS01"
+          },
+          {
+            "selected": true,
+            "text": "WS02",
+            "value": "WS02"
+          },
+          {
+            "selected": true,
+            "text": "WS03",
+            "value": "WS03"
+          }
+        ],
+        "multi": true,
+        "includeAll": false
+      }
+    ]
+  },
+  "panels": [
+    {
+      "id": 1,
+      "title": "WS03 OK下线(当前时间窗)",
+      "type": "stat",
+      "datasource": {
+        "type": "postgres",
+        "uid": "edge-mes-postgres"
+      },
+      "gridPos": {
+        "x": 0,
+        "y": 0,
+        "w": 4,
+        "h": 4
+      },
+      "targets": [
+        {
+          "datasource": {
+            "type": "postgres",
+            "uid": "edge-mes-postgres"
+          },
+          "format": "table",
+          "rawQuery": true,
+          "rawSql": "SELECT count(*) AS value\nFROM cycle_event\nWHERE $__timeFilter(plc_end_time)\n  AND station_id = 'WS03'\n  AND result = 'OK';",
+          "refId": "A"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "custom": {},
+          "unit": "none",
+          "decimals": 0
+        },
+        "overrides": []
+      },
+      "options": {
+        "reduceOptions": {
+          "values": false,
+          "calcs": [
+            "lastNotNull"
+          ],
+          "fields": ""
+        },
+        "orientation": "auto",
+        "textMode": "auto",
+        "colorMode": "value",
+        "graphMode": "none",
+        "justifyMode": "center"
+      }
+    },
+    {
+      "id": 2,
+      "title": "整线合格率(WS03)",
+      "type": "stat",
+      "datasource": {
+        "type": "postgres",
+        "uid": "edge-mes-postgres"
+      },
+      "gridPos": {
+        "x": 4,
+        "y": 0,
+        "w": 4,
+        "h": 4
+      },
+      "targets": [
+        {
+          "datasource": {
+            "type": "postgres",
+            "uid": "edge-mes-postgres"
+          },
+          "format": "table",
+          "rawQuery": true,
+          "rawSql": "SELECT CASE WHEN count(*) = 0 THEN 0 ELSE round(100.0 * count(*) FILTER (WHERE result='OK') / count(*), 2) END AS value\nFROM cycle_event\nWHERE $__timeFilter(plc_end_time)\n  AND station_id = 'WS03';",
+          "refId": "A"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "custom": {},
+          "unit": "percent",
+          "decimals": 2,
+          "color": {
+            "mode": "fixed",
+            "fixedColor": "green"
+          }
+        },
+        "overrides": []
+      },
+      "options": {
+        "reduceOptions": {
+          "values": false,
+          "calcs": [
+            "lastNotNull"
+          ],
+          "fields": ""
+        },
+        "orientation": "auto",
+        "textMode": "auto",
+        "colorMode": "value",
+        "graphMode": "none",
+        "justifyMode": "center"
+      }
+    },
+    {
+      "id": 3,
+      "title": "平均CT(三站)",
+      "type": "stat",
+      "datasource": {
+        "type": "postgres",
+        "uid": "edge-mes-postgres"
+      },
+      "gridPos": {
+        "x": 8,
+        "y": 0,
+        "w": 4,
+        "h": 4
+      },
+      "targets": [
+        {
+          "datasource": {
+            "type": "postgres",
+            "uid": "edge-mes-postgres"
+          },
+          "format": "table",
+          "rawQuery": true,
+          "rawSql": "SELECT round(avg(cycle_time_ms) / 1000.0, 2) AS value\nFROM cycle_event\nWHERE $__timeFilter(plc_end_time)\n  AND station_id IN (${station:sqlstring})\n  AND cycle_time_ms IS NOT NULL;",
+          "refId": "A"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "custom": {},
+          "unit": "s",
+          "decimals": 2
+        },
+        "overrides": []
+      },
+      "options": {
+        "reduceOptions": {
+          "values": false,
+          "calcs": [
+            "lastNotNull"
+          ],
+          "fields": ""
+        },
+        "orientation": "auto",
+        "textMode": "auto",
+        "colorMode": "value",
+        "graphMode": "none",
+        "justifyMode": "center"
+      }
+    },
+    {
+      "id": 4,
+      "title": "ACK未确认",
+      "type": "stat",
+      "datasource": {
+        "type": "postgres",
+        "uid": "edge-mes-postgres"
+      },
+      "gridPos": {
+        "x": 12,
+        "y": 0,
+        "w": 4,
+        "h": 4
+      },
+      "targets": [
+        {
+          "datasource": {
+            "type": "postgres",
+            "uid": "edge-mes-postgres"
+          },
+          "format": "table",
+          "rawQuery": true,
+          "rawSql": "SELECT count(*) AS value\nFROM cycle_event\nWHERE $__timeFilter(plc_end_time)\n  AND ack_status <> 'ACK_OK';",
+          "refId": "A"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "custom": {},
+          "unit": "none",
+          "decimals": 0,
+          "color": {
+            "mode": "fixed",
+            "fixedColor": "red"
+          }
+        },
+        "overrides": []
+      },
+      "options": {
+        "reduceOptions": {
+          "values": false,
+          "calcs": [
+            "lastNotNull"
+          ],
+          "fields": ""
+        },
+        "orientation": "auto",
+        "textMode": "auto",
+        "colorMode": "value",
+        "graphMode": "none",
+        "justifyMode": "center"
+      }
+    },
+    {
+      "id": 5,
+      "title": "Collector在线工站",
+      "type": "stat",
+      "datasource": {
+        "type": "postgres",
+        "uid": "edge-mes-postgres"
+      },
+      "gridPos": {
+        "x": 16,
+        "y": 0,
+        "w": 4,
+        "h": 4
+      },
+      "targets": [
+        {
+          "datasource": {
+            "type": "postgres",
+            "uid": "edge-mes-postgres"
+          },
+          "format": "table",
+          "rawQuery": true,
+          "rawSql": "SELECT count(*) AS value\nFROM collector_runtime_status\nWHERE collector_state = 'RUNNING'\n  AND plc_connection_state = 'CONNECTED'\n  AND updated_at > now() - interval '30 seconds';",
+          "refId": "A"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "custom": {},
+          "unit": "none",
+          "decimals": 0,
+          "color": {
+            "mode": "fixed",
+            "fixedColor": "blue"
+          }
+        },
+        "overrides": []
+      },
+      "options": {
+        "reduceOptions": {
+          "values": false,
+          "calcs": [
+            "lastNotNull"
+          ],
+          "fields": ""
+        },
+        "orientation": "auto",
+        "textMode": "auto",
+        "colorMode": "value",
+        "graphMode": "none",
+        "justifyMode": "center"
+      }
+    },
+    {
+      "id": 6,
+      "title": "NOK事件数",
+      "type": "stat",
+      "datasource": {
+        "type": "postgres",
+        "uid": "edge-mes-postgres"
+      },
+      "gridPos": {
+        "x": 20,
+        "y": 0,
+        "w": 4,
+        "h": 4
+      },
+      "targets": [
+        {
+          "datasource": {
+            "type": "postgres",
+            "uid": "edge-mes-postgres"
+          },
+          "format": "table",
+          "rawQuery": true,
+          "rawSql": "SELECT count(*) AS value\nFROM cycle_event\nWHERE $__timeFilter(plc_end_time)\n  AND station_id IN (${station:sqlstring})\n  AND result = 'NOK';",
+          "refId": "A"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "custom": {},
+          "unit": "none",
+          "decimals": 0,
+          "color": {
+            "mode": "fixed",
+            "fixedColor": "orange"
+          }
+        },
+        "overrides": []
+      },
+      "options": {
+        "reduceOptions": {
+          "values": false,
+          "calcs": [
+            "lastNotNull"
+          ],
+          "fields": ""
+        },
+        "orientation": "auto",
+        "textMode": "auto",
+        "colorMode": "value",
+        "graphMode": "none",
+        "justifyMode": "center"
+      }
+    },
+    {
+      "id": 7,
+      "title": "三工站Cycle Time趋势",
+      "type": "timeseries",
+      "datasource": {
+        "type": "postgres",
+        "uid": "edge-mes-postgres"
+      },
+      "gridPos": {
+        "x": 0,
+        "y": 4,
+        "w": 12,
+        "h": 8
+      },
+      "targets": [
+        {
+          "datasource": {
+            "type": "postgres",
+            "uid": "edge-mes-postgres"
+          },
+          "format": "time_series",
+          "rawQuery": true,
+          "rawSql": "SELECT\n  $__timeGroupAlias(plc_end_time, $__interval),\n  station_id AS metric,\n  avg(cycle_time_ms) / 1000.0 AS value\nFROM cycle_event\nWHERE $__timeFilter(plc_end_time)\n  AND station_id IN (${station:sqlstring})\n  AND cycle_time_ms IS NOT NULL\nGROUP BY 1, station_id\nORDER BY 1;",
+          "refId": "A"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "custom": {
+            "drawStyle": "line",
+            "lineInterpolation": "linear",
+            "lineWidth": 2,
+            "fillOpacity": 8,
+            "showPoints": "never",
+            "spanNulls": true
+          },
+          "unit": "s"
+        },
+        "overrides": []
+      },
+      "options": {
+        "legend": {
+          "displayMode": "table",
+          "placement": "bottom",
+          "showLegend": true
+        },
+        "tooltip": {
+          "mode": "multi",
+          "sort": "none"
+        }
+      }
+    },
+    {
+      "id": 8,
+      "title": "三工站产出趋势",
+      "type": "timeseries",
+      "datasource": {
+        "type": "postgres",
+        "uid": "edge-mes-postgres"
+      },
+      "gridPos": {
+        "x": 12,
+        "y": 4,
+        "w": 12,
+        "h": 8
+      },
+      "targets": [
+        {
+          "datasource": {
+            "type": "postgres",
+            "uid": "edge-mes-postgres"
+          },
+          "format": "time_series",
+          "rawQuery": true,
+          "rawSql": "SELECT\n  $__timeGroupAlias(plc_end_time, $__interval),\n  station_id AS metric,\n  count(*) AS value\nFROM cycle_event\nWHERE $__timeFilter(plc_end_time)\n  AND station_id IN (${station:sqlstring})\nGROUP BY 1, station_id\nORDER BY 1;",
+          "refId": "A"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "custom": {
+            "drawStyle": "line",
+            "lineInterpolation": "linear",
+            "lineWidth": 2,
+            "fillOpacity": 8,
+            "showPoints": "never",
+            "spanNulls": true
+          },
+          "unit": "none"
+        },
+        "overrides": []
+      },
+      "options": {
+        "legend": {
+          "displayMode": "table",
+          "placement": "bottom",
+          "showLegend": true
+        },
+        "tooltip": {
+          "mode": "multi",
+          "sort": "none"
+        }
+      }
+    },
+    {
+      "id": 9,
+      "title": "OK/NOK by Station",
+      "type": "barchart",
+      "datasource": {
+        "type": "postgres",
+        "uid": "edge-mes-postgres"
+      },
+      "gridPos": {
+        "x": 0,
+        "y": 12,
+        "w": 8,
+        "h": 7
+      },
+      "targets": [
+        {
+          "datasource": {
+            "type": "postgres",
+            "uid": "edge-mes-postgres"
+          },
+          "format": "table",
+          "rawQuery": true,
+          "rawSql": "SELECT station_id, count(*) FILTER (WHERE result='OK') AS ok, count(*) FILTER (WHERE result='NOK') AS nok\nFROM cycle_event\nWHERE $__timeFilter(plc_end_time)\n  AND station_id IN (${station:sqlstring})\nGROUP BY station_id\nORDER BY station_id;",
+          "refId": "A"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "custom": {},
+          "unit": "none"
+        },
+        "overrides": []
+      },
+      "options": {
+        "orientation": "auto",
+        "xTickLabelRotation": 0,
+        "xTickLabelSpacing": 0,
+        "showValue": "auto",
+        "stacking": "normal",
+        "groupWidth": 0.7,
+        "barWidth": 0.97,
+        "legend": {
+          "displayMode": "list",
+          "placement": "bottom",
+          "showLegend": true
+        },
+        "tooltip": {
+          "mode": "single",
+          "sort": "none"
+        }
+      }
+    },
+    {
+      "id": 10,
+      "title": "NOK Code分布",
+      "type": "barchart",
+      "datasource": {
+        "type": "postgres",
+        "uid": "edge-mes-postgres"
+      },
+      "gridPos": {
+        "x": 8,
+        "y": 12,
+        "w": 8,
+        "h": 7
+      },
+      "targets": [
+        {
+          "datasource": {
+            "type": "postgres",
+            "uid": "edge-mes-postgres"
+          },
+          "format": "table",
+          "rawQuery": true,
+          "rawSql": "SELECT code::text AS nok_code, count(*) AS count\nFROM cycle_event, unnest(nok_codes) AS code\nWHERE $__timeFilter(plc_end_time)\n  AND station_id IN (${station:sqlstring})\nGROUP BY code\nORDER BY count DESC, code\nLIMIT 20;",
+          "refId": "A"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "custom": {},
+          "unit": "none"
+        },
+        "overrides": []
+      },
+      "options": {
+        "orientation": "auto",
+        "xTickLabelRotation": 0,
+        "xTickLabelSpacing": 0,
+        "showValue": "auto",
+        "stacking": "normal",
+        "groupWidth": 0.7,
+        "barWidth": 0.97,
+        "legend": {
+          "displayMode": "list",
+          "placement": "bottom",
+          "showLegend": true
+        },
+        "tooltip": {
+          "mode": "single",
+          "sort": "none"
+        }
+      }
+    },
+    {
+      "id": 11,
+      "title": "Collector运行状态",
+      "type": "table",
+      "datasource": {
+        "type": "postgres",
+        "uid": "edge-mes-postgres"
+      },
+      "gridPos": {
+        "x": 16,
+        "y": 12,
+        "w": 8,
+        "h": 7
+      },
+      "targets": [
+        {
+          "datasource": {
+            "type": "postgres",
+            "uid": "edge-mes-postgres"
+          },
+          "format": "table",
+          "rawQuery": true,
+          "rawSql": "SELECT station_id, collector_state, plc_connection_state, station_status, payload_ready, read_done,\n       last_cycle_counter, to_char(updated_at AT TIME ZONE 'Asia/Shanghai', 'YYYY-MM-DD HH24:MI:SS') AS updated_at\nFROM collector_runtime_status\nORDER BY station_id;",
+          "refId": "A"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "custom": {
+            "align": "auto",
+            "cellOptions": {
+              "type": "auto"
+            },
+            "inspect": false
+          }
+        },
+        "overrides": []
+      },
+      "options": {
+        "showHeader": true,
+        "cellHeight": "sm",
+        "footer": {
+          "show": false,
+          "reducer": [
+            "sum"
+          ],
+          "countRows": false,
+          "fields": ""
+        }
+      }
+    },
+    {
+      "id": 12,
+      "title": "最近产品追溯记录",
+      "type": "table",
+      "datasource": {
+        "type": "postgres",
+        "uid": "edge-mes-postgres"
+      },
+      "gridPos": {
+        "x": 0,
+        "y": 19,
+        "w": 14,
+        "h": 8
+      },
+      "targets": [
+        {
+          "datasource": {
+            "type": "postgres",
+            "uid": "edge-mes-postgres"
+          },
+          "format": "table",
+          "rawQuery": true,
+          "rawSql": "SELECT\n  to_char(plc_end_time AT TIME ZONE 'Asia/Shanghai', 'YYYY-MM-DD HH24:MI:SS') AS end_time,\n  station_id,\n  cycle_counter,\n  COALESCE(label_code, dmc, child_dmc, trace_key) AS trace_id,\n  result,\n  array_to_string(nok_codes, ',') AS nok_codes,\n  ack_status,\n  round(cycle_time_ms / 1000.0, 2) AS cycle_time_s\nFROM cycle_event\nWHERE station_id IN (${station:sqlstring})\nORDER BY plc_end_time DESC, id DESC\nLIMIT 80;",
+          "refId": "A"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "custom": {
+            "align": "auto",
+            "cellOptions": {
+              "type": "auto"
+            },
+            "inspect": false
+          }
+        },
+        "overrides": []
+      },
+      "options": {
+        "showHeader": true,
+        "cellHeight": "sm",
+        "footer": {
+          "show": false,
+          "reducer": [
+            "sum"
+          ],
+          "countRows": false,
+          "fields": ""
+        }
+      }
+    },
+    {
+      "id": 13,
+      "title": "WS03下线追溯入口",
+      "type": "table",
+      "datasource": {
+        "type": "postgres",
+        "uid": "edge-mes-postgres"
+      },
+      "gridPos": {
+        "x": 14,
+        "y": 19,
+        "w": 10,
+        "h": 8
+      },
+      "targets": [
+        {
+          "datasource": {
+            "type": "postgres",
+            "uid": "edge-mes-postgres"
+          },
+          "format": "table",
+          "rawQuery": true,
+          "rawSql": "SELECT\n  to_char(plc_end_time AT TIME ZONE 'Asia/Shanghai', 'YYYY-MM-DD HH24:MI:SS') AS offload_time,\n  label_code,\n  dmc,\n  result,\n  CASE WHEN label_code IS NOT NULL THEN 'http://10.0.0.217:8000/trace?q=' || label_code ELSE NULL END AS trace_url\nFROM cycle_event\nWHERE $__timeFilter(plc_end_time)\n  AND station_id = 'WS03'\nORDER BY plc_end_time DESC\nLIMIT 50;",
+          "refId": "A"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "custom": {
+            "align": "auto",
+            "cellOptions": {
+              "type": "auto"
+            },
+            "inspect": false
+          }
+        },
+        "overrides": []
+      },
+      "options": {
+        "showHeader": true,
+        "cellHeight": "sm",
+        "footer": {
+          "show": false,
+          "reducer": [
+            "sum"
+          ],
+          "countRows": false,
+          "fields": ""
+        }
+      }
+    },
+    {
+      "id": 14,
+      "title": "ACK状态趋势",
+      "type": "timeseries",
+      "datasource": {
+        "type": "postgres",
+        "uid": "edge-mes-postgres"
+      },
+      "gridPos": {
+        "x": 0,
+        "y": 27,
+        "w": 12,
+        "h": 7
+      },
+      "targets": [
+        {
+          "datasource": {
+            "type": "postgres",
+            "uid": "edge-mes-postgres"
+          },
+          "format": "time_series",
+          "rawQuery": true,
+          "rawSql": "SELECT\n  $__timeGroupAlias(plc_end_time, $__interval),\n  ack_status AS metric,\n  count(*) AS value\nFROM cycle_event\nWHERE $__timeFilter(plc_end_time)\nGROUP BY 1, ack_status\nORDER BY 1;",
+          "refId": "A"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "custom": {
+            "drawStyle": "line",
+            "lineInterpolation": "linear",
+            "lineWidth": 2,
+            "fillOpacity": 8,
+            "showPoints": "never",
+            "spanNulls": true
+          },
+          "unit": "none"
+        },
+        "overrides": []
+      },
+      "options": {
+        "legend": {
+          "displayMode": "table",
+          "placement": "bottom",
+          "showLegend": true
+        },
+        "tooltip": {
+          "mode": "multi",
+          "sort": "none"
+        }
+      }
+    },
+    {
+      "id": 15,
+      "title": "Raw PLC Sample最新解码",
+      "type": "table",
+      "datasource": {
+        "type": "postgres",
+        "uid": "edge-mes-postgres"
+      },
+      "gridPos": {
+        "x": 12,
+        "y": 27,
+        "w": 12,
+        "h": 7
+      },
+      "targets": [
+        {
+          "datasource": {
+            "type": "postgres",
+            "uid": "edge-mes-postgres"
+          },
+          "format": "table",
+          "rawQuery": true,
+          "rawSql": "SELECT\n  to_char(sample_time AT TIME ZONE 'Asia/Shanghai', 'YYYY-MM-DD HH24:MI:SS') AS sample_time,\n  station_id,\n  db_number,\n  read_start,\n  read_size,\n  decoded_json ->> 'cycle_counter' AS cycle_counter,\n  decoded_json ->> 'payload_ready' AS payload_ready,\n  decoded_json ->> 'result' AS result\nFROM raw_plc_sample\nWHERE station_id IN (${station:sqlstring})\nORDER BY sample_time DESC\nLIMIT 80;",
+          "refId": "A"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "custom": {
+            "align": "auto",
+            "cellOptions": {
+              "type": "auto"
+            },
+            "inspect": false
+          }
+        },
+        "overrides": []
+      },
+      "options": {
+        "showHeader": true,
+        "cellHeight": "sm",
+        "footer": {
+          "show": false,
+          "reducer": [
+            "sum"
+          ],
+          "countRows": false,
+          "fields": ""
+        }
+      }
+    }
+  ],
+  "links": [
+    {
+      "title": "追溯页面",
+      "url": "http://10.0.0.217:8000/trace",
+      "targetBlank": true
+    },
+    {
+      "title": "V-PLC控制台",
+      "url": "http://10.0.0.217:8200/vplc",
+      "targetBlank": true
+    }
+  ]
+}

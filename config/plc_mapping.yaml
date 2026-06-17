@@ -1,0 +1,43 @@
+plc:
+  host: s7-plc-sim
+  port: 1102
+  rack: 0
+  slot: 1
+  db_number: 100
+  db_size: 64
+  update_interval_ms: 1000
+
+address_map:
+  running: DB100.DBX0.0
+  auto_mode: DB100.DBX0.1
+  alarm_active: DB100.DBX0.2
+  cycle_counter: DB100.DBD4
+  good_count: DB100.DBD8
+  ng_count: DB100.DBD12
+  total_count: DB100.DBD16
+  cycle_time_ms: DB100.DBD20
+  alarm_code: DB100.DBW24
+  stop_reason_code: DB100.DBW26
+  product_type_code: DB100.DBB28
+  shift_code: DB100.DBB29
+  scenario_code: DB100.DBB30
+  unix_time_seconds: DB100.DBD32
+
+code_tables:
+  product_type:
+    TYPE_A: 1
+    TYPE_B: 2
+    TYPE_C: 3
+  shift:
+    DAY: 1
+    NIGHT: 2
+    20260612_DAY: 1
+    20260612_NIGHT: 2
+  scenario:
+    normal: 0
+    material_shortage: 1
+    sensor_fault: 2
+    changeover: 3
+    maintenance: 4
+    slow_cycle: 5
+    fast_run: 6

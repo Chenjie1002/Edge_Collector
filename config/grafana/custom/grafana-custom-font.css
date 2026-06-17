@@ -1,0 +1,25 @@
+@font-face {
+  font-family: "EdgeMESCustom";
+  src: url("/public/custom/grafana-custom.ttf") format("truetype");
+  font-weight: 100 900;
+  font-style: normal;
+  font-display: swap;
+}
+
+:root,
+body,
+button,
+input,
+textarea,
+select,
+[class*="grafana"],
+[class*="panel"],
+[class*="table"],
+[class*="legend"],
+[class*="css-"] {
+  font-family: "EdgeMESCustom", "PingFang SC", "Microsoft YaHei", "Noto Sans CJK SC", Arial, sans-serif !important;
+}
+
+svg text {
+  font-family: "EdgeMESCustom", "PingFang SC", "Microsoft YaHei", "Noto Sans CJK SC", Arial, sans-serif !important;
+}

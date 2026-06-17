@@ -1,0 +1,21 @@
+machine:
+  machine_id: LINE_01
+  machine_name: Demo Line 01
+  line_name: Demo Production Line
+  plc_name: PLC_01
+
+collector:
+  source_type: snap7
+  polling_interval_ms: 1000
+
+kpi:
+  ideal_cycle_time_ms: 1200
+  shift:
+    day_start: "08:00"
+    night_start: "20:00"
+
+sync:
+  enabled: false
+  mode: oracle_mock
+  batch_size: 100
+  retry_interval_seconds: 30

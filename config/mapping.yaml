@@ -1,0 +1,261 @@
+version: 1
+timezone: Asia/Shanghai
+
+plcs:
+  - plc_id: PLC_001
+    name: Virtual S7 Line PLC
+    host: s7-plc-sim
+    port: 1102
+    rack: 0
+    slot: 1
+    connection_timeout_ms: 3000
+    poll_interval_ms: 500
+    line_id: LINE_001
+
+line:
+  line_id: LINE_001
+  name: Demo Assembly Line
+  db_number: 100
+  fields:
+    ignore_edge:
+      address: DB100.DBX0.0
+      type: bool
+      description: Line-level bypass bit. When true, Edge records a data gap boundary.
+    heartbeat:
+      address: DB100.DBD2
+      type: dint
+      description: PLC heartbeat counter.
+    plc_boot_id:
+      address: DB100.DBB20
+      type: string
+      max_length: 36
+      description: Virtual PLC boot id. Real PLC can map this to a retained value later.
+
+station_template:
+  header:
+    station_status:
+      address: "{db}.DBW0"
+      type: word
+    cycle_counter:
+      address: "{db}.DBD2"
+      type: dint
+    payload_ready:
+      address: "{db}.DBX6.0"
+      type: bool
+    read_done:
+      address: "{db}.DBX6.1"
+      type: bool
+      direction: read_write
+    ack_timeout:
+      address: "{db}.DBX6.2"
+      type: bool
+    cycle_valid:
+      address: "{db}.DBX6.3"
+      type: bool
+    plc_start_time:
+      address: "{db}.DBD8"
+      type: unix_time_seconds
+    plc_end_time:
+      address: "{db}.DBD12"
+      type: unix_time_seconds
+    result:
+      address: "{db}.DBW16"
+      type: word
+    nok_code_count:
+      address: "{db}.DBW18"
+      type: word
+    nok_codes:
+      type: array
+      items:
+        - address: "{db}.DBW20"
+          type: word
+        - address: "{db}.DBW22"
+          type: word
+        - address: "{db}.DBW24"
+          type: word
+    alarm_code:
+      address: "{db}.DBW26"
+      type: word
+    downtime_type:
+      address: "{db}.DBW28"
+      type: word
+    pallet_id_numeric:
+      address: "{db}.DBD30"
+      type: dint
+      required: false
+    station_dmc:
+      address: "{db}.DBB40"
+      type: string
+      max_length: 40
+    unit_id:
+      address: "{db}.DBB200"
+      type: string
+      max_length: 48
+    route_step:
+      address: "{db}.DBW250"
+      type: word
+    route_state:
+      address: "{db}.DBW252"
+      type: word
+    process_status:
+      address: "{db}.DBW254"
+      type: word
+    skip_reason:
+      address: "{db}.DBW256"
+      type: word
+    defect_origin_station:
+      address: "{db}.DBW258"
+      type: word
+    defect_code:
+      address: "{db}.DBW260"
+      type: word
+    final_label_code:
+      address: "{db}.DBB262"
+      type: string
+      max_length: 40
+    reject_id:
+      address: "{db}.DBB304"
+      type: string
+      max_length: 40
+
+stations:
+  - station_id: WS01
+    name: Screw Station
+    db_number: 101
+    dmc_role: child_dmc
+    payload:
+      screw_1_torque_nm:
+        address: DB101.DBD100
+        type: real
+      screw_1_angle_deg:
+        address: DB101.DBD104
+        type: real
+      screw_2_torque_nm:
+        address: DB101.DBD108
+        type: real
+      screw_2_angle_deg:
+        address: DB101.DBD112
+        type: real
+      screw_3_torque_nm:
+        address: DB101.DBD116
+        type: real
+      screw_3_angle_deg:
+        address: DB101.DBD120
+        type: real
+
+  - station_id: WS02
+    name: EOL Test Station
+    db_number: 102
+    upstream_station_id: WS01
+    payload:
+      avg_current_a:
+        address: DB102.DBD100
+        type: real
+      avg_voltage_v:
+        address: DB102.DBD104
+        type: real
+      clockwise_time_ms:
+        address: DB102.DBD108
+        type: dint
+      counterclockwise_time_ms:
+        address: DB102.DBD112
+        type: dint
+      stall_peak_current_a:
+        address: DB102.DBD116
+        type: real
+      stall_time_ms:
+        address: DB102.DBD120
+        type: dint
+      upstream_ws01_end_time:
+        address: DB102.DBD124
+        type: unix_time_seconds
+      upstream_ws01_result:
+        address: DB102.DBW128
+        type: word
+      upstream_child_dmc:
+        address: DB102.DBB130
+        type: string
+        max_length: 40
+
+  - station_id: WS03
+    name: Label Station
+    db_number: 103
+    upstream_station_id: WS02
+    dmc_role: label_code
+    payload:
+      serial_no:
+        address: DB103.DBD100
+        type: dint
+      product_model_code:
+        address: DB103.DBW104
+        type: word
+      upstream_ws02_end_time:
+        address: DB103.DBD106
+        type: unix_time_seconds
+      upstream_ws02_result:
+        address: DB103.DBW110
+        type: word
+      upstream_child_dmc:
+        address: DB103.DBB112
+        type: string
+        max_length: 40
+      upstream_ws02_dmc:
+        address: DB103.DBB154
+        type: string
+        max_length: 40
+
+code_tables:
+  station_status:
+    0: UNKNOWN
+    1: IDLE
+    2: RUNNING
+    3: WAITING
+    4: BLOCKED
+    5: ALARM
+    6: OFFLINE
+    7: MANUAL_CONFIRM_REQUIRED
+  result:
+    0: UNKNOWN
+    1: OK
+    2: NOK
+    3: SKIPPED
+  downtime_type:
+    0: NONE
+    1: EQUIPMENT
+    2: MATERIAL
+    3: QUALITY_CONFIRMATION
+    4: PLANNED_STOP
+  station_code:
+    0: UNKNOWN
+    1: WS01
+    2: WS02
+    3: WS03
+  route_state:
+    0: UNKNOWN
+    1: NORMAL
+    2: BYPASSING
+    3: COMPLETED_OK
+    4: COMPLETED_NOK
+  process_status:
+    0: UNKNOWN
+    1: PROCESSED
+    2: SKIPPED
+  skip_reason:
+    0: NONE
+    1: UPSTREAM_NOK
+  nok_codes:
+    10001: WS01_TQ_LOW
+    10002: WS01_TQ_HIGH
+    10003: WS01_ANG_LOW
+    10004: WS01_ANG_HIGH
+    20001: WS02_CUR_HIGH
+    20002: WS02_VOLT_LOW
+    20003: WS02_VOLT_HIGH
+    20004: WS02_STALL_CUR_HIGH
+    20005: WS02_STALL_TIME_HIGH
+    30001: WS03_LABEL_PRINT_FAILED
+    30002: WS03_LABEL_VERIFY_FAILED
+    30003: WS03_UPSTREAM_NOK
+    90001: EDGE_READ_TIMEOUT
+    90002: EDGE_ACK_WRITE_FAILED
+    90003: PLC_COUNTER_RESET

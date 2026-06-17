@@ -1,0 +1,1033 @@
+{
+  "annotations": {
+    "list": []
+  },
+  "editable": true,
+  "fiscalYearStartMonth": 0,
+  "graphTooltip": 0,
+  "id": null,
+  "links": [],
+  "liveNow": false,
+  "panels": [
+    {
+      "datasource": {
+        "uid": "edge-mes-postgres"
+      },
+      "fieldConfig": {
+        "defaults": {
+          "color": {
+            "mode": "thresholds"
+          },
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "red"
+              },
+              {
+                "color": "green",
+                "value": 1
+              }
+            ]
+          }
+        }
+      },
+      "gridPos": {
+        "h": 4,
+        "w": 4,
+        "x": 0,
+        "y": 0
+      },
+      "id": 1,
+      "options": {
+        "colorMode": "background",
+        "graphMode": "none",
+        "justifyMode": "center",
+        "orientation": "auto",
+        "reduceOptions": {
+          "calcs": [
+            "lastNotNull"
+          ],
+          "fields": "",
+          "values": false
+        },
+        "textMode": "auto"
+      },
+      "pluginVersion": "11.0.0",
+      "targets": [
+        {
+          "datasource": {
+            "uid": "edge-mes-postgres"
+          },
+          "format": "table",
+          "rawSql": "WITH params AS (\n  SELECT\n    to_timestamp('${selected_date} ' || COALESCE(NULLIF('${start_time_custom}', ''), '${start_time}'), 'YYYY-MM-DD HH24:MI') AS t_from,\n    CASE\n      WHEN COALESCE(NULLIF('${end_time_custom}', ''), '${end_time}') = '24:00'\n      THEN to_timestamp('${selected_date} 00:00', 'YYYY-MM-DD HH24:MI') + interval '1 day'\n      ELSE to_timestamp('${selected_date} ' || COALESCE(NULLIF('${end_time_custom}', ''), '${end_time}'), 'YYYY-MM-DD HH24:MI')\n    END AS t_to\n)\nSELECT CASE WHEN p.running THEN 1 ELSE 0 END AS running FROM production_snapshot p CROSS JOIN params WHERE p.machine_id = 'LINE_01' AND p.ts >= params.t_from AND p.ts <= params.t_to ORDER BY p.ts DESC LIMIT 1;",
+          "refId": "A",
+          "rawQuery": true,
+          "editorMode": "code"
+        }
+      ],
+      "title": "运行状态",
+      "type": "stat"
+    },
+    {
+      "datasource": {
+        "uid": "edge-mes-postgres"
+      },
+      "gridPos": {
+        "h": 4,
+        "w": 5,
+        "x": 4,
+        "y": 0
+      },
+      "id": 2,
+      "options": {
+        "mode": "markdown",
+        "content": "<img style=\"width:100%;height:100%;object-fit:contain;display:block;\" src=\"${api_base}/kpi/LINE_01/output-card.svg?date=${selected_date}&start_time=${start_time}&end_time=${end_time}&start_custom=${start_time_custom}&end_custom=${end_time_custom}&cycle_seconds=30\">"
+      },
+      "targets": [],
+      "title": "所选时段产量",
+      "type": "text",
+      "fieldConfig": {
+        "defaults": {},
+        "overrides": []
+      },
+      "transparent": true
+    },
+    {
+      "datasource": {
+        "uid": "edge-mes-postgres"
+      },
+      "fieldConfig": {
+        "defaults": {},
+        "overrides": []
+      },
+      "gridPos": {
+        "h": 4,
+        "w": 5,
+        "x": 9,
+        "y": 0
+      },
+      "id": 3,
+      "options": {
+        "mode": "markdown",
+        "content": "<img style=\"width:100%;height:100%;object-fit:contain;display:block;\" src=\"${api_base}/kpi/LINE_01/quality-card.svg?date=${selected_date}&start_time=${start_time}&end_time=${end_time}&start_custom=${start_time_custom}&end_custom=${end_time_custom}\">"
+      },
+      "targets": [],
+      "title": "所选时段合格率",
+      "type": "text",
+      "transparent": true
+    },
+    {
+      "datasource": {
+        "uid": "edge-mes-postgres"
+      },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "s"
+        }
+      },
+      "gridPos": {
+        "h": 4,
+        "w": 4,
+        "x": 14,
+        "y": 0
+      },
+      "id": 4,
+      "options": {
+        "colorMode": "value",
+        "graphMode": "area",
+        "justifyMode": "center",
+        "orientation": "auto",
+        "reduceOptions": {
+          "calcs": [
+            "lastNotNull"
+          ],
+          "fields": "",
+          "values": false
+        },
+        "textMode": "auto"
+      },
+      "targets": [
+        {
+          "datasource": {
+            "uid": "edge-mes-postgres"
+          },
+          "format": "table",
+          "rawSql": "WITH params AS (\n  SELECT\n    to_timestamp('${selected_date} ' || COALESCE(NULLIF('${start_time_custom}', ''), '${start_time}'), 'YYYY-MM-DD HH24:MI') AS t_from,\n    CASE\n      WHEN COALESCE(NULLIF('${end_time_custom}', ''), '${end_time}') = '24:00'\n      THEN to_timestamp('${selected_date} 00:00', 'YYYY-MM-DD HH24:MI') + interval '1 day'\n      ELSE to_timestamp('${selected_date} ' || COALESCE(NULLIF('${end_time_custom}', ''), '${end_time}'), 'YYYY-MM-DD HH24:MI')\n    END AS t_to\n)\nSELECT round(avg(p.cycle_time_ms)::numeric / 1000.0, 2) AS avg_cycle_time_s FROM production_snapshot p CROSS JOIN params WHERE p.machine_id = 'LINE_01' AND p.ts >= params.t_from AND p.ts <= params.t_to AND p.running = TRUE;",
+          "refId": "A",
+          "rawQuery": true,
+          "editorMode": "code"
+        }
+      ],
+      "title": "平均CT",
+      "type": "stat"
+    },
+    {
+      "datasource": {
+        "uid": "edge-mes-postgres"
+      },
+      "gridPos": {
+        "h": 4,
+        "w": 3,
+        "x": 18,
+        "y": 0
+      },
+      "id": 5,
+      "options": {
+        "colorMode": "value",
+        "graphMode": "area",
+        "justifyMode": "center",
+        "orientation": "auto",
+        "reduceOptions": {
+          "calcs": [
+            "lastNotNull"
+          ],
+          "fields": "",
+          "values": false
+        },
+        "textMode": "auto"
+      },
+      "targets": [
+        {
+          "datasource": {
+            "uid": "edge-mes-postgres"
+          },
+          "format": "table",
+          "rawSql": "WITH params AS (\n  SELECT\n    to_timestamp('${selected_date} ' || COALESCE(NULLIF('${start_time_custom}', ''), '${start_time}'), 'YYYY-MM-DD HH24:MI') AS t_from,\n    CASE\n      WHEN COALESCE(NULLIF('${end_time_custom}', ''), '${end_time}') = '24:00'\n      THEN to_timestamp('${selected_date} 00:00', 'YYYY-MM-DD HH24:MI') + interval '1 day'\n      ELSE to_timestamp('${selected_date} ' || COALESCE(NULLIF('${end_time_custom}', ''), '${end_time}'), 'YYYY-MM-DD HH24:MI')\n    END AS t_to\n)\nSELECT count(*) AS stop_count FROM stop_events e CROSS JOIN params WHERE e.machine_id = 'LINE_01' AND e.started_at >= params.t_from AND e.started_at <= params.t_to;",
+          "refId": "A",
+          "rawQuery": true,
+          "editorMode": "code"
+        }
+      ],
+      "title": "停机",
+      "type": "stat",
+      "fieldConfig": {
+        "defaults": {
+          "unit": "short"
+        }
+      }
+    },
+    {
+      "datasource": {
+        "uid": "edge-mes-postgres"
+      },
+      "gridPos": {
+        "h": 4,
+        "w": 3,
+        "x": 21,
+        "y": 0
+      },
+      "id": 6,
+      "options": {
+        "colorMode": "value",
+        "graphMode": "area",
+        "justifyMode": "center",
+        "orientation": "auto",
+        "reduceOptions": {
+          "calcs": [
+            "lastNotNull"
+          ],
+          "fields": "",
+          "values": false
+        },
+        "textMode": "auto"
+      },
+      "targets": [
+        {
+          "datasource": {
+            "uid": "edge-mes-postgres"
+          },
+          "format": "table",
+          "rawSql": "WITH params AS (\n  SELECT\n    to_timestamp('${selected_date} ' || COALESCE(NULLIF('${start_time_custom}', ''), '${start_time}'), 'YYYY-MM-DD HH24:MI') AS t_from,\n    CASE\n      WHEN COALESCE(NULLIF('${end_time_custom}', ''), '${end_time}') = '24:00'\n      THEN to_timestamp('${selected_date} 00:00', 'YYYY-MM-DD HH24:MI') + interval '1 day'\n      ELSE to_timestamp('${selected_date} ' || COALESCE(NULLIF('${end_time_custom}', ''), '${end_time}'), 'YYYY-MM-DD HH24:MI')\n    END AS t_to\n)\nSELECT count(*) AS alarm_count FROM alarm_events e CROSS JOIN params WHERE e.machine_id = 'LINE_01' AND e.started_at >= params.t_from AND e.started_at <= params.t_to;",
+          "refId": "A",
+          "rawQuery": true,
+          "editorMode": "code"
+        }
+      ],
+      "title": "报警",
+      "type": "stat",
+      "fieldConfig": {
+        "defaults": {
+          "unit": "short"
+        }
+      }
+    },
+    {
+      "datasource": {
+        "uid": "edge-mes-postgres"
+      },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "s"
+        }
+      },
+      "gridPos": {
+        "h": 8,
+        "w": 12,
+        "x": 0,
+        "y": 4
+      },
+      "id": 7,
+      "options": {
+        "legend": {
+          "displayMode": "list",
+          "placement": "bottom"
+        },
+        "tooltip": {
+          "mode": "single",
+          "sort": "none"
+        }
+      },
+      "targets": [
+        {
+          "datasource": {
+            "uid": "edge-mes-postgres"
+          },
+          "format": "time_series",
+          "rawSql": "WITH params AS (\n  SELECT\n    to_timestamp('${selected_date} ' || COALESCE(NULLIF('${start_time_custom}', ''), '${start_time}'), 'YYYY-MM-DD HH24:MI') AS t_from,\n    CASE\n      WHEN COALESCE(NULLIF('${end_time_custom}', ''), '${end_time}') = '24:00'\n      THEN to_timestamp('${selected_date} 00:00', 'YYYY-MM-DD HH24:MI') + interval '1 day'\n      ELSE to_timestamp('${selected_date} ' || COALESCE(NULLIF('${end_time_custom}', ''), '${end_time}'), 'YYYY-MM-DD HH24:MI')\n    END AS t_to\n)\nSELECT p.ts AS time, round(p.cycle_time_ms::numeric / 1000.0, 2) AS \"Cycle Time (s)\" FROM production_snapshot p CROSS JOIN params WHERE p.machine_id = 'LINE_01' AND p.ts >= params.t_from AND p.ts <= params.t_to AND p.running = TRUE ORDER BY p.ts;",
+          "refId": "A",
+          "rawQuery": true,
+          "editorMode": "code"
+        }
+      ],
+      "title": "Cycle Time 趋势",
+      "type": "timeseries"
+    },
+    {
+      "datasource": {
+        "uid": "edge-mes-postgres"
+      },
+      "gridPos": {
+        "h": 8,
+        "w": 12,
+        "x": 12,
+        "y": 4
+      },
+      "id": 8,
+      "options": {
+        "legend": {
+          "displayMode": "list",
+          "placement": "bottom",
+          "showLegend": true
+        },
+        "tooltip": {
+          "mode": "multi",
+          "sort": "none"
+        }
+      },
+      "targets": [
+        {
+          "datasource": {
+            "uid": "edge-mes-postgres"
+          },
+          "format": "time_series",
+          "rawSql": "WITH params AS (\n  SELECT\n    to_timestamp('${selected_date} ' || COALESCE(NULLIF('${start_time_custom}', ''), '${start_time}'), 'YYYY-MM-DD HH24:MI') AS t_from,\n    CASE\n      WHEN COALESCE(NULLIF('${end_time_custom}', ''), '${end_time}') = '24:00'\n      THEN to_timestamp('${selected_date} 00:00', 'YYYY-MM-DD HH24:MI') + interval '1 day'\n      ELSE to_timestamp('${selected_date} ' || COALESCE(NULLIF('${end_time_custom}', ''), '${end_time}'), 'YYYY-MM-DD HH24:MI')\n    END AS t_to\n)\n, ticks AS (\n  SELECT generate_series(params.t_from, params.t_to, interval '30 seconds') AS time, params.t_from, params.t_to\n  FROM params\n), snap AS (\n  SELECT\n    p.ts,\n    p.good_count,\n    lag(p.good_count) OVER (ORDER BY p.ts) AS prev_good\n  FROM production_snapshot p CROSS JOIN params\n  WHERE p.machine_id = 'LINE_01'\n    AND p.ts >= params.t_from\n    AND p.ts <= params.t_to\n), good_events AS (\n  SELECT\n    ts AS time,\n    greatest(good_count - COALESCE(prev_good, good_count), 0)::int AS good_delta\n  FROM snap\n), actual_at_ticks AS (\n  SELECT\n    ticks.time,\n    COALESCE((\n      SELECT sum(good_delta)\n      FROM good_events\n      WHERE good_events.time <= ticks.time\n    ), 0)::int AS actual_output,\n    floor(extract(epoch FROM (ticks.time - ticks.t_from)) / 30.0)::int AS theoretical_output\n  FROM ticks\n)\nSELECT\n  time,\n  actual_output AS \"实际产量\",\n  theoretical_output AS \"理论产量\"\nFROM actual_at_ticks\nORDER BY time;",
+          "refId": "A",
+          "rawQuery": true,
+          "editorMode": "code"
+        }
+      ],
+      "title": "产能曲线：实时 vs 预测",
+      "type": "timeseries",
+      "fieldConfig": {
+        "defaults": {
+          "unit": "short",
+          "custom": {
+            "drawStyle": "line",
+            "lineInterpolation": "smooth",
+            "lineWidth": 2,
+            "fillOpacity": 8,
+            "showPoints": "never"
+          }
+        }
+      }
+    },
+    {
+      "datasource": {
+        "uid": "edge-mes-postgres"
+      },
+      "gridPos": {
+        "h": 8,
+        "w": 12,
+        "x": 0,
+        "y": 12
+      },
+      "id": 9,
+      "targets": [
+        {
+          "datasource": {
+            "uid": "edge-mes-postgres"
+          },
+          "format": "table",
+          "rawSql": "WITH params AS (\n  SELECT\n    to_timestamp('${selected_date} ' || COALESCE(NULLIF('${start_time_custom}', ''), '${start_time}'), 'YYYY-MM-DD HH24:MI') AS t_from,\n    CASE\n      WHEN COALESCE(NULLIF('${end_time_custom}', ''), '${end_time}') = '24:00'\n      THEN to_timestamp('${selected_date} 00:00', 'YYYY-MM-DD HH24:MI') + interval '1 day'\n      ELSE to_timestamp('${selected_date} ' || COALESCE(NULLIF('${end_time_custom}', ''), '${end_time}'), 'YYYY-MM-DD HH24:MI')\n    END AS t_to\n)\nSELECT CASE e.stop_reason_code WHEN 101 THEN '气缸位置传感器故障' WHEN 201 THEN '第1岗位缺料' WHEN 2 THEN '第1岗位缺料' WHEN 4 THEN '换型/调机' WHEN 5 THEN '计划保养' ELSE e.stop_reason_code::text END AS stop_reason, count(*) AS stop_count, COALESCE(sum(e.duration_seconds), 0) AS total_stop_seconds FROM stop_events e CROSS JOIN params WHERE e.machine_id = 'LINE_01' AND e.started_at >= params.t_from AND e.started_at <= params.t_to GROUP BY 1 ORDER BY total_stop_seconds DESC;",
+          "refId": "A",
+          "rawQuery": true,
+          "editorMode": "code"
+        }
+      ],
+      "title": "停机原因排行",
+      "type": "table"
+    },
+    {
+      "datasource": {
+        "uid": "edge-mes-postgres"
+      },
+      "gridPos": {
+        "h": 8,
+        "w": 12,
+        "x": 12,
+        "y": 12
+      },
+      "id": 10,
+      "targets": [
+        {
+          "datasource": {
+            "uid": "edge-mes-postgres"
+          },
+          "format": "table",
+          "rawSql": "WITH params AS (\n  SELECT\n    to_timestamp('${selected_date} ' || COALESCE(NULLIF('${start_time_custom}', ''), '${start_time}'), 'YYYY-MM-DD HH24:MI') AS t_from,\n    CASE\n      WHEN COALESCE(NULLIF('${end_time_custom}', ''), '${end_time}') = '24:00'\n      THEN to_timestamp('${selected_date} 00:00', 'YYYY-MM-DD HH24:MI') + interval '1 day'\n      ELSE to_timestamp('${selected_date} ' || COALESCE(NULLIF('${end_time_custom}', ''), '${end_time}'), 'YYYY-MM-DD HH24:MI')\n    END AS t_to\n)\nSELECT CASE e.alarm_code WHEN 1001 THEN '气缸信号丢失' WHEN 1002 THEN '气缸传感器故障' ELSE e.alarm_code::text END AS alarm_name, count(*) AS alarm_count, COALESCE(sum(e.duration_seconds), 0) AS total_alarm_seconds FROM alarm_events e CROSS JOIN params WHERE e.machine_id = 'LINE_01' AND e.started_at >= params.t_from AND e.started_at <= params.t_to GROUP BY 1 ORDER BY alarm_count DESC;",
+          "refId": "A",
+          "rawQuery": true,
+          "editorMode": "code"
+        }
+      ],
+      "title": "报警排行",
+      "type": "table"
+    },
+    {
+      "datasource": {
+        "uid": "edge-mes-postgres"
+      },
+      "gridPos": {
+        "h": 6,
+        "w": 24,
+        "x": 0,
+        "y": 20
+      },
+      "id": 11,
+      "targets": [
+        {
+          "datasource": {
+            "uid": "edge-mes-postgres"
+          },
+          "format": "table",
+          "rawSql": "SELECT status, count(*) AS records FROM sync_outbox GROUP BY status ORDER BY status;",
+          "refId": "A",
+          "rawQuery": true,
+          "editorMode": "code"
+        }
+      ],
+      "title": "Oracle 同步队列状态",
+      "type": "table"
+    }
+  ],
+  "refresh": "10s",
+  "schemaVersion": 39,
+  "tags": [
+    "edge-mes"
+  ],
+  "templating": {
+    "list": [
+      {
+        "name": "selected_date",
+        "type": "query",
+        "label": "日期",
+        "hide": 0,
+        "datasource": {
+          "uid": "edge-mes-postgres"
+        },
+        "definition": "SELECT DISTINCT to_char(ts AT TIME ZONE 'Asia/Shanghai', 'YYYY-MM-DD') AS __text, to_char(ts AT TIME ZONE 'Asia/Shanghai', 'YYYY-MM-DD') AS __value FROM production_snapshot ORDER BY 1 DESC;",
+        "query": "SELECT DISTINCT to_char(ts AT TIME ZONE 'Asia/Shanghai', 'YYYY-MM-DD') AS __text, to_char(ts AT TIME ZONE 'Asia/Shanghai', 'YYYY-MM-DD') AS __value FROM production_snapshot ORDER BY 1 DESC;",
+        "refresh": 1,
+        "sort": 1,
+        "multi": false,
+        "includeAll": false,
+        "current": {
+          "selected": true,
+          "text": "2026-06-12",
+          "value": "2026-06-12"
+        },
+        "options": []
+      },
+      {
+        "name": "start_time",
+        "type": "custom",
+        "label": "开始时间(半小时)",
+        "hide": 0,
+        "query": "00:00,00:30,01:00,01:30,02:00,02:30,03:00,03:30,04:00,04:30,05:00,05:30,06:00,06:30,07:00,07:30,08:00,08:30,09:00,09:30,10:00,10:30,11:00,11:30,12:00,12:30,13:00,13:30,14:00,14:30,15:00,15:30,16:00,16:30,17:00,17:30,18:00,18:30,19:00,19:30,20:00,20:30,21:00,21:30,22:00,22:30,23:00,23:30",
+        "options": [
+          {
+            "selected": false,
+            "text": "00:00",
+            "value": "00:00"
+          },
+          {
+            "selected": false,
+            "text": "00:30",
+            "value": "00:30"
+          },
+          {
+            "selected": false,
+            "text": "01:00",
+            "value": "01:00"
+          },
+          {
+            "selected": false,
+            "text": "01:30",
+            "value": "01:30"
+          },
+          {
+            "selected": false,
+            "text": "02:00",
+            "value": "02:00"
+          },
+          {
+            "selected": false,
+            "text": "02:30",
+            "value": "02:30"
+          },
+          {
+            "selected": false,
+            "text": "03:00",
+            "value": "03:00"
+          },
+          {
+            "selected": false,
+            "text": "03:30",
+            "value": "03:30"
+          },
+          {
+            "selected": false,
+            "text": "04:00",
+            "value": "04:00"
+          },
+          {
+            "selected": false,
+            "text": "04:30",
+            "value": "04:30"
+          },
+          {
+            "selected": false,
+            "text": "05:00",
+            "value": "05:00"
+          },
+          {
+            "selected": false,
+            "text": "05:30",
+            "value": "05:30"
+          },
+          {
+            "selected": false,
+            "text": "06:00",
+            "value": "06:00"
+          },
+          {
+            "selected": false,
+            "text": "06:30",
+            "value": "06:30"
+          },
+          {
+            "selected": false,
+            "text": "07:00",
+            "value": "07:00"
+          },
+          {
+            "selected": false,
+            "text": "07:30",
+            "value": "07:30"
+          },
+          {
+            "selected": false,
+            "text": "08:00",
+            "value": "08:00"
+          },
+          {
+            "selected": true,
+            "text": "08:30",
+            "value": "08:30"
+          },
+          {
+            "selected": false,
+            "text": "09:00",
+            "value": "09:00"
+          },
+          {
+            "selected": false,
+            "text": "09:30",
+            "value": "09:30"
+          },
+          {
+            "selected": false,
+            "text": "10:00",
+            "value": "10:00"
+          },
+          {
+            "selected": false,
+            "text": "10:30",
+            "value": "10:30"
+          },
+          {
+            "selected": false,
+            "text": "11:00",
+            "value": "11:00"
+          },
+          {
+            "selected": false,
+            "text": "11:30",
+            "value": "11:30"
+          },
+          {
+            "selected": false,
+            "text": "12:00",
+            "value": "12:00"
+          },
+          {
+            "selected": false,
+            "text": "12:30",
+            "value": "12:30"
+          },
+          {
+            "selected": false,
+            "text": "13:00",
+            "value": "13:00"
+          },
+          {
+            "selected": false,
+            "text": "13:30",
+            "value": "13:30"
+          },
+          {
+            "selected": false,
+            "text": "14:00",
+            "value": "14:00"
+          },
+          {
+            "selected": false,
+            "text": "14:30",
+            "value": "14:30"
+          },
+          {
+            "selected": false,
+            "text": "15:00",
+            "value": "15:00"
+          },
+          {
+            "selected": false,
+            "text": "15:30",
+            "value": "15:30"
+          },
+          {
+            "selected": false,
+            "text": "16:00",
+            "value": "16:00"
+          },
+          {
+            "selected": false,
+            "text": "16:30",
+            "value": "16:30"
+          },
+          {
+            "selected": false,
+            "text": "17:00",
+            "value": "17:00"
+          },
+          {
+            "selected": false,
+            "text": "17:30",
+            "value": "17:30"
+          },
+          {
+            "selected": false,
+            "text": "18:00",
+            "value": "18:00"
+          },
+          {
+            "selected": false,
+            "text": "18:30",
+            "value": "18:30"
+          },
+          {
+            "selected": false,
+            "text": "19:00",
+            "value": "19:00"
+          },
+          {
+            "selected": false,
+            "text": "19:30",
+            "value": "19:30"
+          },
+          {
+            "selected": false,
+            "text": "20:00",
+            "value": "20:00"
+          },
+          {
+            "selected": false,
+            "text": "20:30",
+            "value": "20:30"
+          },
+          {
+            "selected": false,
+            "text": "21:00",
+            "value": "21:00"
+          },
+          {
+            "selected": false,
+            "text": "21:30",
+            "value": "21:30"
+          },
+          {
+            "selected": false,
+            "text": "22:00",
+            "value": "22:00"
+          },
+          {
+            "selected": false,
+            "text": "22:30",
+            "value": "22:30"
+          },
+          {
+            "selected": false,
+            "text": "23:00",
+            "value": "23:00"
+          },
+          {
+            "selected": false,
+            "text": "23:30",
+            "value": "23:30"
+          }
+        ],
+        "current": {
+          "selected": true,
+          "text": "08:30",
+          "value": "08:30"
+        },
+        "multi": false,
+        "includeAll": false
+      },
+      {
+        "name": "end_time",
+        "type": "custom",
+        "label": "结束时间(半小时)",
+        "hide": 0,
+        "query": "00:30,01:00,01:30,02:00,02:30,03:00,03:30,04:00,04:30,05:00,05:30,06:00,06:30,07:00,07:30,08:00,08:30,09:00,09:30,10:00,10:30,11:00,11:30,12:00,12:30,13:00,13:30,14:00,14:30,15:00,15:30,16:00,16:30,17:00,17:30,18:00,18:30,19:00,19:30,20:00,20:30,21:00,21:30,22:00,22:30,23:00,23:30,24:00",
+        "options": [
+          {
+            "selected": false,
+            "text": "00:30",
+            "value": "00:30"
+          },
+          {
+            "selected": false,
+            "text": "01:00",
+            "value": "01:00"
+          },
+          {
+            "selected": false,
+            "text": "01:30",
+            "value": "01:30"
+          },
+          {
+            "selected": false,
+            "text": "02:00",
+            "value": "02:00"
+          },
+          {
+            "selected": false,
+            "text": "02:30",
+            "value": "02:30"
+          },
+          {
+            "selected": false,
+            "text": "03:00",
+            "value": "03:00"
+          },
+          {
+            "selected": false,
+            "text": "03:30",
+            "value": "03:30"
+          },
+          {
+            "selected": false,
+            "text": "04:00",
+            "value": "04:00"
+          },
+          {
+            "selected": false,
+            "text": "04:30",
+            "value": "04:30"
+          },
+          {
+            "selected": false,
+            "text": "05:00",
+            "value": "05:00"
+          },
+          {
+            "selected": false,
+            "text": "05:30",
+            "value": "05:30"
+          },
+          {
+            "selected": false,
+            "text": "06:00",
+            "value": "06:00"
+          },
+          {
+            "selected": false,
+            "text": "06:30",
+            "value": "06:30"
+          },
+          {
+            "selected": false,
+            "text": "07:00",
+            "value": "07:00"
+          },
+          {
+            "selected": false,
+            "text": "07:30",
+            "value": "07:30"
+          },
+          {
+            "selected": false,
+            "text": "08:00",
+            "value": "08:00"
+          },
+          {
+            "selected": false,
+            "text": "08:30",
+            "value": "08:30"
+          },
+          {
+            "selected": false,
+            "text": "09:00",
+            "value": "09:00"
+          },
+          {
+            "selected": false,
+            "text": "09:30",
+            "value": "09:30"
+          },
+          {
+            "selected": false,
+            "text": "10:00",
+            "value": "10:00"
+          },
+          {
+            "selected": false,
+            "text": "10:30",
+            "value": "10:30"
+          },
+          {
+            "selected": false,
+            "text": "11:00",
+            "value": "11:00"
+          },
+          {
+            "selected": false,
+            "text": "11:30",
+            "value": "11:30"
+          },
+          {
+            "selected": false,
+            "text": "12:00",
+            "value": "12:00"
+          },
+          {
+            "selected": false,
+            "text": "12:30",
+            "value": "12:30"
+          },
+          {
+            "selected": false,
+            "text": "13:00",
+            "value": "13:00"
+          },
+          {
+            "selected": false,
+            "text": "13:30",
+            "value": "13:30"
+          },
+          {
+            "selected": false,
+            "text": "14:00",
+            "value": "14:00"
+          },
+          {
+            "selected": false,
+            "text": "14:30",
+            "value": "14:30"
+          },
+          {
+            "selected": false,
+            "text": "15:00",
+            "value": "15:00"
+          },
+          {
+            "selected": false,
+            "text": "15:30",
+            "value": "15:30"
+          },
+          {
+            "selected": false,
+            "text": "16:00",
+            "value": "16:00"
+          },
+          {
+            "selected": false,
+            "text": "16:30",
+            "value": "16:30"
+          },
+          {
+            "selected": true,
+            "text": "17:00",
+            "value": "17:00"
+          },
+          {
+            "selected": false,
+            "text": "17:30",
+            "value": "17:30"
+          },
+          {
+            "selected": false,
+            "text": "18:00",
+            "value": "18:00"
+          },
+          {
+            "selected": false,
+            "text": "18:30",
+            "value": "18:30"
+          },
+          {
+            "selected": false,
+            "text": "19:00",
+            "value": "19:00"
+          },
+          {
+            "selected": false,
+            "text": "19:30",
+            "value": "19:30"
+          },
+          {
+            "selected": false,
+            "text": "20:00",
+            "value": "20:00"
+          },
+          {
+            "selected": false,
+            "text": "20:30",
+            "value": "20:30"
+          },
+          {
+            "selected": false,
+            "text": "21:00",
+            "value": "21:00"
+          },
+          {
+            "selected": false,
+            "text": "21:30",
+            "value": "21:30"
+          },
+          {
+            "selected": false,
+            "text": "22:00",
+            "value": "22:00"
+          },
+          {
+            "selected": false,
+            "text": "22:30",
+            "value": "22:30"
+          },
+          {
+            "selected": false,
+            "text": "23:00",
+            "value": "23:00"
+          },
+          {
+            "selected": false,
+            "text": "23:30",
+            "value": "23:30"
+          },
+          {
+            "selected": false,
+            "text": "24:00",
+            "value": "24:00"
+          }
+        ],
+        "current": {
+          "selected": true,
+          "text": "17:00",
+          "value": "17:00"
+        },
+        "multi": false,
+        "includeAll": false
+      },
+      {
+        "name": "start_time_custom",
+        "type": "textbox",
+        "label": "开始时间(精确，可空)",
+        "hide": 0,
+        "query": "",
+        "current": {
+          "selected": false,
+          "text": "",
+          "value": ""
+        },
+        "options": [
+          {
+            "selected": true,
+            "text": "",
+            "value": ""
+          }
+        ]
+      },
+      {
+        "name": "end_time_custom",
+        "type": "textbox",
+        "label": "结束时间(精确，可空)",
+        "hide": 0,
+        "query": "",
+        "current": {
+          "selected": false,
+          "text": "",
+          "value": ""
+        },
+        "options": [
+          {
+            "selected": true,
+            "text": "",
+            "value": ""
+          }
+        ]
+      },
+      {
+        "name": "api_base",
+        "type": "textbox",
+        "label": "API地址",
+        "hide": 2,
+        "query": "http://10.0.0.217:8000",
+        "current": {
+          "selected": false,
+          "text": "http://10.0.0.217:8000",
+          "value": "http://10.0.0.217:8000"
+        },
+        "options": [
+          {
+            "selected": true,
+            "text": "http://10.0.0.217:8000",
+            "value": "http://10.0.0.217:8000"
+          }
+        ]
+      }
+    ]
+  },
+  "time": {
+    "from": "2026-06-12T00:30:00Z",
+    "to": "2026-06-12T09:00:00Z"
+  },
+  "timepicker": {},
+  "timezone": "browser",
+  "title": "Edge MES 单线生产总览",
+  "uid": "edge-mes-overview",
+  "version": 2,
+  "weekStart": ""
+}

@@ -1,0 +1,26 @@
+machine_id: LINE_01
+
+simulation:
+  base_cycle_time_ms: 30000
+  cycle_time_jitter_ms: 2500
+  ng_rate: 0.025
+  product_types:
+    - TYPE_A
+    - TYPE_B
+    - TYPE_C
+
+scenarios:
+  random_short_stop:
+    enabled: true
+    probability_per_tick: 0.01
+    min_duration_seconds: 30
+    max_duration_seconds: 120
+  random_alarm:
+    enabled: true
+    probability_per_tick: 0.008
+    min_duration_seconds: 20
+    max_duration_seconds: 90
+  cycle_slowdown:
+    enabled: true
+    probability_per_tick: 0.02
+    cycle_time_multiplier: 1.5

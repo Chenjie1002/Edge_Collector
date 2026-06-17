@@ -1,0 +1,19 @@
+apiVersion: 1
+
+datasources:
+  - name: Edge MES PostgreSQL
+    type: postgres
+    uid: edge-mes-postgres
+    access: proxy
+    url: postgres:5432
+    database: edge_mes
+    user: edge_mes
+    secureJsonData:
+      password: edge_mes_password
+    jsonData:
+      database: edge_mes
+      sslmode: disable
+      postgresVersion: 1600
+      timescaledb: false
+    isDefault: true
+    editable: true
