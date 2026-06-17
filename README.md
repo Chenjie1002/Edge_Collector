@@ -31,3 +31,6 @@ API:
 http://<host>:8000/health
 ```
 
+## License
+
+MIT
