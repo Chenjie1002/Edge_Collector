@@ -1,6 +1,6 @@
 # 通讯协议、寄存器与数据格式
 
-更新时间：2026-06-16
+更新时间：2026-06-17
 
 ## 1. 通讯协议
 
@@ -206,3 +206,53 @@ DB101、DB102、DB103 共用同一套 header。
 - `station_event` 是按工站追加的履历表。
 - `production_unit` 是工件当前状态表。
 - 旧数据缺 `unit_id` 时，API 才允许使用 DMC/时间兜底。
+
+## 9. 未来文件接口约定
+
+### 9.1 MCU 高频采集文件
+
+高频采集由 MCU 或专用采集器完成，Edge 不直接采样高频信号。
+
+约定：
+
+- 文件格式：CSV 或 JSON。
+- 文件粒度：每个零件一个文件。
+- 推荐关联字段：
+  - `unit_id`
+  - `station_id`
+  - `dmc`
+  - `sample_start_time`
+  - `sample_end_time`
+  - `mcu_id`
+  - `sampling_rate_hz`
+- Edge 保存原始文件路径、校验值、解析状态和特征提取结果。
+- 原始文件不直接写入 PostgreSQL 二进制字段。
+
+### 9.2 工业相机媒体文件
+
+图片/视频来源为工业相机。
+
+约定：
+
+- 推荐关联字段：
+  - `unit_id`
+  - `station_id`
+  - `camera_id`
+  - `capture_time`
+  - `inspection_result`
+  - `file_type`
+  - `file_checksum`
+- 本地默认保留 7 天，可配置。
+- 超期后根据归档策略上传服务器、复制到移动硬盘或删除。
+- PostgreSQL 只保存元数据和索引，不保存大型媒体二进制。
+
+### 9.3 参数变更通知
+
+参数由 PLC/HMI 或受控工程工具修改，Edge 不主动回写 PLC。
+
+约定：
+
+- PLC 侧参数修改后通知 Edge。
+- Edge 收到通知后读取最新参数。
+- Edge 对参数值进行范围、类型、枚举和版本校验。
+- 参数 changelog 必须记录旧值、新值、账号、认证方式、修改来源、读取时间、校验结果。

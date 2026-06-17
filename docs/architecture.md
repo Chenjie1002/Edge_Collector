@@ -1,6 +1,6 @@
 # Edge MES Demo 系统架构
 
-更新时间：2026-06-16  
+更新时间：2026-06-17  
 部署目标：Raspberry Pi 5B 8GB，SSD，Docker Compose  
 项目目录：`/Users/chenjie/Documents/MES/edge-mes-demo`  
 树莓派部署目录：`/opt/edge-mes-demo`
@@ -18,6 +18,7 @@
 - FastAPI 提供 KPI、追溯、事件查询接口。
 - Grafana 展示旧生产总览、树莓派主机监控、三工站追溯与采集监控。
 - 预留 sync worker，将来由树莓派主动推送到远端 Oracle 服务器。
+- 后续扩展最多 3 条流水线，并纳入参数管理、MCU 高频文件接入、工业相机媒体接入、归档和权限认证。
 
 ## 2. 服务拓扑
 
@@ -36,6 +37,10 @@ flowchart LR
   end
 
   Simulator -->|"legacy state"| VPLC
+  MCU["MCU / 高频采集器\nCSV/JSON per part"] -.->|"future part files"| Collector
+  Camera["工业相机\nimage/video"] -.->|"future media files"| API
+  AuthDevice["人脸/指纹/令牌外设"] -.->|"future auth events"| API
+  Nvidia["Nvidia Edge AI"] -.->|"future inference result"| API
   VPLC -->|"S7 DB100/101/102/103"| Collector
   Collector -->|"insert events/snapshots"| Postgres
   API --> Postgres
@@ -43,6 +48,8 @@ flowchart LR
   Grafana --> Prom
   Prom --> NodeExporter
   Sync -->|"future push"| Oracle[(Oracle Server)]
+  API -.->|"future hot archive"| ArchiveServer[(Archive Server)]
+  API -.->|"future cold archive"| RemovableDisk[(Removable Disk)]
 ```
 
 ## 3. 容器服务
@@ -125,7 +132,7 @@ sequenceDiagram
 
 ## 7. 当前架构约束
 
-- 当前只考虑单台设备、单条产线、单个 PLC。
+- 当前 Demo 只实现单台设备、单条产线、单个 PLC；长期目标最多 3 条流水线。
 - 本地数据库采用 PostgreSQL；远端 Oracle 只作为未来同步目标，不在本地直接使用 Oracle。
 - 系统需要离线运行；外部网络不是运行前提。
 - 旧 `DB100` 仍兼容旧 dashboard，不代表最终 PLC 线级 DB 语义。
@@ -134,3 +141,20 @@ sequenceDiagram
 - V-PLC 未收到 ACK 前不启动同工站下一件，防止 payload 被覆盖。
 - Grafana 适合工程监控和调试，不作为最终数字孪生首页的唯一方案。
 - 未来自研 dashboard 可以在 Grafana 之外实现，用于 3D、动画、产线孪生首页。
+- 高频信号由 MCU 或专用采集器采集，Edge 只接收每个零件生成的 CSV/JSON 文件。
+- Edge 对 PLC 参数只读取和校验，不主动回写 PLC。
+- 工业相机图片/视频只在本地短期缓存，长期存储通过归档策略处理。
+- AI 推理和长期大数据分析由 Nvidia 边缘设备或服务器承担，树莓派只接收结果。
+
+## 8. 后续扩展模块
+
+后续扩展计划详见 `docs/edge_expansion_plan.md`。模块边界如下：
+
+| 模块 | 运行位置 | 主要职责 |
+| --- | --- | --- |
+| 参数管理 | 树莓派 Edge | 读取、校验、快照、changelog |
+| MCU 文件接入 | MCU + 树莓派 Edge | MCU 每件生成 CSV/JSON，Edge 解析并关联追溯 |
+| 工业相机媒体 | 工业相机 + 树莓派 Edge | 图片/视频元数据、7 天保留、追溯关联 |
+| 归档管理 | 树莓派 Edge + 外部介质/服务器 | 移动硬盘冷备份、服务器上传热备份 |
+| 权限认证 | 树莓派 Edge + 外设 | 用户、令牌、人脸/指纹适配、操作审计 |
+| AI 结果接入 | Nvidia Edge + 树莓派 Edge | AI 设备推理，Edge 记录结果和模型版本 |

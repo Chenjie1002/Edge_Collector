@@ -1,12 +1,12 @@
 # 当前状态 / Codex 恢复上下文
 
-更新时间：2026-06-16  
+更新时间：2026-06-17  
 工作目录：`/Users/chenjie/Documents/MES/edge-mes-demo`  
 树莓派部署目录：`/opt/edge-mes-demo`
 
 ## 1. 项目一句话状态
 
-当前 Edge MES Demo 已经在树莓派上完成从 V-PLC 到 Collector、PostgreSQL、FastAPI 追溯页面和 Grafana dashboard 的闭环。系统可以离线运行，模拟单条产线、一个 PLC、三个工站，并按 S7 DB 协议采集生产事件。
+当前 Edge MES Demo 已经在树莓派上完成从 V-PLC 到 Collector、PostgreSQL、FastAPI 追溯页面和 Grafana dashboard 的闭环。系统可以离线运行，模拟单条产线、一个 PLC、三个工站，并按 S7 DB 协议采集生产事件。后续扩展边界已明确：最多 3 条流水线，树莓派作为 Edge SCADA/MES 节点，高频采样、AI 重计算和长期媒体存储由外部设备或服务器承担。
 
 ## 2. 已完成内容
 
@@ -199,6 +199,7 @@ edge-mes-demo/
     task_plan.md
     decisions.md
     current_status.md
+    edge_expansion_plan.md
     edge_mes_demo_srs.md
     kpi_definitions.md
     custom_dashboard_plan.md
@@ -227,10 +228,16 @@ edge-mes-demo/
 - `cycle_event` 继续兼容旧查询；`station_event` 记录工站履历；`production_unit` 记录工件当前状态。
 - Grafana 用于工程监控，自研数字孪生 dashboard 后续实现。
 - 系统必须离线可运行。
+- 高频信号由 MCU 或专用采集器采集，每个零件输出 CSV/JSON 文件，Edge 负责解析、特征提取、关联和归档。
+- 参数管理只读校验，不主动回写 PLC；PLC 侧修改后通知 Edge 读取并记录 changelog。
+- 工业相机图片/视频只做短期本地缓存，默认 7 天。
+- 归档支持移动硬盘冷备份和服务器热备份，均作为可勾选任务。
+- 权限管理需要支持账号、令牌和人脸/指纹等生物识别外设。
+- AI 推理和长期数据处理放到 Nvidia 边缘设备或服务器，Edge 只接收结果。
 
 ## 5. 重要约束
 
-- 单台设备、单条产线、单个 PLC。
+- 当前 Demo 是单台设备、单条产线、单个 PLC；长期目标最多 3 条流水线。
 - 当前树莓派是 8GB，SSD，性能足够当前 Demo。
 - 不要破坏旧 `edge_mes_overview` dashboard。
 - 不要删除旧 `production_snapshot` 链路。
@@ -241,6 +248,10 @@ edge-mes-demo/
 - 默认不强制 ACK，payload_ready 保持约 10 秒；但未 ACK 的工站不会启动下一件，避免 payload 被覆盖。
 - 当前 API/Grafana 无生产级认证设计。
 - 当前 Oracle 同步未完成，只是 mock。
+- 电子 SOP 暂不需要。
+- 维护保养模块暂不需要。
+- 图片/视频长期存储不放在树莓派本地。
+- 高频原始信号不由树莓派直接采集。
 
 ## 6. 未完成事项
 
@@ -259,6 +270,11 @@ edge-mes-demo/
 - Grafana 增加数据质量面板。
 - V-PLC 增加断线、写失败、ACK 失败模拟。
 - Collector 增加更完整错误日志。
+- 参数管理与 changelog。
+- MCU CSV/JSON 文件接入与特征提取。
+- 工业相机图片/视频元数据与 7 天保留。
+- 归档任务管理。
+- 权限、令牌和生物识别适配。
 
 后续产品化：
 
@@ -266,6 +282,7 @@ edge-mes-demo/
 - 3D 设备/物料流动数字孪生首页。
 - 用户权限、审计日志、配置持久化。
 - 真实 PLC 接入演练。
+- AI / Nvidia 边缘设备结果接入。
 
 ## 7. 下一步建议
 
