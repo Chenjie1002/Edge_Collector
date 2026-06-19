@@ -221,9 +221,9 @@
 
 ### 中优先级
 
-5. Oracle 主动同步
-   - 当前 `sync-worker` 为 mock。
-   - 需要定义 Oracle schema、同步批次、失败重试、幂等键。
+5. Oracle 主动同步（Phase-2 Out of Scope）
+   - 当前 `sync-worker` 只保留 mock。
+   - 本阶段不定义 Oracle schema，不实现连接、push、失败重试或幂等。
 
 6. Grafana dashboard 进一步打磨
    - 当前是工程监控 dashboard。
@@ -296,10 +296,10 @@
    - 完成 `data_gap_event`
    - 用 WS03 label_code 序号计算缺失件数
 
-3. **Oracle 同步设计与实现**
-   - 定义远端 Oracle 表
-   - 定义本地 outbox 到 Oracle 的映射
-   - 实现主动 push、重试、幂等
+3. **验证与回归**
+   - 建立 ACK、PLC 重启、counter reset、Collector 重启和 data gap 测试矩阵
+   - 验证 V-PLC -> Collector -> PostgreSQL -> API/Grafana 闭环
+   - 将结果保存到 `docs/reports/`
 
 4. **Grafana 和追溯增强**
    - 增加数据质量/缺站指标
@@ -338,6 +338,12 @@
    - 在测试环境切换 host/port/rack/slot
    - 用只读模式先验证 DB decode
    - 再启用 write `read_done`
+
+Phase-2 Out of Scope：
+
+- Oracle schema 和真实数据库连接。
+- outbox 到 Oracle 的真实同步、重试和幂等。
+- 修改 `sync-worker` 的 mock 定位。
 
 ## 5. 阶段验收建议
 

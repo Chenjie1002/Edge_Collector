@@ -1,6 +1,6 @@
 # 当前状态 / Codex 恢复上下文
 
-更新时间：2026-06-17  
+更新时间：2026-06-19
 工作目录：`/Users/chenjie/Documents/MES/edge-mes-demo`  
 树莓派部署目录：`/opt/edge-mes-demo`
 
@@ -29,19 +29,32 @@
   - DB101 WS01
   - DB102 WS02
   - DB103 WS03
+  - DB104 runtime / PLC identity
 - 三工站并行 WIP。
 - 全局 `unit_id` 从 WS01 创建并贯穿 WS02/WS03。
 - 上游 NOK 后，下游工站仍接收该件，但写入 `process_status=SKIPPED`、`skip_reason=UPSTREAM_NOK`。
 - WS03 对不合格件生成 `NG-xxxxxx`，并将工件状态置为不合格品处理。
 - 未 ACK 的工站 payload 不允许被下一件覆盖。
+- 默认严格 ACK；超过 10 秒 deadline 只置 `ack_timeout`，不释放 payload。
+- DB104 提供运行期间稳定的 `plc_boot_id`、heartbeat 和持久化 restart counter。
+- 手动 WIP/counter reset 会轮换 boot identity 并清除旧 station DB payload。
+- station 参数由 `config/vplc.yaml` 统一提供。
+- 支持 `normal / fast / test` Profile：
+  - `normal` 固定 `scale=1.0`，并锁定 runtime base/jitter 编辑。
+  - `fast/test` 只通过 scale 加速，不改变约 30 秒的 process baseline。
+- `/vplc/state` 返回当前 profile、scale、配置来源和 config hash。
+- 参数修改必须提供 reason，并记录 actor、client IP、request ID、old/new 和接受/拒绝状态。
+- startup、runtime update、reset 和周期性参数快照写入审计链路。
+- 强制 NOK 支持按工站 code 白名单排队 1–100 件，并可查询或清除 pending 队列。
 - 支持：
   - 连续生产
   - 按小时
   - 按件数
   - 按班次
   - 暂停/恢复工站
-  - 修改节拍、波动、NOK 率
-  - 强制 NOK
+  - `fast/test` 模式修改节拍、波动
+  - 修改 NOK 率
+  - 批量强制 NOK 和清除 pending NOK
   - 重置 WIP/counter
 
 入口：
@@ -61,7 +74,11 @@
   - `quality_event`
   - `collector_runtime_status`
 - 写回 `read_done`。
-- 更新 `ack_status=ACK_OK`。
+- 数据提交成功后才写回 `read_done`。
+- ACK 写回失败标记 `ACK_WRITE_FAILED` 并在后续轮询重试。
+- Collector 重启后通过 PLC 当前 payload 和数据库幂等键补 ACK。
+- 同 boot counter 下降会记录 `PLC_COUNTER_RESET` 并停止 ACK。
+- 连接、identity、读取/解码、存储和 ACK 错误写入 `collector_error_log`。
 
 ### API
 
@@ -144,8 +161,14 @@ edge-mes-demo/
       plc_db.py
       pipeline.py
       control_api.py
+      runtime_config.py
+      parameter_audit.py
     tests/
       test_pipeline_uid_flow.py
+      test_reliability.py
+      test_runtime_config.py
+      test_parameter_audit.py
+      test_nok_simulation.py
 
   simulator/
     Dockerfile
@@ -163,6 +186,7 @@ edge-mes-demo/
 
   config/
     app.yaml
+    vplc.yaml
     simulator.yaml
     plc_mapping.yaml
     mapping.yaml
@@ -200,6 +224,7 @@ edge-mes-demo/
     decisions.md
     current_status.md
     edge_expansion_plan.md
+    plc_edge_integration_guide.md
     edge_mes_demo_srs.md
     kpi_definitions.md
     custom_dashboard_plan.md
@@ -212,6 +237,7 @@ edge-mes-demo/
 - 目录中可能存在 `__pycache__`，它们不是源文件，不应作为文档依据。
 - 部署时打包应排除 `__pycache__` 和 `*.pyc`。
 - `edge_mes_demo_srs.md` 是当前正式技术方案与 SRS。
+- `plc_edge_integration_guide.md` 是面向现场 PLC 工程师和技师的通用接入规范，覆盖 S7-300/S7-1200/S7-1500。
 - `kpi_definitions.md` 是当前 KPI 口径与度量计划。
 - `custom_dashboard_plan.md` 是后续自研 dashboard 与数字孪生首页规划。
 
@@ -245,9 +271,9 @@ edge-mes-demo/
 - `config/mapping.yaml` 是新三工站协议映射。
 - DB100 当前存在 legacy 兼容，不应直接假设已经完全符合新协议。
 - V-PLC 当前端口 1102；真实 PLC 可能为 102。
-- 默认不强制 ACK，payload_ready 保持约 10 秒；但未 ACK 的工站不会启动下一件，避免 payload 被覆盖。
+- 默认严格 ACK；deadline 默认 10 秒，未 ACK payload 不会自动清除或被覆盖。
 - 当前 API/Grafana 无生产级认证设计。
-- 当前 Oracle 同步未完成，只是 mock。
+- Oracle / `sync-worker` 属于 Phase-2 Out of Scope；当前只保留 mock，不实施真实 Oracle 集成。
 - 电子 SOP 暂不需要。
 - 维护保养模块暂不需要。
 - 图片/视频长期存储不放在树莓派本地。
@@ -257,11 +283,8 @@ edge-mes-demo/
 
 高优先级：
 
-- 将 `plc_boot_id` 从 collector 会话兜底升级为真实 PLC/V-PLC retained boot id。
-- 实现真实 ACK timeout 和重试。
-- 实现 counter reset 检测。
 - 实现 Ignore Edge / Bypass 与 `data_gap_event`。
-- 定义 Oracle 同步 schema 与幂等策略。
+- 在树莓派 PostgreSQL 执行 `db/migrations/005_reliability_schema.sql` 并完成容器级故障恢复验收。
 
 中优先级：
 
@@ -269,7 +292,7 @@ edge-mes-demo/
 - 对旧历史数据执行一次可选回填，将已有 `cycle_event` 尽量派生为 `station_event` / `production_unit`。
 - Grafana 增加数据质量面板。
 - V-PLC 增加断线、写失败、ACK 失败模拟。
-- Collector 增加更完整错误日志。
+- 增加故障注入控制项，便于手工触发 ACK 写失败和断线。
 - 参数管理与 changelog。
 - MCU CSV/JSON 文件接入与特征提取。
 - 工业相机图片/视频元数据与 7 天保留。
@@ -286,31 +309,30 @@ edge-mes-demo/
 
 ## 7. 下一步建议
 
-建议下一步做 **可靠性补强**，顺序：
+可靠性代码闭环已完成；建议下一步按以下顺序推进：
 
-1. `plc_boot_id` 修正
-   - 让 V-PLC 在稳定地址写 boot id。
-   - Collector 正确读取并入库。
+1. 部署迁移与容器验收
+   - 在树莓派执行 `db/migrations/005_reliability_schema.sql`。
+   - 重建 V-PLC / Collector，执行断线、重启、ACK timeout 和 reset 验收。
 
-2. ACK 真实模式
-   - 支持 `require_ack=true`。
-   - 超时置 `ack_timeout`。
-   - Collector 重启后补 ACK。
-
-3. Ignore Edge / data gap
+2. Ignore Edge / data gap
    - 正式启用整线 `ignore_edge` bit。
    - 数据缺口写入 `data_gap_event`。
    - 按 WS03 label_code 序号计算缺件。
 
-4. Oracle sync worker
-   - 设计远端表。
-   - 实现主动 push。
-   - 支持断网重试和幂等。
+3. 验证与回归
+   - 建立可靠性、数据缺口和端到端验证矩阵。
+   - 保存每个 Thread 的验证报告。
 
-5. 自研 dashboard 初版
+4. 自研 dashboard 初版
    - 不替代 Grafana 工程看板。
    - 面向操作员/管理层。
    - 为后续 3D 数字孪生做入口。
+
+Phase-2 Out of Scope：
+
+- Oracle schema、真实连接、主动 push、重试和幂等。
+- `sync-worker` 只保留现有 mock 行为，不作为本阶段验收项。
 
 ## 8. 常用命令
 

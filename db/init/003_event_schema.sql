@@ -47,7 +47,9 @@ CREATE TABLE IF NOT EXISTS cycle_event (
     created_at TIMESTAMPTZ NOT NULL DEFAULT now(),
     updated_at TIMESTAMPTZ NOT NULL DEFAULT now(),
     CONSTRAINT uq_cycle_event_plc_station_counter
-        UNIQUE (plc_id, station_id, plc_boot_id, cycle_counter)
+        UNIQUE (plc_id, station_id, plc_boot_id, cycle_counter),
+    CONSTRAINT ck_cycle_event_ack_status
+        CHECK (ack_status IN ('PENDING', 'ACK_OK', 'ACK_WRITE_FAILED'))
 );
 
 CREATE INDEX IF NOT EXISTS idx_cycle_event_line_station_end_time
@@ -96,6 +98,8 @@ CREATE TABLE IF NOT EXISTS collector_runtime_status (
     last_success_time TIMESTAMPTZ,
     last_error_code TEXT,
     last_error_message TEXT,
+    plc_boot_id TEXT,
+    ack_timeout BOOLEAN NOT NULL DEFAULT FALSE,
     updated_at TIMESTAMPTZ NOT NULL DEFAULT now(),
     CONSTRAINT uq_collector_runtime_status_station
         UNIQUE (plc_id, station_id)
@@ -111,6 +115,7 @@ CREATE TABLE IF NOT EXISTS collector_error_log (
     station_id TEXT,
     error_type TEXT NOT NULL,
     error_message TEXT NOT NULL,
+    plc_boot_id TEXT,
     cycle_counter BIGINT,
     raw_context JSONB NOT NULL DEFAULT '{}'::jsonb,
     created_at TIMESTAMPTZ NOT NULL DEFAULT now()
@@ -118,6 +123,9 @@ CREATE TABLE IF NOT EXISTS collector_error_log (
 
 CREATE INDEX IF NOT EXISTS idx_collector_error_log_time
     ON collector_error_log (created_at DESC);
+
+CREATE INDEX IF NOT EXISTS idx_collector_error_log_type_time
+    ON collector_error_log (error_type, created_at DESC);
 
 CREATE TABLE IF NOT EXISTS data_gap_event (
     id BIGSERIAL PRIMARY KEY,

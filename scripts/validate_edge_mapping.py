@@ -20,12 +20,29 @@ def main() -> None:
     plans = build_read_plans(mapping)
     by_scope = {plan.scope: plan for plan in plans}
 
-    assert by_scope["line"].db_number == 100
+    assert by_scope["line"].db_number == 104
     assert by_scope["WS01"].db_number == 101
     assert by_scope["WS02"].db_number == 102
     assert by_scope["WS03"].db_number == 103
     assert by_scope["WS01"].read_start == 0
     assert by_scope["WS01"].read_size >= 124
+
+    line = by_scope["line"]
+    line_sample = bytearray(line.read_size)
+    util.set_int(line_sample, 0, 1)
+    util.set_dint(line_sample, 4, 27)
+    util.set_dint(line_sample, 8, 4)
+    boot_id = b"12345678-1234-1234-1234-123456789abc"
+    line_sample[12] = 36
+    line_sample[13] = len(boot_id)
+    line_sample[14 : 14 + len(boot_id)] = boot_id
+    util.set_bool(line_sample, 52, 3, True)
+    line_decoded = decode_read_plan(line_sample, line, mapping.timezone)
+    assert line_decoded["protocol_version"] == 1
+    assert line_decoded["heartbeat_counter"] == 27
+    assert line_decoded["plc_restart_counter"] == 4
+    assert line_decoded["plc_boot_id"] == boot_id.decode("ascii")
+    assert line_decoded["ignore_edge"] is True
 
     ws01 = by_scope["WS01"]
     sample = bytearray(ws01.read_size)

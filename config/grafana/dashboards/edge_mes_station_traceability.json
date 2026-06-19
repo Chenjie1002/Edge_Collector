@@ -72,10 +72,142 @@
         ],
         "multi": true,
         "includeAll": false
+      },
+      {
+        "name": "profile",
+        "type": "custom",
+        "label": "Profile",
+        "query": "normal,fast,test,unknown",
+        "current": {
+          "selected": true,
+          "text": "normal",
+          "value": "normal"
+        },
+        "options": [
+          {
+            "selected": true,
+            "text": "normal",
+            "value": "normal"
+          },
+          {
+            "selected": false,
+            "text": "fast",
+            "value": "fast"
+          },
+          {
+            "selected": false,
+            "text": "test",
+            "value": "test"
+          },
+          {
+            "selected": false,
+            "text": "unknown",
+            "value": "unknown"
+          }
+        ],
+        "multi": false,
+        "includeAll": true,
+        "allValue": "all"
       }
     ]
   },
   "panels": [
+    {
+      "id": 16,
+      "title": "当前 V-PLC Profile",
+      "description": "Collector 当前 PLC boot 对应的最新参数快照；不等同于历史 Profile 筛选值。",
+      "type": "stat",
+      "datasource": {
+        "type": "postgres",
+        "uid": "edge-mes-postgres"
+      },
+      "gridPos": {
+        "x": 0,
+        "y": 0,
+        "w": 6,
+        "h": 3
+      },
+      "targets": [
+        {
+          "datasource": {
+            "type": "postgres",
+            "uid": "edge-mes-postgres"
+          },
+          "format": "table",
+          "rawQuery": true,
+          "rawSql": "WITH current_boot AS (\n  SELECT plc_boot_id\n  FROM collector_runtime_status\n  WHERE plc_boot_id IS NOT NULL AND plc_boot_id <> ''\n  ORDER BY updated_at DESC\n  LIMIT 1\n)\nSELECT COALESCE((\n  SELECT vps.profile\n  FROM vplc_parameter_snapshot vps\n  JOIN current_boot cb ON cb.plc_boot_id = vps.plc_boot_id\n  ORDER BY vps.captured_at DESC\n  LIMIT 1\n), 'unknown') AS value;",
+          "refId": "A"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "custom": {}
+        },
+        "overrides": []
+      },
+      "options": {
+        "reduceOptions": {
+          "values": false,
+          "calcs": [
+            "lastNotNull"
+          ],
+          "fields": ""
+        },
+        "orientation": "auto",
+        "textMode": "value_and_name",
+        "colorMode": "background",
+        "graphMode": "none",
+        "justifyMode": "center"
+      }
+    },
+    {
+      "id": 17,
+      "title": "时间窗 Profile 构成",
+      "description": "忽略当前筛选，展示整个时间窗的 Profile 构成；多个 Profile 时标记 MIXED。",
+      "type": "stat",
+      "datasource": {
+        "type": "postgres",
+        "uid": "edge-mes-postgres"
+      },
+      "gridPos": {
+        "x": 6,
+        "y": 0,
+        "w": 18,
+        "h": 3
+      },
+      "targets": [
+        {
+          "datasource": {
+            "type": "postgres",
+            "uid": "edge-mes-postgres"
+          },
+          "format": "table",
+          "rawQuery": true,
+          "rawSql": "WITH boot_profile AS (\n  SELECT DISTINCT ON (plc_boot_id) plc_boot_id, profile\n  FROM vplc_parameter_snapshot\n  WHERE plc_boot_id IS NOT NULL\n  ORDER BY plc_boot_id, captured_at DESC\n), window_profiles AS (\n  SELECT DISTINCT COALESCE(bp.profile, 'unknown') AS profile\n  FROM cycle_event ce\n  LEFT JOIN boot_profile bp ON bp.plc_boot_id = ce.plc_boot_id\n  WHERE $__timeFilter(ce.plc_end_time)\n)\nSELECT CASE\n  WHEN count(*) = 0 THEN 'NO DATA'\n  WHEN count(*) = 1 THEN max(profile)\n  ELSE 'MIXED: ' || string_agg(profile, ', ' ORDER BY profile)\nEND AS value\nFROM window_profiles;",
+          "refId": "A"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "custom": {}
+        },
+        "overrides": []
+      },
+      "options": {
+        "reduceOptions": {
+          "values": false,
+          "calcs": [
+            "lastNotNull"
+          ],
+          "fields": ""
+        },
+        "orientation": "auto",
+        "textMode": "value_and_name",
+        "colorMode": "background",
+        "graphMode": "none",
+        "justifyMode": "center"
+      }
+    },
     {
       "id": 1,
       "title": "WS03 OK下线(当前时间窗)",
@@ -86,7 +218,7 @@
       },
       "gridPos": {
         "x": 0,
-        "y": 0,
+        "y": 3,
         "w": 4,
         "h": 4
       },
@@ -98,7 +230,7 @@
           },
           "format": "table",
           "rawQuery": true,
-          "rawSql": "SELECT count(*) AS value\nFROM cycle_event\nWHERE $__timeFilter(plc_end_time)\n  AND station_id = 'WS03'\n  AND result = 'OK';",
+          "rawSql": "SELECT count(*) AS value\nFROM cycle_event ce\nWHERE $__timeFilter(ce.plc_end_time)\n  AND ce.station_id = 'WS03'\n  AND ce.result = 'OK'\n  AND ('${profile}' = 'all' OR COALESCE((SELECT vps.profile FROM vplc_parameter_snapshot vps WHERE vps.plc_boot_id = ce.plc_boot_id ORDER BY vps.captured_at DESC LIMIT 1), 'unknown') = '${profile}');",
           "refId": "A"
         }
       ],
@@ -135,7 +267,7 @@
       },
       "gridPos": {
         "x": 4,
-        "y": 0,
+        "y": 3,
         "w": 4,
         "h": 4
       },
@@ -147,7 +279,7 @@
           },
           "format": "table",
           "rawQuery": true,
-          "rawSql": "SELECT CASE WHEN count(*) = 0 THEN 0 ELSE round(100.0 * count(*) FILTER (WHERE result='OK') / count(*), 2) END AS value\nFROM cycle_event\nWHERE $__timeFilter(plc_end_time)\n  AND station_id = 'WS03';",
+          "rawSql": "SELECT CASE WHEN count(*) = 0 THEN 0 ELSE round(100.0 * count(*) FILTER (WHERE ce.result='OK') / count(*), 2) END AS value\nFROM cycle_event ce\nWHERE $__timeFilter(ce.plc_end_time)\n  AND ce.station_id = 'WS03'\n  AND ('${profile}' = 'all' OR COALESCE((SELECT vps.profile FROM vplc_parameter_snapshot vps WHERE vps.plc_boot_id = ce.plc_boot_id ORDER BY vps.captured_at DESC LIMIT 1), 'unknown') = '${profile}');",
           "refId": "A"
         }
       ],
@@ -188,7 +320,7 @@
       },
       "gridPos": {
         "x": 8,
-        "y": 0,
+        "y": 3,
         "w": 4,
         "h": 4
       },
@@ -200,7 +332,7 @@
           },
           "format": "table",
           "rawQuery": true,
-          "rawSql": "SELECT round(avg(cycle_time_ms) / 1000.0, 2) AS value\nFROM cycle_event\nWHERE $__timeFilter(plc_end_time)\n  AND station_id IN (${station:sqlstring})\n  AND cycle_time_ms IS NOT NULL;",
+          "rawSql": "SELECT round(avg(ce.cycle_time_ms) / 1000.0, 2) AS value\nFROM cycle_event ce\nWHERE $__timeFilter(ce.plc_end_time)\n  AND ce.station_id IN (${station:sqlstring})\n  AND ce.cycle_time_ms IS NOT NULL\n  AND ('${profile}' = 'all' OR COALESCE((SELECT vps.profile FROM vplc_parameter_snapshot vps WHERE vps.plc_boot_id = ce.plc_boot_id ORDER BY vps.captured_at DESC LIMIT 1), 'unknown') = '${profile}');",
           "refId": "A"
         }
       ],
@@ -237,7 +369,7 @@
       },
       "gridPos": {
         "x": 12,
-        "y": 0,
+        "y": 3,
         "w": 4,
         "h": 4
       },
@@ -249,7 +381,7 @@
           },
           "format": "table",
           "rawQuery": true,
-          "rawSql": "SELECT count(*) AS value\nFROM cycle_event\nWHERE $__timeFilter(plc_end_time)\n  AND ack_status <> 'ACK_OK';",
+          "rawSql": "SELECT count(*) AS value\nFROM cycle_event ce\nWHERE $__timeFilter(ce.plc_end_time)\n  AND ce.ack_status <> 'ACK_OK'\n  AND ('${profile}' = 'all' OR COALESCE((SELECT vps.profile FROM vplc_parameter_snapshot vps WHERE vps.plc_boot_id = ce.plc_boot_id ORDER BY vps.captured_at DESC LIMIT 1), 'unknown') = '${profile}');",
           "refId": "A"
         }
       ],
@@ -290,7 +422,7 @@
       },
       "gridPos": {
         "x": 16,
-        "y": 0,
+        "y": 3,
         "w": 4,
         "h": 4
       },
@@ -343,7 +475,7 @@
       },
       "gridPos": {
         "x": 20,
-        "y": 0,
+        "y": 3,
         "w": 4,
         "h": 4
       },
@@ -355,7 +487,7 @@
           },
           "format": "table",
           "rawQuery": true,
-          "rawSql": "SELECT count(*) AS value\nFROM cycle_event\nWHERE $__timeFilter(plc_end_time)\n  AND station_id IN (${station:sqlstring})\n  AND result = 'NOK';",
+          "rawSql": "SELECT count(*) AS value\nFROM cycle_event ce\nWHERE $__timeFilter(ce.plc_end_time)\n  AND ce.station_id IN (${station:sqlstring})\n  AND ce.result = 'NOK'\n  AND ('${profile}' = 'all' OR COALESCE((SELECT vps.profile FROM vplc_parameter_snapshot vps WHERE vps.plc_boot_id = ce.plc_boot_id ORDER BY vps.captured_at DESC LIMIT 1), 'unknown') = '${profile}');",
           "refId": "A"
         }
       ],
@@ -396,7 +528,7 @@
       },
       "gridPos": {
         "x": 0,
-        "y": 4,
+        "y": 7,
         "w": 12,
         "h": 8
       },
@@ -408,7 +540,7 @@
           },
           "format": "time_series",
           "rawQuery": true,
-          "rawSql": "SELECT\n  $__timeGroupAlias(plc_end_time, $__interval),\n  station_id AS metric,\n  avg(cycle_time_ms) / 1000.0 AS value\nFROM cycle_event\nWHERE $__timeFilter(plc_end_time)\n  AND station_id IN (${station:sqlstring})\n  AND cycle_time_ms IS NOT NULL\nGROUP BY 1, station_id\nORDER BY 1;",
+          "rawSql": "SELECT\n  $__timeGroupAlias(ce.plc_end_time, $__interval),\n  ce.station_id AS metric,\n  avg(ce.cycle_time_ms) / 1000.0 AS value\nFROM cycle_event ce\nWHERE $__timeFilter(ce.plc_end_time)\n  AND ce.station_id IN (${station:sqlstring})\n  AND ce.cycle_time_ms IS NOT NULL\n  AND ('${profile}' = 'all' OR COALESCE((SELECT vps.profile FROM vplc_parameter_snapshot vps WHERE vps.plc_boot_id = ce.plc_boot_id ORDER BY vps.captured_at DESC LIMIT 1), 'unknown') = '${profile}')\nGROUP BY 1, ce.station_id\nORDER BY 1;",
           "refId": "A"
         }
       ],
@@ -448,7 +580,7 @@
       },
       "gridPos": {
         "x": 12,
-        "y": 4,
+        "y": 7,
         "w": 12,
         "h": 8
       },
@@ -460,7 +592,7 @@
           },
           "format": "time_series",
           "rawQuery": true,
-          "rawSql": "SELECT\n  $__timeGroupAlias(plc_end_time, $__interval),\n  station_id AS metric,\n  count(*) AS value\nFROM cycle_event\nWHERE $__timeFilter(plc_end_time)\n  AND station_id IN (${station:sqlstring})\nGROUP BY 1, station_id\nORDER BY 1;",
+          "rawSql": "SELECT\n  $__timeGroupAlias(ce.plc_end_time, $__interval),\n  ce.station_id AS metric,\n  count(*) AS value\nFROM cycle_event ce\nWHERE $__timeFilter(ce.plc_end_time)\n  AND ce.station_id IN (${station:sqlstring})\n  AND ('${profile}' = 'all' OR COALESCE((SELECT vps.profile FROM vplc_parameter_snapshot vps WHERE vps.plc_boot_id = ce.plc_boot_id ORDER BY vps.captured_at DESC LIMIT 1), 'unknown') = '${profile}')\nGROUP BY 1, ce.station_id\nORDER BY 1;",
           "refId": "A"
         }
       ],
@@ -500,7 +632,7 @@
       },
       "gridPos": {
         "x": 0,
-        "y": 12,
+        "y": 15,
         "w": 8,
         "h": 7
       },
@@ -512,7 +644,7 @@
           },
           "format": "table",
           "rawQuery": true,
-          "rawSql": "SELECT station_id, count(*) FILTER (WHERE result='OK') AS ok, count(*) FILTER (WHERE result='NOK') AS nok\nFROM cycle_event\nWHERE $__timeFilter(plc_end_time)\n  AND station_id IN (${station:sqlstring})\nGROUP BY station_id\nORDER BY station_id;",
+          "rawSql": "SELECT ce.station_id, count(*) FILTER (WHERE ce.result='OK') AS ok, count(*) FILTER (WHERE ce.result='NOK') AS nok\nFROM cycle_event ce\nWHERE $__timeFilter(ce.plc_end_time)\n  AND ce.station_id IN (${station:sqlstring})\n  AND ('${profile}' = 'all' OR COALESCE((SELECT vps.profile FROM vplc_parameter_snapshot vps WHERE vps.plc_boot_id = ce.plc_boot_id ORDER BY vps.captured_at DESC LIMIT 1), 'unknown') = '${profile}')\nGROUP BY ce.station_id\nORDER BY ce.station_id;",
           "refId": "A"
         }
       ],
@@ -552,7 +684,7 @@
       },
       "gridPos": {
         "x": 8,
-        "y": 12,
+        "y": 15,
         "w": 8,
         "h": 7
       },
@@ -564,7 +696,7 @@
           },
           "format": "table",
           "rawQuery": true,
-          "rawSql": "SELECT code::text AS nok_code, count(*) AS count\nFROM cycle_event, unnest(nok_codes) AS code\nWHERE $__timeFilter(plc_end_time)\n  AND station_id IN (${station:sqlstring})\nGROUP BY code\nORDER BY count DESC, code\nLIMIT 20;",
+          "rawSql": "SELECT code::text AS nok_code, count(*) AS count\nFROM cycle_event ce\nCROSS JOIN LATERAL unnest(ce.nok_codes) AS code\nWHERE $__timeFilter(ce.plc_end_time)\n  AND ce.station_id IN (${station:sqlstring})\n  AND ('${profile}' = 'all' OR COALESCE((SELECT vps.profile FROM vplc_parameter_snapshot vps WHERE vps.plc_boot_id = ce.plc_boot_id ORDER BY vps.captured_at DESC LIMIT 1), 'unknown') = '${profile}')\nGROUP BY code\nORDER BY count DESC, code\nLIMIT 20;",
           "refId": "A"
         }
       ],
@@ -604,7 +736,7 @@
       },
       "gridPos": {
         "x": 16,
-        "y": 12,
+        "y": 15,
         "w": 8,
         "h": 7
       },
@@ -655,7 +787,7 @@
       },
       "gridPos": {
         "x": 0,
-        "y": 19,
+        "y": 22,
         "w": 14,
         "h": 8
       },
@@ -667,7 +799,7 @@
           },
           "format": "table",
           "rawQuery": true,
-          "rawSql": "SELECT\n  to_char(plc_end_time AT TIME ZONE 'Asia/Shanghai', 'YYYY-MM-DD HH24:MI:SS') AS end_time,\n  station_id,\n  cycle_counter,\n  COALESCE(label_code, dmc, child_dmc, trace_key) AS trace_id,\n  result,\n  array_to_string(nok_codes, ',') AS nok_codes,\n  ack_status,\n  round(cycle_time_ms / 1000.0, 2) AS cycle_time_s\nFROM cycle_event\nWHERE station_id IN (${station:sqlstring})\nORDER BY plc_end_time DESC, id DESC\nLIMIT 80;",
+          "rawSql": "SELECT\n  to_char(ce.plc_end_time AT TIME ZONE 'Asia/Shanghai', 'YYYY-MM-DD HH24:MI:SS') AS end_time,\n  ce.station_id,\n  ce.cycle_counter,\n  COALESCE(ce.label_code, ce.dmc, ce.child_dmc, ce.trace_key) AS trace_id,\n  ce.result,\n  array_to_string(ce.nok_codes, ',') AS nok_codes,\n  ce.ack_status,\n  round(ce.cycle_time_ms / 1000.0, 2) AS cycle_time_s\nFROM cycle_event ce\nWHERE $__timeFilter(ce.plc_end_time)\n  AND ce.station_id IN (${station:sqlstring})\n  AND ('${profile}' = 'all' OR COALESCE((SELECT vps.profile FROM vplc_parameter_snapshot vps WHERE vps.plc_boot_id = ce.plc_boot_id ORDER BY vps.captured_at DESC LIMIT 1), 'unknown') = '${profile}')\nORDER BY ce.plc_end_time DESC, ce.id DESC\nLIMIT 80;",
           "refId": "A"
         }
       ],
@@ -706,7 +838,7 @@
       },
       "gridPos": {
         "x": 14,
-        "y": 19,
+        "y": 22,
         "w": 10,
         "h": 8
       },
@@ -718,7 +850,7 @@
           },
           "format": "table",
           "rawQuery": true,
-          "rawSql": "SELECT\n  to_char(plc_end_time AT TIME ZONE 'Asia/Shanghai', 'YYYY-MM-DD HH24:MI:SS') AS offload_time,\n  label_code,\n  dmc,\n  result,\n  CASE WHEN label_code IS NOT NULL THEN 'http://10.0.0.217:8000/trace?q=' || label_code ELSE NULL END AS trace_url\nFROM cycle_event\nWHERE $__timeFilter(plc_end_time)\n  AND station_id = 'WS03'\nORDER BY plc_end_time DESC\nLIMIT 50;",
+          "rawSql": "SELECT\n  to_char(ce.plc_end_time AT TIME ZONE 'Asia/Shanghai', 'YYYY-MM-DD HH24:MI:SS') AS offload_time,\n  ce.label_code,\n  ce.dmc,\n  ce.result,\n  CASE WHEN ce.label_code IS NOT NULL THEN 'http://10.0.0.217:8000/trace?q=' || ce.label_code ELSE NULL END AS trace_url\nFROM cycle_event ce\nWHERE $__timeFilter(ce.plc_end_time)\n  AND ce.station_id = 'WS03'\n  AND ('${profile}' = 'all' OR COALESCE((SELECT vps.profile FROM vplc_parameter_snapshot vps WHERE vps.plc_boot_id = ce.plc_boot_id ORDER BY vps.captured_at DESC LIMIT 1), 'unknown') = '${profile}')\nORDER BY ce.plc_end_time DESC\nLIMIT 50;",
           "refId": "A"
         }
       ],
@@ -757,7 +889,7 @@
       },
       "gridPos": {
         "x": 0,
-        "y": 27,
+        "y": 30,
         "w": 12,
         "h": 7
       },
@@ -769,7 +901,7 @@
           },
           "format": "time_series",
           "rawQuery": true,
-          "rawSql": "SELECT\n  $__timeGroupAlias(plc_end_time, $__interval),\n  ack_status AS metric,\n  count(*) AS value\nFROM cycle_event\nWHERE $__timeFilter(plc_end_time)\nGROUP BY 1, ack_status\nORDER BY 1;",
+          "rawSql": "SELECT\n  $__timeGroupAlias(ce.plc_end_time, $__interval),\n  ce.ack_status AS metric,\n  count(*) AS value\nFROM cycle_event ce\nWHERE $__timeFilter(ce.plc_end_time)\n  AND ('${profile}' = 'all' OR COALESCE((SELECT vps.profile FROM vplc_parameter_snapshot vps WHERE vps.plc_boot_id = ce.plc_boot_id ORDER BY vps.captured_at DESC LIMIT 1), 'unknown') = '${profile}')\nGROUP BY 1, ce.ack_status\nORDER BY 1;",
           "refId": "A"
         }
       ],
@@ -809,7 +941,7 @@
       },
       "gridPos": {
         "x": 12,
-        "y": 27,
+        "y": 30,
         "w": 12,
         "h": 7
       },

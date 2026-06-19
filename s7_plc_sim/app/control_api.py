@@ -1,8 +1,9 @@
 from __future__ import annotations
 
 import threading
+import uuid
 
-from fastapi import FastAPI, HTTPException
+from fastapi import FastAPI, HTTPException, Request
 from fastapi.responses import HTMLResponse
 from pydantic import BaseModel, Field
 
@@ -14,10 +15,13 @@ class StationUpdateRequest(BaseModel):
     jitter_s: float | None = Field(default=None, ge=0, le=60)
     nok_rate: float | None = Field(default=None, ge=0, le=1)
     paused: bool | None = None
+    reason: str = Field(min_length=1, max_length=500)
 
 
 class ForceNokRequest(BaseModel):
     nok_code: int
+    count: int = Field(default=1, ge=1, le=100)
+    reason: str = Field(min_length=1, max_length=500)
 
 
 class ProductionPlanRequest(BaseModel):
@@ -45,18 +49,72 @@ def create_control_app(pipeline: ThreeStationPipeline, lock: threading.RLock) ->
             return pipeline.snapshot()
 
     @app.post("/vplc/stations/{station_id}")
-    def update_station(station_id: str, request: StationUpdateRequest) -> dict:
+    def update_station(station_id: str, update: StationUpdateRequest, request: Request) -> dict:
         with lock:
             try:
-                return pipeline.update_station(station_id, request.model_dump(exclude_none=True))
+                params = update.model_dump(exclude_none=True)
+                reason = str(params.pop("reason"))
+                return pipeline.update_station(
+                    station_id,
+                    params,
+                    audit_context={
+                        "reason": reason,
+                        "actor": request.headers.get("X-VPLC-Actor", "anonymous"),
+                        "client_ip": request.client.host if request.client else None,
+                        "request_id": request.headers.get("X-Request-ID", str(uuid.uuid4())),
+                        "source": "API",
+                    },
+                )
             except KeyError as exc:
                 raise HTTPException(status_code=404, detail=str(exc)) from exc
+            except ValueError as exc:
+                raise HTTPException(status_code=400, detail=str(exc)) from exc
+
+    @app.get("/vplc/audit/changes")
+    def audit_changes(limit: int = 100) -> dict:
+        recorder = pipeline.audit_recorder
+        return {"items": recorder.recent_changes(limit) if recorder else []}
+
+    @app.get("/vplc/audit/snapshots")
+    def audit_snapshots(limit: int = 100) -> dict:
+        recorder = pipeline.audit_recorder
+        return {"items": recorder.recent_snapshots(limit) if recorder else []}
 
     @app.post("/vplc/stations/{station_id}/force-nok")
-    def force_nok(station_id: str, request: ForceNokRequest) -> dict:
+    def force_nok(station_id: str, force: ForceNokRequest, request: Request) -> dict:
         with lock:
             try:
-                return pipeline.force_nok(station_id, request.nok_code)
+                return pipeline.force_nok(
+                    station_id,
+                    force.nok_code,
+                    count=force.count,
+                    audit_context={
+                        "reason": force.reason,
+                        "actor": request.headers.get("X-VPLC-Actor", "anonymous"),
+                        "client_ip": request.client.host if request.client else None,
+                        "request_id": request.headers.get("X-Request-ID", str(uuid.uuid4())),
+                        "source": "API",
+                    },
+                )
+            except KeyError as exc:
+                raise HTTPException(status_code=404, detail=str(exc)) from exc
+            except ValueError as exc:
+                raise HTTPException(status_code=400, detail=str(exc)) from exc
+
+    @app.delete("/vplc/stations/{station_id}/force-nok")
+    def clear_forced_nok(station_id: str, request: Request, reason: str) -> dict:
+        with lock:
+            try:
+                return pipeline.clear_forced_nok(
+                    station_id,
+                    audit_context={
+                        "reason": reason,
+                        "actor": request.headers.get("X-VPLC-Actor", "anonymous"),
+                        "client_ip": request.client.host if request.client else None,
+                        "request_id": request.headers.get("X-Request-ID", str(uuid.uuid4())),
+                        "source": "API",
+                    },
+                )
             except KeyError as exc:
                 raise HTTPException(status_code=404, detail=str(exc)) from exc
 
@@ -163,7 +221,7 @@ CONTROL_HTML = """
   <main>
     <section class="topline">
       <div class="tile"><div class="label">整线状态</div><div class="value" id="lineState">-</div><div class="hint" id="lineHint">-</div></div>
-      <div class="tile"><div class="label">模拟倍率</div><div class="value" id="scale">-</div><div class="hint">1.0 表示真实 30s 左右节拍</div></div>
+      <div class="tile"><div class="label">Profile / 模拟倍率</div><div class="value" id="scale">-</div><div class="hint" id="profileHint">1.0 表示真实 30s 左右节拍</div></div>
       <div class="tile"><div class="label">总序号</div><div class="value" id="serial">-</div><div class="hint">WS01 投入件累计</div></div>
       <div class="tile"><div class="label">完成件数</div><div class="value" id="completed">-</div><div class="hint">WS03 OK 下线累计</div></div>
       <div class="tile"><div class="label">WIP WS01 -> WS02</div><div class="value" id="wip12">-</div><div class="hint">等待 EOL 的中间件</div></div>
@@ -264,7 +322,7 @@ CONTROL_HTML = """
       const ranges = {
         WS01: [[10001, "TQ_LOW"], [10002, "TQ_HIGH"], [10003, "ANG_LOW"], [10004, "ANG_HIGH"]],
         WS02: [[20001, "CUR_HIGH"], [20002, "VOLT_LOW"], [20003, "VOLT_HIGH"], [20004, "STALL_CUR"], [20005, "STALL_TIME"]],
-        WS03: [[30001, "PRINT_FAIL"], [30002, "VERIFY_FAIL"], [30003, "UPSTREAM_NOK"]],
+        WS03: [[30001, "PRINT_FAIL"], [30002, "VERIFY_FAIL"]],
       };
       return ranges[stationId].map(([code, name]) => `<option value="${code}">${code} ${name}</option>`).join("");
     }
@@ -285,6 +343,7 @@ CONTROL_HTML = """
       document.getElementById("lineState").innerHTML = `<span class="dot ${line.running ? "" : "off"}"></span>${line.running ? "RUN" : "STOP"}`;
       document.getElementById("lineHint").textContent = line.running ? `${line.plan_mode} / 已运行 ${line.elapsed_seconds}s` : (line.stop_reason || "停止");
       document.getElementById("scale").textContent = state.scale.toFixed(2);
+      document.getElementById("profileHint").textContent = `${state.profile} / ${state.allow_runtime_cycle_edit ? "允许节拍编辑" : "节拍锁定"}`;
       document.getElementById("serial").textContent = state.serial_no;
       document.getElementById("completed").textContent = state.completed_quantity;
       document.getElementById("wip12").textContent = state.wip.ws01_to_ws02;
@@ -300,15 +359,19 @@ CONTROL_HTML = """
             <td>${station.cycle_counter}</td>
             <td class="code">${station.current_dmc || "-"}</td>
             <td class="code">${station.last_dmc || "-"} ${resultText(station.last_result)}</td>
-            <td><input id="${id}-base" type="number" min="1" step="0.1" value="${station.base_cycle_s.toFixed(1)}"></td>
-            <td><input id="${id}-jitter" type="number" min="0" step="0.1" value="${station.jitter_s.toFixed(1)}"></td>
+            <td><input id="${id}-base" type="number" min="1" step="0.1" value="${station.base_cycle_s.toFixed(1)}" ${state.allow_runtime_cycle_edit ? "" : "disabled"}></td>
+            <td><input id="${id}-jitter" type="number" min="0" step="0.1" value="${station.jitter_s.toFixed(1)}" ${state.allow_runtime_cycle_edit ? "" : "disabled"}></td>
             <td><input id="${id}-nok" type="number" min="0" max="1" step="0.001" value="${station.nok_rate.toFixed(3)}"></td>
-            <td><select id="${id}-nok-code">${nokOptions(id)}</select></td>
+            <td>
+              <select id="${id}-nok-code">${nokOptions(id)}</select>
+              <input id="${id}-nok-count" type="number" min="1" max="100" step="1" value="1" title="连续强制 NOK 数量">
+            </td>
             <td>
               <div class="actions">
                 <button class="primary" onclick="saveStation('${id}')">保存</button>
                 <button onclick="togglePause('${id}', ${!station.paused})">${station.paused ? "恢复" : "暂停"}</button>
-                <button class="danger" onclick="forceNok('${id}')">NOK</button>
+                <button class="danger" onclick="forceNok('${id}')">NOK(${station.pending_forced_nok_count})</button>
+                <button onclick="clearForcedNok('${id}')">清除NOK</button>
               </div>
             </td>
           </tr>`;
@@ -323,14 +386,20 @@ CONTROL_HTML = """
     }
 
     async function saveStation(id) {
+      const reason = prompt("请输入本次参数修改原因：");
+      if (!reason) return;
+      const payload = {
+        nok_rate: Number(document.getElementById(`${id}-nok`).value),
+        reason,
+      };
+      if (currentState.allow_runtime_cycle_edit) {
+        payload.base_cycle_s = Number(document.getElementById(`${id}-base`).value);
+        payload.jitter_s = Number(document.getElementById(`${id}-jitter`).value);
+      }
       currentState = await api(`/vplc/stations/${id}`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          base_cycle_s: Number(document.getElementById(`${id}-base`).value),
-          jitter_s: Number(document.getElementById(`${id}-jitter`).value),
-          nok_rate: Number(document.getElementById(`${id}-nok`).value),
-        })
+        body: JSON.stringify(payload)
       });
       render(currentState);
     }
@@ -339,17 +408,29 @@ CONTROL_HTML = """
       currentState = await api(`/vplc/stations/${id}`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ paused })
+        body: JSON.stringify({ paused, reason: paused ? "control page pause" : "control page resume" })
       });
       render(currentState);
     }
 
     async function forceNok(id) {
       const nokCode = Number(document.getElementById(`${id}-nok-code`).value);
+      const count = Number(document.getElementById(`${id}-nok-count`).value);
+      const reason = prompt("请输入强制 NOK 原因：");
+      if (!reason) return;
       currentState = await api(`/vplc/stations/${id}/force-nok`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ nok_code: nokCode })
+        body: JSON.stringify({ nok_code: nokCode, count, reason })
+      });
+      render(currentState);
+    }
+
+    async function clearForcedNok(id) {
+      const reason = prompt("请输入清除强制 NOK 队列的原因：");
+      if (!reason) return;
+      currentState = await api(`/vplc/stations/${id}/force-nok?reason=${encodeURIComponent(reason)}`, {
+        method: "DELETE"
       });
       render(currentState);
     }

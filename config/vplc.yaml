@@ -1,0 +1,26 @@
+profile: normal
+
+stations:
+  WS01:
+    base_cycle_s: 30.4
+    jitter_s: 1.2
+    nok_rate: 0.02
+  WS02:
+    base_cycle_s: 29.8
+    jitter_s: 1.0
+    nok_rate: 0.015
+  WS03:
+    base_cycle_s: 29.2
+    jitter_s: 0.9
+    nok_rate: 0.01
+
+profiles:
+  normal:
+    cycle_scale: 1.0
+    allow_runtime_cycle_edit: false
+  fast:
+    cycle_scale: 0.1
+    allow_runtime_cycle_edit: true
+  test:
+    cycle_scale: 0.05
+    allow_runtime_cycle_edit: true

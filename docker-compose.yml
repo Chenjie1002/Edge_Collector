@@ -39,14 +39,22 @@ services:
       SIMULATOR_URL: http://simulator:8100
       S7_PORT: "1102"
       VPLC_CONTROL_PORT: "8200"
+      VPLC_CONFIG_PATH: /app/config/vplc.yaml
+      VPLC_PROFILE: ${VPLC_PROFILE:-normal}
+      VPLC_ACK_DEADLINE_SECONDS: "10"
+      VPLC_RUNTIME_STATE_PATH: /app/data/vplc_runtime.json
+      DATABASE_URL: postgresql://edge_mes:edge_mes_password@postgres:5432/edge_mes
     volumes:
       - ./config:/app/config:ro
+      - ./data/vplc:/app/data
     ports:
       - "1102:1102"
       - "8200:8200"
     depends_on:
       simulator:
         condition: service_started
+      postgres:
+        condition: service_healthy
 
   collector:
     build: ./collector

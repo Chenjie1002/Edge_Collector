@@ -1,0 +1,65 @@
+# Thread Reports
+
+本目录保存三个 Codex Thread 的可审计交付报告，不保存临时草稿或聊天记录。
+
+## Naming
+
+```text
+YYYY-MM-DD-reliability.md
+YYYY-MM-DD-data-quality.md
+YYYY-MM-DD-verification.md
+```
+
+同一天重复执行时追加短序号：
+
+```text
+YYYY-MM-DD-verification-02.md
+```
+
+## Required Sections
+
+每份报告至少包含：
+
+1. Scope
+2. Commit / working tree state
+3. Files changed
+4. Commands executed
+5. Evidence and results
+6. Contract checks
+7. Known issues
+8. Handoff
+
+## Status Vocabulary
+
+- `PASS`：已执行并取得符合预期的证据。
+- `FAIL`：已执行但结果不符合契约。
+- `BLOCKED`：因环境或外部依赖未执行，必须写明阻塞条件。
+- `NOT RUN`：不在本次范围，不能写成 PASS。
+
+## Rules
+
+- 不用“应该正常”代替执行证据。
+- 失败项不得从报告中删除。
+- 报告必须区分当前实现与目标契约。
+- 只记录单机 Demo 当前阶段结果。
+- Oracle / `sync-worker` 真实集成统一标记为 Phase-2 Out of Scope。
+- 协议、数据库结构或公共接口变更必须先更新 `docs/contracts/`，再修改实现。
+- 上述变更完成后，报告必须明确记录：
+  - 受影响的 contract、代码、配置、migration 和调用方。
+  - 是否存在破坏性变更或兼容性要求。
+  - 已执行的验证及未执行的阻塞项。
+
+## Current Reliability Reports
+
+- `reliability_sprint_report.md`：Reliability Sprint 总体阶段、部署与遗留项。
+- `nok_simulation_improvement_report.md`：NOK 模拟升级专项验收。
+- `remote_reliability_deploy_report.md`：Raspberry Pi 部署与远程基础运行验证。
+
+## Phase-1 Freeze Reports
+
+- `acceptance_report.md`：Phase-1 综合验收矩阵与长期证据。
+- `final_phase1_pass_report.md`：Phase-1 最终 PASS 结论。
+- `reliability_context_restore.md`：Reliability Thread 上下文恢复入口。
+- `data_quality_context_restore.md`：Data Quality Thread 上下文恢复入口。
+- `verification_context_restore.md`：Verification Thread 上下文恢复入口。
+- `github_push_phase1_report.md`：版本冻结、commit、tag 与 GitHub push 结果。

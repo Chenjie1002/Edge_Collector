@@ -82,7 +82,10 @@ def _format_event(row: dict[str, Any] | None) -> dict[str, Any] | None:
         return None
     return {
         "id": row["id"],
+        "plc_id": row.get("plc_id"),
+        "line_id": row.get("line_id"),
         "station_id": row["station_id"],
+        "plc_boot_id": row.get("plc_boot_id"),
         "cycle_counter": row["cycle_counter"],
         "trace_key": row.get("trace_key"),
         "dmc": row.get("dmc"),
@@ -117,17 +120,31 @@ def _empty_trace(query: str, serial_no: int | None) -> dict[str, Any]:
     }
 
 
-def _trace_by_unit(query: str, unit_id: str, serial_no: int | None = None) -> dict[str, Any]:
+def _trace_by_unit(
+    query: str,
+    unit_id: str,
+    serial_no: int | None = None,
+    *,
+    plc_id: str | None = None,
+    line_id: str | None = None,
+    plc_boot_id: str | None = None,
+) -> dict[str, Any]:
+    scope_sql, scope_params = _identity_scope_sql(
+        plc_id=plc_id,
+        line_id=line_id,
+        plc_boot_id=plc_boot_id,
+    )
     with get_conn() as conn:
         with conn.cursor() as cur:
             cur.execute(
-                """
+                f"""
                 SELECT *
                 FROM cycle_event
                 WHERE unit_id = %s
+                {scope_sql}
                 ORDER BY route_step NULLS LAST, plc_end_time NULLS LAST, id
                 """,
-                (unit_id,),
+                (unit_id, *scope_params),
             )
             rows = cur.fetchall()
 
@@ -144,16 +161,29 @@ def _trace_by_unit(query: str, unit_id: str, serial_no: int | None = None) -> di
     }
 
 
-def _trace_by_serial(query: str, serial_no: int) -> dict[str, Any]:
+def _trace_by_serial(
+    query: str,
+    serial_no: int,
+    *,
+    plc_id: str | None = None,
+    line_id: str | None = None,
+    plc_boot_id: str | None = None,
+) -> dict[str, Any]:
     serial6 = f"{serial_no:06d}"
     candidates = (f"SUB-{serial6}", f"ASM-{serial6}")
+    scope_sql, scope_params = _identity_scope_sql(
+        plc_id=plc_id,
+        line_id=line_id,
+        plc_boot_id=plc_boot_id,
+    )
     with get_conn() as conn:
         with conn.cursor() as cur:
             cur.execute(
-                """
+                f"""
                 SELECT *
                 FROM cycle_event
-                WHERE dmc = ANY(%s)
+                WHERE (
+                      dmc = ANY(%s)
                    OR child_dmc = ANY(%s)
                    OR label_code = ANY(%s)
                    OR final_product_id = ANY(%s)
@@ -162,6 +192,8 @@ def _trace_by_serial(query: str, serial_no: int) -> dict[str, Any]:
                    OR payload ->> 'upstream_child_dmc' = ANY(%s)
                    OR payload ->> 'upstream_ws02_dmc' = ANY(%s)
                    OR payload ->> 'serial_no' = %s
+                )
+                {scope_sql}
                 ORDER BY plc_end_time NULLS LAST, id
                 """,
                 (
@@ -174,6 +206,7 @@ def _trace_by_serial(query: str, serial_no: int) -> dict[str, Any]:
                     list(candidates),
                     list(candidates),
                     str(serial_no),
+                    *scope_params,
                 ),
             )
             rows = cur.fetchall()
@@ -181,7 +214,12 @@ def _trace_by_serial(query: str, serial_no: int) -> dict[str, Any]:
     stations: dict[str, dict[str, Any] | None] = {"WS01": None, "WS02": None, "WS03": None}
     for row in rows:
         stations[row["station_id"]] = _format_event(row)
-    _fill_upstream_by_time(stations)
+    _fill_upstream_by_time(
+        stations,
+        plc_id=plc_id,
+        line_id=line_id,
+        plc_boot_id=plc_boot_id,
+    )
     return {
         "query": query,
         "serial_no": serial_no,
@@ -191,36 +229,77 @@ def _trace_by_serial(query: str, serial_no: int) -> dict[str, Any]:
     }
 
 
-def _fill_upstream_by_time(stations: dict[str, dict[str, Any] | None]) -> None:
+def _fill_upstream_by_time(
+    stations: dict[str, dict[str, Any] | None],
+    *,
+    plc_id: str | None = None,
+    line_id: str | None = None,
+    plc_boot_id: str | None = None,
+) -> None:
     ws03 = stations.get("WS03")
     if ws03 and not stations.get("WS02"):
         upstream_end = _parse_time((ws03.get("payload") or {}).get("upstream_ws02_end_time"))
         child_dmc = ws03.get("child_dmc") or (ws03.get("payload") or {}).get("upstream_child_dmc")
-        stations["WS02"] = _find_upstream_event("WS02", upstream_end, child_dmc)
+        stations["WS02"] = _find_upstream_event(
+            "WS02",
+            upstream_end,
+            child_dmc,
+            plc_id=plc_id,
+            line_id=line_id,
+            plc_boot_id=plc_boot_id,
+        )
 
     ws02 = stations.get("WS02")
     if ws02 and not stations.get("WS01"):
         upstream_end = _parse_time((ws02.get("payload") or {}).get("upstream_ws01_end_time"))
         child_dmc = ws02.get("child_dmc") or ws02.get("dmc") or (ws02.get("payload") or {}).get("upstream_child_dmc")
-        stations["WS01"] = _find_upstream_event("WS01", upstream_end, child_dmc)
+        stations["WS01"] = _find_upstream_event(
+            "WS01",
+            upstream_end,
+            child_dmc,
+            plc_id=plc_id,
+            line_id=line_id,
+            plc_boot_id=plc_boot_id,
+        )
 
 
-def _find_upstream_event(station_id: str, upstream_end: datetime | None, child_dmc: str | None) -> dict[str, Any] | None:
+def _find_upstream_event(
+    station_id: str,
+    upstream_end: datetime | None,
+    child_dmc: str | None,
+    *,
+    plc_id: str | None = None,
+    line_id: str | None = None,
+    plc_boot_id: str | None = None,
+) -> dict[str, Any] | None:
     if not upstream_end and not child_dmc:
         return None
+    scope_sql, scope_params = _identity_scope_sql(
+        plc_id=plc_id,
+        line_id=line_id,
+        plc_boot_id=plc_boot_id,
+    )
     with get_conn() as conn:
         with conn.cursor() as cur:
             if child_dmc:
                 cur.execute(
-                    """
+                    f"""
                     SELECT *
                     FROM cycle_event
                     WHERE station_id = %s
                       AND (dmc = %s OR child_dmc = %s OR part_id = %s OR trace_key = %s)
+                    {scope_sql}
                     ORDER BY plc_end_time DESC NULLS LAST, id DESC
                     LIMIT 1
                     """,
-                    (station_id, child_dmc, child_dmc, child_dmc, child_dmc),
+                    (
+                        station_id,
+                        child_dmc,
+                        child_dmc,
+                        child_dmc,
+                        child_dmc,
+                        *scope_params,
+                    ),
                 )
                 row = cur.fetchone()
                 if row:
@@ -228,21 +307,123 @@ def _find_upstream_event(station_id: str, upstream_end: datetime | None, child_d
                 return None
             if upstream_end:
                 cur.execute(
-                    """
+                    f"""
                     SELECT *
                     FROM cycle_event
                     WHERE station_id = %s
                       AND plc_end_time BETWEEN %s::timestamptz - interval '90 seconds'
                                            AND %s::timestamptz + interval '90 seconds'
+                    {scope_sql}
                     ORDER BY abs(extract(epoch FROM (plc_end_time - %s::timestamptz))), id DESC
                     LIMIT 1
                     """,
-                    (station_id, upstream_end, upstream_end, upstream_end),
+                    (
+                        station_id,
+                        upstream_end,
+                        upstream_end,
+                        *scope_params,
+                        upstream_end,
+                    ),
                 )
                 row = cur.fetchone()
                 if row:
                     return _format_event(row)
     return None
+
+
+def _identity_scope_sql(
+    *,
+    plc_id: str | None,
+    line_id: str | None,
+    plc_boot_id: str | None,
+) -> tuple[str, list[str]]:
+    clauses: list[str] = []
+    params: list[str] = []
+    for column, value in (
+        ("plc_id", plc_id),
+        ("line_id", line_id),
+        ("plc_boot_id", plc_boot_id),
+    ):
+        if value:
+            clauses.append(f"AND {column} = %s")
+            params.append(value)
+    return "\n".join(clauses), params
+
+
+def _current_cycle_identity(
+    station_id: str,
+    *,
+    plc_id: str | None,
+    line_id: str | None,
+) -> dict[str, Any]:
+    clauses = [
+        "station_id = %s",
+        "plc_boot_id IS NOT NULL",
+        "plc_boot_id <> ''",
+    ]
+    params: list[str] = [station_id]
+    if plc_id:
+        clauses.append("plc_id = %s")
+        params.append(plc_id)
+    if line_id:
+        clauses.append("line_id = %s")
+        params.append(line_id)
+
+    with get_conn() as conn:
+        with conn.cursor() as cur:
+            cur.execute(
+                f"""
+                SELECT plc_id, line_id, station_id, plc_boot_id
+                FROM collector_runtime_status
+                WHERE {' AND '.join(clauses)}
+                ORDER BY updated_at DESC
+                LIMIT 1
+                """,
+                tuple(params),
+            )
+            row = cur.fetchone()
+    if not row:
+        raise HTTPException(
+            status_code=404,
+            detail="current PLC boot identity not found",
+        )
+    return row
+
+
+def _find_cycle_event(
+    *,
+    station_id: str,
+    cycle_counter: int,
+    plc_boot_id: str,
+    plc_id: str | None,
+    line_id: str | None,
+) -> dict[str, Any] | None:
+    clauses = [
+        "station_id = %s",
+        "cycle_counter = %s",
+        "plc_boot_id = %s",
+    ]
+    params: list[Any] = [station_id, cycle_counter, plc_boot_id]
+    if plc_id:
+        clauses.append("plc_id = %s")
+        params.append(plc_id)
+    if line_id:
+        clauses.append("line_id = %s")
+        params.append(line_id)
+
+    with get_conn() as conn:
+        with conn.cursor() as cur:
+            cur.execute(
+                f"""
+                SELECT *
+                FROM cycle_event
+                WHERE {' AND '.join(clauses)}
+                ORDER BY id DESC
+                LIMIT 1
+                """,
+                tuple(params),
+            )
+            return cur.fetchone()
 
 
 def _find_seed_event(query: str) -> dict[str, Any] | None:
@@ -285,30 +466,52 @@ def trace_query(q: str = Query(..., min_length=1, description="label_code, DMC, 
 
 
 @router.get("/api/by-cycle")
-def trace_by_cycle(station_id: str, cycle_counter: int) -> dict[str, Any]:
+def trace_by_cycle(
+    station_id: str,
+    cycle_counter: int,
+    plc_boot_id: str | None = Query(default=None),
+    plc_id: str | None = Query(default=None),
+    line_id: str | None = Query(default=None),
+) -> dict[str, Any]:
     station = station_id.upper()
-    with get_conn() as conn:
-        with conn.cursor() as cur:
-            cur.execute(
-                """
-                SELECT *
-                FROM cycle_event
-                WHERE station_id = %s
-                  AND cycle_counter = %s
-                ORDER BY id DESC
-                LIMIT 1
-                """,
-                (station, cycle_counter),
-            )
-            row = cur.fetchone()
+    if plc_boot_id is None:
+        current_identity = _current_cycle_identity(
+            station,
+            plc_id=plc_id,
+            line_id=line_id,
+        )
+        plc_boot_id = str(current_identity["plc_boot_id"])
+        plc_id = str(current_identity["plc_id"])
+        line_id = str(current_identity["line_id"])
+
+    row = _find_cycle_event(
+        station_id=station,
+        cycle_counter=cycle_counter,
+        plc_boot_id=plc_boot_id,
+        plc_id=plc_id,
+        line_id=line_id,
+    )
     if not row:
         raise HTTPException(status_code=404, detail="cycle event not found")
     serial_no = _serial_from_event(row)
     if row.get("unit_id"):
-        return _trace_by_unit(f"{station}:{cycle_counter}", str(row["unit_id"]), serial_no)
+        return _trace_by_unit(
+            f"{station}:{cycle_counter}",
+            str(row["unit_id"]),
+            serial_no,
+            plc_id=str(row["plc_id"]),
+            line_id=str(row["line_id"]),
+            plc_boot_id=str(row["plc_boot_id"]),
+        )
     if serial_no is None:
         return _empty_trace(f"{station}:{cycle_counter}", None)
-    return _trace_by_serial(f"{station}:{cycle_counter}", serial_no)
+    return _trace_by_serial(
+        f"{station}:{cycle_counter}",
+        serial_no,
+        plc_id=str(row["plc_id"]),
+        line_id=str(row["line_id"]),
+        plc_boot_id=str(row["plc_boot_id"]),
+    )
 
 
 @router.get("/api/recent")
@@ -317,25 +520,56 @@ def recent_traces(
     status: str | None = Query(default=None, description="completed_ok, in_progress, nok"),
 ) -> list[dict[str, Any]]:
     if status == "completed_ok":
-        where = "current_state = 'COMPLETED_OK'"
+        where = "pu.current_state = 'COMPLETED_OK'"
     elif status == "nok":
-        where = "current_state = 'COMPLETED_NOK'"
+        where = "pu.current_state = 'COMPLETED_NOK'"
     elif status == "in_progress":
-        where = "current_state IN ('CREATED', 'WAITING_NEXT_STATION', 'BYPASSING')"
+        where = "pu.current_state IN ('CREATED', 'WAITING_NEXT_STATION', 'BYPASSING')"
     else:
         where = "TRUE"
     with get_conn() as conn:
         with conn.cursor() as cur:
             cur.execute(
                 f"""
-                SELECT unit_id, current_station_id AS station_id, current_route_step AS cycle_counter,
-                       child_dmc AS dmc, child_dmc, final_label_code AS label_code, unit_id AS part_id,
-                       final_result AS result, ARRAY[]::INTEGER[] AS nok_codes,
-                       current_state AS ack_status, updated_at AS plc_end_time,
-                       reject_id, disposition, defect_origin_station, defect_code
-                FROM production_unit
+                SELECT
+                       pu.unit_id,
+                       COALESCE(latest_event.station_id, pu.current_station_id) AS station_id,
+                       latest_event.cycle_counter AS cycle_counter,
+                       latest_event.cycle_counter AS station_cycle_counter,
+                       pu.current_route_step AS route_step,
+                       pu.plc_id,
+                       pu.line_id,
+                       latest_event.plc_boot_id,
+                       pu.child_dmc AS dmc,
+                       pu.child_dmc,
+                       pu.final_label_code AS label_code,
+                       pu.unit_id AS part_id,
+                       pu.final_result AS result,
+                       ARRAY[]::INTEGER[] AS nok_codes,
+                       pu.current_state AS ack_status,
+                       pu.updated_at AS plc_end_time,
+                       pu.reject_id,
+                       pu.disposition,
+                       pu.defect_origin_station,
+                       pu.defect_code
+                FROM production_unit pu
+                LEFT JOIN LATERAL (
+                    SELECT
+                           ce.station_id,
+                           ce.plc_boot_id,
+                           ce.cycle_counter
+                    FROM cycle_event ce
+                    WHERE ce.unit_id = pu.unit_id
+                      AND ce.plc_id = pu.plc_id
+                      AND ce.line_id = pu.line_id
+                    ORDER BY
+                           ce.route_step DESC NULLS LAST,
+                           ce.plc_end_time DESC NULLS LAST,
+                           ce.id DESC
+                    LIMIT 1
+                ) latest_event ON TRUE
                 WHERE {where}
-                ORDER BY updated_at DESC
+                ORDER BY pu.updated_at DESC
                 LIMIT %s
                 """,
                 (limit,),
@@ -478,10 +712,12 @@ TRACE_HTML = f"""
     function traceId(r) {{ return r.label_code || r.reject_id || r.unit_id || r.child_dmc || r.dmc || r.part_id || r.cycle_counter; }}
     function rowButton(r) {{
       const q = esc(traceId(r));
+      const stationCounter = r.station_cycle_counter ?? r.cycle_counter ?? "-";
+      const routeStep = r.route_step ?? "-";
       return `<button class="recent-item" onclick="pick('${{q}}')">
         <span class="recent-title">${{q}}</span><span>${{badge(r.result)}}</span>
         <span class="recent-meta">${{esc(r.plc_end_time || "-")}}</span>
-        <span class="recent-meta">${{esc(r.station_id)}} · #${{esc(r.cycle_counter)}}</span>
+        <span class="recent-meta">${{esc(r.station_id)}} · #${{esc(stationCounter)}} · Step ${{esc(routeStep)}}</span>
       </button>`;
     }}
     async function loadRecentGroup(status, targetId) {{

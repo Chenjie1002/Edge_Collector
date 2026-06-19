@@ -9,7 +9,7 @@ collector:
   polling_interval_ms: 1000
 
 kpi:
-  ideal_cycle_time_ms: 1200
+  ideal_cycle_time_ms: 30000
   shift:
     day_start: "08:00"
     night_start: "20:00"

@@ -2,7 +2,6 @@ from __future__ import annotations
 
 import logging
 import time
-import uuid
 from dataclasses import dataclass
 from datetime import datetime
 from zoneinfo import ZoneInfo
@@ -11,6 +10,7 @@ import snap7
 
 from app.plc import EdgeMapping, ReadPlan, build_read_plans, decode_read_plan, load_edge_mapping
 from app.plc.mapping import StationMapping
+from app.services.reliability import CounterDecision, classify_counter, validate_plc_boot_id
 from app.services.storage import Storage
 
 
@@ -43,8 +43,8 @@ class EventCollectorWorker:
         self.slot = int(self.plc.get("slot", 1))
         self.timezone = ZoneInfo(self.mapping.timezone)
         self.client = snap7.client.Client()
-        self.collector_boot_id = f"COLLECTOR-{uuid.uuid4()}"
         plans = {plan.scope: plan for plan in build_read_plans(self.mapping)}
+        self.line_plan = plans.get("line")
         self.station_runtimes = [
             StationRuntime(station=station, plan=plans[station.station_id])
             for station in self.mapping.stations
@@ -68,11 +68,23 @@ class EventCollectorWorker:
             time.sleep(poll_interval_ms / 1000)
 
     def poll_once(self) -> None:
-        self._ensure_connected()
-        plc_boot_id = self._read_plc_boot_id()
+        try:
+            self._ensure_connected()
+        except Exception as exc:
+            self._record_global_error("PLC_CONNECTION_FAILED", exc)
+            raise
+        try:
+            plc_boot_id = self._read_plc_boot_id()
+        except Exception as exc:
+            self._record_global_error("PLC_IDENTITY_INVALID", exc)
+            return
         for runtime in self.station_runtimes:
-            data = self.client.db_read(runtime.plan.db_number, runtime.plan.read_start, runtime.plan.read_size)
-            decoded = decode_read_plan(data, runtime.plan, self.mapping.timezone)
+            try:
+                data = self.client.db_read(runtime.plan.db_number, runtime.plan.read_start, runtime.plan.read_size)
+                decoded = decode_read_plan(data, runtime.plan, self.mapping.timezone)
+            except Exception as exc:
+                self._record_station_error(runtime, "PLC_READ_DECODE_FAILED", exc, plc_boot_id=plc_boot_id)
+                continue
             self._process_station(runtime, data, decoded, plc_boot_id)
 
     def _process_station(
@@ -86,6 +98,7 @@ class EventCollectorWorker:
         payload_ready = bool(decoded.get("payload_ready"))
         cycle_valid = bool(decoded.get("cycle_valid"))
         read_done = bool(decoded.get("read_done"))
+        ack_timeout = bool(decoded.get("ack_timeout"))
         cycle_counter = int(decoded.get("cycle_counter") or 0)
         station_status = self._code_label("station_status", decoded.get("station_status"))
 
@@ -102,55 +115,217 @@ class EventCollectorWorker:
             last_success_time=datetime.now(self.timezone),
             last_error_code=None,
             last_error_message=None,
+            plc_boot_id=plc_boot_id,
+            ack_timeout=ack_timeout,
         )
 
         if not payload_ready or not cycle_valid or cycle_counter <= 0:
             return
 
-        raw_sample_id = self.storage.insert_raw_plc_sample(
+        last_counter = self.storage.get_max_cycle_counter(
             plc_id=self.plc_id,
-            line_id=self.line_id,
             station_id=station_id,
-            db_number=runtime.plan.db_number,
-            read_start=runtime.plan.read_start,
-            read_size=runtime.plan.read_size,
-            raw_hex=bytes(data).hex(),
-            decoded_json=decoded,
-        )
-        event_id = self.storage.upsert_cycle_event(
-            plc_id=self.plc_id,
-            line_id=self.line_id,
-            station=runtime.station,
             plc_boot_id=plc_boot_id,
-            cycle_counter=cycle_counter,
-            decoded=decoded,
-            raw_sample_id=raw_sample_id,
-            code_tables=self.mapping.code_tables,
         )
-        if event_id:
-            self.storage.insert_quality_event_for_cycle(event_id)
-            logger.info("cycle event stored station=%s counter=%s id=%s", station_id, cycle_counter, event_id)
+        counter_decision = classify_counter(last_counter, cycle_counter)
+        if counter_decision is CounterDecision.RESET:
+            message = (
+                f"cycle counter decreased within boot identity: "
+                f"last={last_counter} current={cycle_counter}"
+            )
+            self._record_station_error(
+                runtime,
+                "PLC_COUNTER_RESET",
+                RuntimeError(message),
+                plc_boot_id=plc_boot_id,
+                cycle_counter=cycle_counter,
+                decoded=decoded,
+                collector_state="COUNTER_RESET",
+            )
+            return
 
-        if not read_done:
-            current_handshake_byte = bytes(data)[6 - runtime.plan.read_start]
-            self.client.db_write(runtime.plan.db_number, 6, bytearray([current_handshake_byte | 0b00000010]))
+        try:
+            event_id = self.storage.persist_cycle(
+                plc_id=self.plc_id,
+                line_id=self.line_id,
+                station=runtime.station,
+                plc_boot_id=plc_boot_id,
+                cycle_counter=cycle_counter,
+                decoded=decoded,
+                db_number=runtime.plan.db_number,
+                read_start=runtime.plan.read_start,
+                read_size=runtime.plan.read_size,
+                raw_hex=bytes(data).hex(),
+                code_tables=self.mapping.code_tables,
+            )
+            logger.info(
+                "cycle event stored station=%s counter=%s id=%s decision=%s",
+                station_id,
+                cycle_counter,
+                event_id,
+                counter_decision.value,
+            )
+        except Exception as exc:
+            try:
+                self.storage.rollback()
+            except Exception:
+                logger.debug("storage rollback failed", exc_info=True)
+            self._record_station_error(
+                runtime,
+                "STORAGE_WRITE_FAILED",
+                exc,
+                plc_boot_id=plc_boot_id,
+                cycle_counter=cycle_counter,
+                decoded=decoded,
+                collector_state="STORAGE_ERROR",
+            )
+            return
+
+        if read_done:
             self.storage.mark_cycle_ack_ok(
                 plc_id=self.plc_id,
                 station_id=station_id,
                 plc_boot_id=plc_boot_id,
                 cycle_counter=cycle_counter,
             )
+            return
+
+        current_handshake_byte = bytes(data)[6 - runtime.plan.read_start]
+        try:
+            self.client.db_write(runtime.plan.db_number, 6, bytearray([current_handshake_byte | 0b00000010]))
+        except Exception as exc:
+            self.storage.mark_cycle_ack_failed(
+                plc_id=self.plc_id,
+                station_id=station_id,
+                plc_boot_id=plc_boot_id,
+                cycle_counter=cycle_counter,
+            )
+            self._record_station_error(
+                runtime,
+                "ACK_WRITE_FAILED",
+                exc,
+                plc_boot_id=plc_boot_id,
+                cycle_counter=cycle_counter,
+                decoded=decoded,
+                collector_state="ACK_RETRY",
+            )
+            return
+        self.storage.mark_cycle_ack_ok(
+            plc_id=self.plc_id,
+            station_id=station_id,
+            plc_boot_id=plc_boot_id,
+            cycle_counter=cycle_counter,
+        )
 
     def _read_plc_boot_id(self) -> str:
+        if self.line_plan is None:
+            raise ValueError("line runtime read plan is missing")
+        data = self.client.db_read(
+            self.line_plan.db_number,
+            self.line_plan.read_start,
+            self.line_plan.read_size,
+        )
+        decoded = decode_read_plan(data, self.line_plan, self.mapping.timezone)
+        if int(decoded.get("protocol_version") or 0) != 1:
+            raise ValueError(f"unsupported PLC runtime protocol version: {decoded.get('protocol_version')}")
+        return validate_plc_boot_id(decoded.get("plc_boot_id"))
+
+    def _record_global_error(self, error_type: str, exc: Exception) -> None:
+        self._insert_error(
+            station_id=None,
+            error_type=error_type,
+            exc=exc,
+            plc_boot_id=None,
+            cycle_counter=None,
+            raw_context={"host": self.host, "port": self.port},
+        )
+        for runtime in self.station_runtimes:
+            self._update_runtime_error(runtime, error_type, str(exc), "ERROR", 0, None)
+
+    def _record_station_error(
+        self,
+        runtime: StationRuntime,
+        error_type: str,
+        exc: Exception,
+        *,
+        plc_boot_id: str | None,
+        cycle_counter: int | None = None,
+        decoded: dict[str, object] | None = None,
+        collector_state: str = "ERROR",
+    ) -> None:
+        self._insert_error(
+            station_id=runtime.station.station_id,
+            error_type=error_type,
+            exc=exc,
+            plc_boot_id=plc_boot_id,
+            cycle_counter=cycle_counter,
+            raw_context=decoded or {},
+        )
+        self._update_runtime_error(
+            runtime,
+            error_type,
+            str(exc),
+            collector_state,
+            cycle_counter or 0,
+            plc_boot_id,
+        )
+
+    def _insert_error(
+        self,
+        *,
+        station_id: str | None,
+        error_type: str,
+        exc: Exception,
+        plc_boot_id: str | None,
+        cycle_counter: int | None,
+        raw_context: dict[str, object],
+    ) -> None:
         try:
-            data = self.client.db_read(100, 20, 38)
-            max_len = int(data[0])
-            actual_len = int(data[1])
-            if 0 < max_len <= 36 and actual_len <= max_len:
-                return bytes(data[2 : 2 + actual_len]).decode("ascii", errors="ignore") or "UNKNOWN"
+            self.storage.insert_collector_error(
+                plc_id=self.plc_id,
+                line_id=self.line_id,
+                station_id=station_id,
+                error_type=error_type,
+                error_message=str(exc),
+                plc_boot_id=plc_boot_id,
+                cycle_counter=cycle_counter,
+                raw_context=raw_context,
+            )
         except Exception:
-            logger.debug("failed to read plc_boot_id", exc_info=True)
-        return self.collector_boot_id
+            logger.exception("failed to persist collector error type=%s station=%s", error_type, station_id)
+
+    def _update_runtime_error(
+        self,
+        runtime: StationRuntime,
+        error_type: str,
+        message: str,
+        collector_state: str,
+        cycle_counter: int,
+        plc_boot_id: str | None,
+    ) -> None:
+        try:
+            self.storage.upsert_collector_runtime_status(
+                plc_id=self.plc_id,
+                line_id=self.line_id,
+                station_id=runtime.station.station_id,
+                collector_state=collector_state,
+                plc_connection_state="CONNECTED" if self.client.get_connected() else "DISCONNECTED",
+                station_status="UNKNOWN",
+                payload_ready=False,
+                read_done=False,
+                last_cycle_counter=cycle_counter,
+                last_success_time=datetime.now(self.timezone),
+                last_error_code=error_type,
+                last_error_message=message,
+                plc_boot_id=plc_boot_id,
+                ack_timeout=False,
+            )
+        except Exception:
+            logger.exception(
+                "failed to update collector runtime error type=%s station=%s",
+                error_type,
+                runtime.station.station_id,
+            )
 
     def _ensure_connected(self) -> None:
         if self.client.get_connected():

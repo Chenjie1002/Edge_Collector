@@ -1,8 +1,11 @@
 from __future__ import annotations
 
+from dataclasses import dataclass
 from datetime import datetime
+import json
 from pathlib import Path
 import struct
+import uuid
 from zoneinfo import ZoneInfo
 
 import yaml
@@ -75,11 +78,63 @@ def clear_station_handshake(db: bytearray) -> None:
     util.set_bool(db, 6, 0, False)
     util.set_bool(db, 6, 1, False)
     util.set_bool(db, 6, 2, False)
+    util.set_bool(db, 6, 3, False)
 
 
-def write_line_runtime_to_db(db: bytearray, heartbeat: int, plc_boot_id: str) -> None:
-    util.set_dint(db, 2, int(heartbeat))
-    set_s7_string(db, 20, plc_boot_id, 36)
+@dataclass
+class LineRuntimeIdentity:
+    state_path: Path
+    plc_restart_counter: int
+    plc_boot_id: str
+
+    @classmethod
+    def load_or_start(cls, state_path: str | Path) -> "LineRuntimeIdentity":
+        path = Path(state_path)
+        restart_counter = 0
+        if path.exists():
+            try:
+                restart_counter = int(json.loads(path.read_text()).get("plc_restart_counter", 0))
+            except (OSError, ValueError, TypeError, json.JSONDecodeError):
+                restart_counter = 0
+        identity = cls(
+            state_path=path,
+            plc_restart_counter=restart_counter + 1,
+            plc_boot_id=str(uuid.uuid4()),
+        )
+        identity._persist()
+        return identity
+
+    def rotate_boot_id(self) -> None:
+        self.plc_restart_counter += 1
+        self.plc_boot_id = str(uuid.uuid4())
+        self._persist()
+
+    def _persist(self) -> None:
+        self.state_path.parent.mkdir(parents=True, exist_ok=True)
+        temporary_path = self.state_path.with_suffix(f"{self.state_path.suffix}.tmp")
+        temporary_path.write_text(
+            json.dumps(
+                {
+                    "plc_restart_counter": self.plc_restart_counter,
+                    "plc_boot_id": self.plc_boot_id,
+                }
+            )
+        )
+        temporary_path.replace(self.state_path)
+
+
+def write_line_runtime_to_db(
+    db: bytearray,
+    *,
+    protocol_version: int,
+    heartbeat_counter: int,
+    plc_restart_counter: int,
+    plc_boot_id: str,
+) -> None:
+    util.set_int(db, 0, int(protocol_version))
+    util.set_dint(db, 4, int(heartbeat_counter))
+    util.set_dint(db, 8, int(plc_restart_counter))
+    set_s7_string(db, 12, plc_boot_id, 36)
 
 
 def write_station_header(

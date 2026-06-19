@@ -1,6 +1,10 @@
 # 通讯协议、寄存器与数据格式
 
-更新时间：2026-06-17
+更新时间：2026-06-19
+
+> 本文件描述当前 Edge MES Demo 已实现的协议和地址。
+>
+> 面向实际设备、不同工艺和 S7-300/S7-1200/S7-1500 的通用接入要求，请阅读 `docs/plc_edge_integration_guide.md`。实际设备不得把本文件中的 DB101/DB102/DB103 Payload 当成固定行业标准。
 
 ## 1. 通讯协议
 
@@ -19,8 +23,8 @@
 
 - 真实 S7 PLC 常用 102 端口；当前 Demo 使用 1102，避免权限和端口冲突。
 - Collector 使用 Snap7 Client 读取 DB 块。
-- V-PLC 使用 Snap7 Server 注册 DB100、DB101、DB102、DB103。
-- `payload_ready` 和 `read_done` 用于基本握手。
+- V-PLC 使用 Snap7 Server 注册 DB100、DB101、DB102、DB103、DB104。
+- `payload_ready`、`read_done` 和 `ack_timeout` 使用严格 ACK 状态机。
 
 ## 2. DB 块职责
 
@@ -30,12 +34,24 @@
 | DB101 | WS01 Screw Station | 新三工站事件采集已使用 |
 | DB102 | WS02 EOL Test Station | 新三工站事件采集已使用 |
 | DB103 | WS03 Label / Final Station | 新三工站事件采集已使用 |
+| DB104 | 线级 runtime / PLC identity | Collector 读取 boot identity、heartbeat 和 restart counter |
 
 重要约束：
 
 - `config/mapping.yaml` 定义了目标协议。
 - `config/plc_mapping.yaml` 是旧 DB100 快照采集映射，暂时保留。
-- 当前 DB100 兼容旧 dashboard，因此 `ignore_edge` 的新语义尚未完全切换到运行链路。
+- DB100 继续兼容旧 dashboard，不承载新 identity。
+- `config/mapping.yaml` 的 line read plan 固定读取 DB104。
+
+### 2.1 DB104 线级 Runtime
+
+| 字段 | 地址 | 类型 | 说明 |
+| --- | --- | --- | --- |
+| `protocol_version` | `DB104.DBW0` | word | 当前固定为 1 |
+| `heartbeat_counter` | `DB104.DBD4` | dint | V-PLC 主循环递增 |
+| `plc_restart_counter` | `DB104.DBD8` | dint | 冷启动或手动 counter reset 时递增并持久化 |
+| `plc_boot_id` | `DB104.DBB12` | string[36] | 当前运行实例 UUID；运行期间稳定 |
+| `ignore_edge` | `DB104.DBX52.3` | bool | Data Quality Thread 使用 |
 
 ## 3. 工站公共 Header
 
@@ -176,9 +192,23 @@ DB101、DB102、DB103 共用同一套 header。
    - `collector_runtime_status`
 6. Collector 写回 `{db}.DBX6.1 read_done = TRUE`。
 7. Collector 将 `cycle_event.ack_status` 更新为 `ACK_OK`。
-8. V-PLC 检测 `read_done` 后清除握手位。
+8. V-PLC 检测 `read_done` 后清除 `payload_ready`、`read_done`、`ack_timeout` 和
+   `cycle_valid`，随后才允许下一件。
 
-当前 V-PLC 默认 `require_ack = false`，但是工站只要 `payload_ready = TRUE` 就不会启动下一件，避免未采集 payload 被覆盖。如果 Edge 未 ACK，V-PLC 约 10 秒后自动清除，以避免 demo 停死。后续真实 PLC 模式可以切换为强制 ACK。
+当前 V-PLC 默认严格 ACK。ACK deadline 默认为 10 秒，通过
+`VPLC_ACK_DEADLINE_SECONDS` 调整。超时后只设置 `ack_timeout=TRUE`，不会自动清除
+或覆盖 payload。Collector 每轮都按
+`plc_id + station_id + plc_boot_id + cycle_counter` 幂等落库，因此 ACK 写回失败或
+Collector 重启后可继续补 ACK。
+
+`cycle_event.ack_status` 只允许：
+
+- `PENDING`
+- `ACK_OK`
+- `ACK_WRITE_FAILED`
+
+ACK 写回失败会增加 `retry_count`；连接、identity、读取/解码、存储、ACK 写回和
+counter reset 错误写入 `collector_error_log`。
 
 ## 7. 时间格式
 
@@ -187,7 +217,57 @@ DB101、DB102、DB103 共用同一套 header。
 - PostgreSQL 字段类型使用 `TIMESTAMPTZ`。
 - API 输出 ISO string。
 
-## 8. 追溯规则
+## 8. V-PLC Runtime Parameters
+
+参数与 Profile 契约见
+[`contracts/vplc_runtime_parameters.md`](contracts/vplc_runtime_parameters.md)。
+
+当前参数解析顺序：
+
+```text
+built-in safe defaults
+  → config/vplc.yaml
+  → VPLC_PROFILE / VPLC_CYCLE_SCALE
+  → profile 允许的 runtime update
+```
+
+`normal` profile 固定 `scale=1.0`，三站 base 必须在 20–60 秒，runtime API
+不可修改 base/jitter。`fast/test` 保留 process baseline，只通过 scale 加速。
+
+参数修改接口：
+
+```text
+POST /vplc/stations/{station_id}
+```
+
+请求必须包含 `reason`。服务端记录 actor、client IP、request ID、old/new、
+profile、accepted 和 rejection reason。
+
+审计查询：
+
+```text
+GET /vplc/audit/changes
+GET /vplc/audit/snapshots
+```
+
+查询优先读取 PostgreSQL 持久历史，数据库不可用时回退到当前进程内最近记录。
+
+数据库表：
+
+- `vplc_parameter_change_log`
+- `vplc_parameter_snapshot`
+
+强制 NOK：
+
+```text
+POST   /vplc/stations/{station_id}/force-nok
+DELETE /vplc/stations/{station_id}/force-nok?reason=...
+```
+
+POST 支持 `nok_code`、`count=1..100` 和 `reason`。NOK code 必须属于目标工站。
+队列只在目标工站实际加工 cycle 时消费；上游 NOK 形成的下游 SKIPPED 不消费队列。
+
+## 9. 追溯规则
 
 当前 Demo 追溯规则：
 
@@ -207,9 +287,9 @@ DB101、DB102、DB103 共用同一套 header。
 - `production_unit` 是工件当前状态表。
 - 旧数据缺 `unit_id` 时，API 才允许使用 DMC/时间兜底。
 
-## 9. 未来文件接口约定
+## 10. 未来文件接口约定
 
-### 9.1 MCU 高频采集文件
+### 10.1 MCU 高频采集文件
 
 高频采集由 MCU 或专用采集器完成，Edge 不直接采样高频信号。
 
@@ -228,7 +308,7 @@ DB101、DB102、DB103 共用同一套 header。
 - Edge 保存原始文件路径、校验值、解析状态和特征提取结果。
 - 原始文件不直接写入 PostgreSQL 二进制字段。
 
-### 9.2 工业相机媒体文件
+### 10.2 工业相机媒体文件
 
 图片/视频来源为工业相机。
 
@@ -246,7 +326,7 @@ DB101、DB102、DB103 共用同一套 header。
 - 超期后根据归档策略上传服务器、复制到移动硬盘或删除。
 - PostgreSQL 只保存元数据和索引，不保存大型媒体二进制。
 
-### 9.3 参数变更通知
+### 10.3 参数变更通知
 
 参数由 PLC/HMI 或受控工程工具修改，Edge 不主动回写 PLC。
 

@@ -55,6 +55,7 @@ def run_one_unit_to_ws03(pipeline: ThreeStationPipeline, dbs: dict[int, bytearra
         for station_id, db_number in (("WS01", 101), ("WS02", 102), ("WS03", 103)):
             if station_id not in snapshots and pipeline.stations[station_id].cycle_counter >= 1:
                 snapshots[station_id] = bytearray(dbs[db_number])
+                util.set_bool(dbs[db_number], 6, 1, True)
 
         return ws03.cycle_counter >= 1
 
@@ -64,7 +65,7 @@ def run_one_unit_to_ws03(pipeline: ThreeStationPipeline, dbs: dict[int, bytearra
 
 class PipelineUidFlowTest(unittest.TestCase):
     def setUp(self) -> None:
-        self.pipeline = ThreeStationPipeline(scale=0.05, require_ack=False, ack_hold_s=0.05)
+        self.pipeline = ThreeStationPipeline(scale=0.05, ack_deadline_s=10.0)
         for station in self.pipeline.stations.values():
             station.nok_rate = 0.0
         self.dbs = {101: bytearray(512), 102: bytearray(512), 103: bytearray(512)}
@@ -80,7 +81,7 @@ class PipelineUidFlowTest(unittest.TestCase):
         self.assertEqual(RESULT_OK, util.get_int(snapshots["WS03"], 16))
 
     def test_station_does_not_start_next_job_until_payload_is_acknowledged(self) -> None:
-        pipeline = ThreeStationPipeline(scale=0.05, require_ack=True, ack_hold_s=10.0)
+        pipeline = ThreeStationPipeline(scale=0.05, ack_deadline_s=10.0)
         for station in pipeline.stations.values():
             station.nok_rate = 0.0
 

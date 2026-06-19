@@ -14,22 +14,30 @@ plcs:
 
 line:
   line_id: LINE_001
-  name: Demo Assembly Line
-  db_number: 100
+  name: Demo Assembly Line Runtime
+  db_number: 104
   fields:
-    ignore_edge:
-      address: DB100.DBX0.0
-      type: bool
-      description: Line-level bypass bit. When true, Edge records a data gap boundary.
-    heartbeat:
-      address: DB100.DBD2
+    protocol_version:
+      address: DB104.DBW0
+      type: word
+      description: Runtime protocol version. Current value is 1.
+    heartbeat_counter:
+      address: DB104.DBD4
       type: dint
-      description: PLC heartbeat counter.
+      description: V-PLC heartbeat counter.
+    plc_restart_counter:
+      address: DB104.DBD8
+      type: dint
+      description: Persisted V-PLC boot/reset counter for diagnostics.
     plc_boot_id:
-      address: DB100.DBB20
+      address: DB104.DBB12
       type: string
       max_length: 36
-      description: Virtual PLC boot id. Real PLC can map this to a retained value later.
+      description: UUID for the current V-PLC runtime instance.
+    ignore_edge:
+      address: DB104.DBX52.3
+      type: bool
+      description: Line-level bypass bit. When true, Edge records a data gap boundary.
 
 station_template:
   header:

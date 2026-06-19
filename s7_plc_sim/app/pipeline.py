@@ -5,6 +5,7 @@ from dataclasses import dataclass, field
 from datetime import datetime
 import random
 import time
+from typing import Callable
 from zoneinfo import ZoneInfo
 
 from snap7 import util
@@ -41,6 +42,12 @@ STATION_CODES = {
     "WS01": 1,
     "WS02": 2,
     "WS03": 3,
+}
+
+NOK_CODES = {
+    "WS01": {10001, 10002, 10003, 10004},
+    "WS02": {20001, 20002, 20003, 20004, 20005},
+    "WS03": {30001, 30002},
 }
 
 
@@ -80,7 +87,7 @@ class StationState:
     payload_ready_since: float | None = None
     last_payload_cycle: int = 0
     paused: bool = False
-    force_next_nok_code: int | None = None
+    forced_nok_queue: deque[int] = field(default_factory=deque)
     last_result: int = RESULT_UNKNOWN
     last_nok_codes: list[int] = field(default_factory=list)
     last_dmc: str = ""
@@ -107,22 +114,53 @@ class ProductionPlan:
 
 
 class ThreeStationPipeline:
-    def __init__(self, *, scale: float = 1.0, require_ack: bool = False, ack_hold_s: float = 10.0) -> None:
+    def __init__(
+        self,
+        *,
+        scale: float = 1.0,
+        ack_deadline_s: float = 10.0,
+        on_counter_reset: Callable[[], None] | None = None,
+        profile: str = "test",
+        allow_runtime_cycle_edit: bool = True,
+        station_parameters: dict[str, dict[str, float]] | None = None,
+        config_source: str = "constructor-defaults",
+        config_hash: str = "",
+        audit_recorder: object | None = None,
+        plc_boot_id_provider: Callable[[], str] | None = None,
+    ) -> None:
         seed = int(time.time())
         self.scale = max(0.05, scale)
-        self.require_ack = require_ack
-        self.ack_hold_s = ack_hold_s
+        self.profile = profile
+        self.allow_runtime_cycle_edit = allow_runtime_cycle_edit
+        self.config_source = config_source
+        self.config_hash = config_hash
+        self.audit_recorder = audit_recorder
+        self.plc_boot_id_provider = plc_boot_id_provider
+        self.require_ack = True
+        self.ack_deadline_s = max(0.001, ack_deadline_s)
+        self.on_counter_reset = on_counter_reset
         self.serial_no = 0
         self.completed_quantity = 0
         self.external_running = True
         self.q12: deque[Part] = deque()
         self.q23: deque[Part] = deque()
         self.plan = ProductionPlan(started_at_mono=time.monotonic(), started_at=datetime.now(TZ))
-        self.stations = {
-            "WS01": StationState("WS01", 101, 30.4, 1.2, 0.02, rng=random.Random(seed + 1)),
-            "WS02": StationState("WS02", 102, 29.8, 1.0, 0.015, rng=random.Random(seed + 2)),
-            "WS03": StationState("WS03", 103, 29.2, 0.9, 0.01, rng=random.Random(seed + 3)),
+        parameters = station_parameters or {
+            "WS01": {"base_cycle_s": 30.4, "jitter_s": 1.2, "nok_rate": 0.02},
+            "WS02": {"base_cycle_s": 29.8, "jitter_s": 1.0, "nok_rate": 0.015},
+            "WS03": {"base_cycle_s": 29.2, "jitter_s": 0.9, "nok_rate": 0.01},
         }
+        self.stations = {}
+        for index, (station_id, db_number) in enumerate((("WS01", 101), ("WS02", 102), ("WS03", 103)), 1):
+            params = parameters[station_id]
+            self.stations[station_id] = StationState(
+                station_id,
+                db_number,
+                float(params["base_cycle_s"]),
+                float(params["jitter_s"]),
+                float(params["nok_rate"]),
+                rng=random.Random(seed + index),
+            )
 
     def tick(self, dbs: dict[int, bytearray], running: bool) -> None:
         now_mono = time.monotonic()
@@ -256,9 +294,12 @@ class ThreeStationPipeline:
         if not payload_ready:
             station.payload_ready_since = None
             return
-        if read_done or (not self.require_ack and station.payload_ready_since and now_mono - station.payload_ready_since > self.ack_hold_s):
+        if read_done:
             clear_station_handshake(db)
             station.payload_ready_since = None
+            return
+        if station.payload_ready_since and now_mono - station.payload_ready_since >= self.ack_deadline_s:
+            util.set_bool(db, 6, 2, True)
 
     def _write_running(self, station: StationState, db: bytearray) -> None:
         job = station.current_job
@@ -319,18 +360,17 @@ class ThreeStationPipeline:
             return RESULT_SKIPPED, [30003], PROCESS_SKIPPED, SKIP_UPSTREAM_NOK
 
         station = self.stations[station_id]
-        if station.force_next_nok_code is not None:
-            nok_code = station.force_next_nok_code
-            station.force_next_nok_code = None
+        if station.forced_nok_queue:
+            nok_code = station.forced_nok_queue.popleft()
             return RESULT_NOK, [nok_code], PROCESS_PROCESSED, SKIP_NONE
 
-        roll = random.random()
+        roll = station.rng.random()
         if station_id == "WS01" and roll < station.nok_rate:
-            return RESULT_NOK, [random.choice([10001, 10002, 10003, 10004])], PROCESS_PROCESSED, SKIP_NONE
+            return RESULT_NOK, [station.rng.choice(sorted(NOK_CODES["WS01"]))], PROCESS_PROCESSED, SKIP_NONE
         if station_id == "WS02" and roll < station.nok_rate:
-            return RESULT_NOK, [random.choice([20001, 20002, 20003, 20004, 20005])], PROCESS_PROCESSED, SKIP_NONE
+            return RESULT_NOK, [station.rng.choice(sorted(NOK_CODES["WS02"]))], PROCESS_PROCESSED, SKIP_NONE
         if station_id == "WS03" and roll < station.nok_rate:
-            return RESULT_NOK, [random.choice([30001, 30002])], PROCESS_PROCESSED, SKIP_NONE
+            return RESULT_NOK, [station.rng.choice(sorted(NOK_CODES["WS03"]))], PROCESS_PROCESSED, SKIP_NONE
         return RESULT_OK, [], PROCESS_PROCESSED, SKIP_NONE
 
     def _write_station_context(
@@ -357,6 +397,10 @@ class ThreeStationPipeline:
         line_running = self.plan.active
         return {
             "scale": self.scale,
+            "profile": self.profile,
+            "allow_runtime_cycle_edit": self.allow_runtime_cycle_edit,
+            "config_source": self.config_source,
+            "config_hash": self.config_hash,
             "require_ack": self.require_ack,
             "serial_no": self.serial_no,
             "completed_quantity": self.completed_quantity,
@@ -393,13 +437,49 @@ class ThreeStationPipeline:
                     "last_nok_codes": station.last_nok_codes,
                     "last_end_time": station.last_end_time.isoformat() if station.last_end_time else None,
                     "payload_ready": station.payload_ready_since is not None,
+                    "pending_forced_nok_count": len(station.forced_nok_queue),
+                    "pending_forced_nok_codes": list(station.forced_nok_queue),
                 }
                 for station_id, station in self.stations.items()
             },
         }
 
-    def update_station(self, station_id: str, params: dict) -> dict:
+    def update_station(
+        self,
+        station_id: str,
+        params: dict,
+        *,
+        audit_context: dict[str, object] | None = None,
+    ) -> dict:
         station = self._station_or_raise(station_id)
+        context = {
+            "reason": "internal update",
+            "actor": "system",
+            "client_ip": None,
+            "request_id": None,
+            "source": "INTERNAL",
+            "plc_boot_id": None,
+            **(audit_context or {}),
+        }
+        if not self.allow_runtime_cycle_edit and {"base_cycle_s", "jitter_s"} & params.keys():
+            message = f"{self.profile} profile does not allow runtime cycle edits"
+            for parameter_name in sorted({"base_cycle_s", "jitter_s"} & params.keys()):
+                self._record_parameter_change(
+                    station_id,
+                    parameter_name,
+                    getattr(station, parameter_name),
+                    params[parameter_name],
+                    context,
+                    accepted=False,
+                    rejection_reason=message,
+                )
+            raise ValueError(message)
+        previous = {
+            "base_cycle_s": station.base_cycle_s,
+            "jitter_s": station.jitter_s,
+            "nok_rate": station.nok_rate,
+            "paused": station.paused,
+        }
         if "base_cycle_s" in params:
             station.base_cycle_s = max(1.0, float(params["base_cycle_s"]))
         if "jitter_s" in params:
@@ -408,14 +488,140 @@ class ThreeStationPipeline:
             station.nok_rate = min(1.0, max(0.0, float(params["nok_rate"])))
         if "paused" in params:
             station.paused = bool(params["paused"])
+        for parameter_name in ("base_cycle_s", "jitter_s", "nok_rate", "paused"):
+            if parameter_name in params:
+                self._record_parameter_change(
+                    station_id,
+                    parameter_name,
+                    previous[parameter_name],
+                    getattr(station, parameter_name),
+                    context,
+                    accepted=True,
+                )
+        if params:
+            self.record_parameter_snapshot(
+                "runtime_update",
+                plc_boot_id=str(context.get("plc_boot_id") or "") or None,
+            )
         return self.snapshot()
 
-    def force_nok(self, station_id: str, nok_code: int) -> dict:
+    def record_parameter_snapshot(self, snapshot_type: str, *, plc_boot_id: str | None = None) -> None:
+        if self.audit_recorder is None:
+            return
+        resolved_boot_id = plc_boot_id
+        if not resolved_boot_id and self.plc_boot_id_provider:
+            resolved_boot_id = self.plc_boot_id_provider()
+        self.audit_recorder.record_snapshot(
+            {
+                "snapshot_type": snapshot_type,
+                "plc_boot_id": resolved_boot_id,
+                "profile": self.profile,
+                "cycle_scale": self.scale,
+                "config_source": self.config_source,
+                "config_hash": self.config_hash,
+                "parameters": self.snapshot(),
+            }
+        )
+
+    def _record_parameter_change(
+        self,
+        station_id: str,
+        parameter_name: str,
+        old_value: object,
+        new_value: object,
+        context: dict[str, object],
+        *,
+        accepted: bool,
+        rejection_reason: str | None = None,
+    ) -> None:
+        if self.audit_recorder is None:
+            return
+        if not context.get("plc_boot_id") and self.plc_boot_id_provider:
+            context = {**context, "plc_boot_id": self.plc_boot_id_provider()}
+        self.audit_recorder.record_change(
+            {
+                **context,
+                "station_id": station_id,
+                "parameter_name": parameter_name,
+                "old_value": old_value,
+                "new_value": new_value,
+                "profile": self.profile,
+                "accepted": accepted,
+                "rejection_reason": rejection_reason,
+            }
+        )
+
+    def force_nok(
+        self,
+        station_id: str,
+        nok_code: int,
+        *,
+        count: int = 1,
+        audit_context: dict[str, object] | None = None,
+    ) -> dict:
         station = self._station_or_raise(station_id)
-        station.force_next_nok_code = int(nok_code)
+        code = int(nok_code)
+        context = {
+            "reason": "force NOK",
+            "actor": "system",
+            "source": "INTERNAL",
+            **(audit_context or {}),
+        }
+        if code not in NOK_CODES[station.station_id]:
+            message = f"NOK code {code} is not valid for {station.station_id}"
+            self._record_parameter_change(
+                station.station_id,
+                "forced_nok_queue",
+                list(station.forced_nok_queue),
+                [*station.forced_nok_queue, *([code] * max(1, count))],
+                context,
+                accepted=False,
+                rejection_reason=message,
+            )
+            raise ValueError(message)
+        if not 1 <= int(count) <= 100:
+            raise ValueError("forced NOK count must be between 1 and 100")
+        previous = list(station.forced_nok_queue)
+        station.forced_nok_queue.extend([code] * int(count))
+        self._record_parameter_change(
+            station.station_id,
+            "forced_nok_queue",
+            previous,
+            list(station.forced_nok_queue),
+            context,
+            accepted=True,
+        )
+        self.record_parameter_snapshot("runtime_update")
+        return self.snapshot()
+
+    def clear_forced_nok(
+        self,
+        station_id: str,
+        *,
+        audit_context: dict[str, object] | None = None,
+    ) -> dict:
+        station = self._station_or_raise(station_id)
+        previous = list(station.forced_nok_queue)
+        station.forced_nok_queue.clear()
+        self._record_parameter_change(
+            station.station_id,
+            "forced_nok_queue",
+            previous,
+            [],
+            {
+                "reason": "clear forced NOK",
+                "actor": "system",
+                "source": "INTERNAL",
+                **(audit_context or {}),
+            },
+            accepted=True,
+        )
+        self.record_parameter_snapshot("runtime_update")
         return self.snapshot()
 
     def reset(self) -> dict:
+        if self.on_counter_reset:
+            self.on_counter_reset()
         self.serial_no = 0
         self.completed_quantity = 0
         self.q12.clear()
@@ -429,7 +635,8 @@ class ThreeStationPipeline:
             station.last_nok_codes = []
             station.last_dmc = ""
             station.last_end_time = None
-            station.force_next_nok_code = None
+            station.forced_nok_queue.clear()
+        self.record_parameter_snapshot("reset")
         return self.snapshot()
 
     def start_plan(self, params: dict) -> dict:

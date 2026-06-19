@@ -1,4 +1,12 @@
-# PLC S7 Address Map
+# Demo PLC S7 Address Map
+
+> 本文件只记录当前 Demo 的旧 DB100 地址，不是通用 PLC 接入标准，也不应直接复制到实际设备。
+>
+> 实际生产环境请使用：
+>
+> - `docs/plc_edge_integration_guide.md`：通用 PLC/Edge 接入规范，覆盖 S7-300、S7-1200、S7-1500。
+> - `docs/protocol.md`：当前项目已实现的 V-PLC 协议。
+> - `config/mapping.yaml`：当前三工站 Demo 的实际 Edge mapping。
 
 This demo exposes the simulated machine state through `DB100`.
 

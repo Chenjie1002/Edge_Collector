@@ -233,6 +233,68 @@ class Storage:
         self.conn.commit()
         return raw_sample_id
 
+    def persist_cycle(
+        self,
+        *,
+        plc_id: str,
+        line_id: str,
+        station: StationMapping,
+        plc_boot_id: str,
+        cycle_counter: int,
+        decoded: dict[str, Any],
+        db_number: int,
+        read_start: int,
+        read_size: int,
+        raw_hex: str,
+        code_tables: dict[str, dict[Any, Any]],
+    ) -> int:
+        raw_sample_id = self.insert_raw_plc_sample(
+            plc_id=plc_id,
+            line_id=line_id,
+            station_id=station.station_id,
+            db_number=db_number,
+            read_start=read_start,
+            read_size=read_size,
+            raw_hex=raw_hex,
+            decoded_json=decoded,
+        )
+        event_id = self.upsert_cycle_event(
+            plc_id=plc_id,
+            line_id=line_id,
+            station=station,
+            plc_boot_id=plc_boot_id,
+            cycle_counter=cycle_counter,
+            decoded=decoded,
+            raw_sample_id=raw_sample_id,
+            code_tables=code_tables,
+        )
+        self.insert_quality_event_for_cycle(event_id)
+        return event_id
+
+    def rollback(self) -> None:
+        self.conn.rollback()
+
+    def get_max_cycle_counter(
+        self,
+        *,
+        plc_id: str,
+        station_id: str,
+        plc_boot_id: str,
+    ) -> int | None:
+        with self.conn.cursor() as cur:
+            cur.execute(
+                """
+                SELECT MAX(cycle_counter)
+                FROM cycle_event
+                WHERE plc_id = %s
+                  AND station_id = %s
+                  AND plc_boot_id = %s
+                """,
+                (plc_id, station_id, plc_boot_id),
+            )
+            row = cur.fetchone()
+        return int(row[0]) if row and row[0] is not None else None
+
     def upsert_cycle_event(
         self,
         *,
@@ -597,6 +659,64 @@ class Storage:
             )
         self.conn.commit()
 
+    def mark_cycle_ack_failed(
+        self,
+        *,
+        plc_id: str,
+        station_id: str,
+        plc_boot_id: str,
+        cycle_counter: int,
+    ) -> None:
+        with self.conn.cursor() as cur:
+            cur.execute(
+                """
+                UPDATE cycle_event
+                SET ack_status = 'ACK_WRITE_FAILED',
+                    retry_count = retry_count + 1,
+                    updated_at = now()
+                WHERE plc_id = %s
+                  AND station_id = %s
+                  AND plc_boot_id = %s
+                  AND cycle_counter = %s
+                """,
+                (plc_id, station_id, plc_boot_id, cycle_counter),
+            )
+        self.conn.commit()
+
+    def insert_collector_error(
+        self,
+        *,
+        plc_id: str,
+        line_id: str,
+        station_id: str | None,
+        error_type: str,
+        error_message: str,
+        plc_boot_id: str | None = None,
+        cycle_counter: int | None = None,
+        raw_context: dict[str, Any] | None = None,
+    ) -> None:
+        with self.conn.cursor() as cur:
+            cur.execute(
+                """
+                INSERT INTO collector_error_log (
+                    plc_id, line_id, station_id, error_type, error_message,
+                    plc_boot_id, cycle_counter, raw_context
+                )
+                VALUES (%s, %s, %s, %s, %s, %s, %s, %s)
+                """,
+                (
+                    plc_id,
+                    line_id,
+                    station_id,
+                    error_type,
+                    error_message,
+                    plc_boot_id,
+                    cycle_counter,
+                    Jsonb(raw_context or {}),
+                ),
+            )
+        self.conn.commit()
+
     def upsert_collector_runtime_status(
         self,
         *,
@@ -612,6 +732,8 @@ class Storage:
         last_success_time: datetime,
         last_error_code: str | None,
         last_error_message: str | None,
+        plc_boot_id: str | None = None,
+        ack_timeout: bool = False,
     ) -> None:
         with self.conn.cursor() as cur:
             cur.execute(
@@ -619,9 +741,10 @@ class Storage:
                 INSERT INTO collector_runtime_status (
                     plc_id, line_id, station_id, collector_state, plc_connection_state,
                     station_status, payload_ready, read_done, last_cycle_counter,
-                    last_success_time, last_error_code, last_error_message, updated_at
+                    last_success_time, last_error_code, last_error_message,
+                    plc_boot_id, ack_timeout, updated_at
                 )
-                VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, now())
+                VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, now())
                 ON CONFLICT (plc_id, station_id)
                 DO UPDATE SET
                     collector_state = EXCLUDED.collector_state,
@@ -633,6 +756,8 @@ class Storage:
                     last_success_time = EXCLUDED.last_success_time,
                     last_error_code = EXCLUDED.last_error_code,
                     last_error_message = EXCLUDED.last_error_message,
+                    plc_boot_id = EXCLUDED.plc_boot_id,
+                    ack_timeout = EXCLUDED.ack_timeout,
                     updated_at = now()
                 """,
                 (
@@ -648,6 +773,8 @@ class Storage:
                     last_success_time,
                     last_error_code,
                     last_error_message,
+                    plc_boot_id,
+                    ack_timeout,
                 ),
             )
         self.conn.commit()

@@ -20,6 +20,15 @@ logs/
 .env
 .env.*
 !.env.example
+*.pem
+*.key
+*.p12
+*.pfx
+id_rsa
+id_rsa.*
+id_ed25519
+id_ed25519.*
+*.kdbx
 
 # Editor / OS
 .idea/
@@ -27,7 +36,22 @@ logs/
 *.swp
 *.tmp
 
-# Docker / generated exports
+# Docker runtime and persistent volumes
+docker-data/
+docker_data/
+volumes/
+postgres-data/
+postgres_data/
+grafana-data/
+grafana_data/
+prometheus-data/
+prometheus_data/
+
+# Generated exports and local backups
 *.tar
 *.tgz
 *.zip
+backup/
+backups/
+*.bak
+*.backup
