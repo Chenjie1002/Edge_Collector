@@ -1,7 +1,7 @@
 # Line Configuration Contract
 
-更新时间：2026-06-19  
-状态：下一阶段架构合同，尚未实施  
+更新时间：2026-06-20
+状态：Sprint 1 Gate PASS；配置合同已冻结并准备 final commit / push；运行链路尚未接入
 适用范围：非侵入式 Edge MES Demo 的 1~N 工站、Buffer、多 PLC 与未来多产线配置
 
 ## 1. 目的与控制边界
@@ -28,6 +28,23 @@ template 和节拍配置的统一表达方式。
 
 禁止同时维护语义等价的 YAML 和 JSON 配置。CSV 必须先转换为 YAML 草稿并通过
 Schema 校验后才能进入运行配置。
+
+### 2.1 Sprint 1 已实施子集
+
+Sprint 1 采用以下最小基础：
+
+```text
+config/lines/*.yaml
+→ common.line_config.load_line_config()
+→ strict Python structure + semantic validator
+→ immutable dataclass object tree
+→ resolved config / canonical JSON / SHA-256 config hash
+→ static load estimate
+```
+
+当前没有引入 JSON Schema 运行依赖，也没有把 line config 接入 V-PLC、Collector、API
+或数据库。Python allowed-key/schema tables 是 Sprint 1 的结构单一真源；JSON Schema
+文件生成、配置快照持久化和 reload 生命周期仍是后续配置治理工作。
 
 推荐文件布局：
 
@@ -83,7 +100,7 @@ stations:
     station_order: 10
     station_type: SCREW
     plc_id: PLC_001
-    enabled: true
+    station_enabled: true
     mapping_refs: [WS01_MAIN]
     payload_template: screw_payload_v1
     nok_template: screw_nok_v1
@@ -127,7 +144,7 @@ features:
 | `payload_template` | 引用版本化 payload 模板 |
 | `nok_template` | 引用版本化 NOK code 模板 |
 | `cycle_profile` | 引用节拍基线 |
-| `enabled` | 禁用工站不启动采集，但不得删除历史数据 |
+| `station_enabled` | 缺省为 `true`；禁用工站未来不启动采集，但不得删除历史数据 |
 
 `station_type` 表达行为类别，不承担实例身份。两个同类型工站仍使用不同
 `station_id`。
@@ -232,6 +249,22 @@ Buffer 表达站间拓扑与观测语义，不表示 Edge 控制队列。
 | `tracking_mode` | `UNIT_ID`、`PALLET_ID`、`COUNTER_ONLY` |
 | `enabled` | 是否参与拓扑和展示 |
 
+Sprint 1 YAML 使用小写枚举：
+
+```text
+unit_id | pallet_id | counter_only
+```
+
+两个字段均允许省略；resolved config 的明确缺省值为：
+
+```yaml
+enabled: true
+tracking_mode: counter_only
+```
+
+显式值必须被 loader 保留并参与 canonical resolved config 与 config hash。
+`enabled` 必须是 boolean；非法 `tracking_mode` 必须 fail closed。
+
 V-PLC 可以按 Buffer 配置模拟 WIP。真实项目中 Buffer 进入、离开、阻塞和释放由
 PLC 控制，Edge 只记录事件或由相邻工站事件推导观测状态。
 
@@ -293,10 +326,10 @@ plcs:
 
 stations:
   - {station_id: WS01, station_order: 10, station_type: ASSEMBLY, plc_id: PLC_001,
-     enabled: true, mapping_refs: [WS01_MAIN], payload_template: assembly_v1,
+     station_enabled: true, mapping_refs: [WS01_MAIN], payload_template: assembly_v1,
      nok_template: assembly_nok_v1, cycle_profile: normal_assembly}
   - {station_id: WS02, station_order: 20, station_type: SCREW, plc_id: PLC_001,
-     enabled: true, mapping_refs: [WS02_MAIN], payload_template: screw_v1,
+     station_enabled: true, mapping_refs: [WS02_MAIN], payload_template: screw_v1,
      nok_template: screw_nok_v1, cycle_profile: normal_screw}
   # WS03~WS10 使用相同字段结构，可混合 TEST/VISION/LABEL/MANUAL 等类型。
 ```
@@ -350,8 +383,8 @@ Schema 之外必须执行：
 
 - `line_id/plc_id/station_id/buffer_id/mapping_id` 唯一性。
 - `station_order` 在同一路线内唯一且大于 0。
-- `station_enabled` 与 `enabled` 只允许一个规范字段；Phase-2 统一存储为 `enabled`，
-  API 可提供 `station_enabled` 兼容别名。
+- Sprint 1 YAML 的规范字段为 `station_enabled`，缺省为 `true`。后续数据库内部可存储
+  `enabled`，但配置/API 边界不得出现两个可同时设置且可能冲突的字段。
 - station、buffer、mapping、template 引用不得悬空。
 - entry/terminal station 和 route graph 必须连通；禁用站不得成为唯一必经路径。
 - Buffer 的上下游站不得相同，不得形成未声明循环。
@@ -375,3 +408,153 @@ Schema 之外必须执行：
 - 工站级 cycle time、工站级 NOK rate、全局 NOK fallback 和固定 seed 可复现。
 - CSV 不能绕过 YAML 和 Schema 成为运行时真源。
 - Edge 配置中不存在控制 Hold、Rework、Skip/Bypass 的业务决策规则。
+
+## 16. Sprint 1 Contract Hardening 冻结字段
+
+### 16.1 配置身份与场景
+
+顶层必须包含：
+
+```yaml
+schema_version: 1
+config_version: "2026.06.20-demo3-v1"
+scenario:
+  name: phase1-compatible-demo
+  scenario_type: demo       # demo | test | stress | synthetic
+  test_run_id: demo3-default
+  random_seed: 20260620
+  global_nok_rate: 0.01
+  production: true
+hardware_envelope:
+  target_hardware_class: raspberry_pi_5  # local_dev | raspberry_pi_5 | generic_edge
+  intended_load_class: demo              # demo | medium | stress
+```
+
+- `config_version` 标识人工配置发布版本。
+- `config_hash` 不写回 YAML，由 loader 对 resolved config 的 canonical JSON 计算 SHA-256。
+- canonical JSON 使用 UTF-8、key 排序、无多余空白；hash 不包含自身 `config_hash` 字段。
+- 同一语义配置仅调整 YAML key 顺序时 hash 不变；有效字段变化时 hash 改变。
+- station 未声明 `nok_rate` 时，resolved station 保留 `nok_rate=null`，并通过
+  `effective_nok_rate` 明确解析后的 global fallback。
+- station 显式声明 `nok_rate: null` 与未声明语义相同；非 null 值仍必须通过 0~1
+  范围校验。
+
+### 16.2 Profile 与 timing
+
+```yaml
+cycle_profiles:
+  synthetic_stress:
+    mode: stress
+    ideal_cycle_time_s: 20.0
+    simulation:
+      base_cycle_s: 20.0
+      jitter_s: 0.5
+      cycle_scale: 4.0
+      stress_cycle_time_s: 5.0
+```
+
+- `ideal_cycle_time_s` 和 station `cycle_time_s` 是生产/OEE 工艺基线，二者必须一致。
+- `base_cycle_s`、`jitter_s`、`cycle_scale`、`stress_cycle_time_s` 只描述仿真。
+- stress/synthetic 必须显式提供 `stress_cycle_time_s`，且 scenario 必须
+  `production: false`。
+- stress 示例的 5 秒只用于未来仿真/压测，不得覆盖 20 秒工艺基线。
+
+### 16.3 DB mapping 最小负载字段
+
+每个 mapping 必须包含：
+
+```yaml
+mapping_id: WS01_MAIN
+plc_id: PLC_001
+station_id: WS01
+db_number: 101
+usage: event
+direction: read_write
+mapping_type: event
+read_start: 0
+read_size_bytes: 64
+poll_interval_ms: 500
+```
+
+受控枚举：
+
+- `usage`: `status/event/payload/payload_ext/parameter/diagnostic`
+- `direction`: `read/read_write`
+- `mapping_type`: `status/event/payload/runtime`
+
+`read_size_bytes`、`poll_interval_ms` 必须为正数，`read_start` 必须为非负整数。station
+mapping 的 `plc_id/station_id` 必须与父 station 一致。runtime DB 保留地址不得作为
+station mapping。
+
+### 16.4 Payload 与 NOK 最小字段
+
+Payload template 必须包含 version、template type、compatible station types、
+approximate size 和至少一个 field。field 必须包含 name、type、offset、length、
+required 和 direction。
+
+NOK code 必须包含 code、稳定 name、category、severity、mode、`allow_random` 和
+`allow_force`。mode 分为：
+
+- `random_simulated_nok`
+- `forced_test_nok`
+- `system_reserved`
+
+`30003` 固定为 `UPSTREAM_NOK_SKIPPED` route semantic code，只允许
+`system_reserved`，禁止 random 和 force。
+
+### 16.5 Route、Buffer 与硬上限
+
+- 默认合同硬上限为整线 20 stations、每 station 4 mappings；普通 YAML 只能收紧，
+  不能自行提高。
+- entry/terminal 必须存在且 enabled。
+- route edge 和 Buffer endpoint 必须存在且 enabled。
+- terminal 必须从 entry 可达。
+- Buffer type 仅允许 `fifo/pallet/conveyor/virtual`，position 必须位于上下游 order
+  之间。
+- disabled station 可以保留在配置中供历史/未来用途，但不能成为当前 route 或 Buffer
+  endpoint。`stress_20_station.yaml` 的 WS20 因此不进入当前有效 route。
+
+### 16.6 静态负载摘要
+
+`estimate_config_load(config)` 返回：
+
+- station / mapping count
+- reads per second
+- estimated read bytes per second
+- estimated event rate per second
+- estimated payload bytes per second
+
+这些值只由配置静态估算，用于后续 sizing 输入，不代表 Raspberry Pi 性能验收结果。
+
+## 17. Strict validation 与错误定位
+
+`common/line_config/schema.py` 集中管理 allowed keys、enum 和 hard limit。validator 对
+top-level、scenario、hardware、PLC、station、mapping、payload template/field、NOK
+template/code、profile/simulation、Buffer、route/edge 全部 fail closed。
+
+错误保留字段路径，例如：
+
+```text
+stations[0].foo is not allowed
+plcs[0].unknown_key is not allowed
+cycle_profiles.synthetic_stress.simulation.jitter_s must be non-negative
+route_graph.edges[2].to_station_id 'WS99' does not exist
+```
+
+validator 是纯 Python 调用接口，不依赖 CLI，可直接被未来 API/Web backend 复用。
+
+## 18. Future Web Line Configuration Studio
+
+未来 Web-based Line Configuration Studio 可以直接复用：
+
+- `load_line_config()`：YAML 文件导入。
+- `validate_line_config()`：结构化路径错误。
+- centralized schema/enums：表单选项和前后端规则单一真源。
+- frozen dataclass model：YAML 反向解析后的稳定对象。
+- `resolve_line_config()`：resolved config 预览。
+- `canonicalize_config()` / `compute_config_hash()`：hash 预览。
+- `estimate_config_load()`：静态负载摘要。
+
+后续实现内容包括表单 UI、YAML 编辑/导出、实时字段高亮、API 封装、权限、版本历史与
+配置发布流程。本 Sprint 不新增 React/Next.js，不新增前端项目，不接入 API/Dashboard，
+也不修改任何运行链路。

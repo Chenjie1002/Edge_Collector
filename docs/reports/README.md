@@ -78,3 +78,14 @@ YYYY-MM-DD-verification-02.md
 - `../contracts/line_configuration.md`：柔性产线配置、WS01~WS20+、Buffer、mapping 与容量边界。
 - `../contracts/dynamic_station_model.md`：通用工站事件、JSONB、查询隔离、索引与保留策略。
 - `../contracts/dashboard_api_contract.md`：OEE、Quality、Trace 和 Dashboard API 公共合同。
+
+## Phase-2 Sprint Reports
+
+- `sprint1_flexible_line_configuration_report.md`：3/10/20 工站 YAML、独立 loader、
+  strict validator、测试和运行链路隔离结果。
+- `sprint1_contract_hardening_report.md`：Verification / Reliability HOLD 返修、配置身份、
+  Profile/stress、NOK、route、sizing 与最终 Gate PASS 证据。
+- `sprint1_independent_gate_review.md`：Contract Hardening 独立复验、运行链路隔离审计、
+  blocker 关闭记录与最终 PASS 结论。
+- `sprint1_verification_matrix.md`：返修前 Verification `HOLD / CHANGES REQUIRED` 输入。
+- `sprint1_reliability_config_review.md`：返修前 Reliability `HOLD / CHANGES REQUIRED` 输入。

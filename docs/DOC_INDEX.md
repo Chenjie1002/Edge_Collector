@@ -1,6 +1,6 @@
 # Edge MES Demo 文档索引
 
-更新时间：2026-06-19
+更新时间：2026-06-20
 
 ## 1. 当前协作范围
 
@@ -101,11 +101,25 @@ Phase-2 正式规划：
 - [`reports/phase2_thread_task_plan.md`](reports/phase2_thread_task_plan.md)
 - [`roadmap.md`](roadmap.md)
 
+Phase-2 Sprint 1：
+
+- [`reports/sprint1_flexible_line_configuration_report.md`](reports/sprint1_flexible_line_configuration_report.md)
+- [`reports/sprint1_contract_hardening_report.md`](reports/sprint1_contract_hardening_report.md)
+- [`reports/sprint1_independent_gate_review.md`](reports/sprint1_independent_gate_review.md)
+- [`reports/sprint1_verification_matrix.md`](reports/sprint1_verification_matrix.md)
+- [`reports/sprint1_reliability_config_review.md`](reports/sprint1_reliability_config_review.md)
+- `config/lines/demo_3_station.yaml`
+- `config/lines/demo_10_station.yaml`
+- `config/lines/stress_20_station.yaml`
+- `common/line_config/`
+
 ## 7. 代码与配置入口
 
 | 路径 | 作用 |
 | --- | --- |
 | `config/mapping.yaml` | 新三工站协议 mapping |
+| `config/lines/` | Phase-2 柔性产线 YAML 示例；当前不参与运行 |
+| `common/line_config/` | strict loader/validator、resolved config、hash 与静态 load estimate |
 | `config/plc_mapping.yaml` | 旧 DB100 快照 mapping |
 | `config/vplc.yaml` | V-PLC station baseline 与 Profile 配置 |
 | `s7_plc_sim/` | Snap7 V-PLC、三工站 pipeline 和控制页 |

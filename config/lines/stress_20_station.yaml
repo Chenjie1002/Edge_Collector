@@ -1,0 +1,104 @@
+# Synthetic, non-production configuration for loader/validator and future performance tests.
+# The 5-second stress timing below is simulation-only and is not an OEE/production default.
+schema_version: 1
+config_version: "2026.06.20-stress20-v1"
+line_id: LINE_STRESS_20
+name: Twenty Station Synthetic Configuration Stress Line
+timezone: Asia/Shanghai
+
+scenario: {name: synthetic-20-station-stress, scenario_type: stress, test_run_id: stress20-contract-baseline, random_seed: 20260622, global_nok_rate: 0.01, production: false}
+hardware_envelope: {target_hardware_class: raspberry_pi_5, intended_load_class: stress}
+
+plcs:
+  - {plc_id: PLC_001, runtime_db: 104, max_stations: 10, max_db_mappings_per_station: 4}
+  - {plc_id: PLC_002, runtime_db: 204, max_stations: 10, max_db_mappings_per_station: 4}
+
+payload_templates:
+  stress_payload_v1:
+    version: 1
+    template_type: measurement_payload
+    compatible_station_types: [assembly, screwdriving, press, vision, test, manual_confirm, label, pack, generic]
+    approximate_size_bytes: 64
+    fields:
+      - {name: status_word, field_type: uint16, offset: 0, length: 2, required: true, direction: read}
+      - {name: synthetic_value, field_type: float32, offset: 4, length: 4, required: false, direction: read}
+
+nok_templates:
+  stress_nok_v1:
+    version: 1
+    template_type: quality
+    compatible_station_types: [assembly, screwdriving, press, vision, test, manual_confirm, label, pack, generic]
+    codes:
+      - {code: 19001, name: SYNTHETIC_PROCESS_NOK, category: quality, severity: warning, mode: random_simulated_nok, allow_random: true, allow_force: false}
+
+cycle_profiles:
+  synthetic_stress:
+    mode: stress
+    ideal_cycle_time_s: 20.0
+    simulation:
+      base_cycle_s: 20.0
+      jitter_s: 0.5
+      cycle_scale: 4.0
+      stress_cycle_time_s: 5.0
+
+stations:
+  - {station_id: WS01, station_order: 10, station_type: assembly, station_enabled: true, plc_id: PLC_001, db_mappings: [{mapping_id: WS01_MAIN, plc_id: PLC_001, station_id: WS01, db_number: 101, usage: event, direction: read_write, mapping_type: event, read_start: 0, read_size_bytes: 64, poll_interval_ms: 100}], payload_template: stress_payload_v1, nok_template: stress_nok_v1, cycle_profile: synthetic_stress, cycle_time_s: 20.0}
+  - {station_id: WS02, station_order: 20, station_type: screwdriving, station_enabled: true, plc_id: PLC_001, db_mappings: [{mapping_id: WS02_MAIN, plc_id: PLC_001, station_id: WS02, db_number: 102, usage: event, direction: read_write, mapping_type: event, read_start: 0, read_size_bytes: 64, poll_interval_ms: 100}], payload_template: stress_payload_v1, nok_template: stress_nok_v1, cycle_profile: synthetic_stress, cycle_time_s: 20.0}
+  - {station_id: WS03, station_order: 30, station_type: press, station_enabled: true, plc_id: PLC_001, db_mappings: [{mapping_id: WS03_MAIN, plc_id: PLC_001, station_id: WS03, db_number: 103, usage: event, direction: read_write, mapping_type: event, read_start: 0, read_size_bytes: 64, poll_interval_ms: 100}], payload_template: stress_payload_v1, nok_template: stress_nok_v1, cycle_profile: synthetic_stress, cycle_time_s: 20.0}
+  - {station_id: WS04, station_order: 40, station_type: vision, station_enabled: true, plc_id: PLC_001, db_mappings: [{mapping_id: WS04_MAIN, plc_id: PLC_001, station_id: WS04, db_number: 105, usage: event, direction: read_write, mapping_type: event, read_start: 0, read_size_bytes: 64, poll_interval_ms: 100}], payload_template: stress_payload_v1, nok_template: stress_nok_v1, cycle_profile: synthetic_stress, cycle_time_s: 20.0}
+  - station_id: WS05
+    station_order: 50
+    station_type: test
+    station_enabled: true
+    plc_id: PLC_001
+    db_mappings:
+      - {mapping_id: WS05_MAIN, plc_id: PLC_001, station_id: WS05, db_number: 106, usage: event, direction: read_write, mapping_type: event, read_start: 0, read_size_bytes: 64, poll_interval_ms: 100}
+      - {mapping_id: WS05_EXT, plc_id: PLC_001, station_id: WS05, db_number: 116, usage: payload_ext, direction: read, mapping_type: payload, read_start: 0, read_size_bytes: 128, poll_interval_ms: 200}
+    payload_template: stress_payload_v1
+    nok_template: stress_nok_v1
+    cycle_profile: synthetic_stress
+    cycle_time_s: 20.0
+  - {station_id: WS06, station_order: 60, station_type: manual_confirm, station_enabled: true, plc_id: PLC_001, db_mappings: [{mapping_id: WS06_MAIN, plc_id: PLC_001, station_id: WS06, db_number: 107, usage: event, direction: read_write, mapping_type: event, read_start: 0, read_size_bytes: 64, poll_interval_ms: 100}], payload_template: stress_payload_v1, nok_template: stress_nok_v1, cycle_profile: synthetic_stress, cycle_time_s: 20.0}
+  - {station_id: WS07, station_order: 70, station_type: label, station_enabled: true, plc_id: PLC_001, db_mappings: [{mapping_id: WS07_MAIN, plc_id: PLC_001, station_id: WS07, db_number: 108, usage: event, direction: read_write, mapping_type: event, read_start: 0, read_size_bytes: 64, poll_interval_ms: 100}], payload_template: stress_payload_v1, nok_template: stress_nok_v1, cycle_profile: synthetic_stress, cycle_time_s: 20.0}
+  - {station_id: WS08, station_order: 80, station_type: pack, station_enabled: true, plc_id: PLC_001, db_mappings: [{mapping_id: WS08_MAIN, plc_id: PLC_001, station_id: WS08, db_number: 109, usage: event, direction: read_write, mapping_type: event, read_start: 0, read_size_bytes: 64, poll_interval_ms: 100}], payload_template: stress_payload_v1, nok_template: stress_nok_v1, cycle_profile: synthetic_stress, cycle_time_s: 20.0}
+  - {station_id: WS09, station_order: 90, station_type: generic, station_enabled: true, plc_id: PLC_001, db_mappings: [{mapping_id: WS09_MAIN, plc_id: PLC_001, station_id: WS09, db_number: 110, usage: event, direction: read_write, mapping_type: event, read_start: 0, read_size_bytes: 64, poll_interval_ms: 100}], payload_template: stress_payload_v1, nok_template: stress_nok_v1, cycle_profile: synthetic_stress, cycle_time_s: 20.0}
+  - {station_id: WS10, station_order: 100, station_type: assembly, station_enabled: true, plc_id: PLC_001, db_mappings: [{mapping_id: WS10_MAIN, plc_id: PLC_001, station_id: WS10, db_number: 111, usage: event, direction: read_write, mapping_type: event, read_start: 0, read_size_bytes: 64, poll_interval_ms: 100}], payload_template: stress_payload_v1, nok_template: stress_nok_v1, cycle_profile: synthetic_stress, cycle_time_s: 20.0}
+  - {station_id: WS11, station_order: 110, station_type: screwdriving, station_enabled: true, plc_id: PLC_002, db_mappings: [{mapping_id: WS11_MAIN, plc_id: PLC_002, station_id: WS11, db_number: 201, usage: event, direction: read_write, mapping_type: event, read_start: 0, read_size_bytes: 64, poll_interval_ms: 100}], payload_template: stress_payload_v1, nok_template: stress_nok_v1, cycle_profile: synthetic_stress, cycle_time_s: 20.0}
+  - {station_id: WS12, station_order: 120, station_type: press, station_enabled: true, plc_id: PLC_002, db_mappings: [{mapping_id: WS12_MAIN, plc_id: PLC_002, station_id: WS12, db_number: 202, usage: event, direction: read_write, mapping_type: event, read_start: 0, read_size_bytes: 64, poll_interval_ms: 100}], payload_template: stress_payload_v1, nok_template: stress_nok_v1, cycle_profile: synthetic_stress, cycle_time_s: 20.0}
+  - {station_id: WS13, station_order: 130, station_type: vision, station_enabled: true, plc_id: PLC_002, db_mappings: [{mapping_id: WS13_MAIN, plc_id: PLC_002, station_id: WS13, db_number: 203, usage: event, direction: read_write, mapping_type: event, read_start: 0, read_size_bytes: 64, poll_interval_ms: 100}], payload_template: stress_payload_v1, nok_template: stress_nok_v1, cycle_profile: synthetic_stress, cycle_time_s: 20.0}
+  - {station_id: WS14, station_order: 140, station_type: test, station_enabled: true, plc_id: PLC_002, db_mappings: [{mapping_id: WS14_MAIN, plc_id: PLC_002, station_id: WS14, db_number: 205, usage: event, direction: read_write, mapping_type: event, read_start: 0, read_size_bytes: 64, poll_interval_ms: 100}], payload_template: stress_payload_v1, nok_template: stress_nok_v1, cycle_profile: synthetic_stress, cycle_time_s: 20.0}
+  - {station_id: WS15, station_order: 150, station_type: manual_confirm, station_enabled: true, plc_id: PLC_002, db_mappings: [{mapping_id: WS15_MAIN, plc_id: PLC_002, station_id: WS15, db_number: 206, usage: event, direction: read_write, mapping_type: event, read_start: 0, read_size_bytes: 64, poll_interval_ms: 100}], payload_template: stress_payload_v1, nok_template: stress_nok_v1, cycle_profile: synthetic_stress, cycle_time_s: 20.0}
+  - {station_id: WS16, station_order: 160, station_type: label, station_enabled: true, plc_id: PLC_002, db_mappings: [{mapping_id: WS16_MAIN, plc_id: PLC_002, station_id: WS16, db_number: 207, usage: event, direction: read_write, mapping_type: event, read_start: 0, read_size_bytes: 64, poll_interval_ms: 100}], payload_template: stress_payload_v1, nok_template: stress_nok_v1, cycle_profile: synthetic_stress, cycle_time_s: 20.0}
+  - {station_id: WS17, station_order: 170, station_type: pack, station_enabled: true, plc_id: PLC_002, db_mappings: [{mapping_id: WS17_MAIN, plc_id: PLC_002, station_id: WS17, db_number: 208, usage: event, direction: read_write, mapping_type: event, read_start: 0, read_size_bytes: 64, poll_interval_ms: 100}], payload_template: stress_payload_v1, nok_template: stress_nok_v1, cycle_profile: synthetic_stress, cycle_time_s: 20.0}
+  - {station_id: WS18, station_order: 180, station_type: generic, station_enabled: true, plc_id: PLC_002, db_mappings: [{mapping_id: WS18_MAIN, plc_id: PLC_002, station_id: WS18, db_number: 209, usage: event, direction: read_write, mapping_type: event, read_start: 0, read_size_bytes: 64, poll_interval_ms: 100}], payload_template: stress_payload_v1, nok_template: stress_nok_v1, cycle_profile: synthetic_stress, cycle_time_s: 20.0}
+  - {station_id: WS19, station_order: 190, station_type: assembly, station_enabled: true, plc_id: PLC_002, db_mappings: [{mapping_id: WS19_MAIN, plc_id: PLC_002, station_id: WS19, db_number: 210, usage: event, direction: read_write, mapping_type: event, read_start: 0, read_size_bytes: 64, poll_interval_ms: 100}], payload_template: stress_payload_v1, nok_template: stress_nok_v1, cycle_profile: synthetic_stress, cycle_time_s: 20.0}
+  - {station_id: WS20, station_order: 200, station_type: manual_confirm, station_enabled: false, plc_id: PLC_002, db_mappings: [{mapping_id: WS20_MAIN, plc_id: PLC_002, station_id: WS20, db_number: 211, usage: event, direction: read_write, mapping_type: event, read_start: 0, read_size_bytes: 64, poll_interval_ms: 100}], payload_template: stress_payload_v1, nok_template: stress_nok_v1, cycle_profile: synthetic_stress, cycle_time_s: 20.0}
+
+buffers:
+  - {buffer_id: BUF_WS04_WS05, from_station_id: WS04, to_station_id: WS05, buffer_position: 45, buffer_type: fifo, capacity: 8}
+  - {buffer_id: BUF_WS09_WS10, from_station_id: WS09, to_station_id: WS10, buffer_position: 95, buffer_type: pallet, capacity: 8}
+  - {buffer_id: BUF_WS14_WS15, from_station_id: WS14, to_station_id: WS15, buffer_position: 145, buffer_type: fifo, capacity: 8}
+  - {buffer_id: BUF_WS18_WS19, from_station_id: WS18, to_station_id: WS19, buffer_position: 185, buffer_type: pallet, capacity: 8}
+
+route_graph:
+  entry_station_id: WS01
+  terminal_station_id: WS19
+  edges:
+    - {from_station_id: WS01, to_station_id: WS02}
+    - {from_station_id: WS02, to_station_id: WS03}
+    - {from_station_id: WS03, to_station_id: WS04}
+    - {from_station_id: WS04, to_station_id: WS05}
+    - {from_station_id: WS05, to_station_id: WS06}
+    - {from_station_id: WS06, to_station_id: WS07}
+    - {from_station_id: WS07, to_station_id: WS08}
+    - {from_station_id: WS08, to_station_id: WS09}
+    - {from_station_id: WS09, to_station_id: WS10}
+    - {from_station_id: WS10, to_station_id: WS11}
+    - {from_station_id: WS11, to_station_id: WS12}
+    - {from_station_id: WS12, to_station_id: WS13}
+    - {from_station_id: WS13, to_station_id: WS14}
+    - {from_station_id: WS14, to_station_id: WS15}
+    - {from_station_id: WS15, to_station_id: WS16}
+    - {from_station_id: WS16, to_station_id: WS17}
+    - {from_station_id: WS17, to_station_id: WS18}
+    - {from_station_id: WS18, to_station_id: WS19}

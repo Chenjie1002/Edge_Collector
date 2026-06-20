@@ -1,184 +1,231 @@
 # Verification Context Restore
 
-更新时间：2026-06-19  
-用途：新 Verification / Reliability / Data Quality Thread 的快速上下文恢复  
-当前里程碑：**Edge MES Demo Phase-1 FINAL PASS**
+更新时间：2026-06-20
+用途：新 Verification Thread 无聊天历史恢复 Sprint 1 Gate 上下文
+当前 Gate：**PASS**
 
-## 1. 一句话状态
+## 1. 一句话恢复状态
 
-Raspberry Pi 上的单机、单产线、单 PLC、三工站 Edge MES Demo 已完成 Phase-1 最终
-验收：9 个服务正常，PostgreSQL healthy，Normal/NOK/Skip、Trace、ACK、Recent API、
-by-cycle boot isolation、Grafana Profile 隔离和真实 rollback drill 均为 `PASS`。
+Phase-1 已最终 `PASS` 并 freeze；Phase-2 Architecture Planning 已 push。Sprint 1
+Contract Hardening 的两个剩余 blocker 已完成独立轻量复验，配置层 `77 passed`、
+根级 `88 passed`，全部运行链路回归与隔离检查通过。Sprint 1 Gate 当前为 `PASS`，
+仍未 commit / push；可由 Architecture 使用精确 allowlist 完成 final commit。
 
-## 2. 恢复上下文的最短路径
-
-按顺序读取：
-
-1. [`final_phase1_pass_report.md`](final_phase1_pass_report.md)
-2. [`acceptance_report.md`](acceptance_report.md)
-3. [`final_remote_deploy_report.md`](final_remote_deploy_report.md)
-4. [`rollback_drill_report.md`](rollback_drill_report.md)
-5. [`../thread_handoff/verification.md`](../thread_handoff/verification.md)
-6. [`../DOC_INDEX.md`](../DOC_INDEX.md)
-7. [`../current_status.md`](../current_status.md)
-
-若任务涉及语义或接口，再读取：
-
-- [`../contracts/ack_protocol.md`](../contracts/ack_protocol.md)
-- [`../contracts/plc_identity_and_counter.md`](../contracts/plc_identity_and_counter.md)
-- [`../contracts/data_gap_event.md`](../contracts/data_gap_event.md)
-- [`../contracts/vplc_runtime_parameters.md`](../contracts/vplc_runtime_parameters.md)
-
-## 3. Phase-1 已完成
-
-- V-PLC → Collector → PostgreSQL → FastAPI → Grafana 完整链路验证。
-- 9 个远程 Compose 服务与 PostgreSQL health 验证。
-- Normal、三站 NOK、Skip、Raw Payload、Quality Event、Trace 和 ACK 交叉验证。
-- counter 连续性、UID 唯一性、事件幂等与 ACK 完整性验证。
-- `/trace/api/by-cycle` 按 `plc_boot_id` 隔离并完成真实跨 boot 回归。
-- `/trace/api/recent` 返回真实 station counter 和独立 `route_step`。
-- Grafana Profile 默认 normal，支持 fast/test/unknown/All，宽时间窗显示 `MIXED`。
-- 真实远程旧版 API 回滚、启动验证、最新版本恢复和完整回归。
-- 最终 Acceptance Sprint 与 post-sprint 完整性快照。
-
-最终状态：
+## 2. 当前 Git 状态摘要
 
 ```text
-ACPT-H-01 CLOSED / PASS
-ACPT-M-01 CLOSED / PASS
-ACPT-M-05 CLOSED / PASS
-Deployment rollback PASS
-Phase-1 acceptance PASS
+branch      main
+HEAD        4ce7aa00ff805925103ae9f1bfbe63142a074bbf
+origin/main 4ce7aa00ff805925103ae9f1bfbe63142a074bbf
+tag         phase1-pass-20260619
 ```
 
-## 4. 本 Thread 的关键资产
-
-### 自动化
+已跟踪修改：
 
 ```text
-scripts/run_acceptance_sprint.py
-tests/test_acceptance_sprint.py
-tests/test_grafana_profile_filter.py
-api/tests/test_trace_by_cycle.py
-api/tests/test_trace_recent.py
+docs/DOC_INDEX.md
+docs/contracts/line_configuration.md
+docs/reports/README.md
+docs/reports/phase2_sprint_plan.md
+docs/roadmap.md
 ```
 
-常用命令：
+主要未跟踪 Sprint 1 文件：
+
+```text
+common/
+config/lines/
+tests/test_line_config.py
+docs/reports/sprint1_*.md
+docs/thread_handoff/architecture.md
+docs/thread_handoff/verification.md
+docs/reports/architecture_context_restore.md
+docs/reports/verification_context_restore.md
+docs/superpowers/
+```
+
+旧进度报告仍未跟踪：
+
+```text
+docs/Edge MES Demo 当前进度报告.md
+```
+
+必须继续排除。
+
+## 3. 当前 Gate 结论
+
+```text
+PASS
+```
+
+权威依据：
+
+- [`sprint1_independent_gate_review.md`](sprint1_independent_gate_review.md)
+- 最终轻量复验证据见该报告第 16 节。
+
+## 4. Verification HOLD 复验状态
+
+初始 HOLD 已全部关闭：
+
+- invalid station type：PASS。
+- 20 station hard max：PASS。
+- 4 mappings hard max：PASS。
+- invalid buffer type：PASS。
+- strict unknown field：PASS。
+- Profile mode preservation：PASS。
+- stress timing separation：PASS。
+
+当前 HOLD 来自独立复验新发现问题，不是初始七项未修正。
+
+## 5. Reliability HOLD 复验状态
+
+已关闭：
+
+- strict structure / enum。
+- config version / canonical resolved config / stable hash。
+- seed / scenario / test run metadata。
+- Profile / ideal / simulation timing 分离。
+- mapping load fields 与 payload layout。
+- 30003 reserved permission。
+- RouteGraph / disabled station。
+- hardware reference / static estimate。
+- global NOK fallback 对显式 null 值安全。
+- Buffer `enabled/tracking_mode` 与合同一致。
+- 对应合同测试与完整回归全部通过。
+
+## 6. 测试命令与结果
 
 ```bash
-# 只读快照
-.venv/bin/python scripts/run_acceptance_sprint.py \
-  --snapshot-only \
-  --host 10.0.0.217 \
-  --output /tmp/context_restore_snapshot.json
-
-# by-cycle 定向回归
-.venv/bin/python scripts/run_acceptance_sprint.py \
-  --by-cycle-only \
-  --host 10.0.0.217 \
-  --output /tmp/context_restore_by_cycle.json
-
-# 完整业务验收；会生成验收事件
-.venv/bin/python scripts/run_acceptance_sprint.py \
-  --host 10.0.0.217 \
-  --output /tmp/context_restore_acceptance.json
+.venv/bin/python -m pytest -q tests/test_line_config.py
 ```
 
-### 最终原始证据
-
-```text
-/tmp/final_phase1_by_cycle.json
-fe2279542d78279e6476b2c3e086d7e70f38bd9a54c32e8091bd7bb31ae144b3
-
-/tmp/final_phase1_acceptance_sprint.json
-ce8b0bb6248a614642313fa6de84a0d1c9b418271883764ff02734891d329de4
-
-/tmp/final_phase1_post_sprint_snapshot.json
-5e766bcdc2a2c50162c226e50de556faf9a2d16e072ed75f0a3273510adf5cd8
-```
-
-`/tmp` 文件可能随机器清理而消失；长期结论以 `docs/reports/` 中的报告为准。
-
-## 5. 当前远程稳定基线
-
-```text
-SSH alias: edge-pi
-Host: Pi-5b-Li / 10.0.0.217
-Path: /opt/edge-mes-demo
-Services: 9/9 running
-PostgreSQL: healthy
-API: http://10.0.0.217:8000
-Grafana: http://10.0.0.217:3000
-V-PLC: http://10.0.0.217:8200
-Profile: normal
-Scale: 1.0
-ACK: strict / require_ack=true
-```
-
-最终部署文件：
-
-```text
-api/app/routes/trace.py
-f2fced93a706a0642ea2c72fcf97d4ac1b9198fa05b7936f4107b4905265e7f4
-
-config/grafana/dashboards/edge_mes_station_traceability.json
-b62e2a0186442a9f857c89892b749bb41827d1f67e106babaab26d68df1a1283
-```
-
-恢复点：
-
-```text
-/home/mari/edge-mes-backups/rollback-drill-20260619-213700
-/home/mari/edge-mes-backups/final-deploy-20260619-214651
-```
-
-## 6. 快速只读健康检查
+返修原始：`62 passed`
+Verification 增补后：`74 passed, 2 failed`
 
 ```bash
-ssh edge-pi
-cd /opt/edge-mes-demo
-
-docker compose ps
-curl -fsS http://127.0.0.1:8000/health
-curl -fsS http://127.0.0.1:3000/api/health
-curl -fsS http://127.0.0.1:8200/vplc/state
-curl -fsS "http://127.0.0.1:8000/trace/api/recent?status=completed_ok&limit=3"
+.venv/bin/python -m pytest -q tests
 ```
 
-预期：
+返修原始：`73 passed`
+Verification 增补后：`85 passed, 2 failed`
 
-- 9 个服务 running。
-- PostgreSQL healthy。
-- Recent `cycle_counter == station_cycle_counter`。
-- `route_step` 独立返回。
-- V-PLC 为 normal / scale 1.0 / require_ack true。
+```bash
+cd api
+../.venv/bin/python -m pytest -q tests
+```
 
-## 7. 已知限制
+`5 passed`
 
-- Phase-1 只覆盖单机、单线、单 PLC、三工站离线 Demo。
-- Oracle Sync、真实 Oracle、企业集成、多产线均未验收。
-- Rework 未定义，当前为 `N/A`。
-- 尚无 24 小时以上生产化长稳认证和正式资源 SLA。
-- 发布/回滚尚未脚本化；远程目录不是 Git working tree。
-- Grafana anonymous/datasource 权限只适合可信 Demo LAN。
-- legacy DB100 dashboard 不具备 DB101-104 Profile 归属。
-- Phase-1 PASS 不代表真实 PLC、安全、性能或生产运维认证。
+```bash
+PYTHONPATH=collector .venv/bin/python -m pytest -q collector/tests
+```
 
-## 8. 下一阶段建议
+- 受限沙箱：`11 passed, 1 failed, 3 subtests`，失败为本机 bind 权限。
+- 获准环境：`12 passed, 3 subtests passed`。
 
-1. deploy/rollback 自动化与发布 manifest。
-2. Raspberry Pi 24 小时以上 soak 和故障恢复矩阵。
-3. Grafana anonymous 与 datasource 权限收紧。
-4. Compose 自动恢复、日志、资源、磁盘和容量验收。
-5. 真实 PLC 接入前重新确认 S7 identity、counter、ACK 与 gap 契约。
-6. Oracle Sync、多产线、Rework 等新范围建立独立合同、测试计划和验收结论。
+```bash
+cd s7_plc_sim
+../.venv/bin/python -m pytest -q tests
+```
 
-## 9. 新 Thread 开始时的规则
+`27 passed`
 
-- 先执行只读检查，再判断是否需要完整 Sprint。
-- 完整 Sprint 会产生 Normal/NOK/Skip 验收事件，不应作为普通健康探针。
-- 不修改业务逻辑来迁就测试。
-- 不覆盖 `.env`、Compose 或 `data/`。
-- 协议、数据库结构、公共接口变化必须先更新 `docs/contracts/`。
-- 不把 Phase-1 PASS 外推为生产交付 PASS。
-- 不重复创建现有 handoff、验收和测试文档。
+```bash
+.venv/bin/python -m compileall -q \
+  common/line_config tests/test_line_config.py api collector s7_plc_sim
+```
+
+`PASS`
+
+三份 YAML load/hash/load summary：`PASS`。
+
+## 7. 首次独立复验历史（现已关闭）
+
+### HOLD-1：显式 null NOK fallback
+
+有效配置变体：
+
+```yaml
+stations:
+  - station_id: WS01
+    nok_rate: null
+```
+
+validator 接受，但 loader：
+
+```text
+TypeError: float() argument must be a string or a real number, not 'NoneType'
+```
+
+失败测试：
+
+```text
+test_explicit_null_station_nok_rate_uses_global_fallback
+```
+
+### HOLD-2：Buffer contract fields
+
+合同定义：
+
+```text
+enabled
+tracking_mode
+```
+
+当前 schema/model/loader/YAML 不支持，配置会被拒绝为 unknown field。
+
+失败测试：
+
+```text
+test_buffer_enabled_and_tracking_mode_are_preserved
+```
+
+### 文档同步
+
+`sprint1_flexible_line_configuration_report.md` 的“57 项测试”需与实际结果同步。
+
+## 8. 运行链路隔离
+
+仍完全隔离：
+
+- V-PLC / Collector / API 未消费 line config。
+- DB / migration / Dashboard 未修改。
+- Docker / `.env` / volume 未修改。
+- 未 SSH、未远程部署、未重启。
+
+结论：
+
+```text
+remote verification: NOT REQUIRED
+rollback drill: NOT REQUIRED
+```
+
+## 9. 新 Verification Thread 优先阅读
+
+1. [`sprint1_independent_gate_review.md`](sprint1_independent_gate_review.md)
+2. [`../thread_handoff/verification.md`](../thread_handoff/verification.md)
+3. [`sprint1_contract_hardening_report.md`](sprint1_contract_hardening_report.md)
+4. [`sprint1_verification_matrix.md`](sprint1_verification_matrix.md)
+5. [`sprint1_reliability_config_review.md`](sprint1_reliability_config_review.md)
+6. [`../thread_handoff/architecture.md`](../thread_handoff/architecture.md)
+7. [`architecture_context_restore.md`](architecture_context_restore.md)
+8. [`../contracts/line_configuration.md`](../contracts/line_configuration.md)
+9. `common/line_config/`
+10. `tests/test_line_config.py`
+
+## 10. 下一步建议 Prompt 摘要
+
+> Phase-2 Sprint 1 Gate 已 PASS。先阅读 Independent Gate Review 第 16 节和
+> Verification handoff。Architecture 可先把 flexible line configuration report 的历史
+> 测试计数更新为 `77 passed`，再使用精确 allowlist 完成 Sprint 1 final commit / push。
+> 不提交旧进度报告或无关 PM handoff，不远程部署、不做 rollback drill。Sprint 2 必须在
+> Sprint 1 提交边界清晰后另行启动。
+
+## 11. 禁止事项
+
+- 不替 Architecture 修改实现代码。
+- 不接入运行链路。
+- 不修改 migration、Docker、`.env`、volume。
+- 不远程部署、不重启、不 push、不 tag。
+- 不提交旧未跟踪进度报告。
+- 不开始 Sprint 2，直到 Sprint 1 Gate PASS。

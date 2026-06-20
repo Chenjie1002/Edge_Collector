@@ -1,0 +1,127 @@
+schema_version: 1
+config_version: "2026.06.20-demo3-v1"
+line_id: LINE_001
+name: Phase-1 Demo Assembly Line
+timezone: Asia/Shanghai
+
+scenario:
+  name: phase1-compatible-demo
+  scenario_type: demo
+  test_run_id: demo3-default
+  random_seed: 20260620
+  global_nok_rate: 0.01
+  production: true
+
+hardware_envelope:
+  target_hardware_class: raspberry_pi_5
+  intended_load_class: demo
+
+plcs:
+  - plc_id: PLC_001
+    runtime_db: 104
+    max_stations: 20
+    max_db_mappings_per_station: 4
+
+payload_templates:
+  screwdriving_payload_v1:
+    version: 1
+    template_type: measurement_payload
+    compatible_station_types: [screwdriving]
+    approximate_size_bytes: 32
+    fields: [{name: torque, field_type: float32, offset: 0, length: 4, required: true, direction: read}]
+  eol_test_payload_v1:
+    version: 1
+    template_type: measurement_payload
+    compatible_station_types: [eol_test]
+    approximate_size_bytes: 32
+    fields: [{name: test_value, field_type: float32, offset: 0, length: 4, required: true, direction: read}]
+  manual_confirm_payload_v1:
+    version: 1
+    template_type: event_payload
+    compatible_station_types: [manual_confirm]
+    approximate_size_bytes: 16
+    fields: [{name: confirmed, field_type: bool, offset: 0, length: 1, required: true, direction: read}]
+
+nok_templates:
+  screwdriving_nok_v1:
+    version: 1
+    template_type: quality
+    compatible_station_types: [screwdriving]
+    codes:
+      - {code: 10001, name: TORQUE_LOW, category: quality, severity: error, mode: random_simulated_nok, allow_random: true, allow_force: false}
+      - {code: 10002, name: TORQUE_HIGH, category: quality, severity: error, mode: random_simulated_nok, allow_random: true, allow_force: false}
+  eol_test_nok_v1:
+    version: 1
+    template_type: quality
+    compatible_station_types: [eol_test]
+    codes:
+      - {code: 20001, name: EOL_TEST_FAIL, category: quality, severity: error, mode: random_simulated_nok, allow_random: true, allow_force: false}
+  manual_confirm_nok_v1:
+    version: 1
+    template_type: route_semantic
+    compatible_station_types: [manual_confirm]
+    codes:
+      - {code: 30001, name: MANUAL_REJECT, category: quality, severity: error, mode: forced_test_nok, allow_random: false, allow_force: true}
+      - {code: 30003, name: UPSTREAM_NOK_SKIPPED, category: route, severity: info, mode: system_reserved, allow_random: false, allow_force: false}
+
+cycle_profiles:
+  normal_screwdriving:
+    mode: normal
+    ideal_cycle_time_s: 30.4
+    simulation: {base_cycle_s: 30.4, jitter_s: 1.2, cycle_scale: 1.0, stress_cycle_time_s: null}
+  normal_eol_test:
+    mode: normal
+    ideal_cycle_time_s: 29.8
+    simulation: {base_cycle_s: 29.8, jitter_s: 1.0, cycle_scale: 1.0, stress_cycle_time_s: null}
+  normal_manual_confirm:
+    mode: normal
+    ideal_cycle_time_s: 29.2
+    simulation: {base_cycle_s: 29.2, jitter_s: 0.8, cycle_scale: 1.0, stress_cycle_time_s: null}
+
+stations:
+  - station_id: WS01
+    station_order: 10
+    station_type: screwdriving
+    station_enabled: true
+    plc_id: PLC_001
+    db_mappings:
+      - {mapping_id: WS01_MAIN, plc_id: PLC_001, station_id: WS01, db_number: 101, usage: event, direction: read_write, mapping_type: event, read_start: 0, read_size_bytes: 64, poll_interval_ms: 500}
+    payload_template: screwdriving_payload_v1
+    nok_template: screwdriving_nok_v1
+    cycle_profile: normal_screwdriving
+    cycle_time_s: 30.4
+    nok_rate: 0.02
+  - station_id: WS02
+    station_order: 20
+    station_type: eol_test
+    station_enabled: true
+    plc_id: PLC_001
+    db_mappings:
+      - {mapping_id: WS02_MAIN, plc_id: PLC_001, station_id: WS02, db_number: 102, usage: event, direction: read_write, mapping_type: event, read_start: 0, read_size_bytes: 64, poll_interval_ms: 500}
+    payload_template: eol_test_payload_v1
+    nok_template: eol_test_nok_v1
+    cycle_profile: normal_eol_test
+    cycle_time_s: 29.8
+    nok_rate: 0.015
+  - station_id: WS03
+    station_order: 30
+    station_type: manual_confirm
+    station_enabled: true
+    plc_id: PLC_001
+    db_mappings:
+      - {mapping_id: WS03_MAIN, plc_id: PLC_001, station_id: WS03, db_number: 103, usage: event, direction: read_write, mapping_type: event, read_start: 0, read_size_bytes: 64, poll_interval_ms: 500}
+    payload_template: manual_confirm_payload_v1
+    nok_template: manual_confirm_nok_v1
+    cycle_profile: normal_manual_confirm
+    cycle_time_s: 29.2
+
+buffers:
+  - {buffer_id: BUF_WS01_WS02, from_station_id: WS01, to_station_id: WS02, buffer_position: 15, buffer_type: fifo, capacity: 1}
+  - {buffer_id: BUF_WS02_WS03, from_station_id: WS02, to_station_id: WS03, buffer_position: 25, buffer_type: fifo, capacity: 1}
+
+route_graph:
+  entry_station_id: WS01
+  terminal_station_id: WS03
+  edges:
+    - {from_station_id: WS01, to_station_id: WS02}
+    - {from_station_id: WS02, to_station_id: WS03}
