@@ -2,8 +2,17 @@
 
 更新时间：2026-06-19  
 工作模式：Architecture / Integration Thread  
-状态：架构规划完成，等待后续 Thread 分 Sprint 实施  
+状态：历史架构底稿；已由 Phase-2 正式规划套件取代
 范围：非侵入式 Edge MES / Traceability / OEE Demo
+
+> 2026-06-19 起，本文件保留为前期分析记录。后续实施以
+> [`phase2_flexible_architecture_plan.md`](phase2_flexible_architecture_plan.md)、
+> [`phase2_sprint_plan.md`](phase2_sprint_plan.md)、
+> [`phase2_thread_task_plan.md`](phase2_thread_task_plan.md)、
+> [`dashboard_tech_stack_plan.md`](dashboard_tech_stack_plan.md) 和
+> [`../contracts/dashboard_api_contract.md`](../contracts/dashboard_api_contract.md)
+> 为准。若本文中的 WS01~WS15、五 Sprint、React+Vite 或 Phase-1 未关闭风险与新文件
+> 冲突，以新文件和 Phase-1 最终 PASS 报告为准。
 
 ## 1. Executive Summary
 

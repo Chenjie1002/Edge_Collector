@@ -63,3 +63,18 @@ YYYY-MM-DD-verification-02.md
 - `data_quality_context_restore.md`：Data Quality Thread 上下文恢复入口。
 - `verification_context_restore.md`：Verification Thread 上下文恢复入口。
 - `github_push_phase1_report.md`：版本冻结、commit、tag 与 GitHub push 结果。
+
+## Phase-2 Architecture Planning
+
+- `phase2_flexible_architecture_plan.md`：柔性产线、V-PLC、Collector、API、OEE/Quality/Trace 总体规划。
+- `dashboard_tech_stack_plan.md`：Next.js、FastAPI、ECharts、Grafana 和可选 Superset 分工。
+- `phase2_sprint_plan.md`：九个 Sprint 的输入、输出、owner、gate、部署与 rollback 计划。
+- `phase2_thread_task_plan.md`：Architecture、Reliability、Data Quality、Verification、Frontend 分工。
+- `../roadmap.md`：Phase-1 freeze 后的 Phase-2 优先级、MVP 和九 Sprint 路线图。
+- `next_architecture_plan.md`：历史架构底稿；若与上述文件冲突，以上述 Phase-2 正式规划为准。
+
+对应合同：
+
+- `../contracts/line_configuration.md`：柔性产线配置、WS01~WS20+、Buffer、mapping 与容量边界。
+- `../contracts/dynamic_station_model.md`：通用工站事件、JSONB、查询隔离、索引与保留策略。
+- `../contracts/dashboard_api_contract.md`：OEE、Quality、Trace 和 Dashboard API 公共合同。

@@ -34,6 +34,7 @@ Phase-2 Out of Scope：
 | [`decisions.md`](decisions.md) | ADR | 已确认的关键设计决策及原因 | 决策历史，不在 handoff 中重复解释 |
 | [`protocol.md`](protocol.md) | Implemented Protocol | 当前 DB100/101/102/103 地址、字段和握手实现 | 描述当前实现，不代表生产级通用协议 |
 | [`plc_edge_integration_guide.md`](plc_edge_integration_guide.md) | Engineering Guide | 面向真实 PLC 的通用接入规范 | Phase-2/现场接入参考，本阶段不完整实现 |
+| [`roadmap.md`](roadmap.md) | Phase-2 Roadmap | Phase-1 freeze 后的九 Sprint 优先级与 gate | Phase-2 路线图真源 |
 
 说明：仓库外存在 `../docs/PROJECT_STATUS.md` 审计快照，但它不属于
 `edge-mes-demo` Git 仓库，也不是协作真源。项目状态以
@@ -60,6 +61,9 @@ Phase-2 Out of Scope：
 | [`contracts/plc_identity_and_counter.md`](contracts/plc_identity_and_counter.md) | Reliability、Data Quality、Verification | PLC 启动身份、counter、重启和回绕规则 |
 | [`contracts/data_gap_event.md`](contracts/data_gap_event.md) | Data Quality、Verification | Ignore Edge / Bypass 缺口边界和计数规则 |
 | [`contracts/vplc_runtime_parameters.md`](contracts/vplc_runtime_parameters.md) | Reliability、Verification | Profile、Cycle Time guardrail、参数审计/快照和 NOK 模拟 |
+| [`contracts/line_configuration.md`](contracts/line_configuration.md) | Architecture、Reliability | 柔性单线、PLC、工站、Buffer、mapping 与容量合同 |
+| [`contracts/dynamic_station_model.md`](contracts/dynamic_station_model.md) | Architecture、Data Quality | 动态工站、共享事件、JSONB、索引与保留策略 |
+| [`contracts/dashboard_api_contract.md`](contracts/dashboard_api_contract.md) | Data Quality、Frontend、Verification | OEE、Quality、Trace 与 Dashboard 公共 API 合同 |
 
 ## 5. Thread 交接入口
 
@@ -88,6 +92,14 @@ Phase-1 统一上下文恢复入口：
 Phase-1 冻结发布说明：
 
 - [`releases/phase1_pass_release_note.md`](releases/phase1_pass_release_note.md)
+
+Phase-2 正式规划：
+
+- [`reports/phase2_flexible_architecture_plan.md`](reports/phase2_flexible_architecture_plan.md)
+- [`reports/dashboard_tech_stack_plan.md`](reports/dashboard_tech_stack_plan.md)
+- [`reports/phase2_sprint_plan.md`](reports/phase2_sprint_plan.md)
+- [`reports/phase2_thread_task_plan.md`](reports/phase2_thread_task_plan.md)
+- [`roadmap.md`](roadmap.md)
 
 ## 7. 代码与配置入口
 

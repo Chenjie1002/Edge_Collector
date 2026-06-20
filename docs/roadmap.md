@@ -1,148 +1,138 @@
-# Edge MES Next-Stage Roadmap
+# Edge MES Phase-2 Roadmap
 
 更新时间：2026-06-19  
-状态：下一阶段架构路线图  
-详细计划：[`reports/next_architecture_plan.md`](reports/next_architecture_plan.md)
+状态：Phase-2 Architecture Planning
+Phase-1 基线：最终验收 PASS，GitHub freeze/tag 已完成
 
-## 1. 路线图定位
+## 1. 当前里程碑
 
-本文件承接现有 [`task_plan.md`](task_plan.md) 已完成的单线三工站 Demo 阶段，规划
-下一阶段的配置化、多工站、多产线、OEE、Quality 和 Genealogy。
+Phase-1 已冻结：
 
-控制边界不变：
+- Freeze commit：`54d7d3286c24535f99a02f00e45448ee73d0b895`
+- Tag：`phase1-pass-20260619`
+- Release Note：[`releases/phase1_pass_release_note.md`](releases/phase1_pass_release_note.md)
+- Push Report：[`reports/github_push_phase1_report.md`](reports/github_push_phase1_report.md)
 
-- PLC 是设备控制大脑。
-- Edge 负责采集、存储、追溯、OEE、Dashboard 和分析。
-- Edge 不决定 Hold、Rework、Skip/Bypass 或 NOK。
-- V-PLC 可以模拟这些事件，但真实项目必须由 PLC/HMI 定义。
+Phase-2 当前只进行正式架构规划，不修改业务代码、migration、运行配置或远程环境。
 
-## 2. 目标架构
+## 2. Phase-2 定位
+
+将单线三工站 Demo 演进为：
+
+```text
+配置驱动的柔性单线
+→ 通用工站事件模型
+→ 参数化 V-PLC / Collector
+→ OEE / Quality / Trace 产品界面
+→ 可审计性能边界
+→ Multi-Line 规划
+```
+
+PLC/HMI 仍负责设备控制、Hold、Rework、Skip、Manual NOK。Edge 只负责采集、存储、
+追溯、OEE、Dashboard 和分析。
+
+## 3. Phase-2 优先级
+
+1. Flexible Line Configuration
+2. Generic Station Event Model
+3. Configurable V-PLC / Collector
+4. OEE API and Dashboard MVP
+5. Quality Dashboard / Trace Explorer
+6. Hold Event Model
+7. Rework Optional
+8. Performance and Long-run Validation
+9. Multi-Line Planning
+
+详细实施计划：
+
+- [`reports/phase2_flexible_architecture_plan.md`](reports/phase2_flexible_architecture_plan.md)
+- [`reports/phase2_sprint_plan.md`](reports/phase2_sprint_plan.md)
+- [`reports/phase2_thread_task_plan.md`](reports/phase2_thread_task_plan.md)
+- [`reports/dashboard_tech_stack_plan.md`](reports/dashboard_tech_stack_plan.md)
+
+## 4. 目标架构
 
 ```mermaid
 flowchart LR
-  Config["YAML Line Config<br/>JSON Schema"]
-  VPLC["Config-driven V-PLC<br/>1..N Stations / Buffers"]
-  PLC["Real PLC / HMI"]
-  Collector["Dynamic Collector<br/>Multi PLC / Mapping"]
-  DB[("Shared Event Model<br/>PostgreSQL + JSONB")]
-  API["OEE / Quality / Trace API"]
+  Config["Line Configuration<br/>YAML + Schema + Hash"]
+  PLC["PLC / HMI<br/>Control Truth"]
+  VPLC["Configurable V-PLC<br/>Simulation Only"]
+  Collector["Config-driven Collector<br/>Queue / Batch / Metrics"]
+  DB[("Generic Station Event Model<br/>PostgreSQL + JSONB")]
+  API["Bounded FastAPI<br/>OEE / Quality / Trace"]
+  UI["Next.js + ECharts<br/>Management / Quality"]
   Grafana["Grafana<br/>Engineering"]
-  UI["Custom UI<br/>Management / Trace"]
 
   Config --> VPLC
   Config --> Collector
-  VPLC --> Collector
   PLC --> Collector
+  VPLC --> Collector
   Collector --> DB
   DB --> API
-  DB --> Grafana
   API --> UI
+  DB --> Grafana
 ```
 
-## 3. Sprint Roadmap
+## 5. Sprint 路线
 
-| Sprint | 目标 | 主 Thread | 关键交付 | Gate |
-| --- | --- | --- | --- | --- |
-| 1 | 合同与配置规范 | Architecture / Integration | YAML、Schema、模板、三站兼容样例 | 配置可验证 |
-| 2 | 动态 V-PLC | Reliability | 1~N 工站、Buffer、feature flags | 三站行为不回归 |
-| 3 | 动态 Collector/DB | Data Quality + Reliability | 多 PLC/mapping、共享模型、动态终站 | 合同先于 migration |
-| 4 | OEE/Quality/Trace | Data Quality + Verification | KPI API、动态 Trace、Genealogy 最小模型 | 指标可复算 |
-| 5 | Hold/Rework 与多线验收 | Verification 主验收 | 追加事件、报告导出、1~3 线隔离 | Edge 无控制动作 |
+| Sprint | 目标 | 主责 | 主要 Gate |
+| --- | --- | --- | --- |
+| 1 | Flexible Line Configuration | Architecture | 3/10/20 站配置可验证 |
+| 2 | Generic Station Event Model | Data Quality | 通用表、boot/profile isolation |
+| 3 | Configurable V-PLC / Collector | Reliability + Data Quality | 20 站无丢失、ACK 不回归 |
+| 4 | OEE API / Dashboard MVP | Frontend + Data Quality | A/P/Q 可复算、Partial OEE |
+| 5 | Quality / Trace Explorer | Data Quality + Frontend | 动态路线、payload 下钻 |
+| 6 | Hold Event Model | Data Quality + Reliability | 只记录，不控制 |
+| 7 | Rework Optional | Data Quality + Reliability | 默认关闭、追加事件 |
+| 8 | Performance / Long-run | Verification + Reliability | 明确 Raspberry Pi envelope |
+| 9 | Multi-Line Planning | Architecture | 只规划，不实施 |
 
-## 4. Sprint 1：合同与配置规范
+## 6. MVP 范围
 
-交付：
+进入 Phase-2 MVP：
 
-- `docs/contracts/line_configuration.md`
-- `docs/contracts/dynamic_station_model.md`
-- `config/schema/line_config.schema.json`
-- `config/lines/LINE_001.yaml`
-- station/payload/NOK/buffer templates
-- 配置验证脚本和负例测试
+- Flexible Line Configuration。
+- Generic Station Event Model。
+- Configurable V-PLC / Collector。
+- OEE API and Dashboard。
+- Quality Dashboard / Trace Explorer。
 
-验收：
+仅模型预留：
 
-- 支持 1、3、15 工站配置样例。
-- 当前 WS01/DB101、WS02/DB102、WS03/DB103、DB104 解析等价。
-- DB 地址冲突、重复 ID、悬空引用、容量超限会失败。
+- Hold。
+- Rework。
+- Genealogy。
+- downtime/hold loss。
+- 高级报告导出。
 
-## 5. Sprint 2：动态 V-PLC
+暂不作为核心：
 
-交付：
+- Data Gap。
+- Missing Unit。
 
-- 配置驱动的 Line/Station/Buffer runtime。
-- 动态 DB 注册和 payload writer。
-- 随机/手动 NOK、Hold、Rework 的 simulation-only feature flags。
-- 当前 ACK、identity、profile、audit 回归测试。
+原因：
 
-验收：
+- Data Gap 依赖 PLC/HMI 对 bypass 和 identity 的明确事实。
+- Edge 无法可靠区分 PLC counter 跳号 bug 与真实 Missing Unit。
+- 二者保留合同和调查能力，但不挤占 OEE、Quality、Trace 的 Phase-2 主线。
 
-- 1~15 工站可启动。
-- Hold/Rework 默认关闭。
-- 未 ACK payload 不被覆盖。
-- DB100 legacy 不变。
+## 7. 延后范围
 
-## 6. Sprint 3：动态 Collector 与数据模型
-
-交付：
-
-- 多 PLC runtime。
-- 每站 1~4 mapping 的 read plan。
-- `production_line/plc_config/station_config/buffer_config/plc_db_mapping` 实施计划。
-- 动态 terminal station 和共享事件模型。
-- DB100 compatibility adapter。
-
-验收：
-
-- 不创建每站独立表。
-- WS03 硬编码被配置替代。
-- LINE_001 现有数据和 Trace 兼容。
-- ACK/counter/gap 唯一性正确。
-
-## 7. Sprint 4：OEE、Quality 与 Genealogy
-
-交付：
-
-- OEE 数据充分性和 A/P/Q 口径合同。
-- line/station/shift KPI API。
-- 动态 Route Timeline。
-- `unit_relation` 最小 Genealogy 模型。
-- Grafana 工程 dashboard 更新。
-- 自研前端 API contract。
-
-验收：
-
-- 数据不足时不伪造完整 OEE。
-- Grafana/API 同窗口结果一致。
-- Trace 不固定三工站列。
-- Genealogy 关系不按时间猜测。
-
-## 8. Sprint 5：Hold/Rework 与多线验收
-
-交付：
-
-- Hold/Rework 追加事件和投影。
-- feature flag 行为。
-- JSON/CSV/PDF Trace/Quality 报告。
-- 1~3 条线隔离、容量、故障恢复验收。
-
-验收：
-
-- Edge 无 Hold/Release/Rework 控制 API。
-- Rework flag 关闭时不生成业务投影。
-- 报告包含配置版本、口径和 Data Gap 声明。
-- Verification 给出可审计的 PASS/FAIL/BLOCKED。
-
-## 9. 延后项
-
+- Multi-Line 实施。
 - Oracle/ERP 真实同步。
-- Data Gap 自动补数。
-- Missing Unit 自动修正。
-- 完整质量审批/MRB/电子签名。
-- 复杂权限、多租户。
-- 3D 数字孪生、AI 和长期媒体库。
+- Edge 主动控制 PLC。
+- 完整 MRB/审批/电子签名。
+- Superset 部署。
+- 3D 数字孪生。
+- AI 推理和长期媒体库。
 
-## 10. 当前下一步
+## 8. 当前下一步
 
-下一步只启动 Sprint 1。任何数据库 migration、公共 API 或业务代码实施，必须在相关
-合同经 Architecture / Reliability / Data Quality / Verification 共同确认后开始。
+只启动 Sprint 1：
+
+1. 评审三份 Phase-2 contracts。
+2. 创建 3/10/20 工站配置样例和 Schema。
+3. 建立 semantic validator 与负例矩阵。
+4. 证明 LINE_001 三站 resolved mapping 与 Phase-1 等价。
+
+Sprint 1 gate 通过前，不开始 migration、V-PLC/Collector 动态化或 Dashboard 实现。
