@@ -3,7 +3,7 @@
 日期：2026-06-20
 Thread：Architecture / Integration
 冻结类型：docs-only architecture planning baseline
-状态：准备提交
+状态：已冻结并推送
 
 ## 1. 本次冻结目标
 
@@ -208,3 +208,18 @@ docs/Edge MES Demo 当前进度报告.md
 3. 是否同意新增 Frontend / Dashboard Thread。
 4. 是否确认 Phase-2 MVP 不把 Data Gap、Missing Unit、Superset 和 3D 纳入核心。
 5. 是否在未来 Sprint 1 完成后再评估创建 Phase-2 planning tag；本次不创建 tag。
+
+## 18. Git 冻结结果
+
+Phase-2 Architecture Planning 主提交：
+
+```text
+commit: ec0f4f3
+message: Phase 2 architecture planning docs
+branch: main
+remote: origin
+push: PASS
+```
+
+本次未创建 release tag。该结果段在主提交推送成功后补充，因此通过独立的报告收尾提交
+进入 `main`，不改变主架构提交的内容或创建额外 tag。
