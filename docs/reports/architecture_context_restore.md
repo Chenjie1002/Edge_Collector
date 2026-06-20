@@ -1,28 +1,32 @@
 # Architecture / Integration Context Restore
 
 更新时间：2026-06-20
-用途：恢复 Phase-2 Sprint 1 final closeout 后的 Architecture / Integration 上下文
+用途：恢复 Phase-2 Sprint 2 planning freeze 阶段的 Architecture / Integration 上下文
 当前 Gate：**PASS**
 
 ## 1. 一句话恢复
 
 Phase-1 已最终验收 PASS；Phase-2 Architecture Planning 已冻结并 push；Sprint 1
 Flexible Line Configuration 已通过 Independent Gate Review，并以 commit `b9f6a69`
-完成 final commit / push。Sprint 2 Generic Station Event Model 是下一候选方向，但尚未
-启动。
+完成 final commit / push；docs hygiene commit 为 `4215b7c`。当前正在进行 Sprint 2
+Generic Station Event Model planning freeze；PM 决策已固化，三方 review 尚未执行，
+implementation 尚未开始。
 
 ## 2. 当前 Git 与发布状态
 
 ```text
 branch: main
-HEAD: b9f6a69
-origin/main: b9f6a69
-latest commit: b9f6a69 Phase 2 Sprint 1 flexible line configuration
+HEAD: 4215b7c
+origin/main: 4215b7c
+latest commit: 4215b7c Finalize Sprint 1 architecture handoff and review history
+Sprint 1 implementation: b9f6a69 Phase 2 Sprint 1 flexible line configuration
 tags: phase1-pass-20260619
 Phase-2 tag: not created
 remote deploy: not performed
 rollback drill: not performed
-Sprint 2: not started
+Sprint 2 planning: PM decisions frozen
+required reviews: Reliability -> Data Quality -> Verification
+Sprint 2 implementation: not started
 ```
 
 ## 3. Sprint 1 最终状态
@@ -103,27 +107,57 @@ rollback drill: NOT REQUIRED
 - `docs/reports/sprint1_contract_hardening_report.md`
 - `docs/reports/sprint1_independent_gate_review.md`
 
-## 8. 下一候选方向
+## 8. Sprint 2 planning
 
 ```text
 Sprint 2: Generic Station Event Model
 ```
 
-Sprint 2 尚未启动。本 restore 文件只说明候选方向，不授权 coding、migration、部署或
-跨模块修改。
+当前 planning 产出：
 
-进入 Sprint 2 前至少需要：
+- `docs/contracts/station_event_model.md`
+- `docs/reports/sprint2_generic_station_event_model_plan.md`
 
-- PM 确认 planning-only 或 implementation scope。
-- 重读 `docs/contracts/dynamic_station_model.md`。
-- 确认 Data Quality / Architecture / Verification owner。
-- 明确 additive migration、rollback、boot/profile isolation 和 Phase-1 compatibility
-  gate。
+合同已冻结 event envelope、五类 MVP event type、result/NOK/nok_origin/source authority、
+config lineage、payload/raw、timestamp/order/idempotency、validation 与 canonical
+serialization。planning report 定义了后续 Reliability、Data Quality、Verification 和
+Architecture 任务包。
 
-## 9. 禁止误读
+本阶段只完成 planning + handoff，不授权 coding、migration、部署或跨模块修改。
+
+PM 已冻结：
+
+- `common/station_event/` 为后续 implementation 路径，但当前不存在实现包。
+- MVP event：cycle start、cycle complete、result、NOK、heartbeat。
+- frozen dataclass，不使用 Pydantic。
+- UUIDv4 runtime 默认、UUIDv5 test-only、UUIDv7 future recommendation。
+- 所有有效 event 强制 SHA-256 `config_hash`。
+- normalized/raw payload 上限 16/64 KiB。
+- `unknown` 仅限受控 heartbeat/diagnostic/future fault 语境。
+- 独立 `nok_origin`；`30003` 只与 `system_reserved` 组合。
+
+## 9. 下一 Architecture Thread 恢复顺序
+
+1. `docs/thread_handoff/architecture.md`
+2. `docs/reports/architecture_context_restore.md`
+3. `docs/reports/sprint2_generic_station_event_model_plan.md`
+4. `docs/contracts/station_event_model.md`
+5. `docs/contracts/line_configuration.md`
+6. `docs/contracts/dynamic_station_model.md`
+7. `docs/reports/sprint1_independent_gate_review.md`
+
+第一任务是按冻结顺序启动 Reliability review；完成后交 Data Quality，再由
+Verification 建 Gate matrix。ChatGPT PM 汇总三方结论并授权前，不要准备或执行代码
+implementation，不要创建 package，也不要把 planning freeze 误读为 implementation
+已完成。
+
+## 10. 禁止误读
 
 - Sprint 1 当前不是 HOLD。
 - Sprint 1 不需要继续 Contract Hardening。
 - Sprint 1 可表达 20 stations，不代表 Raspberry Pi capacity certification。
 - line config 尚未成为运行时真源。
 - Edge 不是设备控制系统。
+- Sprint 2 只有合同与计划草案，没有代码、tests、migration 或 runtime integration。
+- PM 决策冻结不等于 implementation authorization。
+- 当前没有 Phase-2 tag，也没有 Sprint 2 deploy / rollback drill。

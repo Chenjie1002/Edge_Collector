@@ -2,9 +2,9 @@
 
 更新时间：2026-06-20
 Thread：Architecture / Integration
-当前里程碑：Phase-2 Sprint 1 final closeout
+当前里程碑：Phase-2 Sprint 2 Generic Station Event Model planning freeze
 当前 Gate：**PASS**
-下一候选方向：Sprint 2 Generic Station Event Model planning（尚未启动）
+当前活动：Sprint 2 planning + handoff（implementation 尚未开始）
 
 ## 1. 当前基线
 
@@ -16,15 +16,16 @@ Thread：Architecture / Integration
 | Sprint 1 | Flexible Line Configuration |
 | Sprint 1 Gate | `PASS` |
 | Sprint 1 commit | `b9f6a69 Phase 2 Sprint 1 flexible line configuration` |
-| HEAD | `b9f6a69` |
-| `origin/main` | `b9f6a69` |
+| Docs hygiene commit | `4215b7c Finalize Sprint 1 architecture handoff and review history` |
+| HEAD | `4215b7c` |
+| `origin/main` | `4215b7c` |
 | Phase-2 tag | 未创建 |
 | 远程部署 | 未执行 |
 | rollback drill | 未执行 |
-| Sprint 2 | 尚未启动 |
+| Sprint 2 | PM decisions frozen；三方 review 待执行；implementation 未开始 |
 
-Sprint 1 已完成 final commit / push。当前不需要继续 Contract Hardening，也不需要远程
-部署或 rollback drill。
+Sprint 1 已完成 final commit / push，docs hygiene 也已完成。当前只在工作树中编写
+Sprint 2 合同与 planning/handoff 文档；本轮不 commit、不 push。
 
 ## 2. Sprint 1 已交付
 
@@ -92,18 +93,29 @@ Sprint 1 仍是独立配置基础，未接入：
 
 Edge 仍只负责采集、存储、追溯、计算和展示，不主动决定 Hold、Rework 或 Skip。
 
-## 5. 下一候选方向
+## 5. Sprint 2 planning 产出
 
-下一候选方向是：
+本轮新增：
 
-```text
-Sprint 2: Generic Station Event Model
-```
+- `docs/contracts/station_event_model.md`
+- `docs/reports/sprint2_generic_station_event_model_plan.md`
 
-但 Sprint 2 尚未启动。进入 Sprint 2 前，应由 ChatGPT PM 单独确认 planning scope、
-合同边界、文件 owner、migration/rollback gate 和 Verification 输入。
+合同已按 PM 决策冻结统一 event envelope、五类 MVP event type、
+result/NOK/nok_origin/source authority、
+config hash lineage、payload/raw payload、timestamp/order/idempotency、strict validation
+和 canonical serialization。报告准备了 Reliability、Data Quality、Verification 与下一
+Architecture Thread 的任务包和 Gate matrix。
 
-本 handoff 不授权实施 Sprint 2，不授权修改 DB、Collector、API 或远程环境。
+已冻结的关键决定包括：
+
+- 后续路径为 `common/station_event/`，本轮未创建。
+- MVP 为 cycle start/complete、result、NOK、heartbeat。
+- 保留独立 `station_nok` 与 `nok_origin`。
+- frozen dataclass、UUIDv4 runtime 默认、UUIDv5 test-only、UUIDv7 future。
+- 所有有效事件强制 `config_hash`。
+- payload/raw payload 上限 16/64 KiB。
+
+这些产出是 planning freeze，不代表 Sprint 2 package 或 runtime integration 已交付。
 
 ## 6. 后续 Architecture Thread 阅读顺序
 
@@ -112,15 +124,29 @@ Sprint 2: Generic Station Event Model
 3. `docs/reports/sprint1_independent_gate_review.md`
 4. `docs/reports/sprint1_contract_hardening_report.md`
 5. `docs/contracts/line_configuration.md`
-6. `docs/reports/phase2_sprint_plan.md`
-7. `docs/contracts/dynamic_station_model.md`
-8. `docs/reports/phase2_thread_task_plan.md`
+6. `docs/reports/sprint2_generic_station_event_model_plan.md`
+7. `docs/contracts/station_event_model.md`
+8. `docs/contracts/dynamic_station_model.md`
+9. `docs/reports/phase2_sprint_plan.md`
+10. `docs/reports/phase2_thread_task_plan.md`
 
-## 7. 明确禁止事项
+## 7. 下一 Thread 推荐第一步
+
+1. 重读上述 handoff、context、Sprint 2 plan 和 event contract。
+2. PM 决策已关闭，不再重新打开 package、MVP enum、UUID、payload limit、
+   `config_hash` 或 `nok_origin` 选择。
+3. 按顺序先交 Reliability 风险审计，再交 Data Quality 语义/血缘审计，最后由
+   Verification 建 Gate matrix。
+4. ChatGPT PM 汇总三方结论并明确授权前，不得编写业务实现、tests 或创建
+   `common/station_event/`。
+
+## 8. 明确禁止事项
 
 - 不把 Sprint 1 重新描述为 HOLD。
 - 不重复执行 Sprint 1 Contract Hardening。
-- 不在未获 PM 授权时进入 Sprint 2 实施。
+- 不把当前 planning freeze 误称为已完成实现。
+- 不绕过 Reliability → Data Quality → Verification review 顺序。
+- 不在未获 PM 授权时创建 station event package 或修改 tests。
 - 不提前修改 migration、DB、Collector、API、Dashboard 或运行链路。
 - 不创建 Phase-2 tag。
 - 不远程部署或执行 rollback drill。

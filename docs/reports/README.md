@@ -76,6 +76,9 @@ YYYY-MM-DD-verification-02.md
 对应合同：
 
 - `../contracts/line_configuration.md`：柔性产线配置、WS01~WS20+、Buffer、mapping 与容量边界。
+- `../contracts/station_event_model.md`：Sprint 2 PM 决策已冻结的通用工站事件
+  envelope、结果/NOK/nok_origin、source authority、配置血缘、payload 与 canonical
+  serialization。
 - `../contracts/dynamic_station_model.md`：通用工站事件、JSONB、查询隔离、索引与保留策略。
 - `../contracts/dashboard_api_contract.md`：OEE、Quality、Trace 和 Dashboard API 公共合同。
 
@@ -89,3 +92,7 @@ YYYY-MM-DD-verification-02.md
   blocker 关闭记录与最终 PASS 结论。
 - `sprint1_verification_matrix.md`：返修前 Verification `HOLD / CHANGES REQUIRED` 输入。
 - `sprint1_reliability_config_review.md`：返修前 Reliability `HOLD / CHANGES REQUIRED` 输入。
+- `sprint2_generic_station_event_model_plan.md`：Sprint 2 Generic Station Event Model
+  planning freeze、MVP 边界、实施路线、风险、Thread 任务包与建议 Gate matrix；
+  Reliability → Data Quality → Verification review 完成并获 PM 授权前，implementation
+  不得开始。

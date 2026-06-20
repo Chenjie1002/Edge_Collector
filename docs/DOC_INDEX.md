@@ -62,6 +62,7 @@ Phase-2 Out of Scope：
 | [`contracts/data_gap_event.md`](contracts/data_gap_event.md) | Data Quality、Verification | Ignore Edge / Bypass 缺口边界和计数规则 |
 | [`contracts/vplc_runtime_parameters.md`](contracts/vplc_runtime_parameters.md) | Reliability、Verification | Profile、Cycle Time guardrail、参数审计/快照和 NOK 模拟 |
 | [`contracts/line_configuration.md`](contracts/line_configuration.md) | Architecture、Reliability | 柔性单线、PLC、工站、Buffer、mapping 与容量合同 |
+| [`contracts/station_event_model.md`](contracts/station_event_model.md) | Architecture、Reliability、Data Quality、Verification | Sprint 2 PM 决策已冻结的通用工站事件 envelope、语义、校验与序列化合同 |
 | [`contracts/dynamic_station_model.md`](contracts/dynamic_station_model.md) | Architecture、Data Quality | 动态工站、共享事件、JSONB、索引与保留策略 |
 | [`contracts/dashboard_api_contract.md`](contracts/dashboard_api_contract.md) | Data Quality、Frontend、Verification | OEE、Quality、Trace 与 Dashboard 公共 API 合同 |
 
@@ -112,6 +113,14 @@ Phase-2 Sprint 1：
 - `config/lines/demo_10_station.yaml`
 - `config/lines/stress_20_station.yaml`
 - `common/line_config/`
+
+Phase-2 Sprint 2 planning freeze：
+
+- [`contracts/station_event_model.md`](contracts/station_event_model.md)
+- [`reports/sprint2_generic_station_event_model_plan.md`](reports/sprint2_generic_station_event_model_plan.md)
+
+以上条目表示 PM 决策已在合同与 planning 中冻结；仍需依次完成 Reliability、
+Data Quality、Verification review，Sprint 2 implementation 尚未开始。
 
 ## 7. 代码与配置入口
 
