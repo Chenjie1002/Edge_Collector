@@ -93,6 +93,12 @@ YYYY-MM-DD-verification-02.md
 - `sprint1_verification_matrix.md`：返修前 Verification `HOLD / CHANGES REQUIRED` 输入。
 - `sprint1_reliability_config_review.md`：返修前 Reliability `HOLD / CHANGES REQUIRED` 输入。
 - `sprint2_generic_station_event_model_plan.md`：Sprint 2 Generic Station Event Model
-  planning freeze、MVP 边界、实施路线、风险、Thread 任务包与建议 Gate matrix；
-  Reliability → Data Quality → Verification review 完成并获 PM 授权前，implementation
-  不得开始。
+  planning freeze 与 Reliability HOLD 后的合同返修计划；MVP 边界、实施路线、风险、
+  Thread 任务包与建议 Gate matrix。
+- `sprint2_station_event_reliability_review.md`：Sprint 2 station event contract 首轮
+  Reliability 审计历史与多轮 re-review 证据；当前 N8 定向复验结论为
+  `PASS WITH RECOMMENDATIONS`，N6、N7、N8、UNKNOWN、payload limits 与 event
+  required fields 均 CLOSED，且无新 Reliability blocker。
+
+下一步可进入 Data Quality review 与 Verification Gate matrix；两项 review 与 ChatGPT PM
+授权完成前，不得开始 implementation。

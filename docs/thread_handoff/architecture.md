@@ -1,10 +1,11 @@
 # Architecture / Integration Thread Handoff
 
-更新时间：2026-06-20
+更新时间：2026-06-21
 Thread：Architecture / Integration
-当前里程碑：Phase-2 Sprint 2 Generic Station Event Model planning freeze
-当前 Gate：**PASS**
-当前活动：Sprint 2 planning + handoff（implementation 尚未开始）
+当前里程碑：Phase-2 Sprint 2 Generic Station Event Model contract revision
+当前 Reliability Gate：**PASS WITH RECOMMENDATIONS**
+当前活动：N8 定向复验已 CLOSED；准备 Data Quality review 与 Verification Gate matrix
+（implementation 尚未开始）
 
 ## 1. 当前基线
 
@@ -17,15 +18,20 @@ Thread：Architecture / Integration
 | Sprint 1 Gate | `PASS` |
 | Sprint 1 commit | `b9f6a69 Phase 2 Sprint 1 flexible line configuration` |
 | Docs hygiene commit | `4215b7c Finalize Sprint 1 architecture handoff and review history` |
-| HEAD | `4215b7c` |
-| `origin/main` | `4215b7c` |
+| Sprint 2 planning freeze commit | `45fa2a8 Freeze Sprint 2 station event planning` |
+| HEAD | `45fa2a8` |
+| `origin/main` | `45fa2a8` |
 | Phase-2 tag | 未创建 |
 | 远程部署 | 未执行 |
 | rollback drill | 未执行 |
-| Sprint 2 | PM decisions frozen；三方 review 待执行；implementation 未开始 |
+| Sprint 2 Reliability focused re-review | `PASS WITH RECOMMENDATIONS` |
+| Sprint 2 | N6/N7/N8 与既有 findings 均 CLOSED；无新 Reliability blocker；implementation 未开始 |
+| 工作树 | 有未提交文档修改；最新已 push commit 仍为 `45fa2a8` |
 
-Sprint 1 已完成 final commit / push，docs hygiene 也已完成。当前只在工作树中编写
-Sprint 2 合同与 planning/handoff 文档；本轮不 commit、不 push。
+Sprint 1 已完成 final commit / push，Sprint 2 planning freeze 也已在 `45fa2a8`
+提交。Reliability N8 定向复验结论为 `PASS WITH RECOMMENDATIONS`；N8 已 CLOSED，
+N6、N7 和既有 CLOSED items 均无回归，未发现新 Reliability blocker。Sprint 2
+implementation 仍未开始。
 
 ## 2. Sprint 1 已交付
 
@@ -93,18 +99,40 @@ Sprint 1 仍是独立配置基础，未接入：
 
 Edge 仍只负责采集、存储、追溯、计算和展示，不主动决定 Hold、Rework 或 Skip。
 
-## 5. Sprint 2 planning 产出
+## 5. Sprint 2 planning 与 N8 定向复验
 
 本轮新增：
 
 - `docs/contracts/station_event_model.md`
 - `docs/reports/sprint2_generic_station_event_model_plan.md`
 
-合同已按 PM 决策冻结统一 event envelope、五类 MVP event type、
-result/NOK/nok_origin/source authority、
-config hash lineage、payload/raw payload、timestamp/order/idempotency、strict validation
-和 canonical serialization。报告准备了 Reliability、Data Quality、Verification 与下一
-Architecture Thread 的任务包和 Gate matrix。
+Reliability 历史：
+
+- 文件：`docs/reports/sprint2_station_event_reliability_review.md`
+- 首轮：`HOLD / CHANGES REQUIRED`，六个 blocker。
+- 第四轮 re-review：`HOLD / CHANGES REQUIRED`。
+- N8 定向复验：`PASS WITH RECOMMENDATIONS`。
+- CLOSED：N6、N7、N8、UNKNOWN diagnostic context、payload limits、event required
+  fields。
+- 新 Reliability blocker：无。
+
+本轮 Architecture N8 最小返修：
+
+1. `canonical_station_result` evidence 继续比较 cited result 自身 `result=nok`。
+2. `validated_nok_detail` 自身保持 `result` forbidden/absent。
+3. Detail evidence 的 `upstream_result=nok` 改为比较其 accepted canonical parent
+   `station_result.result`。
+4. 增加一个合法正例与三个负例：detail 自带 result、parent result=ok、technical
+   failure impersonation。
+5. Technical failure 仍不能支持 `30003/UPSTREAM_NOK_SKIPPED`。
+
+未退化的 CLOSED 项：
+
+- N6 cycle-role/content fingerprint 未修改。
+- N7 stateful relation/detail-set 未修改。
+- UNKNOWN 仍只允许 heartbeat + strict diagnostic context。
+- payload/raw 仍保持 16/64 KiB、depth/key/array/string/type/encoding 和超限 reject。
+- event required/optional/forbidden、absent/null 与 `profile_id` 规则保持不变。
 
 已冻结的关键决定包括：
 
@@ -115,37 +143,74 @@ Architecture Thread 的任务包和 Gate matrix。
 - 所有有效事件强制 `config_hash`。
 - payload/raw payload 上限 16/64 KiB。
 
-这些产出是 planning freeze，不代表 Sprint 2 package 或 runtime integration 已交付。
+这些仍是 planning/contract 文档，不代表 Sprint 2 package、tests 或 runtime
+integration 已交付。Reliability findings 已关闭，但 Data Quality、Verification 与
+ChatGPT PM implementation authorization 尚未完成。
 
-## 6. 后续 Architecture Thread 阅读顺序
+## 6. 当前后续 Gate
+
+Reliability N8 定向复验已确认：
+
+1. `validated_nok_detail` 合法正例可构造。
+2. Detail 自身 result absent、canonical parent result=nok 的 comparison 唯一。
+3. 三个负例均有唯一 reject 结果。
+4. N6、N7 与既有 CLOSED items 无回归。
+
+下一步可进入 Data Quality review，并由 Verification 建立合同 Gate matrix。两项 review
+与 ChatGPT PM 授权完成前，implementation、tests、package、DB/API/Collector/V-PLC/
+Dashboard 接入仍全部禁止。
+
+## 7. 后续 Architecture Thread 阅读顺序
 
 1. `docs/thread_handoff/architecture.md`
 2. `docs/reports/architecture_context_restore.md`
-3. `docs/reports/sprint1_independent_gate_review.md`
-4. `docs/reports/sprint1_contract_hardening_report.md`
-5. `docs/contracts/line_configuration.md`
-6. `docs/reports/sprint2_generic_station_event_model_plan.md`
-7. `docs/contracts/station_event_model.md`
-8. `docs/contracts/dynamic_station_model.md`
-9. `docs/reports/phase2_sprint_plan.md`
-10. `docs/reports/phase2_thread_task_plan.md`
+3. `docs/reports/sprint2_station_event_reliability_review.md`
+4. `docs/reports/sprint2_generic_station_event_model_plan.md`
+5. `docs/contracts/station_event_model.md`
+6. `docs/reports/sprint1_independent_gate_review.md`
+7. `docs/reports/sprint1_contract_hardening_report.md`
+8. `docs/contracts/line_configuration.md`
+9. `docs/contracts/dynamic_station_model.md`
+10. `docs/reports/phase2_sprint_plan.md`
+11. `docs/reports/phase2_thread_task_plan.md`
 
-## 7. 下一 Thread 推荐第一步
+## 8. 下一 Thread 接手动作
 
-1. 重读上述 handoff、context、Sprint 2 plan 和 event contract。
-2. PM 决策已关闭，不再重新打开 package、MVP enum、UUID、payload limit、
-   `config_hash` 或 `nok_origin` 选择。
-3. 按顺序先交 Reliability 风险审计，再交 Data Quality 语义/血缘审计，最后由
-   Verification 建 Gate matrix。
-4. ChatGPT PM 汇总三方结论并明确授权前，不得编写业务实现、tests 或创建
+1. 重读上述 handoff、context、Reliability 报告、返修 plan 和 event contract。
+2. 进入 Data Quality review，审计完整性、血缘和重复/迟到语义。
+3. 由 Verification 建立合同 Gate matrix。
+4. 审计结论汇总并由 ChatGPT PM 明确授权前，不得编写业务实现、tests 或创建
    `common/station_event/`。
+5. Reliability recommendations 进入 Verification fixture 与 table-driven tests 设计，
+   但不阻塞 N8 关闭。
 
-## 8. 明确禁止事项
+## 9. 工作树与提交边界
+
+本轮允许修改：
+
+- `docs/contracts/station_event_model.md`
+- `docs/reports/sprint2_generic_station_event_model_plan.md`
+- `docs/thread_handoff/architecture.md`
+- `docs/reports/architecture_context_restore.md`
+- 必要时 `docs/DOC_INDEX.md`、`docs/reports/README.md`
+
+Reliability 报告由 Reliability Thread 维护，本轮只读。
+
+未来 docs commit / push 必须使用精确 allowlist，明确不要提交：
+
+- `docs/20260620_03_Edge MES Demo — ChatGPT PM Handoff.md`
+- `docs/Edge MES Demo 当前进度报告.md`
+- `docs/superpowers/`
+
+禁止使用 `git add .`。
+
+## 10. 明确禁止事项
 
 - 不把 Sprint 1 重新描述为 HOLD。
 - 不重复执行 Sprint 1 Contract Hardening。
 - 不把当前 planning freeze 误称为已完成实现。
-- 不绕过 Reliability → Data Quality → Verification review 顺序。
+- 不把 Reliability PASS 误写成 Sprint 2 implementation 已授权。
+- 不跳过 Data Quality / Verification Gate 与 ChatGPT PM authorization。
 - 不在未获 PM 授权时创建 station event package 或修改 tests。
 - 不提前修改 migration、DB、Collector、API、Dashboard 或运行链路。
 - 不创建 Phase-2 tag。

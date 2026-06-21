@@ -118,9 +118,12 @@ Phase-2 Sprint 2 planning freeze：
 
 - [`contracts/station_event_model.md`](contracts/station_event_model.md)
 - [`reports/sprint2_generic_station_event_model_plan.md`](reports/sprint2_generic_station_event_model_plan.md)
+- [`reports/sprint2_station_event_reliability_review.md`](reports/sprint2_station_event_reliability_review.md)
 
-以上条目表示 PM 决策已在合同与 planning 中冻结；仍需依次完成 Reliability、
-Data Quality、Verification review，Sprint 2 implementation 尚未开始。
+Reliability N8 定向复验结论为 `PASS WITH RECOMMENDATIONS`；N6、N7、N8、UNKNOWN、
+payload limits、event required fields 均 CLOSED 且无回归，新 Reliability blocker 为无。
+下一步可进入 Data Quality review 与 Verification Gate matrix；两项 review 与 ChatGPT PM
+授权完成前，Sprint 2 implementation 仍禁止。
 
 ## 7. 代码与配置入口
 
