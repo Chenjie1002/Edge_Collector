@@ -4,7 +4,9 @@
 Thread：Architecture / Integration
 当前里程碑：Phase-2 Sprint 2 Generic Station Event Model contract revision
 当前 Reliability Gate：**PASS WITH RECOMMENDATIONS**
-当前活动：N8 定向复验已 CLOSED；准备 Data Quality review 与 Verification Gate matrix
+当前 Data Quality Gate：**PASS WITH RECOMMENDATIONS**
+当前 Verification Gate：**HOLD / CHANGES REQUIRED**
+当前活动：V6/V7/V10 最小 docs-only 修订已完成，等待 Verification focused re-review
 （implementation 尚未开始）
 
 ## 1. 当前基线
@@ -19,19 +21,22 @@ Thread：Architecture / Integration
 | Sprint 1 commit | `b9f6a69 Phase 2 Sprint 1 flexible line configuration` |
 | Docs hygiene commit | `4215b7c Finalize Sprint 1 architecture handoff and review history` |
 | Sprint 2 planning freeze commit | `45fa2a8 Freeze Sprint 2 station event planning` |
-| HEAD | `45fa2a8` |
-| `origin/main` | `45fa2a8` |
+| HEAD | `60adac2` |
+| `origin/main` | `60adac2` |
 | Phase-2 tag | 未创建 |
 | 远程部署 | 未执行 |
 | rollback drill | 未执行 |
 | Sprint 2 Reliability focused re-review | `PASS WITH RECOMMENDATIONS` |
-| Sprint 2 | N6/N7/N8 与既有 findings 均 CLOSED；无新 Reliability blocker；implementation 未开始 |
-| 工作树 | 有未提交文档修改；最新已 push commit 仍为 `45fa2a8` |
+| Sprint 2 Data Quality focused re-review | `PASS WITH RECOMMENDATIONS`；R1~R5 无 remaining blocker |
+| Sprint 2 Verification Gate | `HOLD / CHANGES REQUIRED`；remaining V6/V7/V10 |
+| Sprint 2 | V6/V7/V10 docs-only 修订已完成，待 Verification focused re-review；implementation 未开始 |
+| 工作树 | 有未提交文档修改；最新已 push commit 为 `60adac2` |
 
-Sprint 1 已完成 final commit / push，Sprint 2 planning freeze 也已在 `45fa2a8`
+Sprint 1 已完成 final commit / push，Sprint 2 Reliability 文档已在 `60adac2`
 提交。Reliability N8 定向复验结论为 `PASS WITH RECOMMENDATIONS`；N8 已 CLOSED，
 N6、N7 和既有 CLOSED items 均无回归，未发现新 Reliability blocker。Sprint 2
-implementation 仍未开始。
+implementation 仍未开始。Data Quality focused re-review 已 PASS；Verification 当前
+HOLD 仅剩 V6/V7/V10，Architecture 已完成三个最小 docs-only 修订。
 
 ## 2. Sprint 1 已交付
 
@@ -147,18 +152,25 @@ Reliability 历史：
 integration 已交付。Reliability findings 已关闭，但 Data Quality、Verification 与
 ChatGPT PM implementation authorization 尚未完成。
 
-## 6. 当前后续 Gate
+## 6. Data Quality PASS 与 Verification V6/V7/V10 修订
 
-Reliability N8 定向复验已确认：
+Reliability 结论保持：
 
 1. `validated_nok_detail` 合法正例可构造。
 2. Detail 自身 result absent、canonical parent result=nok 的 comparison 唯一。
 3. 三个负例均有唯一 reject 结果。
 4. N6、N7 与既有 CLOSED items 无回归。
 
-下一步可进入 Data Quality review，并由 Verification 建立合同 Gate matrix。两项 review
-与 ChatGPT PM 授权完成前，implementation、tests、package、DB/API/Collector/V-PLC/
-Dashboard 接入仍全部禁止。
+Data Quality R1~R5 focused re-review 已 `PASS WITH RECOMMENDATIONS`。Verification
+remaining blockers：
+
+1. V6 payload/raw error-code mapping。
+2. V7 same canonical content + different raw fingerprint final decision。
+3. V10 mutually exclusive lifecycle / derived output。
+
+Architecture 已完成三个最小 docs-only 修订。下一步回 Verification focused re-review；
+Data Quality 仅需对 V10/R5 定向确认。ChatGPT PM 授权前，implementation、tests、
+package、DB/API/Collector/V-PLC/Dashboard 接入仍全部禁止。
 
 ## 7. 后续 Architecture Thread 阅读顺序
 
@@ -177,8 +189,8 @@ Dashboard 接入仍全部禁止。
 ## 8. 下一 Thread 接手动作
 
 1. 重读上述 handoff、context、Reliability 报告、返修 plan 和 event contract。
-2. 进入 Data Quality review，审计完整性、血缘和重复/迟到语义。
-3. 由 Verification 建立合同 Gate matrix。
+2. 交 Verification focused re-review V6/V7/V10。
+3. Data Quality 仅对 V10/R5 做定向确认。
 4. 审计结论汇总并由 ChatGPT PM 明确授权前，不得编写业务实现、tests 或创建
    `common/station_event/`。
 5. Reliability recommendations 进入 Verification fixture 与 table-driven tests 设计，
@@ -189,12 +201,13 @@ Dashboard 接入仍全部禁止。
 本轮允许修改：
 
 - `docs/contracts/station_event_model.md`
+- `docs/contracts/dynamic_station_model.md`
 - `docs/reports/sprint2_generic_station_event_model_plan.md`
 - `docs/thread_handoff/architecture.md`
 - `docs/reports/architecture_context_restore.md`
 - 必要时 `docs/DOC_INDEX.md`、`docs/reports/README.md`
 
-Reliability 报告由 Reliability Thread 维护，本轮只读。
+Data Quality 与 Reliability 报告均由各自 Thread 维护，本轮只读。
 
 未来 docs commit / push 必须使用精确 allowlist，明确不要提交：
 
@@ -210,7 +223,8 @@ Reliability 报告由 Reliability Thread 维护，本轮只读。
 - 不重复执行 Sprint 1 Contract Hardening。
 - 不把当前 planning freeze 误称为已完成实现。
 - 不把 Reliability PASS 误写成 Sprint 2 implementation 已授权。
-- 不跳过 Data Quality / Verification Gate 与 ChatGPT PM authorization。
+- 不把 Architecture 自评修订完成写成 Verification 已通过。
+- 不跳过 Verification focused re-review 与 ChatGPT PM authorization。
 - 不在未获 PM 授权时创建 station event package 或修改 tests。
 - 不提前修改 migration、DB、Collector、API、Dashboard 或运行链路。
 - 不创建 Phase-2 tag。

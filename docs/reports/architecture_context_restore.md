@@ -1,8 +1,10 @@
 # Architecture / Integration Context Restore
 
 更新时间：2026-06-21
-用途：恢复 Phase-2 Sprint 2 Reliability N8 定向复验通过后的上下文
+用途：恢复 Phase-2 Sprint 2 Verification HOLD 后 V6/V7/V10 docs-only 修订上下文
 当前 Reliability Gate：**PASS WITH RECOMMENDATIONS**
+当前 Data Quality Gate：**PASS WITH RECOMMENDATIONS**
+当前 Verification Gate：**HOLD / CHANGES REQUIRED**
 
 ## 1. 一句话恢复
 
@@ -11,26 +13,31 @@ Flexible Line Configuration 已通过 Independent Gate Review，并以 commit `b
 完成 final commit / push；docs hygiene commit 为 `4215b7c`；Sprint 2 planning freeze
 commit 为 `45fa2a8`。Reliability N8 定向复验结论为
 `PASS WITH RECOMMENDATIONS`；N8 已 CLOSED，N6、N7 与既有 CLOSED items 均无回归，
-且无新 Reliability blocker；implementation 尚未开始。
+且无新 Reliability blocker。Data Quality focused re-review 为
+`PASS WITH RECOMMENDATIONS`；Verification 当前 `HOLD / CHANGES REQUIRED` 仅剩
+V6/V7/V10。Architecture 已完成三个最小 docs-only 修订，等待 Verification focused
+re-review；implementation 尚未开始。
 
 ## 2. 当前 Git 与发布状态
 
 ```text
 branch: main
-HEAD: 45fa2a8
-origin/main: 45fa2a8
-latest commit: 45fa2a8 Freeze Sprint 2 station event planning
+HEAD: 60adac2
+origin/main: 60adac2
+latest commit: 60adac2 Address Sprint 2 station event reliability review
 Sprint 1 implementation: b9f6a69 Phase 2 Sprint 1 flexible line configuration
 Sprint 1 docs hygiene: 4215b7c Finalize Sprint 1 architecture handoff and review history
 tags: phase1-pass-20260619
 Phase-2 tag: not created
 remote deploy: not performed
 rollback drill: not performed
-Sprint 2 planning: N8 contract revision and focused re-review complete in working tree
+Sprint 2 planning: Verification V6/V7/V10 docs-only revision in working tree
 Reliability focused re-review: PASS WITH RECOMMENDATIONS
-latest pushed commit: 45fa2a8
+Data Quality focused re-review: PASS WITH RECOMMENDATIONS
+Verification Gate: HOLD / CHANGES REQUIRED, V6/V7/V10
+latest pushed commit: 60adac2
 uncommitted docs changes: yes
-required sequence: Data Quality -> Verification -> ChatGPT PM authorization
+required sequence: Verification focused re-review -> ChatGPT PM authorization
 Sprint 2 implementation: not started
 ```
 
@@ -172,17 +179,21 @@ PM 已冻结：
 - fact key、cycle/detail uniqueness、content fingerprint 和 stateful disposition 按合同
   分工冻结。
 
-## 9. 当前后续 Gate
+## 9. Verification HOLD 与当前后续 Gate
 
-Reliability 已验证：
+Reliability 已验证且不重开：
 
 1. `validated_nok_detail` positive evidence 可合法构造。
 2. Evidence-type comparison 只有一个可执行解释。
 3. 三个 N8 negative examples 均有唯一 reject 结果。
 4. N6、N7、UNKNOWN、payload、event-fields 无回归。
 
-下一步进入 Data Quality review 与 Verification Gate matrix。两项 review 与 ChatGPT PM
-授权完成前，implementation 仍禁止。
+Data Quality R1~R5 focused re-review 已 `PASS WITH RECOMMENDATIONS`。Verification
+remaining blockers 为 V6 error mapping、V7 raw variant decision 与 V10 lifecycle
+derived output。Architecture 已完成三个最小合同修订。
+
+下一步必须由 Verification focused re-review；Data Quality 仅定向确认 V10/R5。
+ChatGPT PM 授权前，implementation 仍禁止。
 
 ## 10. 下一 Architecture Thread 恢复顺序
 
@@ -195,17 +206,18 @@ Reliability 已验证：
 7. `docs/contracts/dynamic_station_model.md`
 8. `docs/reports/sprint1_independent_gate_review.md`
 
-第一任务是进入 Data Quality review，并由 Verification 建立合同 Gate matrix。完成两项
-review 后交 ChatGPT PM 汇总授权；不能直接进入 implementation。
+第一任务是交 Verification focused re-review V6/V7/V10，并由 Data Quality 定向确认
+V10/R5；之后交 ChatGPT PM 汇总授权，不能直接进入 implementation。
 
 ## 11. 工作树与提交边界
 
-当前 HEAD/origin/main 和最新 pushed commit 均为 `45fa2a8`；工作树存在未提交文档
+当前 HEAD/origin/main 和最新 pushed commit 均为 `60adac2`；工作树存在未提交文档
 修改。当前 tag 仍只有 `phase1-pass-20260619`，未 deploy、未 rollback drill。
 
 本轮 Architecture 允许修改：
 
 - `docs/contracts/station_event_model.md`
+- `docs/contracts/dynamic_station_model.md`
 - `docs/reports/sprint2_generic_station_event_model_plan.md`
 - `docs/thread_handoff/architecture.md`
 - `docs/reports/architecture_context_restore.md`
@@ -217,7 +229,7 @@ review 后交 ChatGPT PM 汇总授权；不能直接进入 implementation。
 - `docs/Edge MES Demo 当前进度报告.md`
 - `docs/superpowers/`
 
-Reliability 报告由 Reliability Thread 维护，本轮不得修改正文。
+Data Quality 与 Reliability 报告由各自 Thread 维护，本轮不得修改正文。
 
 ## 12. 禁止误读
 
@@ -230,4 +242,7 @@ Reliability 报告由 Reliability Thread 维护，本轮不得修改正文。
 - PM 决策冻结不等于 implementation authorization。
 - Reliability blocker 已关闭不等于 Sprint 2 implementation 已授权。
 - 当前 Reliability Gate 为 `PASS WITH RECOMMENDATIONS`。
+- 当前 Data Quality Gate 为 `PASS WITH RECOMMENDATIONS`。
+- 当前 Verification Gate 仍为 `HOLD / CHANGES REQUIRED`；Architecture 自评修订完成
+  不等于 focused re-review 已通过。
 - 当前没有 Phase-2 tag，也没有 Sprint 2 deploy / rollback drill。

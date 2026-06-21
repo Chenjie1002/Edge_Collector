@@ -1,7 +1,8 @@
 # Dynamic Station Model Contract
 
-更新时间：2026-06-19  
-状态：下一阶段逻辑数据模型，尚未实施、未创建 migration  
+更新时间：2026-06-21
+状态：Sprint 2 Data Quality projection/completeness 与 Verification V10 derived-output
+docs-only revision；尚未实施、未创建 migration
 适用范围：动态产线、工站、Buffer、PLC mapping、Trace、Quality 和 OEE
 
 ## 1. 目的
@@ -139,11 +140,15 @@
 - `collector_error_log`
 - `data_gap_event`
 
-所有新查询必须以 `line_id` 作为首要过滤维度。推荐逻辑唯一性：
+所有新查询必须以 `line_id` 作为首要过滤维度。event role/detail identity 以
+`station_event_model.md` 为权威：
 
 ```text
-PLC event identity:
-line_id + plc_id + station_id + plc_boot_id + cycle_counter
+production_result_key:
+line_id + plc_id + station_id + plc_boot_id + cycle_counter + production_result role
+
+station_nok_detail_key:
+parent_fact_key + detail_role + nok_code + nok_origin
 
 Station instance:
 line_id + station_id
@@ -173,6 +178,11 @@ line_id + unit_id
 (line_id, plc_id, station_id, plc_boot_id, cycle_counter)
 ```
 
+`cycle_event.result` 若为兼容现有 schema 而保留，只能是从 accepted canonical
+`station_result` 派生的 non-authoritative compatibility projection。它不得接收独立
+result authority，也不得与 canonical result 分别计数。每个 `production_result_key`
+只能投影一次 outcome。
+
 ### 4.2 `station_event`
 
 保存工件经过工站的追加式履历。它与 `cycle_event` 可一对一或一对多，但不得仅靠时间
@@ -185,24 +195,68 @@ line_id + unit_id
 - `quality_event_id`
 - `source_cycle_event_id`
 - line/PLC/station/unit/boot/counter 维度
-- `result`、`nok_code`、`nok_category`、`severity`
+- `station_nok_detail_key`、`nok_code`、`nok_category`、`severity`
 - `source`：`PLC/HMI/IMPORT`
 - `payload JSONB`
 
-一个 cycle 多个 NOK code 时可一 code 一行，便于 Pareto；原始 code 数组仍可保留在
-cycle payload 中作为证据。
+`quality_event` 是 detail-only projection，不是 production result authority。一个 cycle
+多个 accepted ordinary NOK detail 时可按不同 `station_nok_detail_key` 一 detail 一行，
+便于 Pareto；每行不得重复 `result` 或增加 NOK cycle/outcome count。duplicate、
+conflict、`system_reserved/30003` detail 不进入 ordinary defect projection。原始 code
+数组可保留为 evidence，但不能直接成为 ordinary defect row。
 
-### 4.4 `hold_event` 预留
+### 4.4 Projection authority 与 completeness
+
+`docs/contracts/station_event_model.md` 是 production result、detail uniqueness、duplicate/
+conflict 与 completeness 的权威合同：
+
+- `station_result` 是唯一 canonical production result carrier。
+- 每个 `production_result_key` 只允许一次 accepted outcome projection。
+- `cycle_event.result` 仅兼容派生；`quality_event` 仅 defect detail。
+- `station_cycle_complete`、raw evidence 和 `station_nok` 不创建第二个 outcome。
+- duplicate/conflict 不投影；`30003` 不进入 ordinary NOK、Quality、FPY 或 Pareto。
+
+Pareto 查询/聚合必须携带：
+
+```text
+nok_cycle_count
+nok_cycles_with_primary_detail
+missing_primary_detail_cycle_count
+detail_coverage
+pareto_status = complete | partial
+```
+
+accepted NOK result 没有 accepted primary detail 时，`pareto_status=partial`。不得从 parent
+静默合成 detail，也不得把 partial Pareto 展示为完整分布。
+
+未来 projection 若保存 lifecycle 派生元数据，字段语义必须直接复用
+`station_event_model.md` 的 `LifecycleDerivedOutput`：
+
+```text
+cycle_completeness
+traceability_status
+timeline_status
+projection_eligible
+parent_relation_status
+detail_relation_status
+late_status
+```
+
+这些是 derived audit/query metadata，不是新的 source event、设备控制状态或本轮 DB
+migration 要求。`late_status` 在 Sprint 2 MVP 固定为
+`not_evaluated_future_runtime`。
+
+### 4.5 `hold_event` 预留
 
 追加式记录 `HOLD_PLACED/HOLD_RELEASED/HOLD_SCRAPPED/HOLD_REMOVED`。事件必须来自
 PLC/HMI 或受控导入，Edge 不提供主动控制设备的命令语义。
 
-### 4.5 `rework_event` 预留
+### 4.6 `rework_event` 预留
 
 追加式记录 `REQUESTED/STARTED/COMPLETED/FAILED/ROUTE_ENTERED`，包含 `rework_round`、
 来源事件和 route reference。只有 feature flag 开启且来源事件明确时才形成业务投影。
 
-### 4.6 事件关联键
+### 4.7 事件关联键
 
 每条事件应有不可变 `event_id`，并携带可审计关联键：
 
@@ -462,6 +516,8 @@ JSONB 只对已证明高频使用的路径建立表达式或 GIN 索引。禁止
 - `station_type`、payload schema 和 NOK template 有版本化发布镜像。
 - cycle/station/quality/hold/rework 的关联键和来源证据明确。
 - boot/profile/time-window isolation 可由索引和 API 合同执行。
+- production outcome、defect detail 与 Pareto completeness 遵守
+  `station_event_model.md` 的唯一投影规则。
 - station-level 与 line-level 聚合不依赖 WS03 硬编码。
 - 保留策略区分事实、payload、raw bytes 和 metrics。
 - Hold/Rework 是追加事件，不覆盖原始 cycle/station event。

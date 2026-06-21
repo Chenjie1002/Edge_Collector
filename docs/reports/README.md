@@ -99,6 +99,12 @@ YYYY-MM-DD-verification-02.md
   Reliability 审计历史与多轮 re-review 证据；当前 N8 定向复验结论为
   `PASS WITH RECOMMENDATIONS`，N6、N7、N8、UNKNOWN、payload limits 与 event
   required fields 均 CLOSED，且无新 Reliability blocker。
+- `sprint2_station_event_data_quality_review.md`：Sprint 2 Data Quality 首轮审查；
+  文件前段保留历史 HOLD；当前 focused re-review 结论为
+  `PASS WITH RECOMMENDATIONS`，R1~R5 无 remaining blocker。
+- `sprint2_station_event_verification_matrix.md`：Sprint 2 Verification Gate matrix；
+  当前结论为 `HOLD / CHANGES REQUIRED`，remaining blocker 为 V6、V7、V10。
 
-下一步可进入 Data Quality review 与 Verification Gate matrix；两项 review 与 ChatGPT PM
-授权完成前，不得开始 implementation。
+Architecture 已完成 V6/V7/V10 最小 docs-only 修订。下一步必须回 Verification focused
+re-review，并由 Data Quality 仅定向确认 V10/R5。ChatGPT PM 授权前不得开始
+implementation。

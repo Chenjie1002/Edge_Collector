@@ -1,6 +1,6 @@
 # Edge MES Demo 文档索引
 
-更新时间：2026-06-20
+更新时间：2026-06-21
 
 ## 1. 当前协作范围
 
@@ -119,11 +119,16 @@ Phase-2 Sprint 2 planning freeze：
 - [`contracts/station_event_model.md`](contracts/station_event_model.md)
 - [`reports/sprint2_generic_station_event_model_plan.md`](reports/sprint2_generic_station_event_model_plan.md)
 - [`reports/sprint2_station_event_reliability_review.md`](reports/sprint2_station_event_reliability_review.md)
+- [`reports/sprint2_station_event_data_quality_review.md`](reports/sprint2_station_event_data_quality_review.md)
+- [`reports/sprint2_station_event_verification_matrix.md`](reports/sprint2_station_event_verification_matrix.md)
 
 Reliability N8 定向复验结论为 `PASS WITH RECOMMENDATIONS`；N6、N7、N8、UNKNOWN、
 payload limits、event required fields 均 CLOSED 且无回归，新 Reliability blocker 为无。
-下一步可进入 Data Quality review 与 Verification Gate matrix；两项 review 与 ChatGPT PM
-授权完成前，Sprint 2 implementation 仍禁止。
+Data Quality focused re-review 结论为 `PASS WITH RECOMMENDATIONS`，R1~R5 无 remaining
+blocker。Verification 当前为 `HOLD / CHANGES REQUIRED`，仅剩 V6 payload/raw error
+mapping、V7 raw variant final decision、V10 lifecycle derived output。Architecture 已完成
+三个最小 docs-only 修订，下一步必须做 Verification focused re-review；ChatGPT PM
+授权前 Sprint 2 implementation 仍禁止。
 
 ## 7. 代码与配置入口
 
