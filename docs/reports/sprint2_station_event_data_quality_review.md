@@ -977,6 +977,302 @@ implementation 已获 ChatGPT PM 授权。
 - commit / push / tag / deploy。
 - rollback drill。
 - `git add .`。
+*** End of File
+
+---
+
+## 38. Current implementation review status
+
+本节位于文件末尾，是当前最终控制结论；详细 findings 与证据见第 32～36 节。
+
+```text
+HOLD
+DQ-B1: STILL OPEN
+DQ-B4: STILL OPEN
+DQ-B5: STILL OPEN
+R3: STILL OPEN
+R5: CLOSED
+```
+
+在 DQ-F1～DQ-F3 完成最小 repair 与 targeted re-review 前，不具备 implementation
+commit/push 条件。
+
+---
+
+## 37. 当前 Data Quality implementation 控制结论
+
+本节是本报告当前最终控制结论，覆盖第 31 节 implementation 前
+`PASS WITH RECOMMENDATIONS` 状态。详细 implementation findings 与证据见第 32～36 节。
+
+```text
+HOLD
+DQ-B1 historical config snapshot lineage: STILL OPEN
+DQ-B4 validated NOK detail traceability: STILL OPEN
+DQ-B5 raw evidence authority: STILL OPEN
+R3 raw evidence / fingerprint / projection authority: STILL OPEN
+R5 temporal/lifecycle traceability consistency: CLOSED
+```
+
+Remaining blockers：
+
+1. parent relation 未完整绑定 historical snapshot 的 `profile_id/station_type`。
+2. accepted compatibility/non-`nok_detail` cited detail 可支持
+   `validated_nok_detail` evidence。
+3. historical snapshot 缺 exact decoder 时，raw-only 或 raw/normalized mismatch 可
+   fail-open，并产生 authoritative production outcome。
+
+上述三项完成最小 implementation repair、focused tests 与 targeted sanity re-review
+前，不具备 implementation commit/push 条件。本 Thread 未授权或执行 implementation、
+commit、push、tag、deploy、rollback drill 或 integration。
+
+---
+
+## 32. Sprint 2 Data Quality Focused Implementation Review（2026-06-23）
+
+本节是 Generic Station Event Model implementation 的独立、read-only focused review。
+只复验 DQ-B1、DQ-B4、DQ-B5、R3 与 R5；不重开完整 Data Quality review，不修改
+implementation、tests 或合同。
+
+### 32.1 当前基线与范围
+
+```text
+HEAD: e9abe45 Finalize Sprint 2 station event review gates
+tag: phase1-pass-20260619
+implementation: uncommitted working tree
+common/station_event/: present
+Collector/API/DB/Dashboard/V-PLC integration: none
+migration: none
+commit/push/tag/deploy/rollback drill: not performed by this review
+```
+
+本轮读取：
+
+- `common/station_event/validation.py`
+- `common/station_event/projection.py`
+- `common/station_event/fingerprint.py`
+- `common/station_event/lifecycle.py`
+- `common/station_event/serialization.py`
+- `common/station_event/models.py`
+- `tests/test_station_event_model.py`
+- 本 Data Quality report
+- Sprint 2 Reliability review
+- Sprint 2 Verification matrix
+- Sprint 2 implementation report
+- Architecture handoff/context restore
+
+## 33. Focused status
+
+### 33.1 DQ-B1 historical config snapshot lineage
+
+结论：**STILL OPEN**
+
+已通过：
+
+- stateful validation 必须 lookup event 自身 `config_hash` 对应的 historical snapshot。
+- event 自身会重新校验 line、station、PLC、station type、profile 与 config hash。
+- cross-config、cross-station、cross-cycle parent 已有 fail-closed tests。
+
+remaining blocker：
+
+- `_parent_matches()` 的 relation fields 包含 line/PLC/station/boot/cycle/counter/
+  unit/DMC/config，但未包含 `profile_id` 与 `station_type`。
+- 独立探针将 accepted parent 的 `profile_id` 改为
+  `wrong_historical_profile`，或将 `station_type` 改为 `vision`，stateful decision
+  仍为 `accept`。
+- 因此 parent relation 没有完整重放 historical snapshot lineage；parent 可在 event
+  本身通过 snapshot validation 后，以错误 profile/station type 支持 relation。
+
+最小 repair：
+
+- shared canonical parent matcher 增加 parent/detail `profile_id` 与 `station_type`
+  一致性。
+- 或在使用 parent 前，对 parent 使用相同 historical snapshot 执行完整 config lineage
+  validation；任一 mismatch fail closed。
+
+### 33.2 DQ-B4 validated NOK detail traceability
+
+结论：**STILL OPEN**
+
+已通过：
+
+- canonical parent 必须 lookup accepted。
+- canonical parent 必须为 authoritative PLC/V-PLC
+  `station_result(result=nok)`。
+- canonical parent 必须 `correlation.event_role=production_result`。
+- line/station/cycle/config、primary code/origin、secondary origin relation 已覆盖。
+- duplicate/conflict/rejected canonical parent 与错误 parent role 已 fail closed。
+- rejected decision 不进入 production outcome 或 defect projection。
+
+remaining blocker：
+
+- cited detail record 只检查 lookup accepted、`event_type=station_nok`、自身不携带
+  `result`，随后直接进入 parent relation；没有重新要求
+  `correlation.event_role=nok_detail`，也没有对 cited detail 重放完整 stateless/
+  historical validation。
+- 独立探针把 cited detail 的 `event_role` 改为 `compatibility`，同时由 state index
+  返回 `disposition=accept`，最终 `validated_nok_detail` evidence 仍被 accepted。
+- 因此 non-authoritative/compatibility cited detail 仍可形成 validated traceability。
+
+最小 repair：
+
+- evidence path 必须要求 cited detail `correlation.event_role=nok_detail`。
+- cited detail 必须是通过同 historical snapshot 与 ordinary detail relation validation
+  的 accepted canonical detail；不能只信任 lookup wrapper 的 accepted 标记。
+
+### 33.3 DQ-B5 raw evidence authority
+
+结论：**STILL OPEN**
+
+已通过：
+
+- binary/image/PDF/WebP/generic base64、binary MIME/key hint 与 repeated-log content
+  已 fail closed。
+- raw fingerprint 独立于 content fingerprint。
+- raw variant 是 audit subtype，不改变 canonical identity。
+
+remaining blocker：
+
+- raw/normalized authority comparison 只在 historical snapshot 提供 callable
+  `decode_raw_payload` 时执行。
+- snapshot 没有 decoder 时，raw-only event 与 raw/normalized 明显不一致 event 均可
+  accepted。
+- 这违反 raw evidence 不得替代 normalized payload，以及 exact decoder 缺失时必须
+  fail closed 的要求。
+
+独立探针：
+
+```text
+RAW_ONLY accept None projection_eligible=true production_outcome=ok
+RAW_NORMALIZED_NO_DECODER accept None projection_eligible=true production_outcome=ok
+```
+
+最小 repair：
+
+- `raw_payload` 存在时 historical snapshot 必须提供 exact decoder；缺失时 reject
+  `EVENT_LINEAGE_INVALID`、`RAW_PARSE_ERROR` 或合同选定的唯一稳定错误码。
+- raw-only 永远不得形成 canonical business event。
+- raw + normalized 必须经 exact decoder 比较；无法比较必须 fail closed。
+
+### 33.4 R3 raw evidence / fingerprint / projection authority
+
+结论：**STILL OPEN**
+
+已通过：
+
+```text
+same canonical content + same raw fingerprint
+→ duplicate
+
+same canonical content + different raw fingerprint
+→ duplicate + audit_subtype=raw_variant
+
+different canonical content
+→ conflict
+```
+
+- duplicate/raw_variant 不产生第二个 production result。
+- conflict 不投影 production outcome。
+
+remaining blocker：
+
+- 在进入 duplicate/conflict/raw_variant 裁决前，raw-only 或无法使用 exact decoder
+  对照的 raw/normalized event 可先被 accepted，并由 `projection_for()` 产生 authoritative
+  production outcome。
+- 因此 fingerprint decision 本身正确，但完整 R3 authority chain 仍可绕过。
+
+### 33.5 R5 temporal/lifecycle traceability consistency
+
+结论：**CLOSED**
+
+- `LifecycleDerivedOutput` 八字段完整。
+- `station_cycle_complete` stateless 禁止携带 result，projection 也不产生 outcome。
+- `station_result` 是唯一 authoritative production result。
+- heartbeat 固定 diagnostic-only。
+- start/complete 双缺失唯一状态为
+  `partial_cycle_missing_start_and_complete`。
+- result-only + unit/DMC absent 固定 `cycle_only`。
+- reject/duplicate/conflict 的 lifecycle output 与 projection eligibility 不矛盾。
+- timestamp reversal 只形成 diagnostic timeline status，不改写 source timestamp 或
+  canonical result。
+
+## 34. Findings
+
+### DQ-F1 — historical parent snapshot lineage 不完整
+
+严重性：**blocker**
+
+parent `profile_id` / `station_type` mismatch 可通过 shared parent matcher，未满足
+historical snapshot full-lineage requirement。
+
+### DQ-F2 — compatibility cited detail 可形成 validated NOK detail evidence
+
+严重性：**blocker**
+
+cited detail 的 `correlation.event_role` 未强制为 `nok_detail`，也未重放完整 accepted
+detail validation。
+
+### DQ-F3 — decoder 缺失时 raw authority fail-open
+
+严重性：**blocker**
+
+raw-only 与 raw/normalized mismatch 在 snapshot 无 decoder 时均 accepted，并可产生
+authoritative production outcome。
+
+## 35. Test evidence
+
+执行：
+
+```text
+git status --short
+git diff -- common/station_event tests/test_station_event_model.py
+.venv/bin/python -m compileall common tests
+.venv/bin/python -m pytest tests/test_station_event_model.py -q
+.venv/bin/python -m pytest tests -q
+git diff --check
+```
+
+结果：
+
+```text
+compileall: PASS
+focused station_event: 119 passed
+broader tests: 207 passed
+git diff --check: PASS
+unrelated failures: none
+```
+
+说明：`common/station_event/` 与 `tests/test_station_event_model.py` 当前为 untracked，
+因此 `git diff -- common/station_event tests/test_station_event_model.py` 无输出；实际内容
+已逐文件读取并通过上述测试执行。
+
+## 36. Focused implementation review decision
+
+结论：
+
+```text
+HOLD
+```
+
+| 项目 | 状态 |
+| --- | --- |
+| DQ-B1 historical config snapshot lineage | **STILL OPEN** |
+| DQ-B4 validated NOK detail traceability | **STILL OPEN** |
+| DQ-B5 raw evidence authority | **STILL OPEN** |
+| R3 raw evidence / fingerprint / projection authority | **STILL OPEN** |
+| R5 temporal/lifecycle traceability consistency | **CLOSED** |
+
+决策：
+
+- Remaining Data Quality blocker：**yes，DQ-F1/DQ-F2/DQ-F3**。
+- Need Architecture repair：**yes，最小 implementation repair；不改合同语义**。
+- Need Reliability re-review：**no**。本轮 findings 是 historical lineage、cited-detail
+  authority 与 raw authority 的 Data Quality focused gap。
+- Need Verification re-review：**yes，repair 后只做 DQ-F1～F3 targeted sanity check**。
+- Eligible for implementation commit/push：**no**。
+
+本 review 只修改本 Data Quality report；未修改 implementation、tests、contracts、
+Collector/API/DB/Dashboard/V-PLC，未创建 migration，未 commit/push/tag/deploy 或执行
+rollback drill。
 
 ---
 
@@ -1198,3 +1494,172 @@ PASS WITH RECOMMENDATIONS
 - commit / push / tag / deploy。
 - rollback drill。
 - `git add .`。
+
+---
+
+## 39. Current implementation review final status
+
+本节是文件末尾的当前最终控制结论。第 31 节是 implementation 前的历史状态；当前
+implementation focused findings 与证据见第 32～36 节。
+
+```text
+HOLD
+DQ-B1 historical config snapshot lineage: STILL OPEN
+DQ-B4 validated NOK detail traceability: STILL OPEN
+DQ-B5 raw evidence authority: STILL OPEN
+R3 raw evidence / fingerprint / projection authority: STILL OPEN
+R5 temporal/lifecycle traceability consistency: CLOSED
+```
+
+在 DQ-F1～DQ-F3 完成最小 implementation repair、focused tests 与 targeted sanity
+re-review 前，不具备 implementation commit/push 条件。
+
+---
+
+## 40. Sprint 2 Data Quality Targeted Re-review Result（2026-06-23）
+
+本节只复验上一轮 HOLD 的 DQ-F1～DQ-F3，并确认 R3 raw evidence / fingerprint /
+projection authority chain；不重开完整 Data Quality review。
+
+结论：**PASS WITH RECOMMENDATIONS**
+
+### Focused status
+
+- DQ-F1 parent profile/station_type lineage：**CLOSED**。
+  `_parent_matches()` 的 shared parent relation 已在既有
+  line/PLC/station/boot/cycle/counter/unit/DMC/config relation 上增加
+  `profile_id` 与 `station_type` exact comparison。mismatch 稳定
+  `reject / PARENT_EVENT_INVALID`，且不产生 projection。既有
+  `event_role=production_result`、authoritative PLC/V-PLC source/actor、primary/
+  secondary code-origin relation与 `30003` skip parent relation未被削弱。
+- DQ-F2 cited detail role/canonical validation：**CLOSED**。
+  `validated_nok_detail` cited record 必须先是 accepted lookup，再满足
+  `event_type=station_nok`、自身不携带 authoritative `result`、
+  `correlation.event_role=nok_detail`，并通过 historical config 下的 ordinary
+  canonical `validate_event()`。随后继续 lookup accepted canonical NOK parent 并复用
+  `_parent_matches()` 重放完整 parent relation。compatibility、diagnostic、wrong/
+  missing role、non-accepted cited detail、non-accepted parent 与 wrong parent
+  relation 均 fail closed；reject 不产生 production outcome、defect detail、
+  compatibility projection、operator defect 或 Pareto input。
+- DQ-F3 raw authority fail-closed：**CLOSED**。
+  historical snapshot 下只要存在 `raw_payload`，就必须提供 callable
+  `decode_raw_payload`；missing/exception 返回 `RAW_PARSE_ERROR`。decoder 存在时，
+  raw-only 或 decoded/normalized canonical mismatch 返回
+  `RAW_NORMALIZED_MISMATCH`；exact canonical match 可继续进入正常 stateful
+  validation。raw rejection 发生在 duplicate/conflict/raw_variant lookup 前，因此
+  raw-only、decoder-missing 与 mismatch event 不能先 accepted 或占据 authoritative
+  slot。
+- R3 raw evidence / fingerprint / projection authority chain：**CLOSED**。
+  `validate_duplicate_or_conflict()` 的 content/raw fingerprint 规则未改变；
+  same-content/same-raw 仍 duplicate，same-content/different-raw 仍
+  `duplicate + RAW_VARIANT`，different-content 仍 conflict。raw_variant stateful
+  fixture 同时提供 normalized payload 与 historical decoder，两个 raw variant 均
+  解码到相同 canonical payload，不绕开 raw authority chain。reject、duplicate 与
+  conflict 均不产生 authoritative production outcome；rejected detail 不产生 defect
+  projection。
+
+### Findings
+
+- 未发现新的 Data Quality blocker。
+- DQ-F1～DQ-F3 的修复均位于 shared validation/authority path，而不是仅靠 fixture
+  特判。
+- Non-blocking recommendation：当前 suite 已覆盖 DQ-F1 mismatch、cited-detail
+  wrong/missing role、canonical parent replay、decoder missing/exception、
+  raw-normalized mismatch、raw authority projection isolation 与合法 raw_variant。
+  建议后续在允许修改 tests 的独立任务中，再增加两个具名 regression：
+  `non-accepted cited detail record` 与 `raw-only + callable decoder`。本轮只读探针已
+  分别确认其结果为 `UPSTREAM_EVIDENCE_INVALID` 与
+  `RAW_NORMALIZED_MISMATCH`，故该覆盖粒度建议不阻塞 Gate。
+
+### Tests
+
+```text
+git status:
+HEAD/origin/main = e9abe45
+working tree contains pre-existing uncommitted implementation/tests/reports/.gitignore
+
+git diff -- common/station_event tests/test_station_event_model.py:
+no tracked diff output; both requested paths are pre-existing untracked files
+
+compileall:
+PASS
+
+focused station_event:
+128 passed in 0.05s
+
+broader tests:
+216 passed in 0.92s
+
+targeted DQ-F1/DQ-F2/DQ-F3/R3:
+22 passed, 106 deselected in 0.02s
+
+independent probes:
+RAW_ONLY_WITH_DECODER -> RAW_NORMALIZED_MISMATCH, no authoritative outcome
+RAW_EXACT_MATCH -> valid
+NON_ACCEPTED_CITED_DETAIL -> reject / UPSTREAM_EVIDENCE_INVALID, no projection
+
+git diff --check:
+PASS
+
+unrelated failures:
+none in the required commands
+```
+
+### Files changed by this review
+
+- `docs/reports/sprint2_station_event_data_quality_review.md`
+
+### Scope audit
+
+- implementation code modified：**no**
+- tests modified：**no**
+- contracts modified：**no**
+- Collector/API/DB/Dashboard/V-PLC modified：**no**
+- migration created：**no**
+- tag created：**no**
+- deploy：**no**
+- rollback drill：**no**
+- commit/push：**no**
+
+### Decision
+
+- Remaining Data Quality blocker：**no**
+- Need Architecture repair：**no**
+- Need Reliability re-review：**no**
+- Need Verification targeted sanity check：**yes**。只做 DQ-F1～DQ-F3 targeted
+  sanity check；不重开完整 Verification review。
+- Eligible for implementation commit/push：**no**。Data Quality targeted Gate 已关闭，
+  但仍须 Verification targeted sanity check 通过，并由 ChatGPT PM 给出精确 allowlist
+  授权。
+
+### Thread Health
+
+- 本 Thread 已完成的主要任务：重读指定 implementation/tests/reports/handoff；复验
+  DQ-F1～DQ-F3 与 R3 authority chain；运行 128/216 tests、22 个 targeted tests 与
+  3 个独立边界探针；形成 targeted Gate 结论。
+- 当前上下文是否仍适合继续：**适合完成本轮 Data Quality 收口；不应在本 Thread
+  扩大到 Verification、implementation 或 commit/push。**
+- 是否建议新开 Thread：**yes**。
+- 如果建议新开，请给出 handoff 摘要：基线 `e9abe45`；Data Quality DQ-F1～DQ-F3
+  与 R3 authority chain 已 CLOSED；128/216 tests PASS；22 个 targeted tests PASS；
+  下一步仅做 Verification DQ-F1～DQ-F3 targeted sanity check；通过并获得 PM 精确
+  授权前不得 commit/push/integration。
+- 是否存在上下文不足、历史信息可能遗失、或需要重新读取文件的风险：**低**。新
+  Thread 应至少读取本节、implementation report 第 13 节、`_config()`、
+  `_evidence_error()`、`_parent_matches()` 与对应 targeted tests。
+
+## 41. Current Data Quality control conclusion
+
+本节覆盖第 39 节 HOLD：
+
+```text
+PASS WITH RECOMMENDATIONS
+DQ-F1 parent profile/station_type lineage: CLOSED
+DQ-F2 cited detail role/canonical validation: CLOSED
+DQ-F3 raw authority fail-closed: CLOSED
+R3 raw evidence / fingerprint / projection authority chain: CLOSED
+```
+
+Data Quality remaining blocker 已清零。本结论不授权 commit/push；Verification
+DQ-F1～DQ-F3 targeted sanity check 与 ChatGPT PM 精确授权完成前，不得进入
+Collector/API/DB/Dashboard/V-PLC integration。

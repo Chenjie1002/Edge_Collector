@@ -1819,3 +1819,430 @@ PASS WITH RECOMMENDATIONS
 - PM 可以进入 docs-only 精确 allowlist commit / push 决策。
 - 可以继续 Data Quality review 与 Verification Gate matrix。
 - Sprint 2 implementation、tag、deploy、rollback drill：仍禁止。
+
+---
+
+## 44. Sprint 2 Reliability Focused Implementation Review
+
+日期：2026-06-22
+基线：`e9abe45 Finalize Sprint 2 station event review gates`
+范围：只复验 implementation repair 后 B2～B4 的 parent / evidence / detail-set
+可靠性语义；不重开完整 Sprint 2 review。
+
+总结论：**HOLD**
+
+Focused status:
+
+- R-B2 30003 parent/evidence isolation：**OPEN**。cross-station、cross-cycle、future /
+  non-result parent、缺失 evidence、technical-failure evidence 均已 fail closed；合法
+  same-cycle skip parent 保持 non-production isolated，`30003` 不进入 ordinary
+  defect、production NOK 或 Pareto。但独立变异探针确认，当前
+  `station_nok(30003)` 可引用与 detail/current evidence 不同 `config_hash` 的 accepted
+  `station_result(result=skip)` parent，仍返回 `accept`。parent relation 尚未完整绑定
+  canonical config lineage，`parent/evidence mismatch fail-closed` 未完全关闭。
+- R-B3 detail-set uniqueness：**CLOSED**。secondary 与 primary code 重复、secondary
+  与已有 secondary code 重复均稳定
+  `reject / DETAIL_CODE_DUPLICATE`；distinct secondary accepted；缺 primary 的
+  secondary 保持 `PRIMARY_DETAIL_REQUIRED`。重复 detail 的 decision 不进入 projection，
+  不产生 production NOK、ordinary defect 或 Pareto detail。
+- R-B4 validated NOK detail parent semantics：**OPEN**。missing、OK、duplicate、
+  conflict、rejected canonical parent 均已 reject；detail 自身 authoritative result
+  仍 forbidden；direct predecessor 与 unit/DMC subject match 已执行。但 canonical
+  parent 与 cited detail 之间只比较
+  line/PLC/station/boot/cycle/counter/unit/DMC，未校验合同要求的
+  `config_hash`、PLC/V-PLC source authority，以及 primary detail 的 canonical
+  `nok_code/nok_origin` parent relation。独立探针分别将 parent 改为不同 config、
+  不同合法 authority、不同 primary code，三种输入均错误返回 `accept`。
+
+Blockers:
+
+- R-B2：`_parent_matches()` 的 `30003` 分支未比较 parent/detail `config_hash`，导致跨
+  config accepted skip parent 可支持 system-reserved detail。
+- R-B4：`_evidence_error()` 解析 canonical parent 后未完整重放 ordinary
+  `station_nok` parent relation；缺少 parent/detail config、source authority 与
+  primary/secondary code-origin 语义校验。
+- 当前 focused tests 未覆盖上述四个 fail-closed 负例。
+
+Required Architecture repairs:
+
+- 不需要修改已冻结合同语义。
+- Implementation Thread 需做最小修复：
+  1. `30003` current skip parent relation 增加 parent/detail `config_hash` 一致性。
+  2. `validated_nok_detail` canonical parent 增加 parent/detail `config_hash` 与
+     PLC/V-PLC source/actor authority 一致性。
+  3. 对 cited primary detail，canonical parent 的 `nok_code/nok_origin` 必须完全一致；
+     对 secondary detail，code 可不同但 `nok_origin` 必须一致。
+  4. 增加对应 regression tests，并确认错误稳定为 `PARENT_EVENT_INVALID` 或
+     `UPSTREAM_EVIDENCE_INVALID`。
+
+Recommendations:
+
+- 将 ordinary detail 的 parent matcher 抽成单一 relation helper，并由 current detail
+  validation 与 `validated_nok_detail` evidence validation 共用，避免两条路径再次漂移。
+- focused tests 增加 same-PLC boot mismatch、跨 PLC source authority、config mismatch、
+  primary code/origin mismatch 与 secondary origin mismatch 的 table-driven matrix。
+- 保留现有 B2 cross-station/cycle、B3 duplicate code、B4 missing/non-accepted parent
+  与 technical failure fixtures。
+
+Need Verification re-review:
+
+- **yes**。最小 repair 后只需定向复验 R-B2 config-bound skip parent 与 R-B4 canonical
+  parent full relation；无需重开 B1/B5 或完整 Sprint 2 review。
+
+Need Data Quality review:
+
+- **yes**。R-B4 直接影响 canonical parent lineage 与 evidence authority；本
+  Reliability HOLD 关闭后，再完成既定 B1/B4/B5 focused Data Quality sign-off。
+
+Eligible for implementation commit/push:
+
+- **no**
+- Conditions：关闭 R-B2/R-B4；新增 regression tests；focused/root tests、
+  compileall、`git diff --check` 通过；Verification 与 Data Quality focused review 无
+  blocker；ChatGPT PM 明确授权。
+
+Scope checks:
+
+- Collector/API/DB/Dashboard/V-PLC modified：**no**
+- migration created：**no**
+- tag created：**no**；当前仍只有 `phase1-pass-20260619`
+- deploy：**no**
+- rollback drill：**no**
+- commit/push：**no**
+- PM handoff / progress report / docs/superpowers staged or modified：**未 staged；仍为
+  既有 untracked 内容，本 review 未修改**
+
+Test evidence:
+
+- compileall：**PASS**
+- focused station_event：**107 passed in 0.06s**
+- broader tests：root `tests/` **195 passed in 1.23s**
+- git diff --check：**PASS**
+- known unrelated failures：repo-root 无参数 pytest 在 collection 阶段仍有 **10 个
+  `ModuleNotFoundError: app`**；属于既有 API/Collector/V-PLC 顶层 package layout，
+  不计为本次 failure。
+
+Independent focused evidence:
+
+```text
+B4_PARENT_CONFIG_MISMATCH accept None
+B4_PARENT_AUTHORITY_MISMATCH accept None
+B4_PRIMARY_PARENT_CODE_MISMATCH accept None
+B2_SKIP_PARENT_CONFIG_MISMATCH accept None
+B3_DUP_PROJECTION reject DETAIL_CODE_DUPLICATE False None
+```
+
+Files changed by this review:
+
+- `docs/reports/sprint2_station_event_reliability_review.md`
+
+Thread Health:
+
+- 本 Thread 已完成的主要任务：读取指定报告、合同、implementation、tests 与 handoff；
+  复验 B2～B4 contract-to-code-to-test 语义；运行 compileall、focused/root tests、scope
+  checks；补做 parent/evidence/detail-set 独立变异探针；形成 focused Gate 判断。
+- 当前上下文是否仍适合继续：**适合完成本轮 Reliability 收口；不适合直接修改
+  implementation，因为本 Thread 被限定为只读 review。**
+- 是否建议新开 Thread：**yes，交回 Implementation repair Thread，仅修上述
+  R-B2/R-B4。**
+- 如果建议新开，请给出 handoff 摘要：基线 `e9abe45`；Verification B1～B5 CLOSED，
+  但 Reliability focused review 发现 B2 skip parent config lineage 与 B4 canonical
+  parent config/authority/code-origin relation 仍可绕过；B3 CLOSED；只做最小
+  validator + tests repair，不改合同、不接 integration；修复后回 Reliability /
+  Verification 定向复验。
+- 是否存在上下文不足、历史信息可能遗失、或需要重新读取文件的风险：**低**。新 Thread
+  应读取本节、Verification 第 33～37 节、implementation report 第 7～10 节，以及
+  `validation.py` 的 `_parent_matches()`、`_evidence_error()`。
+
+本轮未修改 implementation、tests、合同、handoff、Collector、API、DB、Dashboard 或
+V-PLC，未 commit/push/tag/deploy/rollback drill。
+
+## 45. 当前 Reliability 控制结论
+
+本节覆盖第 43 节 planning-stage 控制结论，并作为 implementation focused review 后的
+当前控制结论：
+
+```text
+HOLD
+R-B2: OPEN
+R-B3: CLOSED
+R-B4: OPEN
+```
+
+在 R-B2/R-B4 最小 implementation repair、focused re-review、Data Quality review 与
+ChatGPT PM 明确授权完成前，不具备 implementation commit/push 条件。
+
+---
+
+## 46. Sprint 2 Reliability Focused Re-review Result
+
+日期：2026-06-22
+基线：`e9abe45 Finalize Sprint 2 station event review gates`
+范围：只复验 R-B2/R-B4 repair，并轻量确认 R-B3/B5 未回归。
+
+结论：**HOLD**
+
+Focused status:
+
+- R-B2 30003 parent config_hash isolation：**CLOSED**。统一 parent matcher 已比较
+  line/PLC/station/boot/cycle/counter/unit/DMC/config；parent 必须为 accepted、
+  authoritative PLC/V-PLC `station_result(result=skip)`。同 station/cycle 但跨 config
+  parent 稳定 `reject / PARENT_EVENT_INVALID`；合法 same-config skip parent accepted，
+  但 `30003` projection 保持 non-production isolated。
+- R-B4 canonical parent authority/config/code-origin relation：**仍 OPEN，仅剩 canonical
+  role blocker**。config mismatch、PLC/V-PLC authority mismatch、primary code mismatch、
+  primary/secondary origin mismatch、missing/non-accepted/OK parent 均稳定
+  `reject / UPSTREAM_EVIDENCE_INVALID`；detail 自身 result 仍 forbidden，route 与
+  subject lineage 保持。但 `_parent_matches()` 只检查
+  `event_type=station_result`、result 与 source/actor，没有检查
+  `correlation.event_role=production_result`。独立探针把 accepted parent 的
+  `event_role` 改为 `cycle_complete` 后，`validated_nok_detail` 仍返回 `accept`。
+  因此 compatibility/non-production role parent 仍可支持 validated NOK detail，不满足
+  “accepted canonical production result parent” 的 fail-closed 要求。
+- R-B3 duplicate detail-set regression：**CLOSED，无回归**。primary-secondary 与
+  secondary-secondary duplicate code 仍返回 `DETAIL_CODE_DUPLICATE`；reject decision
+  不产生 defect detail 或 production projection。
+- B5 raw validation regression：**CLOSED，无回归**。PDF/base64 forbidden precedence
+  与 periodic repeated substring smoke probes 均返回 `RAW_CONTENT_FORBIDDEN`；本轮未
+  扩大 raw validation 审计。
+
+Findings:
+
+- 唯一 blocker：canonical parent relation 缺
+  `correlation.event_role == production_result` 检查。
+- 新增 `test_validated_nok_detail_rejects_non_authoritative_parent_roles()` 只改变
+  `event_type` 为 cycle-complete/heartbeat，没有覆盖
+  `event_type=station_result` 但 role 为 compatibility/non-production 的旁路。
+- 已关闭 repair 未发现退化：R-B2 same-config isolation、R-B4 config/authority/
+  code-origin、R-B3 duplicate detail-set、B5 raw validation 均符合预期。
+
+Tests:
+
+- git status：基线仍为 `e9abe45`；working tree 有既有未提交 implementation/tests/
+  reports 与 `.gitignore` 修改；本 review 开始前即存在。
+- compileall：**PASS**
+- focused station_event：**114 passed in 0.09s**
+- broader tests：root `tests/` **202 passed in 2.79s**
+- git diff --check：**PASS**
+- unrelated failures：repo-root 无参数 pytest 在 collection 阶段仍有 **10 个
+  `ModuleNotFoundError: app`**，属于既有 API/Collector/V-PLC 顶层 package layout，
+  不计为本轮 failure。
+
+Independent focused evidence:
+
+```text
+RB2_CROSS_CONFIG_SKIP_PARENT reject PARENT_EVENT_INVALID False None
+RB2_VALID_SAME_CONFIG accept None False None
+RB4_PARENT_CONFIG reject UPSTREAM_EVIDENCE_INVALID False None
+RB4_PARENT_AUTHORITY reject UPSTREAM_EVIDENCE_INVALID False None
+RB4_PRIMARY_CODE reject UPSTREAM_EVIDENCE_INVALID False None
+RB4_PRIMARY_ORIGIN reject UPSTREAM_EVIDENCE_INVALID False None
+RB4_SECONDARY_VALID accept None False None
+RB4_SECONDARY_ORIGIN_MISMATCH reject UPSTREAM_EVIDENCE_INVALID False None
+RB4_COMPATIBILITY_ROLE_PARENT accept None False None
+RB3_DUPLICATE_CODE reject DETAIL_CODE_DUPLICATE False None
+B5_PDF False [('RAW_CONTENT_FORBIDDEN', 'raw_payload.payload')]
+B5_PERIODIC False [('RAW_CONTENT_FORBIDDEN', 'raw_payload.message')]
+```
+
+Files changed by this review:
+
+- `docs/reports/sprint2_station_event_reliability_review.md`
+
+Scope audit:
+
+- implementation code modified：**no**
+- tests modified：**no**
+- contracts modified：**no**
+- Collector/API/DB/Dashboard/V-PLC modified：**no**
+- migration created：**no**
+- tag created：**no**；仍只有 `phase1-pass-20260619`
+- deploy：**no**
+- rollback drill：**no**
+- commit/push：**no**
+
+Decision:
+
+- Remaining Reliability blocker：**yes，仅 R-B4 canonical parent role**。
+- Need Architecture repair：**yes，最小 implementation repair**。在统一 parent matcher
+  中要求 canonical parent `correlation.event_role=production_result`，并增加
+  compatibility/non-production role negative test；预期错误
+  `UPSTREAM_EVIDENCE_INVALID`。
+- Need Verification targeted re-review：**yes**。修复后只做 parent-role 定向 sanity
+  re-review，不重开 B1/B5 或完整 Verification。
+- Need Data Quality focused review：**yes，但不得在本 Thread 扩大执行**。Reliability
+  blocker 关闭后按既定流程完成 B1/B4/B5 focused sign-off。
+- Eligible for implementation commit/push：**no**。即使下一轮 Reliability PASS，也
+  必须等待 Data Quality focused sign-off，并由 ChatGPT PM 对 Architecture /
+  Integration Thread 单独给出精确 allowlist 授权。
+
+Thread Health:
+
+- 本 Thread 已完成的主要任务：读取指定 implementation/tests/report/handoff；审计统一
+  parent matcher 与 evidence path；复现 114/202 tests；重放 R-B2/R-B4 旧绕过；
+  独立检查 secondary origin、compatibility role、R-B3 projection 与 B5 smoke tests；
+  形成 focused Gate 判断。
+- 当前上下文是否仍适合继续：**适合完成本轮 Reliability 收口；不适合直接修改
+  implementation。**
+- 是否建议新开 Thread：**yes，交回 Architecture/Implementation repair Thread。**
+- 如果建议新开，请给出 handoff 摘要：基线 `e9abe45`；R-B2 CLOSED，R-B3/B5 无回归；
+  R-B4 config/authority/code-origin 已关闭，但
+  `event_type=station_result(result=nok)` + 合法 authority +
+  `correlation.event_role=cycle_complete` 仍被 accepted。只需在 parent matcher 增加
+  `production_result` role 检查和一个负例；不改合同、不接 integration。修后回
+  Reliability 与 Verification targeted re-review。
+- 是否存在上下文不足、历史信息可能遗失、或需要重新读取文件的风险：**低**。新 Thread
+  只需读取本节、`validation.py::_parent_matches()` 与 R-B4 tests。
+
+本轮未修改 implementation、tests、合同、PM handoff、当前进度报告或
+`docs/superpowers/`，未 commit/push/tag/deploy/rollback drill。
+
+## 47. 当前 Reliability 控制结论
+
+本节覆盖第 45 节 repair 前控制结论：
+
+```text
+HOLD
+R-B2: CLOSED
+R-B4: OPEN - canonical production_result role not enforced
+R-B3: CLOSED, no regression
+B5: CLOSED, no regression
+```
+
+在 R-B4 parent-role blocker、targeted re-review、Data Quality focused sign-off 与
+ChatGPT PM 精确授权完成前，不具备 implementation commit/push 条件。
+
+---
+
+## 48. Sprint 2 Reliability R-B4 Minimal Repair Re-review Result
+
+日期：2026-06-23
+基线：`e9abe45 Finalize Sprint 2 station event review gates`
+范围：只复验 R-B4 canonical parent `event_role=production_result` enforcement，并
+轻量确认 R-B2/R-B3/B5 无回归。
+
+结论：**PASS**
+
+Focused status:
+
+- R-B4 canonical parent `event_role=production_result` enforcement：**CLOSED**。
+  `_evidence_error()` 对 accepted `validated_nok_detail` evidence 解析 canonical parent
+  后复用 `_parent_matches()`；该 matcher 现在同时要求：
+  `event_type=station_result`、`result=nok`、accepted lookup、
+  PLC/PLC 或 V-PLC/simulator authority、same line/PLC/station/boot/cycle/unit-DMC/
+  config、primary code/origin 或 secondary origin relation，以及
+  `correlation.event_role=production_result`。
+- parent role 为 `cycle_complete/diagnostic/compatibility/None` 或 key 缺失时，均稳定
+  `reject / UPSTREAM_EVIDENCE_INVALID`。reject decision 的 projection
+  `projection_eligible=false`，`production_outcome=null`，`defect_detail=null`；不成为
+  validated detail，不进入 production NOK、ordinary/operator defect 或 Pareto。
+- 合法 accepted authoritative `station_result(result=nok)`、same-config、
+  matching code/origin 且 `event_role=production_result` 的 canonical parent 保持
+  accepted。
+- R-B2 30003 parent config isolation regression：**CLOSED，无回归**。跨 config skip
+  parent 稳定 `PARENT_EVENT_INVALID`，且不产生 defect projection。
+- R-B3 duplicate detail-set regression：**CLOSED，无回归**。duplicate code 稳定
+  `DETAIL_CODE_DUPLICATE`，且不产生 production outcome 或 defect projection。
+- B5 raw validation regression：**CLOSED，无回归**。periodic repeated fragment 与
+  forbidden image/base64 fixture 均稳定 `RAW_CONTENT_FORBIDDEN`。
+
+Findings:
+
+- 未发现新的 Reliability blocker。
+- `production_result` role 检查位于共享 canonical parent matcher，current detail 与
+  `validated_nok_detail` evidence path 使用同一 fail-closed relation，未出现两条路径
+  再次漂移。
+- 本轮没有扩大到 Data Quality full review 或 Verification full re-review。
+
+Tests:
+
+- git status：HEAD 仍为 `e9abe45`；working tree 有既有未提交 implementation/tests/
+  reports 与 `.gitignore` 修改。本 review 未修改这些路径。
+- `git diff -- common/station_event/validation.py tests/test_station_event_model.py`：
+  tracked diff 为空；两路径仍为既有 untracked implementation/tests，本 review 只读。
+- compileall：**PASS**
+- focused station_event：**119 passed in 0.06s**
+- broader tests：root `tests/` **207 passed in 0.99s**
+- targeted R-B4/R-B2/R-B3/B5 tests：**15 passed**
+- `git diff --check`：**PASS**
+- unrelated failures：未运行 repo-root 无参数 pytest；无新增 unrelated failure。
+
+Independent focused evidence:
+
+```text
+R-B4_ROLE production_result accept None False None None
+R-B4_ROLE cycle_complete reject UPSTREAM_EVIDENCE_INVALID False None None
+R-B4_ROLE diagnostic reject UPSTREAM_EVIDENCE_INVALID False None None
+R-B4_ROLE compatibility reject UPSTREAM_EVIDENCE_INVALID False None None
+R-B4_ROLE None reject UPSTREAM_EVIDENCE_INVALID False None None
+R-B4_ROLE <missing> reject UPSTREAM_EVIDENCE_INVALID False None None
+R-B2_CROSS_CONFIG reject PARENT_EVENT_INVALID None
+R-B3_DUPLICATE reject DETAIL_CODE_DUPLICATE False None None
+B5_PERIODIC False [('RAW_CONTENT_FORBIDDEN', 'raw_payload.message')]
+B5_FORBIDDEN False [('RAW_CONTENT_FORBIDDEN', 'raw_payload.payload')]
+```
+
+Files changed by this review:
+
+- `docs/reports/sprint2_station_event_reliability_review.md`
+
+Scope audit:
+
+- implementation code modified：**no**
+- tests modified：**no**
+- contracts modified：**no**
+- Collector/API/DB/Dashboard/V-PLC modified：**no**
+- migration created：**no**
+- tag created：**no**
+- deploy：**no**
+- rollback drill：**no**
+- commit/push：**no**
+
+Decision:
+
+- Remaining Reliability blocker：**no**
+- Need Architecture repair：**no**
+- Need Verification targeted re-review：**yes**。只做 canonical parent role/relation
+  sanity check；不重开 B1/B5 或完整 Verification。
+- Need Data Quality focused review：**yes**。由 ChatGPT PM 安排既定 focused
+  implementation review；本 Thread 不扩大执行。
+- Eligible for implementation commit/push：**no**。Reliability PASS 不构成授权；仍需
+  Verification targeted relation sanity check、Data Quality focused review 和 ChatGPT
+  PM 精确 allowlist 授权。
+
+Thread Health:
+
+- 本 Thread 已完成的主要任务：重读 matcher/evidence path、new role tests 与最新
+  reports/handoff；复现 119/207 tests；运行 15 个定向回归；独立重放合法/非法/missing
+  parent role、R-B2 cross-config、R-B3 duplicate projection 与 B5 smoke probes；形成
+  focused PASS。
+- 当前上下文是否仍适合继续：**适合完成本轮 Reliability 收口；不应在本 Thread 继续
+  Verification 或 Data Quality review。**
+- 是否建议新开 Thread：**yes**。
+- 如果建议新开，请给出 handoff 摘要：基线 `e9abe45`；Reliability R-B2/R-B3/R-B4
+  全部 CLOSED，B5 regression CLOSED；canonical parent 强制
+  `event_role=production_result`，错误/None/missing role 均
+  `UPSTREAM_EVIDENCE_INVALID` 且不投影；119/207 tests PASS；下一步由 PM 安排
+  Verification targeted relation sanity check 和 Data Quality focused review；不得
+  commit/push。
+- 是否存在上下文不足、历史信息可能遗失、或需要重新读取文件的风险：**低**。后续
+  Thread 应读取本节、`_parent_matches()`、`_evidence_error()` 与 role-focused tests。
+
+本轮只修改 Reliability report；未修改 implementation、tests、合同、PM handoff、
+当前进度报告或 `docs/superpowers/`，未 commit/push/tag/deploy/rollback drill。
+
+## 49. 当前 Reliability 控制结论
+
+本节覆盖第 47 节 HOLD：
+
+```text
+PASS
+R-B2: CLOSED
+R-B3: CLOSED
+R-B4: CLOSED
+B5 regression: CLOSED
+```
+
+Reliability focused blocker 已全部关闭，但不授权 commit/push。下一步由 ChatGPT PM
+安排 Verification targeted relation sanity check 与 Data Quality focused implementation
+review；两者通过并获得 PM 精确授权前，不得 commit/push 或进入 integration。

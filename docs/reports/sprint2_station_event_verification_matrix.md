@@ -1226,3 +1226,882 @@ PASS WITH RECOMMENDATIONS
 - `git add .`。
 
 当前 Verification 控制结论以第 30 节为准；第 1～23 节 HOLD 保留为历史审计证据。
+
+---
+
+## 32. Sprint 2 Implementation Verification Review（2026-06-21）
+
+本节记录对基线
+`e9abe45 Finalize Sprint 2 station event review gates`
+之后未提交 Generic Station Event Model MVP implementation 的独立复验。第 30 节是
+implementation 前合同 Gate；当前 implementation Gate 结论以本节为准。
+
+总结论：**HOLD**
+
+Gate results:
+
+- V1 Scope/isolation：**PASS**。工作树实现范围为独立
+  `common/station_event/`、`tests/test_station_event_model.py`、implementation report
+  与 Architecture handoff/context 更新；Collector、API、DB、Dashboard、Grafana、
+  V-PLC、migration 与 Phase-1 runtime 无 diff。未 commit/push/tag/deploy/rollback
+  drill。
+- V2 MVP event schema：**PASS**。validator accepted enum 只有五类 MVP event；
+  `station_skip/station_hold/station_release/station_rework/station_fault/buffer_enter/
+  buffer_exit` 只存在于 `FUTURE_RESERVED_EVENT_TYPES`。
+- V3 Dataclass/serializer/validator：**PASS WITH RECOMMENDATIONS**。model 使用 frozen
+  dataclass，nested payload/correlation 被递归冻结；无 Pydantic、ORM 或 DB binding；
+  serializer、fingerprint、validator 分离，canonical dict/JSON 与 mutation isolation
+  有测试。
+- V4 Payload/raw validation：**HOLD**。16/64 KiB、JSON type、depth/key/array/node/
+  string/number、错误码 precedence 与 reject boundary 已实现并通过现有测试；但
+  `RAW_CONTENT_FORBIDDEN` 只按四个 key 名
+  `base64/binary/image/opaque_log` 拒绝。独立探针
+  `raw_payload={"blob":"data:image/png;base64,..."}` 被接受，未满足合同对 binary/
+  base64/image/opaque encoded content fail-closed 的要求。现有 64 tests 没有该负例，
+  也没有系统覆盖各资源限制的 limit-1/limit/limit+1。
+- V5 Fingerprint/idempotency：**PASS**。same content/same raw 为 duplicate；same
+  content/different raw 为 `duplicate + audit_subtype=raw_variant`；different content
+  为 conflict。raw variant 不创建第二个 fact、不改变 result、不投影指标。canonical
+  key ordering、array order、numeric vectors、raw fingerprint 与 absent/null policy
+  有覆盖。
+- V6 NOK policy：**HOLD**。canonical result/detail authority 与 projection separation
+  已实现，但 stateful relation 有三项阻塞缺口：
+  1. `30003/system_reserved` parent 检查在确认 `result=skip` 后提前返回，未校验
+     line/plc/station/boot/counter/cycle/unit/DMC 一致；跨 station/cycle skip parent
+     被接受。
+  2. secondary detail 未校验 `nok_code` 必须不同于 parent primary code；相同 code
+     的 secondary 被接受。
+  3. `validated_nok_detail` evidence 只确认 cited detail 自身无 `result`，没有解析并
+     验证其 accepted canonical parent `station_result(result=nok)`；也未执行 current
+     station direct-enabled-predecessor 与 subject lineage 校验。无 canonical parent
+     lookup 的 detail evidence 被接受。
+- V7 Lifecycle/temporal：**PASS WITH RECOMMENDATIONS**。`LifecycleDerivedOutput`
+  八字段完整；四种 completeness 逐字段断言，late 固定
+  `not_evaluated_future_runtime`，heartbeat diagnostic-only，cycle-only、
+  out-of-order 与 timestamp reversal 均有测试。建议补齐 reject/detail/heartbeat 每个
+  branch 的八字段 table-driven assertions。
+- V8 Projection：**PASS**。`station_result` 是唯一 authoritative production outcome；
+  compatibility projection 标记 non-authoritative；ordinary `station_nok` 只产生
+  detail row；reserved 30003、reject、duplicate、conflict 均不投影。
+- V9 Test quality：**HOLD**。`64 passed`、`152 passed`、`141 passed` 与 compileall
+  均可独立复现，但 64 focused cases 未覆盖上述五个独立对抗性负例。根目录无参数
+  pytest 的 10 个 collection errors 可确认为既有多服务顶层 `app` import layout：
+  当前 implementation 未修改 `api/collector/s7_plc_sim`，且按既有独立运行方式可复现
+  API `5 passed`、Collector `12 passed, 3 subtests passed`、V-PLC `27 passed`。这些
+  collection errors 与本次 diff 无关，但 focused suite 的缺口会掩盖本次实现问题。
+
+Blockers:
+
+- B1：stateful validation 取得 resolved config snapshot 后只比较 `config_hash`，没有
+  用该 snapshot 重新执行 station/PLC/type/profile/mapping/template lineage 校验；
+  独立探针中的 `WS99` event 被接受。
+- B2：`30003/system_reserved` detail 可关联跨 station/cycle 的 skip parent。
+- B3：secondary NOK detail 可复用 canonical primary `nok_code`。
+- B4：`validated_nok_detail` evidence 未验证 accepted canonical NOK parent、direct
+  predecessor 与 current-event subject lineage。
+- B5：opaque base64/image raw content 可通过非 denylist key 绕过
+  `RAW_CONTENT_FORBIDDEN`。
+- B6：现有 focused tests 未覆盖 B1～B5。
+
+Required Architecture repairs:
+
+- **不需要修改合同语义**。当前 `station_event_model.md` 已明确 B1～B5 的 expected
+  behavior；需要 Implementation Thread 按现有合同做最小代码与 focused test 修复。
+
+Recommendations:
+
+- 将 B1～B5 各增加至少一个 reject regression test，并用 table-driven tests 覆盖
+  parent/evidence/config mismatch。
+- payload/raw 边界补齐 limit-1、limit、limit+1，尤其 total bytes、string、array、
+  node/depth。
+- 对 `validated_nok_detail` 增加完整 fixture：cited detail、canonical NOK parent、
+  current skip parent、route/config snapshot 与 state-index records。
+- 保持无参数全仓 pytest import layout 本 Sprint 不修；继续记录各服务独立测试命令。
+
+Need Reliability focused review:
+
+- **yes**。B2～B4 直接触及 Reliability 已关闭的 N5/N7/N8 stateful parent/evidence/
+  detail-set 语义；Implementation 修复后应做一次仅针对这些项的 focused re-review。
+
+Need Data Quality focused review:
+
+- **yes**。B1、B4、B5 影响 R1 lineage、R3 raw evidence authority 与 R5 lifecycle/
+  traceability 输入可信度；只需 focused review，不重开已通过的其他范围。
+
+Eligible for implementation commit/push:
+
+- **no**
+- 条件：B1～B5 修复；新增回归测试；station-event focused、root `tests/`、Sprint 1 +
+  Sprint 2 focused、compileall、各服务独立 regressions 与 `git diff --check` 重新通过；
+  Reliability/Data Quality focused re-review 无 blocker；再由 PM 明确授权 commit/push。
+
+Scope checks:
+
+- Collector/API/DB/Dashboard/V-PLC modified：**no**
+- migration created：**no**
+- tag created：**no**；当前只有 `phase1-pass-20260619`
+- deploy：**no**
+- rollback drill：**no**
+- PM handoff / progress report / docs/superpowers staged or modified：**未 staged，仍为
+  untracked 并排除在本次 review/commit scope 外**
+
+Test evidence:
+
+- compileall：**PASS**
+- focused pytest：**64 passed in 0.05s**
+- broader pytest：root `tests/` **152 passed in 1.30s**；Sprint 1 + Sprint 2 focused
+  **141 passed in 1.29s**；API **5 passed**；Collector **12 passed, 3 subtests passed**；
+  V-PLC **27 passed**
+- git diff --check：**PASS**
+- known unrelated failures：repo root 无参数 pytest 在 collection 阶段出现 **10 个
+  `ModuleNotFoundError: app`**；原因是 API、Collector、V-PLC 各自使用顶层 `app`
+  package，需要独立 cwd/PYTHONPATH。相关模块相对 `e9abe45` 无 diff。
+
+Independent adversarial evidence:
+
+```text
+PROBE1_CONFIG_STATION_MISMATCH accept None
+PROBE2_RESERVED_CROSS_CYCLE_PARENT accept None
+PROBE3_SECONDARY_SAME_PRIMARY_CODE accept None
+PROBE4_DETAIL_EVIDENCE_WITHOUT_CANONICAL_PARENT_LOOKUP accept None
+PROBE5_OPAQUE_BASE64_IMAGE True []
+```
+
+上述五项按当前合同均应 reject，因此 implementation Gate 必须 HOLD。
+
+Thread Health:
+
+- 本 Thread 已完成的主要任务：必读材料恢复、scope/isolation 审计、V1～V9
+  implementation review、官方测试复验、多服务 collection-error 归因、五项对抗性负例
+  复现与 Gate 判断。
+- 当前上下文是否仍适合继续：**适合完成本次 review 收口；不适合在同一任务中直接修改
+  implementation，因为本 Thread 角色被限定为只读 Verification。**
+- 是否建议新开 Thread：**yes，交回 Implementation Thread 做 B1～B5 最小修复。**
+- 如果建议新开，请给出 handoff 摘要：基线 `e9abe45`；当前 Gate HOLD；只修 B1～B5
+  并新增对应 tests；不改合同、不接 runtime、不改 migration；修复后回 Reliability/
+  Data Quality focused review，再回 Verification re-gate。
+- 是否存在上下文不足、历史信息可能遗失、或需要重新读取文件的风险：**低**。关键合同、
+  Reliability/Data Quality/Verification 历史、implementation report、实现与 tests 已
+  在本 Thread 读取；新 Thread 仍应按 handoff 重新读取本节和
+  `station_event_model.md` 的 parent/evidence/config/raw 相关段落。
+
+本轮 Verification 只修改本报告；未修改 implementation、tests、合同、handoff、
+Collector、API、DB、Dashboard 或 V-PLC，未 commit/push/tag/deploy/rollback drill。
+
+---
+
+## 33. Sprint 2 Implementation Verification Focused Re-review（2026-06-22）
+
+本节只复验第 32 节 B1～B5 repair，不重开完整 Sprint 2 planning / implementation
+review。当前 focused re-review 结论以本节为准。
+
+总结论：**HOLD**
+
+Focused blocker status:
+
+- B1 historical config snapshot lineage：**CLOSED**。stateful validation 在
+  `lookup_resolved_config(config_hash)` 后重新执行 `validate_event(raw, config)`；
+  missing station、station mismatch、missing profile 与 profile mismatch 均 fail
+  closed，matching historical station/profile snapshot accepted。独立重放原
+  `WS99` 绕过得到 `reject / CONFIG_NOT_FOUND`。
+- B2 30003 parent isolation：**CLOSED**。`30003/system_reserved` parent 必须是
+  accepted canonical `station_result(result=skip)`，并逐字段匹配
+  line/PLC/station/boot/cycle/counter/unit/DMC。cross-station、cross-cycle 与 future
+  parent 均 reject；合法 same-cycle skip parent accepted，但 projection 保持
+  non-production isolated，不进入 ordinary defect/Pareto。technical failure evidence
+  仍 reject。
+- B3 secondary NOK duplicate code：**CLOSED**。secondary 仍要求 accepted primary；
+  与 primary code 重复或与已有 secondary code 重复均
+  `reject / DETAIL_CODE_DUPLICATE`，distinct secondary accepted。没有 secondary 时
+  primary-only 状态稳定 accepted；缺 primary 的 secondary 继续
+  `PRIMARY_DETAIL_REQUIRED`。
+- B4 validated_nok_detail canonical parent：**CLOSED**。cited detail 必须无
+  authoritative result，并解析到 accepted canonical
+  `station_result(result=nok)` parent；missing parent 返回
+  `UPSTREAM_EVIDENCE_NOT_FOUND`，OK/duplicate/conflict/rejected parent 与 route/subject
+  mismatch 返回 `UPSTREAM_EVIDENCE_INVALID`。direct predecessor、unit/DMC、config 与
+  parent identity 均有 focused tests。
+- B5 base64/image raw bypass：**STILL OPEN**。已关闭上一轮
+  `data:image/...;base64,...`、PNG/JPEG/GIF/BMP magic、`image/image_base64/blob/binary/
+  file` key hint 与多行重复日志样例；normal short raw strings accepted。但独立同类探针
+  仍确认：
+  - WebP base64 magic `UklGR...` 放在普通 `payload` key 下被 accepted。
+  - PDF/binary base64 `JVBERi0...` 放在普通 `payload` key 下被 accepted。
+  - 约 7 KiB 的单行重复 log-like string 被 accepted。
+
+  这些输入直接落在本轮要求的“JSON string 中夹带图片/二进制、obvious base64
+  image-like、repeated/unbounded log-like string”范围，因此 B5 尚未 fail closed。
+
+Blockers:
+
+- B5：raw content detection 仍依赖有限 key/magic denylist 与“多行重复”启发式，
+  WebP/通用 binary base64 和单行重复日志仍可绕过 `RAW_CONTENT_FORBIDDEN`。
+- B5 focused tests 未包含上述三类直接同类负例。
+
+Required Architecture repairs:
+
+- **不需要修改合同语义**。合同已经明确禁止 binary/base64/image 与
+  opaque/unbounded log；Implementation Thread 需继续做 B5 最小修复并新增回归测试。
+
+Recommendations:
+
+- raw string fail-closed 规则不要只枚举 PNG/JPEG/GIF/BMP magic；至少覆盖 WebP 与常见
+  binary/file magic，或使用受控 raw text allowlist/grammar，避免继续扩充脆弱 denylist。
+- repeated/unbounded log detection 同时覆盖多行与单行重复模式，并保持 normal short
+  diagnostic text accepted。
+- B5 新增 table-driven tests：WebP、PDF/通用 binary base64、单行重复日志、正常短文本。
+
+Need Reliability focused review:
+
+- **yes**。B2～B4 已通过本轮 Verification focused re-review，可进入 Reliability
+  parent/evidence/detail-set focused review；无需等待 B5。
+
+Need Data Quality focused review:
+
+- **yes，但尚不能完成最终 focused sign-off**。B1/B4 已关闭，可先复验 lineage 与
+  canonical parent；B5 属 R3 raw evidence authority，需等 B5 再修后一起关闭。
+
+Eligible for implementation commit/push:
+
+- **no**
+- Conditions：B5 完整关闭；新增 WebP/binary-base64/single-line-log regression tests；
+  station-event focused、root `tests/`、Sprint 1 + Sprint 2 focused、compileall 与
+  `git diff --check` 重新通过；Reliability/Data Quality focused review 无 blocker；
+  ChatGPT PM 明确授权 commit/push。
+
+Scope checks:
+
+- Collector/API/DB/Dashboard/V-PLC modified：**no**
+- migration created：**no**
+- tag created：**no**；当前仍只有 `phase1-pass-20260619`
+- deploy：**no**
+- rollback drill：**no**
+- commit/push：**no**
+- PM handoff / progress report / docs/superpowers staged or modified：**未 staged，仍为
+  untracked，未纳入 implementation/repair scope**
+
+Test evidence:
+
+- compileall：**PASS**
+- focused station_event：**89 passed in 0.10s**
+- broader tests：root `tests/` **177 passed in 1.28s**；Sprint 1 + Sprint 2 focused
+  **166 passed in 1.28s**
+- git diff --check：**PASS**
+- known unrelated failures：repo-root 无参数 pytest 仍在 collection 阶段出现 **10 个
+  `ModuleNotFoundError: app`**；API、Collector、V-PLC 使用各自顶层 `app` package，
+  与本次 repair diff 无关。
+
+Independent focused evidence:
+
+```text
+B1_WRONG_STATION reject CONFIG_NOT_FOUND
+B1_MATCHING_SNAPSHOT accept None
+B2_CROSS_PARENT reject PARENT_EVENT_INVALID
+B2_LEGAL_SKIP_PARENT accept None
+B3_PRIMARY_CODE_DUP reject DETAIL_CODE_DUPLICATE
+B3_SECONDARY_CODE_DUP reject DETAIL_CODE_DUPLICATE
+B3_DISTINCT_SECONDARY accept None
+B4_MISSING_CANONICAL_PARENT reject UPSTREAM_EVIDENCE_NOT_FOUND
+B4_REJECTED_CANONICAL_PARENT reject UPSTREAM_EVIDENCE_INVALID
+B4_ACCEPTED_CANONICAL_PARENT accept None
+B5_DATA_URI False [('RAW_CONTENT_FORBIDDEN', 'raw_payload.blob')]
+B5_PNG_MAGIC False [('RAW_CONTENT_FORBIDDEN', 'raw_payload.payload')]
+B5_WEBP_MAGIC True []
+B5_PDF_BASE64 True []
+B5_SINGLE_LINE_REPEATED_LOG True []
+B5_NORMAL_SHORT True []
+```
+
+Files changed by this review:
+
+- `docs/reports/sprint2_station_event_verification_matrix.md`
+
+Thread Health:
+
+- 本 Thread 已完成的主要任务：重读上轮 HOLD 与 repair 状态；逐项审计 B1～B5
+  实现/测试；复现 89/177/166 tests；重放上一轮攻击样例；对 B5 同类边界做独立探针；
+  完成 focused Gate 判断。
+- 当前上下文是否仍适合继续：**适合完成本轮 Verification 收口；不适合直接修改
+  implementation，因为本 Thread 角色限定为 focused re-review。**
+- 是否建议新开 Thread：**yes，交回 Implementation/Architecture repair Thread，仅继续
+  修 B5。**
+- 如果建议新开，请给出 handoff 摘要：基线 `e9abe45`；B1～B4 CLOSED；B5 STILL
+  OPEN；只修 WebP/通用 binary base64 与单行重复 log bypass，并增加对应 tests；不改
+  合同、不接 runtime、不改 migration；修复后回 Verification B5-only re-review，并由
+  Data Quality 完成 R3 focused sign-off。
+- 是否存在上下文不足、历史信息可能遗失、或需要重新读取文件的风险：**低**。新 Thread
+  仍应读取本节、第 32 节、implementation report、`validation.py` raw content helper
+  与 B5 tests。
+
+本轮 Verification 未修改 implementation、tests、合同、handoff、Collector、API、DB、
+Dashboard 或 V-PLC，未 commit/push/tag/deploy/rollback drill。
+
+---
+
+## 35. Sprint 2 Verification B5-final Re-review（2026-06-22）
+
+本节只复验第 34 节 B5-R1/R2，不重开 B1～B4 或完整 implementation review。当前
+B5-final 结论以本节为准。
+
+总结论：**PASS**
+
+B5 final status:
+
+- periodic repeated substring/log detection：**CLOSED**。约 7 KiB 的
+  `ERR42|WARN99|OK;`、`abc123XYZ-`、
+  `station=WS1;cycle=C001;result=NOK;` 与上一轮
+  `fault-code-17|station-WS02|` 周期模式均稳定
+  `reject / RAW_CONTENT_FORBIDDEN`。实现使用 4 KiB 后启用的 bounded zlib
+  compression signal，不依赖固定 32-byte chunk 边界；token、character、multiline
+  与 chunk rules 仍作为附加 fail-closed 检查。正常短 note/message 与合理非重复长文本
+  accepted。
+- binary/base64-overlimit precedence：**CLOSED**。超过 raw string limit 的 PDF、
+  WebP、generic binary base64、image/webp data URI、application/pdf data URI、
+  application/octet-stream data URI，以及 oversized PDF/octet-stream MIME 均以
+  `RAW_CONTENT_FORBIDDEN` 作为第一错误；普通 oversized non-binary text 仍为
+  `RAW_STRING_BYTES_LIMIT`。实现只扫描最多 4096 encoded characters 的 prefix，并仅
+  解码该有界 sample，没有完整 decode 巨大字符串。
+
+Blockers:
+
+- 无
+
+Required Architecture repairs:
+
+- 不需要
+
+Recommendations:
+
+- 保留 periodic fragments、oversized forbidden precedence、normal short text 和
+  non-repeated long text fixtures，后续修改 raw validator 时作为固定 regression
+  matrix。
+- future 若调整 compression ratio / sample size，应由 Data Quality 与 Verification
+  重新评估 false-positive / false-negative 边界。
+
+Need Reliability focused review:
+
+- **yes**。Verification 已关闭 B1～B5；按既定流程，Reliability 仍需对已关闭的
+  B2～B4 parent/evidence/detail-set repair 做 focused sign-off。
+
+Need Data Quality focused review:
+
+- **yes**。B1/B4 lineage 与 B5 raw evidence authority 现已通过 Verification，可进入
+  Data Quality focused sign-off。
+
+Eligible for implementation commit/push:
+
+- **no，尚需后续 Gate**
+- Conditions：Reliability B2～B4 focused review PASS；Data Quality B1/B4/B5 focused
+  review PASS；ChatGPT PM 汇总并明确授权；提交时使用精确 allowlist，继续排除 PM
+  handoff、当前进度报告与 `docs/superpowers/`。
+
+Scope checks:
+
+- B1-B4 logic changed：**no**
+- Collector/API/DB/Dashboard/V-PLC modified：**no**
+- migration created：**no**
+- tag created：**no**；当前仍只有 `phase1-pass-20260619`
+- deploy：**no**
+- rollback drill：**no**
+- commit/push：**no**
+- PM handoff / progress report / docs/superpowers staged or modified：**未 staged，仍为
+  untracked，未纳入 implementation repair**
+
+Test evidence:
+
+- compileall：**PASS**
+- focused station_event：**107 passed in 0.08s**
+- broader tests：root `tests/` **195 passed in 1.29s**
+- git diff --check：**PASS**
+- known unrelated failures：repo-root 无参数 pytest 仍在 collection 阶段出现 **10 个
+  `ModuleNotFoundError: app`**；属于既有 API/Collector/V-PLC 顶层 `app` import
+  layout，与 B5 final repair 无关。
+
+Independent B5-final evidence:
+
+```text
+ERR_WARN_OK reject RAW_CONTENT_FORBIDDEN
+ABC_PATTERN reject RAW_CONTENT_FORBIDDEN
+STRUCTURED_LOG reject RAW_CONTENT_FORBIDDEN
+PRIOR_FRAGMENT reject RAW_CONTENT_FORBIDDEN
+NORMAL_SHORT_NOTE accept
+NORMAL_SHORT_MESSAGE accept
+NORMAL_NONREPEATED_LONG accept
+OVERSIZED_PDF_BASE64 first error RAW_CONTENT_FORBIDDEN
+OVERSIZED_WEBP_BASE64 first error RAW_CONTENT_FORBIDDEN
+OVERSIZED_GENERIC_BASE64 first error RAW_CONTENT_FORBIDDEN
+OVERSIZED_WEBP_DATA_URI first error RAW_CONTENT_FORBIDDEN
+OVERSIZED_PDF_DATA_URI first error RAW_CONTENT_FORBIDDEN
+OVERSIZED_OCTET_DATA_URI first error RAW_CONTENT_FORBIDDEN
+OVERSIZED_PDF_MIME first error RAW_CONTENT_FORBIDDEN
+OVERSIZED_OCTET_MIME first error RAW_CONTENT_FORBIDDEN
+OVERSIZED_NONBINARY_TEXT first error RAW_STRING_BYTES_LIMIT
+```
+
+Files changed by this review:
+
+- `docs/reports/sprint2_station_event_verification_matrix.md`
+
+Thread Health:
+
+- 本 Thread 已完成的主要任务：读取 B5-final repair 与最新 Gate；审计 bounded
+  compression/prefix implementation 和新增 tests；复现 107/195 tests；独立验证任务
+  指定 periodic patterns、oversized binary categories、precedence 与 positive
+  guardrails；完成 B5-final Gate 判断。
+- 当前上下文是否仍适合继续：**适合完成 Verification 收口；后续角色应切换到独立
+  Reliability / Data Quality focused review。**
+- 是否建议新开 Thread：**yes**。
+- 如果建议新开，请给出 handoff 摘要：基线 `e9abe45`；Verification implementation
+  B1～B5 全部 CLOSED；B5-final PASS；implementation 未提交；下一步 Reliability
+  focused review B2～B4 与 Data Quality focused review B1/B4/B5，均通过后交 PM
+  授权 commit/push；不得进入 integration。
+- 是否存在上下文不足、历史信息可能遗失、或需要重新读取文件的风险：**低**。新 Thread
+  应读取第 32～35 节、implementation report 与相应合同段落。
+
+本轮 Verification 未修改 implementation、tests、合同、handoff、Collector、API、DB、
+Dashboard 或 V-PLC，未 commit/push/tag/deploy/rollback drill。
+
+---
+
+## 34. Sprint 2 Verification B5-only Re-review（2026-06-22）
+
+本节只复验第 33 节唯一 remaining blocker B5，不重开 B1～B4 或完整 implementation
+review。当前 B5-only 结论以本节为准。
+
+总结论：**HOLD**
+
+B5 status:
+
+- WebP base64：**CLOSED**。`data:image/webp;base64,...` 与普通
+  `raw/payload/note/content` key 下的 WebP base64 均
+  `reject / RAW_CONTENT_FORBIDDEN`。实现通过 base64 decode 后检查
+  `RIFF....WEBP`，不依赖 PNG/JPEG denylist；focused tests 与独立生成 bytes probe
+  均通过。
+- PDF/generic binary base64：**CLOSED**。PDF data URI、`application/pdf`、
+  `application/octet-stream`、普通 key 下 `%PDF` base64 与高比例不可打印 generic
+  binary base64 均 `RAW_CONTENT_FORBIDDEN`。正常短 note、DMC、station note、ordinary
+  message 与合理非重复长文本 accepted。
+- ordinary-key binary base64：**CLOSED**。即使 key 是 `raw/payload/note/content`，
+  validator 仍解码 base64，并根据 PDF/WebP header 或不可打印字节比例 reject；key
+  hint 是额外防线而非唯一防线。printable text 的 base64 表示未被误判为 binary。
+- repeated single-line log：**STILL OPEN**。约 7 KiB 的重复 token 与重复字符已
+  `RAW_CONTENT_FORBIDDEN`，但约 7 KiB 的重复片段
+  `fault-code-17|station-WS02|` 循环字符串仍被 accepted。该输入长度低于 16 KiB /
+  64 KiB 资源上限，直接属于本轮要求的“重复片段构成的 log-like raw string”，因此
+  B5 未完全关闭。
+- raw-text grammar / allowlist strategy：**STILL OPEN**。实现已有明确的 4 KiB 启用
+  阈值、MIME/data URI 类别拒绝、base64 decode + binary ratio、token/字符/chunk
+  重复率与 false-positive guardrails；但当前固定 32-character chunk 切分不能识别与
+  chunk 边界不对齐的周期片段。另外，明显 PDF/binary base64 超过 raw string 16 KiB
+  时，helper 在内容检查前直接返回，最终错误为 `RAW_STRING_BYTES_LIMIT`，未保持合同
+  `RAW_CONTENT_FORBIDDEN` 高于 string limit 的 precedence。
+
+Blockers:
+
+- B5-R1：长单行周期片段重复字符串仍可绕过 repeated/unbounded log detection。
+- B5-R2：超过 raw string limit 的明显 binary/base64 内容未先形成
+  `RAW_CONTENT_FORBIDDEN`，错误 precedence 不符合合同。
+- focused tests 未覆盖非 32-byte 对齐的重复片段与 binary/base64 + string-limit
+  multi-error precedence。
+
+Required Architecture repairs:
+
+- **不需要修改合同语义**。Implementation Thread 需继续做 B5 最小修复：
+  1. 使用与固定 chunk 边界无关的周期/片段重复率检测。
+  2. 对超长 raw string 仍先执行有界 prefix/category binary detection，保证
+     `RAW_CONTENT_FORBIDDEN` precedence；不得完整解码无界内容。
+  3. 增加两组 regression tests。
+
+Recommendations:
+
+- 周期检测使用有界 rolling window、prefix sampling 或最小周期检测，避免只按固定
+  32-byte chunk 分桶。
+- binary precedence 检查只需对有界 prefix 做 data URI/MIME/base64/header/category
+  判断，避免增加资源风险。
+- 保留当前正常短文本、printable base64 text 和合理非重复长文本 positive fixtures。
+
+Need Reliability focused review:
+
+- **yes**。与 B5 无关的 B2～B4 已 CLOSED，可进入 Reliability focused review。
+
+Need Data Quality focused review:
+
+- **yes，但 R3 raw evidence 最终 sign-off 仍需等待 B5-R1/R2 关闭**。当前 WebP/PDF/
+  generic binary 分类已可复验，repeated-fragment 与 precedence 仍未关闭。
+
+Eligible for implementation commit/push:
+
+- **no**
+- Conditions：关闭 B5-R1/R2；新增 periodic-fragment 与 binary+overlimit precedence
+  tests；focused、broader、compileall、`git diff --check` 重新通过；Reliability/Data
+  Quality focused review 无 blocker；ChatGPT PM 明确授权。
+
+Scope checks:
+
+- B1-B4 logic changed：**no（本轮只读审计未发现 B5 repair 以外的新增改动）**
+- Collector/API/DB/Dashboard/V-PLC modified：**no**
+- migration created：**no**
+- tag created：**no**；当前仍只有 `phase1-pass-20260619`
+- deploy：**no**
+- rollback drill：**no**
+- commit/push：**no**
+- PM handoff / progress report / docs/superpowers staged or modified：**未 staged，仍为
+  untracked，未纳入 implementation repair**
+
+Test evidence:
+
+- compileall：**PASS**
+- focused station_event：**101 passed in 0.10s**
+- broader tests：root `tests/` **189 passed in 1.34s**
+- git diff --check：**PASS**
+- known unrelated failures：repo-root 无参数 pytest 仍在 collection 阶段出现 **10 个
+  `ModuleNotFoundError: app`**；属于既有多服务顶层 `app` import layout，与 B5 repair
+  无关。
+
+Independent B5 evidence:
+
+```text
+WEBP_DATA_URI reject RAW_CONTENT_FORBIDDEN
+WEBP ordinary raw/payload/note/content reject RAW_CONTENT_FORBIDDEN
+PDF_DATA_URI reject RAW_CONTENT_FORBIDDEN
+OCTET_DATA_URI reject RAW_CONTENT_FORBIDDEN
+PDF/OCTET MIME reject RAW_CONTENT_FORBIDDEN
+PDF ordinary raw/payload/note/content reject RAW_CONTENT_FORBIDDEN
+GENERIC binary ordinary raw/payload/note/content reject RAW_CONTENT_FORBIDDEN
+TOKEN_REPEAT_7K reject RAW_CONTENT_FORBIDDEN
+CHAR_REPEAT_7K reject RAW_CONTENT_FORBIDDEN
+FRAGMENT_REPEAT_7K accept
+NON_REPEATED_LONG accept
+SHORT_NOTE / DMC / STATION_NOTE / ORDINARY_MESSAGE accept
+PRINTABLE_BASE64_TEXT accept
+PRECEDENCE_BINARY_AND_LONG reject RAW_STRING_BYTES_LIMIT
+```
+
+Files changed by this review:
+
+- `docs/reports/sprint2_station_event_verification_matrix.md`
+
+Thread Health:
+
+- 本 Thread 已完成的主要任务：读取 B5 finding/repair/contract/helper/tests；复现
+  101/189 tests；审计 scope；独立验证 WebP、PDF/generic binary、ordinary key、
+  repeated log、positive guardrail 与错误 precedence；完成 B5-only Gate 判断。
+- 当前上下文是否仍适合继续：**适合完成本轮 Verification 收口；不适合直接修代码。**
+- 是否建议新开 Thread：**yes，交回 Implementation/Architecture，仅修 B5-R1/R2。**
+- 如果建议新开，请给出 handoff 摘要：基线 `e9abe45`；WebP、PDF/generic binary、
+  ordinary-key base64 已 CLOSED；只修周期片段重复绕过和 binary+overlimit precedence；
+  增加对应 tests；不动 B1～B4、不接 runtime；修复后回 Verification B5 final
+  re-review，再交 Data Quality R3 focused sign-off。
+- 是否存在上下文不足、历史信息可能遗失、或需要重新读取文件的风险：**低**。新 Thread
+  应读取本节、第 33 节、implementation report、`_raw_content_forbidden()`、
+  `_is_repeated_unbounded_text()` 与 B5 tests。
+
+本轮 Verification 未修改 implementation、tests、合同、handoff、Collector、API、DB、
+Dashboard 或 V-PLC，未 commit/push/tag/deploy/rollback drill。
+
+## 37. B5-final 最终控制结论
+
+第 34 节 `HOLD` 是 B5 final repair 前的历史审计；第 35 节为完整 B5-final re-review。
+当前最终控制结论：
+
+```text
+PASS
+periodic repeated substring/log detection: CLOSED
+binary/base64-overlimit precedence: CLOSED
+Verification implementation blockers B1-B5: all CLOSED
+```
+
+下一步进入 Reliability B2～B4 focused review 与 Data Quality B1/B4/B5 focused review；
+两者通过并经 ChatGPT PM 明确授权前，仍不得 commit/push 或进入 integration。
+
+---
+
+## 38. Sprint 2 Verification Targeted Relation Sanity Check（2026-06-23）
+
+本节只复验 Reliability R-B2/R-B4 repair 对 Verification relation Gate 的影响，并对
+B1/B5 做轻量 sanity check；不重开完整 Verification B1～B5 或 Data Quality review。
+
+结论：**PASS**
+
+Focused status:
+
+- V-R1 30003 / skip parent relation：**PASS**。`30003/system_reserved` 的 accepted
+  skip parent 必须通过共享 `_parent_matches()`，其中包含 accepted lookup、
+  authoritative production-result authority、same line/PLC/station/boot/cycle/
+  counter/unit/DMC/config 与 `event_role=production_result`。cross-config skip parent
+  稳定 `reject / PARENT_EVENT_INVALID`；technical-failure/cross-config evidence 稳定
+  reject。所有 reject decision 均
+  `projection_eligible=false`、`production_outcome=null`、`defect_detail=null`，不进入
+  production NOK、ordinary/operator defect 或 Pareto。
+- V-R2 validated_nok_detail canonical parent relation：**PASS**。canonical parent
+  现在必须同时满足 `event_type=station_result`、`result=nok`、accepted/canonical、
+  PLC/PLC 或 V-PLC/simulator authority、same line/PLC/station/boot/cycle/unit-DMC/
+  config、primary code/origin 或 secondary origin relation，以及
+  `correlation.event_role=production_result`。role 为
+  `cycle_complete/diagnostic/compatibility/None` 或缺失、non-authoritative、
+  duplicate/conflict/rejected、cross-config/line/station/cycle、primary code mismatch、
+  origin mismatch 均稳定 `reject / UPSTREAM_EVIDENCE_INVALID`。detail 自身携带 result
+  仍 stateless `FIELD_FORBIDDEN`。合法 PLC primary、V-PLC primary 与 distinct
+  secondary path accepted。
+- V-R3 historical config snapshot lineage sanity：**PASS**。stateful validation 仍先
+  lookup historical config 并重放 line/station/profile/config validation；matching
+  snapshot accepted，missing station 为 `CONFIG_NOT_FOUND`，profile mismatch 为
+  `EVENT_LINEAGE_INVALID`。parent relation 的 same-config 检查未绕过 snapshot
+  lineage。
+- V-R4 B5 raw validation sanity：**PASS**。periodic structured repeated substring 与
+  forbidden WebP/data-URI fixture 仍 `RAW_CONTENT_FORBIDDEN`；正常短 message/DMC
+  accepted。本轮 relation repair 未改 raw validation path，无需重开 B5 full audit。
+
+Findings:
+
+- 无 blocker。
+- `production_result` role enforcement 位于共享 `_parent_matches()`，current
+  `station_nok` parent 与 `validated_nok_detail` evidence canonical-parent path 使用同一
+  relation，避免两条验证路径漂移。
+- 正例与 reject projection boundary 均经独立探针确认。
+
+Tests:
+
+- git status：HEAD/origin/main 均为 `e9abe45`；working tree 有既有未提交
+  implementation/tests/reports 与 `.gitignore` 修改。本 review 开始前已存在。
+- compileall：**PASS**
+- focused station_event：**119 passed in 0.06s**
+- broader tests：root `tests/` **207 passed in 0.93s**
+- targeted relation/B1/B5 tests：**44 passed, 75 deselected in 0.03s**
+- git diff --check：**PASS**
+- unrelated failures：本轮未运行 repo-root 无参数 pytest；此前既有多服务顶层 `app`
+  layout collection errors 不纳入本轮结论。
+
+Independent targeted evidence:
+
+```text
+VR1_CROSS_CONFIG_SKIP_PARENT reject PARENT_EVENT_INVALID no projection
+VR1_TECH_FAILURE_CROSS_CONFIG reject UPSTREAM_EVIDENCE_INVALID no projection
+VR2_VALID_PLC_PRIMARY accept
+VR2_VALID_VPLC_PRIMARY accept
+VR2_VALID_SECONDARY accept
+VR2_ROLE cycle_complete/diagnostic/compatibility/None/missing
+  -> reject UPSTREAM_EVIDENCE_INVALID no projection
+VR2_STATUS duplicate/conflict/reject
+  -> reject UPSTREAM_EVIDENCE_INVALID no projection
+VR2_CROSS_CONFIG/LINE/STATION/CYCLE
+  -> reject UPSTREAM_EVIDENCE_INVALID no projection
+VR2_PRIMARY_CODE/ORIGIN/NON_AUTHORITY
+  -> reject UPSTREAM_EVIDENCE_INVALID no projection
+VR2_SECONDARY_ORIGIN_MISMATCH
+  -> reject UPSTREAM_EVIDENCE_INVALID no projection
+VR2_DETAIL_SELF_RESULT -> FIELD_FORBIDDEN
+VR3_VALID_SNAPSHOT accept
+VR3_MISSING_STATION reject CONFIG_NOT_FOUND
+VR3_PROFILE_MISMATCH reject EVENT_LINEAGE_INVALID
+VR4_PERIODIC reject RAW_CONTENT_FORBIDDEN
+VR4_FORBIDDEN reject RAW_CONTENT_FORBIDDEN
+VR4_NORMAL accept
+```
+
+Files changed by this review:
+
+- `docs/reports/sprint2_station_event_verification_matrix.md`
+
+Scope audit:
+
+- implementation code modified：**no**
+- tests modified：**no**
+- contracts modified：**no**
+- Collector/API/DB/Dashboard/V-PLC modified：**no**
+- migration created：**no**
+- tag created：**no**
+- deploy：**no**
+- rollback drill：**no**
+- commit/push：**no**
+
+Decision:
+
+- Remaining Verification blocker：**no**
+- Need Architecture repair：**no**
+- Need Reliability re-review：**no**；最新 Reliability focused re-review 已 PASS。
+- Need Data Quality focused review：**yes**；由 ChatGPT PM 安排 B1/B4/B5 focused
+  implementation review，本 Thread 不扩大执行。
+- Eligible for implementation commit/push：**no**；即使本轮 PASS，仍须 Data Quality
+  focused review 关闭并由 ChatGPT PM 给出精确 allowlist 授权。
+
+Thread Health:
+
+- 本 Thread 已完成的主要任务：重读 matcher/evidence implementation、targeted tests、
+  Verification/Reliability 报告与 handoff；复现 119/207 tests；运行 44 个 targeted
+  tests；独立重放 R-B2 cross-config、R-B4 role/authority/config/code-origin/status、
+  B1 snapshot 与 B5 smoke probes；形成 targeted PASS。
+- 当前上下文是否仍适合继续：**适合完成 Verification targeted 收口；不应在本 Thread
+  扩大到 Data Quality 或 commit/push。**
+- 是否建议新开 Thread：**yes**。
+- 如果建议新开，请给出 handoff 摘要：基线 `e9abe45`；Reliability R-B2/R-B3/R-B4
+  CLOSED；Verification targeted relation sanity PASS；B1/B5 sanity 无回归；
+  119/207 tests PASS；下一步由 PM 安排 Data Quality B1/B4/B5 focused implementation
+  review；其通过前不得 commit/push/integration。
+- 是否存在上下文不足、历史信息可能遗失、或需要重新读取文件的风险：**低**。Data
+  Quality Thread 应读取本节、Reliability 第 48～49 节、implementation report 第
+  11～12 节及对应合同。
+
+本轮只修改 Verification report；未修改 implementation、tests、合同、Collector、API、
+DB、Dashboard、V-PLC、migration 或发布状态，未 commit/push/tag/deploy/rollback
+drill。
+
+---
+
+## 39. Sprint 2 Verification DQ-F1～DQ-F3 Targeted Sanity Check Result（2026-06-23）
+
+本节只验证 Data Quality DQ-F1～DQ-F3 minimal repair 是否真实落地，以及 repair 是否
+造成 Verification regression；不重开完整 Sprint 2 Verification matrix，不进入
+integration。
+
+结论：**PASS WITH RECOMMENDATIONS**
+
+### Focused status
+
+- V-DQ1 parent profile/station_type lineage：**PASS**。
+  shared `_parent_matches()` 已在既有 line/PLC/station/boot/cycle/counter/unit/DMC/
+  config relation 上强制比较 `profile_id` 与 `station_type`。任一 mismatch 均
+  `reject / PARENT_EVENT_INVALID`。matcher 继续要求
+  `event_type=station_result`、`correlation.event_role=production_result`、
+  PLC/PLC 或 V-PLC/simulator authoritative source/actor，以及 primary/secondary
+  NOK code-origin relation；`30003` 仍只接受 same-relation `result=skip` parent。
+  reject decision 不产生 authoritative production outcome、defect detail、
+  compatibility projection 或 projection eligibility，因此不会形成 operator defect、
+  Pareto 或其他 production projection input。
+- V-DQ2 validated cited detail canonical authority：**PASS**。
+  cited detail lookup 必须 accepted，record 必须是无 authoritative `result` 的
+  `station_nok`，且
+  `correlation.event_role=nok_detail`。随后在 historical config 下重放 ordinary
+  `validate_event()`，再 lookup accepted canonical NOK parent 并复用
+  `_parent_matches()` 重放完整 relation。compatibility、diagnostic、wrong/missing
+  role、non-accepted cited detail、non-accepted parent 与 wrong parent relation 均
+  fail closed 为既有 upstream evidence error；reject 不产生 projection。
+- V-DQ3 raw authority fail-closed：**PASS**。
+  historical snapshot 下只要 `raw_payload` present，就必须提供 callable
+  `decode_raw_payload`。missing decoder 或 decoder exception 返回
+  `RAW_PARSE_ERROR`；raw-only 或 decoded/normalized canonical mismatch 返回
+  `RAW_NORMALIZED_MISMATCH`；raw + normalized exact decoder match 可继续正常验证。
+  config/raw validation 位于 duplicate/conflict/detail-slot lookup 前，因此 rejected raw
+  evidence 不能先 accepted、不能占据 authoritative slot，也不产生 authoritative
+  production outcome。duplicate/conflict/raw_variant function 未被修改：
+  same-content/same-raw 仍 duplicate，same-content/different-raw 仍
+  `duplicate + RAW_VARIANT`，different-content 仍 conflict。stateful raw_variant
+  fixture 同时提供 normalized payload 与 decoder，不绕开 raw authority chain。
+- V-DQ4 targeted regression / isolation：**PASS**。
+  repair 新增 9 个 focused cases，因此 station-event 从 119 增至 128、root
+  `tests/` 从 207 增至 216，增量一致且完整 suite 全部通过。Data Quality targeted
+  22 tests 的 DQ-F1～DQ-F3/R3 结论与本轮源码映射、128/216 suite 及独立探针一致，
+  不与既有 Verification matrix 冲突。本轮未发现 contracts、Collector、API、DB、
+  Dashboard、V-PLC 或 migration 变更。
+
+### Findings
+
+- 未发现新的 Verification blocker。
+- DQ-F1～DQ-F3 repair 均位于 shared validation/authority path，不是 fixture-only
+  bypass。
+- Non-blocking recommendation：在后续允许修改 tests 的独立任务中，可将
+  `non-accepted cited detail record` 与 `raw-only + callable decoder` 两个本轮只读
+  探针固化为具名 regression。当前探针已分别证明
+  `reject / UPSTREAM_EVIDENCE_INVALID` 与 `RAW_NORMALIZED_MISMATCH`，因此不要求
+  Architecture 当前扩展，也不阻塞本 Gate。
+
+### Tests
+
+```text
+git status:
+branch = main
+HEAD = e9abe45
+working tree contains pre-existing uncommitted implementation/tests/reports/.gitignore
+
+git diff -- common/station_event tests/test_station_event_model.py:
+no tracked diff output; both requested paths are pre-existing untracked files
+
+compileall:
+PASS
+
+focused station_event:
+128 passed in 0.06s
+
+broader tests:
+216 passed in 0.95s
+
+Data Quality targeted reference:
+22 passed, 106 deselected; conclusions consistent with this review
+
+independent probes:
+RAW_ONLY_WITH_DECODER -> RAW_NORMALIZED_MISMATCH, no authoritative outcome
+RAW_EXACT_MATCH -> valid
+NON_ACCEPTED_CITED_DETAIL -> reject / UPSTREAM_EVIDENCE_INVALID, no projection
+
+git diff --check:
+PASS
+
+unrelated failures:
+none in the required commands
+```
+
+### Files changed by this review
+
+- `docs/reports/sprint2_station_event_verification_matrix.md`
+
+### Scope audit
+
+- implementation code modified：**no**
+- tests modified：**no**
+- contracts modified：**no**
+- Collector/API/DB/Dashboard/V-PLC modified：**no**
+- migration created：**no**
+- tag created：**no**；仍只有 `phase1-pass-20260619`
+- deploy：**no**
+- rollback drill：**no**
+- commit/push：**no**
+
+### Decision
+
+- Remaining Verification blocker：**no**
+- Need Architecture repair：**no**
+- Need Data Quality re-review：**no**；最新 targeted re-review 已
+  `PASS WITH RECOMMENDATIONS`。
+- Need Reliability re-review：**no**；本轮未削弱 Reliability 已关闭 relation/raw
+  constraints。
+- Eligible for implementation commit/push：**no**。本轮 targeted sanity check 已关闭，
+  但仍须由 ChatGPT PM 执行 final pre-commit audit 并给出精确 allowlist；本结论本身不
+  授权 commit/push。
+- Next recommended step：交 ChatGPT PM 做 final pre-commit audit、working-tree
+  allowlist 与精确 staging/commit/push 决策；继续禁止 integration、migration、tag、
+  deploy 与 rollback drill。
+
+### Thread Health
+
+- 本 Thread 已完成的主要任务：恢复当前 working-tree gate 上下文；重读指定
+  implementation/tests/reports/handoff；逐项验证 V-DQ1～V-DQ4；运行 compileall、
+  128/216 tests、diff checks 与 3 个独立探针；形成 targeted Gate 结论。
+- 当前上下文是否仍适合继续：**适合完成本轮 Verification 收口；不应在本 Thread
+  扩大到 PM pre-commit、staging、commit/push 或 integration。**
+- 是否建议新开 Thread：**yes，交 ChatGPT PM final pre-commit audit Thread。**
+- 如果建议新开，请给出 handoff 摘要：基线 `e9abe45`；Reliability focused PASS；
+  Data Quality DQ-F1～DQ-F3 targeted re-review
+  `PASS WITH RECOMMENDATIONS`；Verification V-DQ1～V-DQ4
+  `PASS WITH RECOMMENDATIONS`；128/216 tests、compileall、`git diff --check`
+  全部 PASS；无 remaining Verification blocker；下一步只做 PM final pre-commit
+  audit 与精确 allowlist，未授权前不得 commit/push/integration。
+- 是否存在上下文不足、历史信息可能遗失、或需要重新读取文件的风险：**低**。新
+  Thread 应读取本节、Data Quality 第 40～41 节、implementation report 第 13 节及
+  fresh `git status --short`；不得依赖旧 working-tree inventory。
+
+## 40. Current Verification control conclusion
+
+本节追加于第 38 节 relation sanity PASS 之后，记录 DQ-F1～DQ-F3 repair 的最终
+Verification targeted 状态：
+
+```text
+PASS WITH RECOMMENDATIONS
+V-DQ1 parent profile/station_type lineage: PASS
+V-DQ2 validated cited detail canonical authority: PASS
+V-DQ3 raw authority fail-closed: PASS
+V-DQ4 targeted regression / isolation: PASS
+Remaining Verification blocker: no
+```
+
+本结论不授权 commit/push。下一步必须由 ChatGPT PM 做 final pre-commit audit 并给出
+精确 allowlist；在此之前不得进入 Collector/API/DB/Dashboard/V-PLC integration。

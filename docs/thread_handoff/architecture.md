@@ -1,13 +1,16 @@
 # Architecture / Integration Thread Handoff
 
-更新时间：2026-06-21
+更新时间：2026-06-23
 Thread：Architecture / Integration
-当前里程碑：Phase-2 Sprint 2 Generic Station Event Model contract revision
-当前 Reliability Gate：**PASS WITH RECOMMENDATIONS**
-当前 Data Quality Gate：**PASS WITH RECOMMENDATIONS**
-当前 Verification Gate：**HOLD / CHANGES REQUIRED**
-当前活动：V6/V7/V10 最小 docs-only 修订已完成，等待 Verification focused re-review
-（implementation 尚未开始）
+当前里程碑：Phase-2 Sprint 2 Generic Station Event Model implementation
+当前 Reliability focused Gate：**PASS**
+当前 Data Quality targeted Gate：**PASS WITH RECOMMENDATIONS；DQ-F1～DQ-F3 CLOSED**
+当前 Verification targeted Gate：**PASS WITH RECOMMENDATIONS；V-DQ1～V-DQ4 PASS**
+Remaining Reliability / Data Quality / Verification blocker：**none**
+当前活动：implementation、focused repair、Reliability focused review、Data Quality
+targeted re-review 与 Verification targeted sanity check 均已完成；只剩 final
+pre-commit audit 与 ChatGPT PM 精确 allowlist commit/push 授权。尚未 commit/push，
+且未进入 Collector/API/DB/Dashboard/V-PLC integration。
 
 ## 1. 当前基线
 
@@ -21,22 +24,33 @@ Thread：Architecture / Integration
 | Sprint 1 commit | `b9f6a69 Phase 2 Sprint 1 flexible line configuration` |
 | Docs hygiene commit | `4215b7c Finalize Sprint 1 architecture handoff and review history` |
 | Sprint 2 planning freeze commit | `45fa2a8 Freeze Sprint 2 station event planning` |
-| HEAD | `60adac2` |
-| `origin/main` | `60adac2` |
+| HEAD | `e9abe45` |
+| `origin/main` | `e9abe45` |
 | Phase-2 tag | 未创建 |
 | 远程部署 | 未执行 |
 | rollback drill | 未执行 |
-| Sprint 2 Reliability focused re-review | `PASS WITH RECOMMENDATIONS` |
-| Sprint 2 Data Quality focused re-review | `PASS WITH RECOMMENDATIONS`；R1~R5 无 remaining blocker |
-| Sprint 2 Verification Gate | `HOLD / CHANGES REQUIRED`；remaining V6/V7/V10 |
-| Sprint 2 | V6/V7/V10 docs-only 修订已完成，待 Verification focused re-review；implementation 未开始 |
-| 工作树 | 有未提交文档修改；最新已 push commit 为 `60adac2` |
+| Sprint 2 implementation baseline | `e9abe45` |
+| Sprint 2 package | `common/station_event/` 已创建 |
+| Sprint 2 focused tests | `128 passed` |
+| Root `tests/` regression | `216 passed` |
+| Sprint 2 Reliability focused review | `PASS`；remaining blocker none |
+| Sprint 2 Data Quality targeted re-review | `PASS WITH RECOMMENDATIONS`；DQ-F1~DQ-F3 CLOSED |
+| Sprint 2 Verification targeted sanity check | `PASS WITH RECOMMENDATIONS`；V-DQ1~V-DQ4 PASS |
+| Sprint 2 Verification contract Gate | `PASS WITH RECOMMENDATIONS`；V6/V7/V10 已关闭 |
+| Sprint 2 Verification implementation review | `PASS`；B1~B5 CLOSED |
+| Sprint 2 | Generic Station Event Model MVP repair + tests 已完成；未集成 runtime |
+| 工作树 | 有未提交 implementation、tests 与报告；最新已 push commit 为 `e9abe45` |
 
-Sprint 1 已完成 final commit / push，Sprint 2 Reliability 文档已在 `60adac2`
-提交。Reliability N8 定向复验结论为 `PASS WITH RECOMMENDATIONS`；N8 已 CLOSED，
-N6、N7 和既有 CLOSED items 均无回归，未发现新 Reliability blocker。Sprint 2
-implementation 仍未开始。Data Quality focused re-review 已 PASS；Verification 当前
-HOLD 仅剩 V6/V7/V10，Architecture 已完成三个最小 docs-only 修订。
+Sprint 1 已完成 final commit / push。Sprint 2 planning / review gates 已在 `e9abe45`
+完成 docs-only commit / push；Reliability、Data Quality、Verification 与 V10/R5 sanity
+check 均为 `PASS WITH RECOMMENDATIONS`。PM 随后授权 implementation，本 working tree
+已完成独立 package、tests 与 implementation report。Verification implementation review
+发现 B1~B5 后，Verification 已完成 B5-final re-review并关闭 B1~B5。Reliability
+focused review 已关闭 R-B2/R-B3/R-B4 与 B5 regression。DQ-F1～DQ-F3 repair、
+Data Quality targeted re-review 与 Verification targeted sanity check 也已完成，
+remaining blocker 为 none。当前只剩 final pre-commit audit 与 PM 精确 allowlist
+commit/push 授权；尚未 commit/push，也未进入 Collector/API/DB/Dashboard/V-PLC
+integration。
 
 ## 2. Sprint 1 已交付
 
@@ -139,20 +153,22 @@ Reliability 历史：
 - payload/raw 仍保持 16/64 KiB、depth/key/array/string/type/encoding 和超限 reject。
 - event required/optional/forbidden、absent/null 与 `profile_id` 规则保持不变。
 
-已冻结的关键决定包括：
+以下为 planning freeze 时冻结、现已由 implementation 实现的关键决定：
 
-- 后续路径为 `common/station_event/`，本轮未创建。
+- implementation 路径为 `common/station_event/`，当前 working tree 已创建。
 - MVP 为 cycle start/complete、result、NOK、heartbeat。
 - 保留独立 `station_nok` 与 `nok_origin`。
 - frozen dataclass、UUIDv4 runtime 默认、UUIDv5 test-only、UUIDv7 future。
 - 所有有效事件强制 `config_hash`。
 - payload/raw payload 上限 16/64 KiB。
 
-这些仍是 planning/contract 文档，不代表 Sprint 2 package、tests 或 runtime
-integration 已交付。Reliability findings 已关闭，但 Data Quality、Verification 与
-ChatGPT PM implementation authorization 尚未完成。
+这些 planning/contract 决定现已由独立 package 与 tests 实现；仍不代表 runtime
+integration 已交付。当前 review blocker 已清零，但 commit/push 仍须 ChatGPT PM
+精确 allowlist 授权。
 
-## 6. Data Quality PASS 与 Verification V6/V7/V10 修订
+## 6. 历史 Data Quality / Verification 合同修订
+
+> 本节记录 implementation 前的合同修订历史。当前控制状态见文件顶部与第 13 节。
 
 Reliability 结论保持：
 
@@ -161,16 +177,15 @@ Reliability 结论保持：
 3. 三个负例均有唯一 reject 结果。
 4. N6、N7 与既有 CLOSED items 无回归。
 
-Data Quality R1~R5 focused re-review 已 `PASS WITH RECOMMENDATIONS`。Verification
-remaining blockers：
+当时 Data Quality R1~R5 focused re-review 已 `PASS WITH RECOMMENDATIONS`，随后
+Verification 曾留下：
 
 1. V6 payload/raw error-code mapping。
 2. V7 same canonical content + different raw fingerprint final decision。
 3. V10 mutually exclusive lifecycle / derived output。
 
-Architecture 已完成三个最小 docs-only 修订。下一步回 Verification focused re-review；
-Data Quality 仅需对 V10/R5 定向确认。ChatGPT PM 授权前，implementation、tests、
-package、DB/API/Collector/V-PLC/Dashboard 接入仍全部禁止。
+Architecture 后续完成三个最小 docs-only 修订，V6/V7/V10 与 V10/R5 均已关闭；
+本节不再代表当前待办。
 
 ## 7. 后续 Architecture Thread 阅读顺序
 
@@ -188,26 +203,16 @@ package、DB/API/Collector/V-PLC/Dashboard 接入仍全部禁止。
 
 ## 8. 下一 Thread 接手动作
 
-1. 重读上述 handoff、context、Reliability 报告、返修 plan 和 event contract。
-2. 交 Verification focused re-review V6/V7/V10。
-3. Data Quality 仅对 V10/R5 做定向确认。
-4. 审计结论汇总并由 ChatGPT PM 明确授权前，不得编写业务实现、tests 或创建
-   `common/station_event/`。
-5. Reliability recommendations 进入 Verification fixture 与 table-driven tests 设计，
-   但不阻塞 N8 关闭。
+1. 重读本 handoff、context 与三份 review report 的文件末尾当前控制结论。
+2. 执行 final pre-commit audit，核验 working tree、测试、scope 与精确 allowlist。
+3. audit PASS 后交 ChatGPT PM 决定是否授权精确 staging/commit/push。
+4. 未获授权前不得 stage、commit/push、tag、deploy、rollback drill 或进入
+   Collector/API/DB/Dashboard/V-PLC integration。
 
 ## 9. 工作树与提交边界
 
-本轮允许修改：
-
-- `docs/contracts/station_event_model.md`
-- `docs/contracts/dynamic_station_model.md`
-- `docs/reports/sprint2_generic_station_event_model_plan.md`
-- `docs/thread_handoff/architecture.md`
-- `docs/reports/architecture_context_restore.md`
-- 必要时 `docs/DOC_INDEX.md`、`docs/reports/README.md`
-
-Data Quality 与 Reliability 报告均由各自 Thread 维护，本轮只读。
+当前 pre-commit 收口只允许 final audit 明确要求的状态同步；不得扩大修改代码、
+tests、contracts 或 review reports。
 
 未来 docs commit / push 必须使用精确 allowlist，明确不要提交：
 
@@ -221,11 +226,90 @@ Data Quality 与 Reliability 报告均由各自 Thread 维护，本轮只读。
 
 - 不把 Sprint 1 重新描述为 HOLD。
 - 不重复执行 Sprint 1 Contract Hardening。
-- 不把当前 planning freeze 误称为已完成实现。
-- 不把 Reliability PASS 误写成 Sprint 2 implementation 已授权。
-- 不把 Architecture 自评修订完成写成 Verification 已通过。
-- 不跳过 Verification focused re-review 与 ChatGPT PM authorization。
-- 不在未获 PM 授权时创建 station event package 或修改 tests。
+- 不把 implementation 完成误写成已 commit/push。
+- 不把 review PASS 误写成已获得 commit/push 授权。
+- 不跳过 final pre-commit audit 与 ChatGPT PM 精确 allowlist authorization。
 - 不提前修改 migration、DB、Collector、API、Dashboard 或运行链路。
 - 不创建 Phase-2 tag。
 - 不远程部署或执行 rollback drill。
+
+## 11. Sprint 2 implementation 状态（更新至 2026-06-23 final targeted reviews）
+
+PM 已在 `e9abe45` 后明确授权 Generic Station Event Model MVP implementation。本轮：
+
+- 创建 `common/station_event/`。
+- 新增 `tests/test_station_event_model.py`。
+- 新增
+  `docs/reports/sprint2_generic_station_event_model_implementation_report.md`。
+- focused tests：`128 passed`。
+- root `tests/` regression：`216 passed`。
+- compileall 与 `git diff --check`：PASS。
+
+本实现仍是独立离线 contract package。Collector、API、DB、Dashboard、Grafana、V-PLC、
+migration、deploy、rollback drill 与 tag 均未进入本轮，Phase-1 默认行为未改变。
+当前 working tree 尚未 commit / push。
+
+## 12. Verification implementation repair 状态
+
+已修复：
+
+- B1 historical snapshot station/profile lineage。
+- B2 `30003` cross-station/cross-cycle parent isolation。
+- B3 primary/secondary 与 secondary/secondary code duplication。
+- B4 `validated_nok_detail` accepted canonical NOK parent validation。
+- B5 base64/image/blob/file/log-like raw bypass：本轮补齐 WebP、PDF、generic binary
+  base64、binary MIME、约 7 KiB 周期性单行片段，以及 binary/base64 超过 string
+  limit 时的 `RAW_CONTENT_FORBIDDEN` precedence。
+
+B1~B5 已由 Verification CLOSED。Reliability R-B3 CLOSED；R-B2/R-B4 已完成：
+
+- `30003` skip parent 增加 same `config_hash` relation。
+- `validated_nok_detail` canonical parent 增加 authoritative PLC/V-PLC、
+  same-config、primary code/origin 与 secondary origin relation。
+
+R-B2/R-B3/B5 已 CLOSED。R-B4 canonical parent 现在强制
+`correlation.event_role=production_result`；其他 role、`None` 或缺失均
+`UPSTREAM_EVIDENCE_INVALID` 且不投影。
+
+Reliability R-B4 focused re-review 已 PASS；后续 Data Quality DQ-F1～DQ-F3 targeted
+re-review 与 Verification targeted sanity check 也已
+`PASS WITH RECOMMENDATIONS`。ChatGPT PM 明确授权前不得 commit/push，也不得开始
+Collector/API/DB/Dashboard/V-PLC integration。
+
+## 13. Data Quality repair 与最终 targeted Gate（2026-06-23）
+
+Data Quality focused implementation review 曾返回 HOLD，finding 为：
+
+- DQ-F1：parent snapshot lineage 缺 `profile_id`、`station_type`。
+- DQ-F2：cited detail 未强制 `event_role=nok_detail` 与 ordinary canonical
+  validation。
+- DQ-F3：`raw_payload` 在 historical snapshot 无 decoder 时 fail-open。
+
+Architecture 已完成最小 implementation repair：
+
+- parent/detail exact relation 增加 `profile_id`、`station_type`。
+- cited detail 必须为 accepted canonical `station_nok` / `nok_detail`，并继续 replay
+  accepted canonical NOK parent。
+- historical raw evidence 必须有 callable decoder；missing/exception 为
+  `RAW_PARSE_ERROR`，raw-only 或 canonical mismatch 为
+  `RAW_NORMALIZED_MISMATCH`。
+- 所有 reject 均不产生 production outcome、defect detail、compatibility/Pareto
+  projection 或 projection eligibility。
+- duplicate/conflict/raw_variant 裁决未修改；raw_variant 合法 fixture 现在显式提供
+  normalized payload 与 decoder。
+
+当前最终状态：
+
+```text
+Reliability focused review: PASS
+Data Quality targeted re-review: PASS WITH RECOMMENDATIONS
+Verification DQ-F1～DQ-F3 targeted sanity check: PASS WITH RECOMMENDATIONS
+Remaining Reliability blocker: no
+Remaining Data Quality blocker: no
+Remaining Verification blocker: no
+focused station_event: 128 passed
+broader tests: 216 passed
+git diff --check: PASS
+```
+
+当前只剩 final pre-commit audit 与 ChatGPT PM 精确 allowlist commit/push 授权。

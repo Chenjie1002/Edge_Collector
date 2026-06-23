@@ -55,3 +55,9 @@ backup/
 backups/
 *.bak
 *.backup
+
+# Local PM scratch / Codex auxiliary planning artifacts
+# These are useful for local ChatGPT/Codex handoff, but must not be committed.
+docs/20260620_03_Edge MES Demo — ChatGPT PM Handoff.md
+docs/Edge MES Demo 当前进度报告.md
+docs/superpowers/
