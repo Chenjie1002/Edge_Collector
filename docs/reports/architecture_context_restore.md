@@ -1,7 +1,7 @@
 # Architecture / Integration Context Restore
 
-更新时间：2026-06-23
-用途：恢复 Phase-2 Sprint 2 Generic Station Event Model implementation 上下文
+更新时间：2026-06-24
+用途：恢复 Phase-2 Sprint 2 Generic Station Event Model closeout 后上下文
 当前 Reliability Gate：**PASS WITH RECOMMENDATIONS**
 当前 Reliability focused Gate：**PASS**
 当前 Data Quality targeted Gate：**PASS WITH RECOMMENDATIONS；DQ-F1～DQ-F3 CLOSED**
@@ -30,9 +30,10 @@ remaining blocker 为 none。Sprint 2 implementation 已通过 commit
 
 ```text
 branch: main
-HEAD: 17cf5d2
-origin/main: 17cf5d2
-latest commit: 17cf5d2 Implement Sprint 2 generic station event model
+HEAD: 82b2127 Close out Sprint 2 documentation state
+origin/main: 82b2127 Close out Sprint 2 documentation state
+latest commit: 82b2127 Close out Sprint 2 documentation state
+Sprint 2 implementation commit: 17cf5d2 Implement Sprint 2 generic station event model
 Sprint 1 implementation: b9f6a69 Phase 2 Sprint 1 flexible line configuration
 Sprint 1 docs hygiene: 4215b7c Finalize Sprint 1 architecture handoff and review history
 tags: phase1-pass-20260619
@@ -50,7 +51,7 @@ Verification implementation review: PASS; B1-B5 CLOSED
 remaining Reliability blocker: none
 remaining Data Quality blocker: none
 remaining Verification blocker: none
-latest pushed commit: 17cf5d2
+latest pushed commit: 82b2127 Close out Sprint 2 documentation state
 uncommitted implementation/tests/report changes: no tracked diff
 required sequence: docs-only closeout hygiene -> PM authorization before Sprint 3 runtime work
 focused station_event tests: 128 passed
@@ -58,7 +59,8 @@ broader tests: 216 passed
 git diff --check: PASS
 Collector/API/DB/Dashboard/V-PLC integration: none
 migration: none
-commit/push: complete at 17cf5d2
+Sprint 2 implementation commit/push: complete at 17cf5d2
+Sprint 2 docs-only closeout commit/push: complete at 82b2127
 ```
 
 ## 3. Sprint 1 最终状态
@@ -227,14 +229,16 @@ Architecture 后续完成三个最小合同修订并关闭这些项。
 7. `docs/contracts/dynamic_station_model.md`
 8. `docs/reports/sprint1_independent_gate_review.md`
 
-第一任务是以 `17cf5d2` 为当前 source of truth 做 docs-only closeout hygiene；任何
-Sprint 3 runtime work、migration、tag、deploy 或 rollback drill 都需要 PM 单独授权。
+第一任务是以 `17cf5d2` 为 Sprint 2 implementation source of truth、以 `82b2127`
+为当前 repository HEAD/origin/main 做 docs-only closeout hygiene；任何 Sprint 3
+runtime work、migration、tag、deploy 或 rollback drill 都需要 PM 单独授权。
 
 ## 11. 工作树与提交边界
 
-当前 HEAD/origin/main 和最新 pushed commit 均为 `17cf5d2`；tracked working tree 无
-implementation/tests/report diff。当前 tag 仍只有 `phase1-pass-20260619`，未 deploy、
-未 rollback drill。
+当前 HEAD/origin/main 和最新 pushed commit 均为 `82b2127 Close out Sprint 2 documentation state`；
+Sprint 2 implementation commit 为 `17cf5d2 Implement Sprint 2 generic station event model`。
+tracked working tree 无 implementation/tests/report diff。当前 tag 仍只有
+`phase1-pass-20260619`，未 deploy、未 rollback drill。
 
 本轮 Architecture 允许修改：
 

@@ -1,8 +1,8 @@
 # Architecture / Integration Thread Handoff
 
-更新时间：2026-06-23
+更新时间：2026-06-24
 Thread：Architecture / Integration
-当前里程碑：Phase-2 Sprint 2 Generic Station Event Model implementation
+当前里程碑：Phase-2 Sprint 2 Generic Station Event Model docs-only closeout
 当前 Reliability focused Gate：**PASS**
 当前 Data Quality targeted Gate：**PASS WITH RECOMMENDATIONS；DQ-F1～DQ-F3 CLOSED**
 当前 Verification targeted Gate：**PASS WITH RECOMMENDATIONS；V-DQ1～V-DQ4 PASS**
@@ -24,13 +24,14 @@ Collector/API/DB/Dashboard/V-PLC runtime integration 未进入。
 | Sprint 1 commit | `b9f6a69 Phase 2 Sprint 1 flexible line configuration` |
 | Docs hygiene commit | `4215b7c Finalize Sprint 1 architecture handoff and review history` |
 | Sprint 2 planning freeze commit | `45fa2a8 Freeze Sprint 2 station event planning` |
-| HEAD | `17cf5d2 Implement Sprint 2 generic station event model` |
-| `origin/main` | `17cf5d2 Implement Sprint 2 generic station event model` |
+| HEAD | `82b2127 Close out Sprint 2 documentation state` |
+| `origin/main` | `82b2127 Close out Sprint 2 documentation state` |
 | Phase-2 tag | 未创建 |
 | 远程部署 | 未执行 |
 | rollback drill | 未执行 |
 | Sprint 2 implementation baseline | `e9abe45` |
 | Sprint 2 implementation commit | `17cf5d2 Implement Sprint 2 generic station event model` |
+| Sprint 2 docs-only closeout commit | `82b2127 Close out Sprint 2 documentation state` |
 | Sprint 2 package | `common/station_event/` 已创建 |
 | Sprint 2 focused tests | `128 passed` |
 | Root `tests/` regression | `216 passed` |
