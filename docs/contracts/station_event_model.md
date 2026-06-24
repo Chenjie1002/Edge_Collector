@@ -1,8 +1,9 @@
 # Generic Station Event Model Contract
 
-状态：Sprint 2 Verification V6/V7/V10 docs-only contract revision；
-Reliability / Data Quality 均为 `PASS WITH RECOMMENDATIONS`；Verification 待 focused
-re-review；implementation 尚未开始
+状态：Sprint 2 Generic Station Event Model implementation 已完成并通过
+`17cf5d2 Implement Sprint 2 generic station event model` commit/push；Reliability
+focused Gate 为 `PASS`，Data Quality targeted Gate 为 `PASS WITH RECOMMENDATIONS`，
+Verification targeted Gate 为 `PASS WITH RECOMMENDATIONS`；runtime integration 未进入
 
 更新时间：2026-06-21
 

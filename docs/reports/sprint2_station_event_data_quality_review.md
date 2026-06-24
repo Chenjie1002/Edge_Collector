@@ -1663,3 +1663,26 @@ R3 raw evidence / fingerprint / projection authority chain: CLOSED
 Data Quality remaining blocker 已清零。本结论不授权 commit/push；Verification
 DQ-F1～DQ-F3 targeted sanity check 与 ChatGPT PM 精确授权完成前，不得进入
 Collector/API/DB/Dashboard/V-PLC integration。
+
+---
+
+## 42. Post-commit closeout current-control note（2026-06-24）
+
+本文件前文保留 Data Quality review 各轮审计当时的 Git 基线、working tree 状态与
+handoff 建议；其中 `60adac2`、`e9abe45`、`common/station_event` absent、
+implementation 尚未开始、未提交 implementation 等描述均为历史证据，不再代表当前
+repo 状态。
+
+当前 Sprint 2 source of truth：
+
+```text
+HEAD/origin/main: 17cf5d2 Implement Sprint 2 generic station event model
+Sprint 2 implementation: committed/pushed
+Data Quality targeted Gate: PASS WITH RECOMMENDATIONS
+Remaining Data Quality blocker: none
+runtime integration: not started
+migration/tag/deploy/rollback drill: not performed
+```
+
+本 closeout note 只同步文档控制状态，不修改 implementation、tests、Collector、API、
+DB、Dashboard、V-PLC、migration 或发布状态。

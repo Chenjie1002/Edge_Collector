@@ -2105,3 +2105,26 @@ Remaining Verification blocker: no
 
 本结论不授权 commit/push。下一步必须由 ChatGPT PM 做 final pre-commit audit 并给出
 精确 allowlist；在此之前不得进入 Collector/API/DB/Dashboard/V-PLC integration。
+
+---
+
+## 41. Post-commit closeout current-control note（2026-06-24）
+
+本文件前文保留 Verification matrix、implementation review 与 targeted sanity check
+各轮审计当时的 Git 基线、working tree 状态与 handoff 建议；其中 `60adac2`、
+`e9abe45`、implementation 未提交、final pre-commit audit 等描述均为历史证据，不再
+代表当前 repo 状态。
+
+当前 Sprint 2 source of truth：
+
+```text
+HEAD/origin/main: 17cf5d2 Implement Sprint 2 generic station event model
+Sprint 2 implementation: committed/pushed
+Verification targeted Gate: PASS WITH RECOMMENDATIONS
+Remaining Verification blocker: none
+runtime integration: not started
+migration/tag/deploy/rollback drill: not performed
+```
+
+本 closeout note 只同步文档控制状态，不修改 implementation、tests、Collector、API、
+DB、Dashboard、V-PLC、migration 或发布状态。

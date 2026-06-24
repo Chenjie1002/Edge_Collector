@@ -2246,3 +2246,25 @@ B5 regression: CLOSED
 Reliability focused blocker 已全部关闭，但不授权 commit/push。下一步由 ChatGPT PM
 安排 Verification targeted relation sanity check 与 Data Quality focused implementation
 review；两者通过并获得 PM 精确授权前，不得 commit/push 或进入 integration。
+
+---
+
+## 50. Post-commit closeout current-control note（2026-06-24）
+
+本文件前文保留 Reliability review 各轮审计当时的 Git 基线、working tree 状态与
+handoff 建议；其中 `45fa2a8`、`e9abe45`、未提交 implementation 等描述均为历史证据，
+不再代表当前 repo 状态。
+
+当前 Sprint 2 source of truth：
+
+```text
+HEAD/origin/main: 17cf5d2 Implement Sprint 2 generic station event model
+Sprint 2 implementation: committed/pushed
+Reliability focused Gate: PASS
+Remaining Reliability blocker: none
+runtime integration: not started
+migration/tag/deploy/rollback drill: not performed
+```
+
+本 closeout note 只同步文档控制状态，不修改 implementation、tests、Collector、API、
+DB、Dashboard、V-PLC、migration 或发布状态。
