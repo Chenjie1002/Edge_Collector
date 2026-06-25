@@ -1,6 +1,6 @@
 # Edge MES Demo 文档索引
 
-更新时间：2026-06-21
+更新时间：2026-06-25
 
 ## 1. 当前协作范围
 
@@ -35,6 +35,7 @@ Phase-2 Out of Scope：
 | [`protocol.md`](protocol.md) | Implemented Protocol | 当前 DB100/101/102/103 地址、字段和握手实现 | 描述当前实现，不代表生产级通用协议 |
 | [`plc_edge_integration_guide.md`](plc_edge_integration_guide.md) | Engineering Guide | 面向真实 PLC 的通用接入规范 | Phase-2/现场接入参考，本阶段不完整实现 |
 | [`roadmap.md`](roadmap.md) | Phase-2 Roadmap | Phase-1 freeze 后的九 Sprint 优先级与 gate | Phase-2 路线图真源 |
+| [`thread_handoff/pm_operating_rules.md`](thread_handoff/pm_operating_rules.md) | PM Rules | ChatGPT PM / Codex Thread 长期操作规则、git safety、gate 规则 | 未来短 prompt 的长期规则入口 |
 
 说明：仓库外存在 `../docs/PROJECT_STATUS.md` 审计快照，但它不属于
 `edge-mes-demo` Git 仓库，也不是协作真源。项目状态以
@@ -65,17 +66,20 @@ Phase-2 Out of Scope：
 | [`contracts/station_event_model.md`](contracts/station_event_model.md) | Architecture、Reliability、Data Quality、Verification | Sprint 2 PM 决策已冻结的通用工站事件 envelope、语义、校验与序列化合同 |
 | [`contracts/dynamic_station_model.md`](contracts/dynamic_station_model.md) | Architecture、Data Quality | 动态工站、共享事件、JSONB、索引与保留策略 |
 | [`contracts/dashboard_api_contract.md`](contracts/dashboard_api_contract.md) | Data Quality、Frontend、Verification | OEE、Quality、Trace 与 Dashboard 公共 API 合同 |
+| [`contracts/collector_ingestion_adapter.md`](contracts/collector_ingestion_adapter.md) | Architecture、Reliability、Data Quality、Verification | Sprint 3 Collector ingestion adapter offline fixture 边界、raw/normalized authority、diagnostic wrapper 与 projection metadata 合同 |
 
 ## 5. Thread 交接入口
 
 | 启动顺序 | Thread | 交接文件 | 主要职责 |
 | --- | --- | --- | --- |
-| 1 | Reliability | [`thread_handoff/reliability.md`](thread_handoff/reliability.md) | 固化 PLC identity/counter，完成严格 ACK 和恢复语义 |
-| 2 | Data Quality | [`thread_handoff/data_quality.md`](thread_handoff/data_quality.md) | 基于稳定 counter 实现 data gap，并增强查询和可观测性 |
-| 3 | Verification | [`thread_handoff/verification.md`](thread_handoff/verification.md) | 执行集成、故障恢复和回归验收，形成最终报告 |
+| 0 | PM / all Threads | [`thread_handoff/pm_operating_rules.md`](thread_handoff/pm_operating_rules.md) | 长期 PM 操作规则、git safety、gate 与 allowlist 规则 |
+| 1 | Architecture / Integration | [`thread_handoff/architecture.md`](thread_handoff/architecture.md) | 合同设计、边界设计、file ownership、docs repair、status sync |
+| 2 | Reliability | [`thread_handoff/reliability.md`](thread_handoff/reliability.md) | runtime safety、ACK、retry、authority、fail-closed 语义 |
+| 3 | Data Quality | [`thread_handoff/data_quality.md`](thread_handoff/data_quality.md) | fact authority、raw/normalized evidence、projection、NOK outcome/detail |
+| 4 | Verification | [`thread_handoff/verification.md`](thread_handoff/verification.md) | fixture matrix、negative cases、regression gate、final allowlist audit |
 
-Verification Thread 可以在前两个 Thread 开发期间准备测试环境和基线，但最终
-验收应在 Reliability 和 Data Quality 交付后执行。
+Verification Thread 可以在其它 Thread 开发期间准备测试环境和基线，但最终
+验收应在对应实现和 focused review 后执行。
 
 ## 6. 报告
 
@@ -114,21 +118,22 @@ Phase-2 Sprint 1：
 - `config/lines/stress_20_station.yaml`
 - `common/line_config/`
 
-Phase-2 Sprint 2 planning freeze：
+Phase-2 Sprint 2 closeout：
 
 - [`contracts/station_event_model.md`](contracts/station_event_model.md)
 - [`reports/sprint2_generic_station_event_model_plan.md`](reports/sprint2_generic_station_event_model_plan.md)
+- [`reports/sprint2_generic_station_event_model_implementation_report.md`](reports/sprint2_generic_station_event_model_implementation_report.md)
 - [`reports/sprint2_station_event_reliability_review.md`](reports/sprint2_station_event_reliability_review.md)
 - [`reports/sprint2_station_event_data_quality_review.md`](reports/sprint2_station_event_data_quality_review.md)
 - [`reports/sprint2_station_event_verification_matrix.md`](reports/sprint2_station_event_verification_matrix.md)
 
-Reliability N8 定向复验结论为 `PASS WITH RECOMMENDATIONS`；N6、N7、N8、UNKNOWN、
-payload limits、event required fields 均 CLOSED 且无回归，新 Reliability blocker 为无。
-Data Quality focused re-review 结论为 `PASS WITH RECOMMENDATIONS`，R1~R5 无 remaining
-blocker。Verification 当前为 `HOLD / CHANGES REQUIRED`，仅剩 V6 payload/raw error
-mapping、V7 raw variant final decision、V10 lifecycle derived output。Architecture 已完成
-三个最小 docs-only 修订，下一步必须做 Verification focused re-review；ChatGPT PM
-授权前 Sprint 2 implementation 仍禁止。
+Phase-2 Sprint 3 Collector Ingestion Adapter：
+
+- [`contracts/collector_ingestion_adapter.md`](contracts/collector_ingestion_adapter.md)
+- [`reports/sprint3_collector_ingestion_adapter_plan.md`](reports/sprint3_collector_ingestion_adapter_plan.md)
+- [`reports/sprint3_collector_ingestion_adapter_gate_status.md`](reports/sprint3_collector_ingestion_adapter_gate_status.md)
+
+Sprint 3 当前状态：offline adapter implementation 已完成并通过 Reliability、Data Quality、Verification focused review，均无 blocker；exact allowlist commit/push 已完成，当前 commit 为 `b43a12f Implement Sprint 3 collector ingestion adapter offline slice`；仍不授权 runtime Collector integration。
 
 ## 7. 代码与配置入口
 

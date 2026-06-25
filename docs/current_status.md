@@ -1,12 +1,67 @@
 # 当前状态 / Codex 恢复上下文
 
-更新时间：2026-06-19
-工作目录：`/Users/chenjie/Documents/MES/edge-mes-demo`  
+更新时间：2026-06-25
+工作目录：`/Users/chenjie/Documents/MES/edge-mes-demo`
 树莓派部署目录：`/opt/edge-mes-demo`
+
+## 0. 当前 PM / Codex 协作状态
+
+当前主线：Phase-2 Sprint 3 Collector Ingestion Adapter offline implementation closeout。
+
+当前 baseline：
+
+```text
+HEAD / origin/main:
+b43a12f7d85d6acb3278a6208cac1c9b1d4d175a
+b43a12f Implement Sprint 3 collector ingestion adapter offline slice
+
+branch:
+main
+
+tag:
+phase1-pass-20260619
+```
+
+当前 Sprint 3 gate：
+
+```text
+Offline adapter implementation: PASS
+Reliability focused review: PASS WITH RECOMMENDATIONS, no blocker
+Data Quality focused review: PASS WITH RECOMMENDATIONS, no blocker
+Verification focused review: PASS WITH RECOMMENDATIONS, no blocker
+Exact allowlist commit/push: PASS, commit b43a12f
+Eligible for runtime integration: no
+```
+
+当前 Sprint 3 implementation files 已提交：
+
+```text
+collector/app/services/resolved_config_registry.py
+collector/app/services/station_event_adapter.py
+tests/test_collector_station_event_adapter.py
+```
+
+当前外部既有 dirty artifacts，应排除，除非 PM 明确授权：
+
+```text
+M .gitignore
+?? docs/Edge MES Demo — ChatGPT PM Handoff - 20260623.md
+?? docs/reports/phase1_to_sprint2_management_keynote_10p.html
+?? docs/thread_handoff/chatgpt_pm_handoff_20260624.md
+?? docs/thread_handoff/chatgpt_pm_handoff_20260625.md
+```
+
+Codex Thread 应先读取：
+
+- `docs/thread_handoff/pm_operating_rules.md`
+- `docs/reports/sprint3_collector_ingestion_adapter_gate_status.md`
+- 对应 task-specific contract/report files
+
+下方内容保留 Phase-1 / 早期 Demo 状态快照，供上下文恢复使用；当前开发 gate 以上方 Sprint 3 状态为准。
 
 ## 1. 项目一句话状态
 
-当前 Edge MES Demo 已经在树莓派上完成从 V-PLC 到 Collector、PostgreSQL、FastAPI 追溯页面和 Grafana dashboard 的闭环。系统可以离线运行，模拟单条产线、一个 PLC、三个工站，并按 S7 DB 协议采集生产事件。后续扩展边界已明确：最多 3 条流水线，树莓派作为 Edge SCADA/MES 节点，高频采样、AI 重计算和长期媒体存储由外部设备或服务器承担。
+Edge MES Demo 已经在树莓派上完成从 V-PLC 到 Collector、PostgreSQL、FastAPI 追溯页面和 Grafana dashboard 的 Phase-1 闭环。Phase-2 Sprint 1 flexible line configuration 与 Sprint 2 generic station event model 已完成；Sprint 3 当前聚焦 Collector ingestion adapter offline implementation，不等于 runtime Collector integration。
 
 ## 2. 已完成内容
 
