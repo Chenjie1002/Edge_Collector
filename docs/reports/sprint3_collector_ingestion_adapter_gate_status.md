@@ -15,8 +15,8 @@ Read this file together with:
 
 ```text
 HEAD / origin/main:
-b43a12f7d85d6acb3278a6208cac1c9b1d4d175a
-b43a12f Implement Sprint 3 collector ingestion adapter offline slice
+577c1a17b96e875cf5ce307b7ed255511f320495
+577c1a1 Harden Sprint 3 collector adapter recommendations
 
 Branch:
 main
@@ -37,6 +37,7 @@ not performed
 ## 2. Current working tree notes
 
 Current local working tree contains external dirty artifacts. The Sprint 3 implementation files are now tracked in commit `b43a12f`.
+R-N1/R-N2 hardening is tracked in commit `577c1a1`.
 
 Sprint 3 implementation files committed:
 
@@ -107,12 +108,14 @@ Explicit non-goals for the current slice:
 | Data Quality focused implementation review | PASS WITH RECOMMENDATIONS | none |
 | Verification focused implementation review | PASS WITH RECOMMENDATIONS | none |
 | Exact allowlist commit/push | PASS | none |
+| R-N1/R-N2 hardening focused reviews | PASS WITH RECOMMENDATIONS | none |
+| R-N1/R-N2 exact allowlist commit/push | PASS | none |
 
 Current overall status:
 
 ```text
-Sprint 3 Collector Ingestion Adapter offline implementation: implemented, reviewed, committed and pushed.
-Current commit: b43a12f Implement Sprint 3 collector ingestion adapter offline slice
+Sprint 3 Collector Ingestion Adapter offline implementation and R-N1/R-N2 hardening: implemented, reviewed, committed and pushed.
+Current commit: 577c1a1 Harden Sprint 3 collector adapter recommendations
 Eligible for runtime integration: no.
 Next recommended gate: post-commit docs/status consolidation or next-slice planning, not runtime integration.
 ```
@@ -169,6 +172,20 @@ Commit message used:
 Implement Sprint 3 collector ingestion adapter offline slice
 ```
 
+The R-N1/R-N2 hardening exact allowlist commit has also been completed. The only files committed in `577c1a1` were:
+
+```text
+collector/app/services/resolved_config_registry.py
+collector/app/services/station_event_adapter.py
+tests/test_collector_station_event_adapter.py
+```
+
+Commit message used:
+
+```text
+Harden Sprint 3 collector adapter recommendations
+```
+
 Required exclusions for future tasks remain:
 
 ```text
@@ -181,19 +198,20 @@ docs/thread_handoff/chatgpt_pm_handoff_20260625.md
 
 Do not stage or commit any docs/runtime/deploy artifacts unless PM explicitly changes a future task allowlist.
 
-## 8. Open recommendations
+## 8. Recommendation hardening status
 
-These are not blockers for the current offline adapter commit.
+The previous R-N1/R-N2 recommendations are closed by the `577c1a1` hardening commit. They were not blockers for the original offline adapter commit and remain non-blocker hardening history.
 
-| ID | Recommendation |
+| ID | Status |
 | --- | --- |
-| R-N1 / DQ-N1 / V-N1 | Add a resolved snapshot content hash self-check fixture that recomputes snapshot content hash and compares it with `config_hash`, not only returned object field mismatch. |
-| R-N2 / DQ-N2 / V-N2 | Add a clearer non-`30003/system_reserved` route/direct predecessor negative fixture and clean up any misleading route test naming/assertion path. |
+| R-N1 / DQ-N1 / V-N1 | CLOSED. Resolved snapshot content hash self-check implemented; tampered snapshot content with unchanged `config_hash` field rejects as `CONFIG_HASH_MISMATCH`. |
+| R-N2 / DQ-N2 / V-N2 | CLOSED. Route predecessor mismatch and non-`30003/system_reserved` direct parent mismatch fixtures are split and named clearly. |
 
 Suggested handling:
 
-- keep as post-commit recommendation or next implementation hardening slice;
-- do not block exact allowlist commit of the current offline adapter implementation.
+- preserve the closed recommendation history for later review context;
+- do not treat these closed recommendations as blockers;
+- runtime Collector integration remains unauthorized.
 
 ## 9. Future prompt minimization
 

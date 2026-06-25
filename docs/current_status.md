@@ -12,8 +12,8 @@
 
 ```text
 HEAD / origin/main:
-b43a12f7d85d6acb3278a6208cac1c9b1d4d175a
-b43a12f Implement Sprint 3 collector ingestion adapter offline slice
+577c1a17b96e875cf5ce307b7ed255511f320495
+577c1a1 Harden Sprint 3 collector adapter recommendations
 
 branch:
 main
@@ -30,6 +30,7 @@ Reliability focused review: PASS WITH RECOMMENDATIONS, no blocker
 Data Quality focused review: PASS WITH RECOMMENDATIONS, no blocker
 Verification focused review: PASS WITH RECOMMENDATIONS, no blocker
 Exact allowlist commit/push: PASS, commit b43a12f
+R-N1/R-N2 hardening commit/push: PASS, commit 577c1a1
 Eligible for runtime integration: no
 ```
 
@@ -39,6 +40,15 @@ Eligible for runtime integration: no
 collector/app/services/resolved_config_registry.py
 collector/app/services/station_event_adapter.py
 tests/test_collector_station_event_adapter.py
+```
+
+当前 Sprint 3 recommendation hardening 已完成：
+
+```text
+R-N1 / DQ-N1 / V-N1: CLOSED, resolved snapshot content hash self-check implemented.
+R-N2 / DQ-N2 / V-N2: CLOSED, route predecessor and direct parent negative fixtures clarified.
+Reliability / Data Quality / Verification focused review: PASS WITH RECOMMENDATIONS, no blocker.
+Exact allowlist commit/push: PASS, commit 577c1a1.
 ```
 
 当前外部既有 dirty artifacts，应排除，除非 PM 明确授权：

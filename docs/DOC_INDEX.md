@@ -133,7 +133,7 @@ Phase-2 Sprint 3 Collector Ingestion Adapter：
 - [`reports/sprint3_collector_ingestion_adapter_plan.md`](reports/sprint3_collector_ingestion_adapter_plan.md)
 - [`reports/sprint3_collector_ingestion_adapter_gate_status.md`](reports/sprint3_collector_ingestion_adapter_gate_status.md)
 
-Sprint 3 当前状态：offline adapter implementation 已完成并通过 Reliability、Data Quality、Verification focused review，均无 blocker；exact allowlist commit/push 已完成，当前 commit 为 `b43a12f Implement Sprint 3 collector ingestion adapter offline slice`；仍不授权 runtime Collector integration。
+Sprint 3 当前状态：offline adapter implementation 与 R-N1/R-N2 recommendation hardening 已完成并通过 Reliability、Data Quality、Verification focused review，均无 blocker；exact allowlist commit/push 已完成，当前 commit 为 `577c1a1 Harden Sprint 3 collector adapter recommendations`；仍不授权 runtime Collector integration。
 
 ## 7. 代码与配置入口
 
