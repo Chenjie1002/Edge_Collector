@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+from dataclasses import replace
 from types import SimpleNamespace
 from uuid import uuid4
 
@@ -11,14 +12,13 @@ from collector.app.services.resolved_config_registry import (
     ResolvedStationSnapshot,
     RouteEdgeSnapshot,
     RouteGraphSnapshot,
+    compute_resolved_config_hash,
 )
 from collector.app.services.station_event_adapter import adapt_source_payload
 from common.station_event import AuditSubtype
 
 
 CONFIG_HASH = "50b92c3ac72a746060d3ff47d141bde1e24d53e9b4b35b0afa0d0fc8a23968e1"
-OLD_CONFIG_HASH = "60b92c3ac72a746060d3ff47d141bde1e24d53e9b4b35b0afa0d0fc8a23968e1"
-CURRENT_CONFIG_HASH = "70b92c3ac72a746060d3ff47d141bde1e24d53e9b4b35b0afa0d0fc8a23968e1"
 BOOT_ID = "01J10C2SZM4T2R8K6V2YDR45VH"
 
 
@@ -28,7 +28,7 @@ def decoder(raw_payload, _event):
 
 def snapshot(
     *,
-    config_hash: str = CONFIG_HASH,
+    config_hash: str | None = None,
     mapping_id: str = "ws02_result",
     payload_template: str = "screw_result_v1",
     station_type: str = "screw",
@@ -38,8 +38,8 @@ def snapshot(
     route_from: str = "WS01",
     line_id: str = "LINE-01",
 ) -> ResolvedConfigSnapshot:
-    return ResolvedConfigSnapshot(
-        config_hash=config_hash,
+    candidate = ResolvedConfigSnapshot(
+        config_hash=config_hash or "",
         config_version="2026.06.20-1",
         line_id=line_id,
         stations=(
@@ -68,6 +68,9 @@ def snapshot(
             edges=(RouteEdgeSnapshot(from_station_id=route_from, to_station_id="WS02"),)
         ),
     )
+    if config_hash is not None:
+        return candidate
+    return replace(candidate, config_hash=compute_resolved_config_hash(candidate))
 
 
 def registry(*snapshots: ResolvedConfigSnapshot) -> InMemoryResolvedConfigRegistry:
@@ -78,7 +81,7 @@ def source(
     event_type: str = "station_result",
     *,
     result: str | None = "ok",
-    config_hash: str = CONFIG_HASH,
+    config_hash: str | None = None,
     mapping_id: str = "ws02_result",
     payload_template: str = "screw_result_v1",
     raw_payload=None,
@@ -96,6 +99,7 @@ def source(
     profile_id: str | None = None,
     station_type: str | None = None,
 ) -> dict:
+    config_hash = config_hash or snapshot().config_hash
     payload = {
         "config_hash": config_hash,
         "event_id": event_id or str(uuid4()),
@@ -210,30 +214,22 @@ def test_lineage_identity_failures_reject_without_projection(payload: dict, expe
     [
         (snapshot(), source(profile_id="wrong_profile"), "EVENT_LINEAGE_INVALID"),
         (snapshot(), source(station_type="inspection"), "EVENT_LINEAGE_INVALID"),
-        (snapshot(route_from="WS99"), source("station_nok", result=None, parent=None), "PARENT_NOT_FOUND"),
     ],
 )
-def test_snapshot_profile_station_and_route_fail_closed(snap, payload, expected: str) -> None:
-    if payload["event_type"] == "station_nok":
-        reg = registry(snapshot(route_from="WS01"))
-        parent = adapt_source_payload(source(result="nok"), reg)
-        payload = source("station_nok", result=None, parent=parent)
-        reg = registry(snap)
-    else:
-        reg = registry(snap)
-
-    decision = adapt_source_payload(payload, reg)
+def test_snapshot_profile_and_station_lineage_fail_closed(snap, payload, expected: str) -> None:
+    decision = adapt_source_payload(payload, registry(snap))
 
     assert decision.disposition == "rejected"
     assert decision.final_error_code == expected
     assert_no_projection(decision)
 
 
-def test_direct_predecessor_mismatch_rejects_system_reserved_detail_without_adapter_synthesis() -> None:
-    reg = registry(snapshot())
-    parent = adapt_source_payload(source(result="skip"), reg)
+def test_route_predecessor_mismatch_rejects_system_reserved_detail_without_adapter_synthesis() -> None:
+    snap = snapshot(route_from="WS99")
+    reg = registry(snap)
+    parent = adapt_source_payload(source(result="skip", config_hash=snap.config_hash), reg)
     evidence_parent = adapt_source_payload(
-        source(result="nok", station_id="WS01", mapping_id="ws01_result"),
+        source(result="nok", station_id="WS01", mapping_id="ws01_result", config_hash=snap.config_hash),
         reg,
     )
     upstream = {
@@ -241,13 +237,13 @@ def test_direct_predecessor_mismatch_rejects_system_reserved_detail_without_adap
         "source_event_id": evidence_parent.normalized_event["correlation"]["source_event_id"],
         "parent_event_id": evidence_parent.normalized_event["event_id"],
         "parent_fact_key": evidence_parent.fact_key,
-        "upstream_station_id": "WS99",
+        "upstream_station_id": evidence_parent.normalized_event["station_id"],
         "upstream_plc_id": "PLC-01",
         "upstream_plc_boot_id": BOOT_ID,
         "upstream_event_type": "station_result",
         "upstream_result": "nok",
         "upstream_nok_code": 20001,
-        "upstream_config_hash": CONFIG_HASH,
+        "upstream_config_hash": evidence_parent.normalized_event["config_hash"],
     }
 
     decision = adapt_source_payload(
@@ -259,6 +255,7 @@ def test_direct_predecessor_mismatch_rejects_system_reserved_detail_without_adap
             nok_origin="system_reserved",
             detail_role="system_reserved",
             upstream_evidence=upstream,
+            config_hash=snap.config_hash,
         )
         | {"source": "system", "actor": "system"},
         reg,
@@ -269,12 +266,42 @@ def test_direct_predecessor_mismatch_rejects_system_reserved_detail_without_adap
     assert decision.projection_metadata is None
 
 
+def test_non_system_reserved_direct_parent_mismatch_rejects_without_projection() -> None:
+    reg = registry(snapshot())
+    parent = adapt_source_payload(source(result="nok"), reg)
+
+    decision = adapt_source_payload(
+        source(
+            "station_nok",
+            result=None,
+            parent=parent,
+            station_id="WS01",
+            mapping_id="ws01_result",
+        ),
+        reg,
+        parent.state_index,
+    )
+
+    assert (decision.disposition, decision.final_error_code) == ("rejected", "PARENT_EVENT_INVALID")
+    assert decision.projection_metadata is None
+
+
 def test_config_hash_mismatch_from_lookup_record_is_distinguishable() -> None:
     class MismatchRegistry(InMemoryResolvedConfigRegistry):
         def lookup_resolved_config(self, _config_hash):
             return snapshot(config_hash="0" * 64)
 
     decision = adapt_source_payload(source(), MismatchRegistry({}))
+
+    assert (decision.disposition, decision.final_error_code) == ("rejected", "CONFIG_HASH_MISMATCH")
+    assert_no_projection(decision)
+
+
+def test_config_hash_self_check_recomputes_snapshot_content_not_only_field_value() -> None:
+    valid_snapshot = snapshot()
+    tampered_snapshot = replace(snapshot(station_type="tampered_screw"), config_hash=valid_snapshot.config_hash)
+
+    decision = adapt_source_payload(source(config_hash=valid_snapshot.config_hash), registry(tampered_snapshot))
 
     assert (decision.disposition, decision.final_error_code) == ("rejected", "CONFIG_HASH_MISMATCH")
     assert_no_projection(decision)
@@ -293,6 +320,8 @@ def test_config_hash_mismatch_from_lookup_record_is_distinguishable() -> None:
     ],
 )
 def test_raw_authority_negative_cases_fail_closed_without_projection(snap, payload, expected: str) -> None:
+    payload = dict(payload, config_hash=snap.config_hash)
+
     decision = adapt_source_payload(payload, registry(snap))
 
     assert (decision.disposition, decision.final_error_code) == ("rejected", expected)
@@ -300,13 +329,19 @@ def test_raw_authority_negative_cases_fail_closed_without_projection(snap, paylo
 
 
 def test_raw_plus_normalized_match_and_declared_no_raw_normalized_only_can_validate() -> None:
+    raw_required = snapshot(raw_policy="raw_required")
+    no_raw = snapshot(raw_policy="raw_not_provided")
     with_raw = adapt_source_payload(
-        source(normalized_payload={"torque": 4.8}, raw_payload={"torque": 4.8}),
-        registry(snapshot(raw_policy="raw_required")),
+        source(
+            normalized_payload={"torque": 4.8},
+            raw_payload={"torque": 4.8},
+            config_hash=raw_required.config_hash,
+        ),
+        registry(raw_required),
     )
     normalized_only = adapt_source_payload(
-        source(normalized_payload={"torque": 4.8}),
-        registry(snapshot(raw_policy="raw_not_provided")),
+        source(normalized_payload={"torque": 4.8}, config_hash=no_raw.config_hash),
+        registry(no_raw),
     )
 
     assert with_raw.disposition == "accepted"
@@ -331,9 +366,10 @@ def test_duplicate_conflict_and_raw_variant_do_not_create_new_projection() -> No
     def raw_variant_decoder(raw_payload, _event):
         return {"torque": raw_payload["torque"]}
 
-    reg = registry(snapshot(raw_policy="raw_required", raw_decoder=raw_variant_decoder))
+    snap = snapshot(raw_policy="raw_required", raw_decoder=raw_variant_decoder)
+    reg = registry(snap)
     accepted = adapt_source_payload(
-        source(normalized_payload={"torque": 4.8}, raw_payload={"torque": 4.8}),
+        source(normalized_payload={"torque": 4.8}, raw_payload={"torque": 4.8}, config_hash=snap.config_hash),
         reg,
     )
     duplicate = adapt_source_payload(
@@ -341,6 +377,7 @@ def test_duplicate_conflict_and_raw_variant_do_not_create_new_projection() -> No
             event_id=str(uuid4()),
             normalized_payload={"torque": 4.8},
             raw_payload={"torque": 4.8},
+            config_hash=snap.config_hash,
         ),
         reg,
         accepted.state_index,
@@ -350,12 +387,19 @@ def test_duplicate_conflict_and_raw_variant_do_not_create_new_projection() -> No
             event_id=str(uuid4()),
             normalized_payload={"torque": 4.8},
             raw_payload={"torque": 4.8, "note": "same normalized"},
+            config_hash=snap.config_hash,
         ),
         reg,
         accepted.state_index,
     )
     conflict = adapt_source_payload(
-        source(event_id=str(uuid4()), result="nok", normalized_payload={"torque": 4.8}, raw_payload={"torque": 4.8}),
+        source(
+            event_id=str(uuid4()),
+            result="nok",
+            normalized_payload={"torque": 4.8},
+            raw_payload={"torque": 4.8},
+            config_hash=snap.config_hash,
+        ),
         reg,
         accepted.state_index,
     )
@@ -378,9 +422,9 @@ def test_rejected_nok_detail_does_not_leak_defect_projection() -> None:
 
 
 def test_historical_config_uses_old_snapshot_and_never_falls_back_to_current() -> None:
-    old = snapshot(config_hash=OLD_CONFIG_HASH, station_type="historical_screw")
-    current = snapshot(config_hash=CURRENT_CONFIG_HASH, station_type="current_screw")
-    payload = source(config_hash=OLD_CONFIG_HASH)
+    old = snapshot(station_type="historical_screw")
+    current = snapshot(station_type="current_screw")
+    payload = source(config_hash=old.config_hash)
 
     decision = adapt_source_payload(payload, registry(old, current))
     missing_old = adapt_source_payload(payload, registry(current))
