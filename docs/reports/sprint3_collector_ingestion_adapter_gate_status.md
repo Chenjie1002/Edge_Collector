@@ -15,8 +15,8 @@ Read this file together with:
 
 ```text
 HEAD / origin/main:
-577c1a17b96e875cf5ce307b7ed255511f320495
-577c1a1 Harden Sprint 3 collector adapter recommendations
+fd79e212d942e6b4645bd0809858a159c267d1d9
+fd79e21 Sync Sprint 3 hardening gate status
 
 Branch:
 main
@@ -38,6 +38,7 @@ not performed
 
 Current local working tree contains external dirty artifacts. The Sprint 3 implementation files are now tracked in commit `b43a12f`.
 R-N1/R-N2 hardening is tracked in commit `577c1a1`.
+The current docs/status baseline sync is tracked in commit `fd79e21`.
 
 Sprint 3 implementation files committed:
 
@@ -110,12 +111,14 @@ Explicit non-goals for the current slice:
 | Exact allowlist commit/push | PASS | none |
 | R-N1/R-N2 hardening focused reviews | PASS WITH RECOMMENDATIONS | none |
 | R-N1/R-N2 exact allowlist commit/push | PASS | none |
+| Docs/status sync for R-N1/R-N2 hardening baseline | PASS | none |
 
 Current overall status:
 
 ```text
 Sprint 3 Collector Ingestion Adapter offline implementation and R-N1/R-N2 hardening: implemented, reviewed, committed and pushed.
-Current commit: 577c1a1 Harden Sprint 3 collector adapter recommendations
+Docs/status sync completed at fd79e21.
+Current commit: fd79e21 Sync Sprint 3 hardening gate status
 Eligible for runtime integration: no.
 Next recommended gate: post-commit docs/status consolidation or next-slice planning, not runtime integration.
 ```

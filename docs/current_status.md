@@ -12,8 +12,8 @@
 
 ```text
 HEAD / origin/main:
-577c1a17b96e875cf5ce307b7ed255511f320495
-577c1a1 Harden Sprint 3 collector adapter recommendations
+fd79e212d942e6b4645bd0809858a159c267d1d9
+fd79e21 Sync Sprint 3 hardening gate status
 
 branch:
 main
@@ -31,6 +31,7 @@ Data Quality focused review: PASS WITH RECOMMENDATIONS, no blocker
 Verification focused review: PASS WITH RECOMMENDATIONS, no blocker
 Exact allowlist commit/push: PASS, commit b43a12f
 R-N1/R-N2 hardening commit/push: PASS, commit 577c1a1
+Docs/status sync: PASS, commit fd79e21
 Eligible for runtime integration: no
 ```
 
@@ -49,6 +50,7 @@ R-N1 / DQ-N1 / V-N1: CLOSED, resolved snapshot content hash self-check implement
 R-N2 / DQ-N2 / V-N2: CLOSED, route predecessor and direct parent negative fixtures clarified.
 Reliability / Data Quality / Verification focused review: PASS WITH RECOMMENDATIONS, no blocker.
 Exact allowlist commit/push: PASS, commit 577c1a1.
+Docs/status sync completed at fd79e21.
 ```
 
 当前外部既有 dirty artifacts，应排除，除非 PM 明确授权：
