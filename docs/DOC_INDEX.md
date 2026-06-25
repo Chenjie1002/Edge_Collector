@@ -133,7 +133,7 @@ Phase-2 Sprint 3 Collector Ingestion Adapter：
 - [`reports/sprint3_collector_ingestion_adapter_plan.md`](reports/sprint3_collector_ingestion_adapter_plan.md)
 - [`reports/sprint3_collector_ingestion_adapter_gate_status.md`](reports/sprint3_collector_ingestion_adapter_gate_status.md)
 
-Sprint 3 当前状态：offline adapter implementation 与 R-N1/R-N2 recommendation hardening 已完成并通过 Reliability、Data Quality、Verification focused review，均无 blocker；docs/status sync 已在 `fd79e21 Sync Sprint 3 hardening gate status` 完成，docs/status baseline repair 已在 `4f424c6 Repair Sprint 3 current baseline status` 完成，当前 baseline 为 `4f424c6ada57e936c8e6d92c49f66414a55ea9c1`；仍不授权 runtime Collector integration。
+Sprint 3 当前状态：offline adapter implementation 与 R-N1/R-N2 recommendation hardening 已完成并通过 Reliability、Data Quality、Verification focused review，均无 blocker；docs/status sync 已在 `fd79e21 Sync Sprint 3 hardening gate status` 完成，docs/status baseline repair 已在 `4f424c6 Repair Sprint 3 current baseline status` 完成，PM rules / baseline semantics repair 前的 last verified baseline 为 `e284a061b16f07c8b03f8b23075a3031a873fec7`（`e284a06 Repair PM rules and Sprint 3 baseline status`）。各 Thread 必须用 `git rev-parse HEAD` / `git rev-parse origin/main` 核对 live baseline；本索引中的 baseline 是 authoring-time audit marker，不要求在后续 docs-only commit 后继续等于当前 HEAD；仍不授权 runtime Collector integration。
 
 ## 7. 代码与配置入口
 

@@ -11,12 +11,12 @@ Read this file together with:
 - `docs/contracts/collector_ingestion_adapter.md`
 - `docs/reports/sprint3_collector_ingestion_adapter_plan.md`
 
-## 1. Current baseline
+## 1. Last verified baseline
 
 ```text
-HEAD / origin/main:
-4f424c6ada57e936c8e6d92c49f66414a55ea9c1
-4f424c6 Repair Sprint 3 current baseline status
+last verified HEAD / origin/main at authoring time:
+e284a061b16f07c8b03f8b23075a3031a873fec7
+e284a06 Repair PM rules and Sprint 3 baseline status
 
 Branch:
 main
@@ -34,11 +34,16 @@ Deploy / rollback drill:
 not performed
 ```
 
+Live `HEAD` / `origin/main` are dynamic repository facts and must be checked by
+each Thread with `git rev-parse`. The baseline above records the last verified
+status sync point at authoring time; later docs-only commits may move `HEAD`
+without invalidating this status document.
+
 ## 2. Current working tree notes
 
 Current local working tree contains external dirty artifacts. The Sprint 3 implementation files are now tracked in commit `b43a12f`.
 R-N1/R-N2 hardening is tracked in commit `577c1a1`.
-The docs/status sync is tracked in commit `fd79e21`; the current baseline status repair is tracked in commit `4f424c6`.
+The docs/status sync is tracked in commit `fd79e21`; the baseline status repair is tracked in commit `4f424c6`; the PM rules / baseline semantics repair pre-baseline is tracked in commit `e284a06`.
 
 Sprint 3 implementation files committed:
 
@@ -56,6 +61,7 @@ M .gitignore
 ?? docs/reports/phase1_to_sprint2_management_keynote_10p.html
 ?? docs/thread_handoff/chatgpt_pm_handoff_20260624.md
 ?? docs/thread_handoff/chatgpt_pm_handoff_20260625.md
+?? docs/thread_handoff/chatgpt_pm_handoff_20260625_final.md
 ```
 
 The external artifacts are PM handoff / Keynote / reporting artifacts and are not part of the Sprint 3 technical implementation.
@@ -120,7 +126,7 @@ Current overall status:
 Sprint 3 Collector Ingestion Adapter offline implementation and R-N1/R-N2 hardening: implemented, reviewed, committed and pushed.
 Docs/status sync completed at fd79e21.
 Docs/status baseline repair completed at 4f424c6.
-Current commit: 4f424c6 Repair Sprint 3 current baseline status
+PM rules / baseline semantics repair pre-baseline: e284a06 Repair PM rules and Sprint 3 baseline status.
 Eligible for runtime integration: no.
 Next recommended gate: runtime integration planning gate, not runtime implementation.
 ```

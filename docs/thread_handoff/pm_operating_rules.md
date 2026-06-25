@@ -79,6 +79,27 @@ git diff --cached --stat
 
 If any non-allowlist file is staged, unstage and report `HOLD`.
 
+### Baseline and status semantics
+
+`git rev-parse HEAD` and `git rev-parse origin/main` are dynamic repository
+facts. Each Thread that depends on repository state should check them directly
+with read-only commands instead of treating a durable document hash as live
+truth.
+
+Durable status documents may record a `last verified baseline`, `last status
+sync baseline` or `latest known baseline at authoring time`. Those values are
+historical audit markers, not a requirement that the document hash must always
+equal the current `HEAD` after later docs-only commits.
+
+A docs-only repair/status commit naturally creates a new `HEAD`. If durable
+docs still name the pre-repair baseline that the Thread verified before the
+commit, that difference alone is not a `HOLD`; report the live `HEAD` /
+`origin/main` difference and continue within the PM-authorized task.
+
+Stop and report `HOLD` only when task-specific docs conflict with the live
+repository or PM instruction on gate state, allowlist, scope, authorization
+boundary, excluded files, out-of-scope surfaces, or runtime behavior.
+
 ## 5. Dirty working tree and external artifacts
 
 Some local artifacts may exist for PM handoff, Keynote/reporting, or other ChatGPT windows. Unless PM explicitly includes them in a task allowlist, they must be treated as external and excluded.
@@ -89,6 +110,7 @@ Current known external artifact patterns include:
 docs/Edge MES Demo — ChatGPT PM Handoff - 20260623.md
 docs/thread_handoff/chatgpt_pm_handoff_20260624.md
 docs/thread_handoff/chatgpt_pm_handoff_20260625.md
+docs/thread_handoff/chatgpt_pm_handoff_20260625_final.md
 docs/reports/phase1_to_sprint2_management_keynote_10p.html
 ```
 
@@ -102,6 +124,14 @@ Every implementation/commit report should separately list:
 - files explicitly excluded.
 
 ## 6. Project boundary rules
+
+The Edge MES Demo project absolute path is:
+
+```text
+/Users/chenjie/Documents/MES/edge-mes-demo
+```
+
+All Codex Thread prompts, workspace references and local command planning for this project should use this path unless PM explicitly declares a different checkout/worktree.
 
 The project is a non-invasive Edge MES / Traceability / OEE Demo.
 
@@ -174,7 +204,11 @@ PM 任务前工作量评估：
 不要扩大范围。
 ```
 
-If task-specific docs are incomplete or inconsistent with the working tree, stop and report `HOLD`.
+If task-specific docs are incomplete or inconsistent with the working tree on
+gate state, allowlist, scope, authorization boundary, excluded files or
+out-of-scope surfaces, stop and report `HOLD`. A durable baseline hash that
+names the last verified docs/status sync baseline is not by itself a blocker
+when live `git rev-parse` output shows only later authorized docs-only commits.
 
 ## 10. Window report vs repository report
 

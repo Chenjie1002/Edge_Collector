@@ -8,12 +8,12 @@
 
 当前主线：Phase-2 Sprint 3 Collector Ingestion Adapter offline implementation closeout。
 
-当前 baseline：
+Last verified baseline before this docs repair:
 
 ```text
-HEAD / origin/main:
-4f424c6ada57e936c8e6d92c49f66414a55ea9c1
-4f424c6 Repair Sprint 3 current baseline status
+last verified HEAD / origin/main at authoring time:
+e284a061b16f07c8b03f8b23075a3031a873fec7
+e284a06 Repair PM rules and Sprint 3 baseline status
 
 branch:
 main
@@ -21,6 +21,11 @@ main
 tag:
 phase1-pass-20260619
 ```
+
+Note: live `HEAD` / `origin/main` must be checked with `git rev-parse` in each
+Thread. This durable baseline is an audit marker from the status sync time, not
+a requirement that the document hash exactly match `HEAD` after later docs-only
+commits.
 
 当前 Sprint 3 gate：
 
@@ -33,6 +38,7 @@ Exact allowlist commit/push: PASS, commit b43a12f
 R-N1/R-N2 hardening commit/push: PASS, commit 577c1a1
 Docs/status sync: PASS, commit fd79e21
 Docs/status baseline repair: PASS, commit 4f424c6
+PM rules / baseline semantics repair: PASS, commit e284a06
 Eligible for runtime integration: no
 ```
 
@@ -53,6 +59,7 @@ Reliability / Data Quality / Verification focused review: PASS WITH RECOMMENDATI
 Exact allowlist commit/push: PASS, commit 577c1a1.
 Docs/status sync completed at fd79e21.
 Docs/status baseline repair completed at 4f424c6.
+PM rules / baseline semantics repair completed at e284a06.
 ```
 
 当前外部既有 dirty artifacts，应排除，除非 PM 明确授权：
@@ -63,6 +70,7 @@ M .gitignore
 ?? docs/reports/phase1_to_sprint2_management_keynote_10p.html
 ?? docs/thread_handoff/chatgpt_pm_handoff_20260624.md
 ?? docs/thread_handoff/chatgpt_pm_handoff_20260625.md
+?? docs/thread_handoff/chatgpt_pm_handoff_20260625_final.md
 ```
 
 Codex Thread 应先读取：
