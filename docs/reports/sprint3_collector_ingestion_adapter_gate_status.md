@@ -15,8 +15,8 @@ Read this file together with:
 
 ```text
 HEAD / origin/main:
-fd79e212d942e6b4645bd0809858a159c267d1d9
-fd79e21 Sync Sprint 3 hardening gate status
+4f424c6ada57e936c8e6d92c49f66414a55ea9c1
+4f424c6 Repair Sprint 3 current baseline status
 
 Branch:
 main
@@ -38,7 +38,7 @@ not performed
 
 Current local working tree contains external dirty artifacts. The Sprint 3 implementation files are now tracked in commit `b43a12f`.
 R-N1/R-N2 hardening is tracked in commit `577c1a1`.
-The current docs/status baseline sync is tracked in commit `fd79e21`.
+The docs/status sync is tracked in commit `fd79e21`; the current baseline status repair is tracked in commit `4f424c6`.
 
 Sprint 3 implementation files committed:
 
@@ -112,15 +112,17 @@ Explicit non-goals for the current slice:
 | R-N1/R-N2 hardening focused reviews | PASS WITH RECOMMENDATIONS | none |
 | R-N1/R-N2 exact allowlist commit/push | PASS | none |
 | Docs/status sync for R-N1/R-N2 hardening baseline | PASS | none |
+| Docs/status baseline repair | PASS | none |
 
 Current overall status:
 
 ```text
 Sprint 3 Collector Ingestion Adapter offline implementation and R-N1/R-N2 hardening: implemented, reviewed, committed and pushed.
 Docs/status sync completed at fd79e21.
-Current commit: fd79e21 Sync Sprint 3 hardening gate status
+Docs/status baseline repair completed at 4f424c6.
+Current commit: 4f424c6 Repair Sprint 3 current baseline status
 Eligible for runtime integration: no.
-Next recommended gate: post-commit docs/status consolidation or next-slice planning, not runtime integration.
+Next recommended gate: runtime integration planning gate, not runtime implementation.
 ```
 
 ## 5. Implementation summary

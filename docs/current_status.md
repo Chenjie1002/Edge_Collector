@@ -12,8 +12,8 @@
 
 ```text
 HEAD / origin/main:
-fd79e212d942e6b4645bd0809858a159c267d1d9
-fd79e21 Sync Sprint 3 hardening gate status
+4f424c6ada57e936c8e6d92c49f66414a55ea9c1
+4f424c6 Repair Sprint 3 current baseline status
 
 branch:
 main
@@ -32,6 +32,7 @@ Verification focused review: PASS WITH RECOMMENDATIONS, no blocker
 Exact allowlist commit/push: PASS, commit b43a12f
 R-N1/R-N2 hardening commit/push: PASS, commit 577c1a1
 Docs/status sync: PASS, commit fd79e21
+Docs/status baseline repair: PASS, commit 4f424c6
 Eligible for runtime integration: no
 ```
 
@@ -51,6 +52,7 @@ R-N2 / DQ-N2 / V-N2: CLOSED, route predecessor and direct parent negative fixtur
 Reliability / Data Quality / Verification focused review: PASS WITH RECOMMENDATIONS, no blocker.
 Exact allowlist commit/push: PASS, commit 577c1a1.
 Docs/status sync completed at fd79e21.
+Docs/status baseline repair completed at 4f424c6.
 ```
 
 当前外部既有 dirty artifacts，应排除，除非 PM 明确授权：

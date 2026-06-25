@@ -137,17 +137,32 @@ Subagent constraints:
 
 ## 9. Minimal prompt pattern
 
-Before assigning a task, PM should estimate:
+Before assigning a task, PM must record:
 
 - task size;
 - expected file scope;
 - whether the current Thread has enough context capacity;
-- whether a new Thread is needed.
+- whether a new Thread is needed;
+- the reason for continuing the current Thread or opening a new one.
 
 Future Codex prompts should prefer this short pattern:
 
 ```text
-你现在作为 <Thread> — <Task>。
+报告名称：
+<Report name>
+
+任务名称：
+<Task name>
+
+执行 Thread：
+<Architecture / Integration | Reliability | Data Quality | Verification>
+
+PM 任务前工作量评估：
+- 任务规模：小 / 中 / 大
+- 涉及范围：<expected file/domain scope>
+- 当前 Thread 是否建议继续：yes / no
+- 是否需要新开 Thread：yes / no
+- 理由：<context capacity / scope isolation reason>
 
 请先读取：
 - docs/thread_handoff/pm_operating_rules.md
@@ -205,11 +220,12 @@ Thread 输出 / 上下文评估:
 
 Every Thread report must include the report name, task name, executing Thread, conclusion, Scope, Evidence, Blockers, Recommendations, Next gate, and Thread output/context assessment.
 
-When returning a report, the Thread must assess:
+When returning a report, the Thread must reassess context capacity after completing the task. This reassessment must state:
 
 - the current output length;
 - whether the current Thread can continue to carry the next task;
-- whether the next round should start a new Thread.
+- whether the next round should start a new Thread;
+- the reason for that recommendation.
 
 Do not paste full command output into the chat window unless a command fails, a gate is `HOLD`, or PM explicitly asks for raw output.
 
