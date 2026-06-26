@@ -174,11 +174,10 @@ def adapt_source_payload(
     if isinstance(resolved, ConfigNotFound) or getattr(resolved, "status", None) == "not_found":
         return _reject("CONFIG_NOT_FOUND")
     if not isinstance(resolved, ResolvedConfigSnapshot):
-        if getattr(resolved, "config_hash", None) != config_hash:
-            return _reject("CONFIG_HASH_MISMATCH")
-    elif resolved.config_hash != config_hash:
         return _reject("CONFIG_HASH_MISMATCH")
-    elif not resolved.content_hash_matches():
+    if resolved.config_hash != config_hash:
+        return _reject("CONFIG_HASH_MISMATCH")
+    if not resolved.content_hash_matches():
         return _reject("CONFIG_HASH_MISMATCH")
 
     station = _station_for(resolved, str(source_payload.get("station_id", "")))

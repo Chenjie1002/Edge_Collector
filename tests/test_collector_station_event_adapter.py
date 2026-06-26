@@ -307,6 +307,27 @@ def test_config_hash_self_check_recomputes_snapshot_content_not_only_field_value
     assert_no_projection(decision)
 
 
+def test_adapter_rejects_duck_typed_snapshot_even_when_config_hash_matches() -> None:
+    valid_snapshot = snapshot()
+
+    class DuckSnapshot:
+        status = "found"
+        config_hash = valid_snapshot.config_hash
+        config_version = valid_snapshot.config_version
+        line_id = valid_snapshot.line_id
+        stations = valid_snapshot.stations
+        route_graph = valid_snapshot.route_graph
+
+    class DuckRegistry:
+        def lookup_resolved_config(self, _config_hash):
+            return DuckSnapshot()
+
+    decision = adapt_source_payload(source(config_hash=valid_snapshot.config_hash), DuckRegistry())
+
+    assert (decision.disposition, decision.final_error_code) == ("rejected", "CONFIG_HASH_MISMATCH")
+    assert_no_projection(decision)
+
+
 @pytest.mark.parametrize(
     ("snap", "payload", "expected"),
     [

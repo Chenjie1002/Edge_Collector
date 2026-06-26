@@ -1,5 +1,26 @@
+schema_version: runtime-mapping/v1
+config_version: 2026.06.26-slice-a
+authoritative_source: config/mapping.yaml
+line_id: LINE_001
+hash_algorithm: sha256
+plc_identity_namespace: vplc-db104
 version: 1
 timezone: Asia/Shanghai
+
+runtime_defaults:
+  station_enabled: true
+  plc_id: PLC_001
+  payload_template: station_runtime_payload_v1
+  nok_template: station_runtime_nok_v1
+  raw_policy: raw_not_provided
+  decoder_id: collector.app.plc.decoder.decode_read_plan:v1
+  source_namespace: vplc-db101-db103
+
+route_graph:
+  - from_station_id: WS01
+    to_station_id: WS02
+  - from_station_id: WS02
+    to_station_id: WS03
 
 plcs:
   - plc_id: PLC_001
@@ -130,6 +151,10 @@ stations:
   - station_id: WS01
     name: Screw Station
     db_number: 101
+    station_order: 1
+    mapping_id: ws01_runtime_v1
+    station_type: screw
+    cycle_profile: normal_screwdriving
     dmc_role: child_dmc
     payload:
       screw_1_torque_nm:
@@ -154,6 +179,10 @@ stations:
   - station_id: WS02
     name: EOL Test Station
     db_number: 102
+    station_order: 2
+    mapping_id: ws02_runtime_v1
+    station_type: eol_test
+    cycle_profile: normal_eol
     upstream_station_id: WS01
     payload:
       avg_current_a:
@@ -188,6 +217,10 @@ stations:
   - station_id: WS03
     name: Label Station
     db_number: 103
+    station_order: 3
+    mapping_id: ws03_runtime_v1
+    station_type: labeling
+    cycle_profile: normal_labeling
     upstream_station_id: WS02
     dmc_role: label_code
     payload:
