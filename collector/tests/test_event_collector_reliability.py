@@ -3,6 +3,7 @@ from __future__ import annotations
 import unittest
 from dataclasses import dataclass
 from datetime import datetime
+from types import SimpleNamespace
 from zoneinfo import ZoneInfo
 
 from snap7 import util
@@ -94,6 +95,10 @@ def make_worker(storage: FakeStorage, client: FakeClient) -> EventCollectorWorke
     worker.line_id = "LINE_001"
     worker.timezone = ZoneInfo("Asia/Shanghai")
     worker.mapping = type("Mapping", (), {"code_tables": {}})()
+    worker._adapt_station_runtime_payload = lambda *args, **kwargs: SimpleNamespace(
+        disposition="accepted",
+        final_error_code=None,
+    )
     return worker
 
 

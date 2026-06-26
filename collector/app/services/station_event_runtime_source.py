@@ -3,7 +3,9 @@ from __future__ import annotations
 import hashlib
 import json
 from collections.abc import Mapping
+from datetime import datetime, timezone
 from typing import Any
+from uuid import UUID
 
 
 RAW_POLICIES_ALLOWING_NORMALIZED_ONLY = {"raw_not_provided"}
@@ -64,12 +66,13 @@ def build_runtime_source_payload(
         nok_code = _first_nok_code(decoded_fields) if result == "nok" else None
 
     source_event_id = _stable_id("runtime-source", base_identity)
+    event_id = _stable_uuid4("runtime-event", base_identity)
     payload: dict[str, Any] = {
         "config_hash": resolved_config_hash,
-        "event_id": source_event_id,
+        "event_id": event_id,
         "event_type": resolved_event_type,
-        "event_ts": event_ts,
-        "observed_at": observed_at,
+        "event_ts": _utc_z(event_ts),
+        "observed_at": _utc_z(observed_at),
         "station_id": station_snapshot.station_id,
         "mapping_id": station_snapshot.mapping_id,
         "payload_template": station_snapshot.payload_template,
@@ -189,3 +192,28 @@ def _stable_id(namespace: str, content: Mapping[str, Any]) -> str:
         allow_nan=False,
     ).encode("utf-8")
     return "sha256:" + hashlib.sha256(encoded).hexdigest()
+
+
+def _stable_uuid4(namespace: str, content: Mapping[str, Any]) -> str:
+    encoded = json.dumps(
+        {"namespace": namespace, "content": content},
+        ensure_ascii=False,
+        sort_keys=True,
+        separators=(",", ":"),
+        allow_nan=False,
+    ).encode("utf-8")
+    return str(UUID(bytes=hashlib.sha256(encoded).digest()[:16], version=4))
+
+
+def _utc_z(value: Any) -> str:
+    if isinstance(value, datetime):
+        timestamp = value
+    else:
+        text = str(value)
+        if text.endswith("Z"):
+            timestamp = datetime.fromisoformat(text[:-1] + "+00:00")
+        else:
+            timestamp = datetime.fromisoformat(text)
+    if timestamp.tzinfo is None:
+        timestamp = timestamp.replace(tzinfo=timezone.utc)
+    return timestamp.astimezone(timezone.utc).isoformat().replace("+00:00", "Z")

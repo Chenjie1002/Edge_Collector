@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 from dataclasses import replace
+from uuid import UUID
 
 import pytest
 
@@ -261,8 +262,11 @@ def test_source_builder_emits_deterministic_source_event_id_and_excludes_runtime
 
     assert first["source_event_id"] == second["source_event_id"]
     assert first["event_id"] == second["event_id"]
+    assert first["event_id"] != first["source_event_id"]
+    assert UUID(first["event_id"]).version == 4
     assert "retry_count" not in first
     assert "created_at" not in first
+    assert first["event_ts"] == "2026-06-26T02:00:30Z"
     assert first["observed_at"] != second["observed_at"]
 
 

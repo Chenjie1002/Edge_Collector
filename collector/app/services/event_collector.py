@@ -3,7 +3,7 @@ from __future__ import annotations
 import logging
 import time
 from dataclasses import dataclass
-from datetime import datetime
+from datetime import datetime, timezone
 from zoneinfo import ZoneInfo
 
 import snap7
@@ -11,6 +11,12 @@ import snap7
 from app.plc import EdgeMapping, ReadPlan, build_read_plans, decode_read_plan, load_edge_mapping
 from app.plc.mapping import StationMapping
 from app.services.reliability import CounterDecision, classify_counter, validate_plc_boot_id
+from app.services.resolved_config_registry import (
+    InMemoryResolvedConfigRegistry,
+    build_resolved_config_snapshot_from_mapping,
+)
+from app.services.station_event_adapter import adapt_source_payload
+from app.services.station_event_runtime_source import build_runtime_source_payload
 from app.services.storage import Storage
 
 
@@ -42,6 +48,10 @@ class EventCollectorWorker:
         self.rack = int(self.plc.get("rack", 0))
         self.slot = int(self.plc.get("slot", 1))
         self.timezone = ZoneInfo(self.mapping.timezone)
+        self.resolved_config_snapshot = build_resolved_config_snapshot_from_mapping(self.mapping.runtime_snapshot)
+        self.resolved_config_registry = InMemoryResolvedConfigRegistry(
+            {self.resolved_config_snapshot.config_hash: self.resolved_config_snapshot}
+        )
         self.client = snap7.client.Client()
         plans = {plan.scope: plan for plan in build_read_plans(self.mapping)}
         self.line_plan = plans.get("line")
@@ -145,6 +155,38 @@ class EventCollectorWorker:
             return
 
         try:
+            adapter_decision = self._adapt_station_runtime_payload(runtime, data, decoded, plc_boot_id)
+        except Exception as exc:
+            self._record_station_error(
+                runtime,
+                "ADAPTER_GATE_FAILED",
+                exc,
+                plc_boot_id=plc_boot_id,
+                cycle_counter=cycle_counter,
+                decoded=decoded,
+                collector_state="ADAPTER_REJECTED",
+            )
+            return
+        if adapter_decision.disposition != "accepted":
+            message = (
+                f"adapter decision not accepted: disposition={adapter_decision.disposition} "
+                f"error={adapter_decision.final_error_code}"
+            )
+            context = dict(decoded)
+            context["adapter_disposition"] = adapter_decision.disposition
+            context["adapter_error_code"] = adapter_decision.final_error_code
+            self._record_station_error(
+                runtime,
+                "ADAPTER_DECISION_NOT_ACCEPTED",
+                RuntimeError(message),
+                plc_boot_id=plc_boot_id,
+                cycle_counter=cycle_counter,
+                decoded=context,
+                collector_state="ADAPTER_REJECTED",
+            )
+            return
+
+        try:
             event_id = self.storage.persist_cycle(
                 plc_id=self.plc_id,
                 line_id=self.line_id,
@@ -216,6 +258,27 @@ class EventCollectorWorker:
             plc_boot_id=plc_boot_id,
             cycle_counter=cycle_counter,
         )
+
+    def _adapt_station_runtime_payload(
+        self,
+        runtime: StationRuntime,
+        data: bytes | bytearray,
+        decoded: dict[str, object],
+        plc_boot_id: str,
+    ):
+        station_snapshot = self.resolved_config_snapshot.station_for(runtime.station.station_id)
+        if station_snapshot is None:
+            raise ValueError(f"resolved station snapshot missing: {runtime.station.station_id}")
+        source_payload = build_runtime_source_payload(
+            decoded_fields=decoded,
+            raw_bytes=None,
+            station_snapshot=station_snapshot,
+            resolved_config_hash=self.resolved_config_snapshot.config_hash,
+            plc_boot_id=plc_boot_id,
+            observed_at=datetime.now(timezone.utc).isoformat().replace("+00:00", "Z"),
+            code_tables=self.mapping.code_tables,
+        )
+        return adapt_source_payload(source_payload, self.resolved_config_registry)
 
     def _read_plc_boot_id(self) -> str:
         if self.line_plan is None:

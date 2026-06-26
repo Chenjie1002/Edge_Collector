@@ -10,6 +10,10 @@ from snap7 import type as snap7_type
 from snap7 import util
 
 from app.plc import build_read_plans, load_edge_mapping
+from app.services.resolved_config_registry import (
+    InMemoryResolvedConfigRegistry,
+    build_resolved_config_snapshot_from_mapping,
+)
 from app.services.event_collector import EventCollectorWorker, StationRuntime
 
 
@@ -72,6 +76,8 @@ class Snap7ReliabilityIntegrationTest(unittest.TestCase):
         util.set_dint(ws01, 2, 1)
         util.set_bool(ws01, 6, 0, True)
         util.set_bool(ws01, 6, 3, True)
+        util.set_dint(ws01, 8, 1782448800)
+        util.set_dint(ws01, 12, 1782448830)
         util.set_int(ws01, 16, 1)
         set_s7_string(ws01, 40, "SUB-000001", 40)
         set_s7_string(ws01, 200, "U-20260618-000001", 48)
@@ -98,6 +104,10 @@ class Snap7ReliabilityIntegrationTest(unittest.TestCase):
         worker.rack = 0
         worker.slot = 1
         worker.timezone = ZoneInfo(mapping.timezone)
+        worker.resolved_config_snapshot = build_resolved_config_snapshot_from_mapping(mapping.runtime_snapshot)
+        worker.resolved_config_registry = InMemoryResolvedConfigRegistry(
+            {worker.resolved_config_snapshot.config_hash: worker.resolved_config_snapshot}
+        )
         worker.client = snap7.client.Client()
         worker.line_plan = plans["line"]
         worker.station_runtimes = [
