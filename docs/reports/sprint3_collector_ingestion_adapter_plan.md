@@ -1,6 +1,6 @@
 # Sprint 3 Collector Ingestion Adapter Plan
 
-Date: 2026-06-24
+Date: 2026-06-27
 
 Status: Docs-only contract drafting. Sprint 3 Collector Ingestion Adapter
 Contract Planning is `PASS`; implementation, tests, commit/push, DB/API/
@@ -121,7 +121,9 @@ Required snapshot contents:
 - station_enabled;
 - mapping;
 - payload template reference/version;
-- decoder version/callable decoder;
+- raw_policy;
+- decoder registry reference;
+- decoder id / decoder version / callable decoder;
 - NOK template;
 - profile/cycle_profile;
 - route/direct predecessor;
@@ -137,9 +139,47 @@ Fail-closed cases:
 - `CONFIG_NOT_FOUND`;
 - `CONFIG_HASH_MISMATCH`;
 - `EVENT_LINEAGE_INVALID`;
-- `RAW_PARSE_ERROR`.
+- `RAW_PARSE_ERROR`;
+- `RAW_NORMALIZED_MISMATCH`;
+- `RAW_CONTENT_FORBIDDEN`;
+- `RAW_EVIDENCE_MISSING`.
 
-### 4.3 Raw / normalized authority matrix
+### 4.3 D2-A decoder authority planning outcome
+
+D2-A is a docs/contract-only authority repair. It freezes contract language for
+decoder registry authority, decoder id / decoder version / callable decoder
+authority, immutable resolved config snapshot binding, fail-closed decoder
+taxonomy and the no-fallback rule. D2-A does not implement code, tests, schema,
+config, mapping, runtime Collector integration or raw runtime wiring.
+
+D2 authority decisions now carried by the companion contract:
+
+- decoder registry identity and registry snapshot/hash are selected only through
+  the immutable resolved config snapshot for the event `config_hash`;
+- decoder id, decoder version and callable decoder authority are selected only
+  from that immutable snapshot and its referenced decoder registry snapshot;
+- no fallback to latest/current runtime config, latest registry, current mapping
+  file or environment defaults is allowed;
+- unknown decoder id, missing decoder callable, decoder callable exception,
+  decoder output mismatch and forbidden raw content fail closed;
+- raw-only remains unsupported and fail-closed before identity, projection or
+  fingerprint production;
+- `raw_not_provided` is the only normalized-only authority; `raw_capable` and
+  `raw_required` missing raw remain fail-closed unless PM later approves a
+  contract change;
+- raw evidence is evidence, not an independent production fact.
+
+D2-B remains a future fixture/test-only hardening slice. It should cover decoder
+authority negative cases and raw_policy fixtures after separate PM approval.
+
+D2-C remains a future minimal registry/schema implementation slice. It is not
+authorized by D2-A and must not be inferred from this docs repair.
+
+D3 actual raw-capable/raw-required runtime wiring remains HOLD until D2
+authority is reviewed and separately authorized. D3 owns runtime raw evidence
+wiring, not this D2-A contract repair.
+
+### 4.4 Raw / normalized authority matrix
 
 The contract defines the matrix for:
 
@@ -147,6 +187,7 @@ The contract defines the matrix for:
 - normalized-only;
 - raw + normalized match;
 - raw + normalized conflict;
+- unknown decoder id;
 - decoder missing;
 - decoder mismatch/exception;
 - forbidden raw content;
@@ -159,6 +200,12 @@ semantics, but current offline contract does not persist quarantine. Raw-only
 cannot become production facts. Rejected, deferred or quarantined inputs never
 project.
 
+Raw-only must not produce a production fact, projection metadata, defect detail,
+Quality/Pareto row, API-visible state or ACK. Normalized-only remains valid only
+under immutable `raw_not_provided` authority. A source declared `raw_capable` or
+`raw_required` with missing raw remains fail-closed unless PM later approves a
+contract change.
+
 Data Quality targeted repair for DQ-B1:
 
 - `normalized-only` may enter shared validation only when immutable source
@@ -167,8 +214,9 @@ Data Quality targeted repair for DQ-B1:
 - The no-raw declaration must come from the immutable resolved snapshot, mapping
   or payload template, not from a temporary fixture field.
 - If the source/mapping/template requires raw and raw is missing, the offline
-  slice must fail closed as rejected, or be marked as a future deferred
-  diagnostic.
+  slice must fail closed as rejected. It must not be marked as a future deferred
+  diagnostic in the current D2-A/D2-B/D2-C authority path unless PM later
+  approves a contract change.
 - Raw-required or raw-capable missing raw must not produce offline projection
   metadata, production outcome, defect detail, DB-visible state or API-visible
   state.
@@ -178,7 +226,7 @@ Data Quality targeted repair for DQ-B1:
   by shared stateful validation. Rejected, non-authoritative or cross-config
   upstream evidence must not produce detail projection.
 
-### 4.4 Reject / defer / quarantine contract
+### 4.5 Reject / defer / quarantine contract
 
 The contract defines accepted, rejected, deferred, quarantined, duplicate,
 conflict and raw_variant diagnostic decisions.
@@ -190,7 +238,7 @@ Important constraints:
 - DB write allowed in this stage: no for all decisions;
 - API-visible production outcome: no for all decisions in this stage.
 
-### 4.5 Offline fixture inventory
+### 4.6 Offline fixture inventory
 
 Required future fixture inventory:
 
@@ -206,8 +254,10 @@ Required future fixture inventory:
 - direct_predecessor_mismatch;
 - profile mismatch;
 - station_type mismatch;
+- unknown decoder id;
 - raw decoder missing;
 - raw decoder mismatch;
+- decoder output payload_template mismatch;
 - forbidden raw content;
 - normalized-only with source protocol/mapping declared no-raw;
 - raw-required source with missing raw;
@@ -255,7 +305,8 @@ Explicitly excluded:
 | --- | --- |
 | Adapter nominal tests | nominal 3-station/result/NOK/heartbeat fixtures normalize and validate through shared helpers |
 | Lineage tests | config hash, mapping, profile, station type and route/predecessor mismatches fail closed |
-| Raw authority tests | raw-only, normalized-only declared no-raw from immutable snapshot/mapping/template, raw-required missing raw, raw-capable missing raw, decoder missing, decoder exception, `RAW_PARSE_ERROR`, `RAW_NORMALIZED_MISMATCH` and `RAW_CONTENT_FORBIDDEN` never produce facts and remain distinguishable |
+| Raw authority tests | raw-only, normalized-only declared no-raw from immutable snapshot/mapping/template, raw-required missing raw, raw-capable missing raw, decoder missing, decoder exception, `RAW_PARSE_ERROR`, `RAW_NORMALIZED_MISMATCH`, `RAW_CONTENT_FORBIDDEN` and `RAW_EVIDENCE_MISSING` never produce facts and remain distinguishable |
+| Decoder authority tests | decoder registry snapshot, decoder id, decoder version and callable decoder are immutable-snapshot-bound; unknown decoder id, missing callable, callable exception, decoded output mismatch, forbidden raw content and no-fallback-to-latest/current cases fail closed |
 | Decision tests | accepted/rejected/deferred/quarantined/duplicate/conflict/raw_variant wrappers are deterministic and non-persistent |
 | Projection tests | wrapper decision and `projection_for()` metadata are asserted together; only accepted envelopes produce offline projection metadata; non-accepted decisions never project or leak rejected detail into Pareto/defect rows |
 | Phase-1 regression tests | current 3-station runtime behavior remains unchanged |
@@ -284,6 +335,11 @@ Data Quality targeted re-review: `PASS WITH RECOMMENDATIONS`, DQ-B1 CLOSED.
 Verification Review: `PASS WITH RECOMMENDATIONS`, no blocker.
 
 Eligible for docs-only closeout decision: yes.
+
+D2-A decoder authority docs/contract-only repair: recorded. D2-A adds no code,
+tests, config, schema, mapping, runtime Collector integration or raw runtime
+wiring. D2-B fixture/test-only hardening, D2-C minimal registry/schema
+implementation and D3 runtime raw wiring remain future separate gates.
 
 Eligible for implementation: no. PM approval is required before implementation,
 tests, runtime Collector integration, DB/API/Dashboard/V-PLC/PLC pilot,

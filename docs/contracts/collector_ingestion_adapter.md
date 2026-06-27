@@ -5,7 +5,7 @@ ingestion adapter offline fixtures is `PASS`; implementation, tests, runtime
 Collector connection, DB writes, API endpoints, Dashboard, V-PLC behavior
 changes, PLC pilot, deploy, tag and rollback are not authorized.
 
-Updated: 2026-06-24
+Updated: 2026-06-27
 
 Applies to: Phase-2 Sprint 3 Collector ingestion adapter offline fixtures.
 
@@ -214,13 +214,72 @@ The resolved snapshot fixture must contain:
 | station_enabled | disabled-station heartbeat-only rule |
 | mapping | exact `mapping_id`, purpose, DB/source layout and source namespace |
 | payload template reference/version | normalized payload field decode and template lineage |
-| decoder version/callable decoder | raw payload decode into normalized candidate payload |
+| raw_policy | one of `raw_not_provided`, `raw_capable` or `raw_required`, selected from the immutable snapshot |
+| decoder registry reference | immutable decoder registry snapshot identity for this `config_hash` |
+| decoder id / decoder version / callable decoder | raw payload decode authority into normalized candidate payload |
 | NOK template | allowed NOK code/origin interpretation |
 | profile/cycle_profile | exact `profile_id` expected by the station-event contract |
 | route/direct predecessor | upstream business evidence and direct predecessor validation |
 | config_version/hash | readable version and immutable SHA-256 snapshot identity |
 
-### 4.3 Fail-closed cases
+### 4.3 Decoder registry authority
+
+D2 decoder authority is a contract authority repair only. It does not implement
+a decoder registry, decoder callable, schema change, runtime raw wiring or
+runtime Collector integration.
+
+For any source that carries raw evidence or is declared `raw_capable` /
+`raw_required`, the resolved config snapshot must bind interpretation to an
+immutable decoder registry snapshot. The binding must include:
+
+- decoder registry identity and registry content hash or equivalent immutable
+  snapshot identity;
+- decoder id selected by the mapping/payload template;
+- decoder version expected by the event's immutable `config_hash` snapshot;
+- callable decoder reference authorized for that decoder id/version;
+- raw_policy selected by the immutable snapshot;
+- payload template identity/version that the decoder output must satisfy.
+
+Decoder id, decoder version and callable decoder authority must come from the
+immutable resolved config snapshot and its referenced decoder registry snapshot.
+They must not come from the latest registry, latest runtime config, current
+mapping file, environment defaults or ad hoc fixture fields. The adapter must
+never fallback to a latest/current decoder or runtime config when the historical
+decoder id/version/callable binding is missing, unknown or mismatched.
+
+The decoder callable is authority only for translating raw evidence into a
+normalized candidate payload. It is not a production fact authority by itself.
+The decoded candidate must still pass payload template checks,
+raw/normalized comparison where normalized input is present, shared
+station-event validation, fingerprinting and wrapper decision rules before any
+offline projection metadata may be derived.
+
+Fail-closed decoder authority rules:
+
+- unknown decoder id: reject before decode as `RAW_PARSE_ERROR` or a more
+  specific future decoder-authority code after PM approval;
+- decoder id known but callable missing: reject before decode as
+  `RAW_PARSE_ERROR`;
+- decoder version mismatch: reject before decode as `RAW_PARSE_ERROR` or
+  `RAW_NORMALIZED_MISMATCH` if a decoded/normalized comparison is possible;
+- decoder callable exception: reject as `RAW_PARSE_ERROR`;
+- decoder output does not match payload template, lineage, field authority or
+  supplied normalized values: reject as `RAW_NORMALIZED_MISMATCH` or
+  `EVENT_LINEAGE_INVALID` as applicable;
+- forbidden raw content detected before or during decode: reject as
+  `RAW_CONTENT_FORBIDDEN`;
+- raw-only input before identity/projection/fingerprint production: remain
+  unsupported and fail closed; it must not produce production facts, projection
+  metadata, defect detail, Quality/Pareto output, API-visible state or ACK.
+
+D2 owns decoder registry / decoder callable authority and immutable snapshot
+binding. D3 owns actual raw-capable/raw-required runtime wiring. D3 remains
+HOLD until D2 authority is reviewed and separately authorized. This D2-A update
+does not authorize D2-B fixture/test hardening, D2-C registry/schema
+implementation, D3 raw runtime wiring, DB/API/Dashboard/V-PLC/deploy changes or
+ACK/read_done ownership changes.
+
+### 4.4 Fail-closed cases
 
 | Case | Decision | Meaning |
 | --- | --- | --- |
@@ -228,6 +287,9 @@ The resolved snapshot fixture must contain:
 | `CONFIG_HASH_MISMATCH` | rejected | snapshot content/hash does not match the supplied hash |
 | `EVENT_LINEAGE_INVALID` | rejected | line/PLC/station/station_type/profile/mapping/predecessor lineage fails |
 | `RAW_PARSE_ERROR` | rejected in MVP | raw payload exists but required decoder is missing or cannot parse |
+| `RAW_NORMALIZED_MISMATCH` | rejected | decoded raw output does not match supplied normalized payload or template authority |
+| `RAW_CONTENT_FORBIDDEN` | rejected | raw content is forbidden by contract before becoming evidence |
+| `RAW_EVIDENCE_MISSING` | rejected | `raw_capable` or `raw_required` source is missing required raw evidence under immutable snapshot authority |
 
 In this MVP, decoder missing with raw may be fail-closed rejected as
 `RAW_PARSE_ERROR`. Future runtime may evolve some raw parsing failures into
@@ -238,12 +300,13 @@ quarantine.
 
 | Input shape | MVP decision | Production fact authority | Projection |
 | --- | --- | --- | --- |
-| raw-only | rejected or deferred diagnostic; cannot become production facts | none | never |
+| raw-only | unsupported and fail-closed before identity/projection/fingerprint production | none | never |
 | normalized-only | may proceed to shared validation only when immutable source protocol, mapping or payload template declares raw is not provided, for example `raw_not_provided` or an equivalent no-raw capability, and config lineage is valid | normalized envelope from source mapping with explicit no-raw authority | only offline metadata if accepted |
 | raw + normalized match | may proceed to shared validation | normalized envelope; raw is evidence | only offline metadata if accepted |
 | raw + normalized conflict | rejected as raw/normalized mismatch | none | never |
-| decoder missing | rejected as `RAW_PARSE_ERROR` when raw is present | none | never |
-| decoder mismatch/exception | rejected as `RAW_PARSE_ERROR` or mismatch | none | never |
+| unknown decoder id | rejected as `RAW_PARSE_ERROR` before decode | none | never |
+| decoder missing | rejected as `RAW_PARSE_ERROR` when raw is present or raw is required | none | never |
+| decoder mismatch/exception | rejected as `RAW_PARSE_ERROR` or `RAW_NORMALIZED_MISMATCH` | none | never |
 | forbidden raw content | rejected as `RAW_CONTENT_FORBIDDEN` | none | never |
 | same content, different raw / raw_variant | duplicate + `raw_variant` diagnostic if canonical content is identical and only raw fingerprint differs | existing accepted canonical content | no new projection |
 | future exact-byte fixture | must compare exact canonical bytes/fingerprints, not language-default JSON | shared canonical helpers | only after future gate |
@@ -251,17 +314,27 @@ quarantine.
 Raw payload is evidence, not an independent production fact. Rejected, deferred
 or quarantined inputs never project.
 
+The raw_policy relationship is fail-closed:
+
+- `raw_not_provided`: normalized-only may enter shared validation only when the
+  immutable resolved snapshot, mapping or payload template explicitly declares
+  no raw is produced or available.
+- `raw_capable`: missing raw remains fail-closed unless PM later approves a
+  contract change; it must not silently downgrade to `raw_not_provided`.
+- `raw_required`: missing raw is fail-closed as `RAW_EVIDENCE_MISSING` or an
+  equivalent future PM-approved code, with no projection or ACK.
+
 `normalized-only` is not a bypass around raw evidence checks. It is allowed only
 when the immutable source protocol, mapping or payload template explicitly says
 raw is not produced or not available, such as `raw_not_provided` or an equivalent
 capability. That no-raw declaration must come from the immutable resolved
 snapshot, mapping or payload template, not from a temporary fixture field. If
 the source, mapping or payload template requires raw and raw is missing, the
-current offline slice must fail closed as rejected, or label the case as a
-future deferred diagnostic. Such an input must not produce offline projection
-metadata, production outcome, defect detail, DB-visible state or API-visible
-state. The adapter must not route a raw-capable or raw-required source through
-`normalized-only` to avoid the raw evidence check.
+current offline slice must fail closed as rejected. Such an input must not
+produce offline projection metadata, production outcome, defect detail,
+DB-visible state or API-visible state. The adapter must not route a raw-capable
+or raw-required source through `normalized-only` to avoid the raw evidence
+check.
 
 `30003/system_reserved` upstream evidence must not be synthesized by the
 adapter. A `30003` skip relation must depend on legal accepted upstream business
@@ -311,11 +384,13 @@ docs-only draft:
 | profile mismatch | profile lineage fail-closed |
 | station_type mismatch | station type historical snapshot fail-closed |
 | raw decoder missing | `RAW_PARSE_ERROR` in MVP |
+| unknown decoder id | `RAW_PARSE_ERROR` in MVP; no fallback to latest/current registry |
 | raw decoder mismatch | `RAW_PARSE_ERROR` or raw/normalized mismatch |
+| decoder output payload template mismatch | `RAW_NORMALIZED_MISMATCH` or lineage/template rejection; no projection |
 | forbidden raw content | `RAW_CONTENT_FORBIDDEN` |
 | normalized-only with source protocol/mapping declared no-raw | may enter shared validation |
-| raw-required source with missing raw | fail-closed rejected or future deferred diagnostic; no projection |
-| raw-capable source missing raw | must not become accepted production fact |
+| raw-required source with missing raw | fail-closed rejected; no projection |
+| raw-capable source missing raw | fail-closed unless PM later approves a contract change; must not become accepted production fact |
 | duplicate | same key and same canonical content |
 | conflict | same key and different canonical content |
 | raw_variant | same canonical content, different raw evidence fingerprint |
@@ -363,13 +438,14 @@ future authorized implementation thread.
 | adapter nominal tests | 3-station cycle/result/NOK/heartbeat fixtures normalize and validate through shared helpers |
 | lineage tests | config hash, line, PLC, station, station_type, profile, route/predecessor and mapping mismatches fail closed |
 | raw authority tests | raw-only, normalized-only declared no-raw from immutable snapshot/mapping/template, raw-required missing raw, raw-capable missing raw, decoder missing, decoder exception, raw/normalized mismatch and forbidden raw content never produce facts |
+| decoder authority tests | decoder registry snapshot, decoder id, decoder version and callable decoder are selected only from the immutable resolved snapshot; unknown decoder id, missing callable, callable exception, output mismatch and forbidden raw content fail closed with no fallback |
 | decision tests | accepted/rejected/deferred/quarantined/duplicate/conflict/raw_variant wrappers are deterministic and non-persistent |
 | projection tests | wrapper decision and `projection_for()` metadata are asserted together; only accepted envelopes produce offline projection metadata; rejected/deferred/quarantined/duplicate/conflict/raw_variant never project or leak rejected detail into Pareto/defect rows |
 | Phase-1 regression tests | existing 3-station behavior and default runtime remain unchanged |
 | future JCS exact-byte boundary tests | canonical bytes and fingerprints match approved vectors before JavaScript/PostgreSQL/API/DB integration |
 | future duplicate/conflict precedence tests | multi-key duplicate/conflict precedence covers `event_id`, `fact_key`, cycle role / production result key and detail key, not only a single `fact_key` |
 | future historical config replay tests | historical config replay and current-config-changed/old-snapshot behavior are covered |
-| future raw error taxonomy tests | `RAW_PARSE_ERROR`, `RAW_NORMALIZED_MISMATCH` and `RAW_CONTENT_FORBIDDEN` remain distinct |
+| future raw error taxonomy tests | `RAW_PARSE_ERROR`, `RAW_NORMALIZED_MISMATCH`, `RAW_CONTENT_FORBIDDEN` and `RAW_EVIDENCE_MISSING` remain distinct |
 
 ## 10. Review gates
 
@@ -392,6 +468,11 @@ Data Quality targeted re-review: `PASS WITH RECOMMENDATIONS`, DQ-B1 CLOSED.
 Verification Review: `PASS WITH RECOMMENDATIONS`, no blocker.
 
 Eligible for docs-only closeout decision: yes.
+
+D2-A decoder authority docs/contract-only repair: recorded. This update only
+clarifies decoder registry / decoder callable authority and immutable snapshot
+binding; it does not implement decoder registry, decoder callable, schema,
+config, tests, runtime raw support or D3 runtime raw wiring.
 
 Eligible for implementation: no. PM approval is required before implementation,
 tests, runtime Collector integration, DB/API/Dashboard/V-PLC/PLC pilot,
