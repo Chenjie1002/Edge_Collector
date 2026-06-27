@@ -15,8 +15,8 @@ Read this file together with:
 
 ```text
 last verified HEAD / origin/main at authoring time:
-c677515eab36ec0e39bb587a1f3c7bc3edbf2f41
-c677515 Implement Sprint 3 Slice B runtime adapter gate
+e02e39df7b4db7d717bc1ef952e31326e84971da
+e02e39d Harden Sprint 3 adapter diagnostics
 
 Branch:
 main
@@ -29,6 +29,7 @@ not created
 
 Runtime integration:
 Slice B runtime adapter gate implemented and committed
+Slice C runtime adapter diagnostic observability hardening implemented and committed
 
 Deploy / rollback drill:
 not performed
@@ -46,6 +47,7 @@ R-N1/R-N2 hardening is tracked in commit `577c1a1`.
 The docs/status sync is tracked in commit `fd79e21`; the baseline status repair is tracked in commit `4f424c6`; the PM rules / baseline semantics repair pre-baseline is tracked in commit `e284a06`.
 Slice A mapping contract hardening is tracked in commit `706f5da`.
 Slice B runtime adapter gate is tracked in commit `c677515`.
+Slice C runtime adapter diagnostic observability hardening is tracked in commit `e02e39d`.
 
 Sprint 3 implementation files committed:
 
@@ -63,6 +65,13 @@ collector/app/services/station_event_runtime_source.py
 collector/tests/test_event_collector_reliability.py
 collector/tests/test_snap7_reliability_integration.py
 tests/test_collector_station_event_runtime_source.py
+collector/tests/test_event_collector_adapter_gate.py
+```
+
+Sprint 3 Slice C runtime adapter diagnostic observability files committed:
+
+```text
+collector/app/services/event_collector.py
 collector/tests/test_event_collector_adapter_gate.py
 ```
 
@@ -139,6 +148,11 @@ Explicit non-goals for the current slice:
 | Slice B Data Quality focused review | PASS WITH RECOMMENDATIONS | none |
 | Slice B Verification focused review / allowlist audit | PASS WITH RECOMMENDATIONS | none |
 | Slice B exact allowlist commit/push | PASS | none |
+| Slice C diagnostic observability implementation | PASS | none |
+| Slice C Reliability focused review | PASS WITH RECOMMENDATIONS | none |
+| Slice C Data Quality focused review | PASS WITH RECOMMENDATIONS | none |
+| Slice C Verification focused review / allowlist audit | PASS WITH RECOMMENDATIONS | none |
+| Slice C exact allowlist commit/push | PASS | none |
 
 Current overall status:
 
@@ -146,10 +160,18 @@ Current overall status:
 Sprint 3 Collector Ingestion Adapter offline implementation and R-N1/R-N2 hardening: implemented, reviewed, committed and pushed.
 Sprint 3 Slice A mapping contract hardening: implemented, reviewed, committed and pushed at 706f5da.
 Sprint 3 Slice B runtime adapter gate: implemented, reviewed, committed and pushed at c677515.
+Sprint 3 Slice C runtime adapter diagnostic observability hardening: implemented, reviewed, committed and pushed at e02e39d.
 Slice B inserted the adapter gate after payload/cycle/counter guards and counter reset fail-safe, before existing storage.persist_cycle().
 Slice B accepted-only path continues to existing storage.persist_cycle() plus existing read_done/ACK behavior.
 Slice B non-accepted decisions do not persist, do not project, do not write defect detail, and do not ACK.
 Adapter remains non-owner of ACK/read_done.
+Slice C adapter exception path records ADAPTER_GATE_FAILED.
+Slice C non-accepted decision path records ADAPTER_DECISION_NOT_ACCEPTED.
+Slice C diagnostic raw_context includes adapter_phase, adapter_disposition, adapter_error_code and adapter_reason where available.
+Slice C collector state remains non-production diagnostic state, for example ADAPTER_REJECTED.
+Slice C accepted-only persist path remains unchanged.
+Slice C non-accepted decisions still do not persist, do not project, do not write defect detail, and do not ACK.
+Slice C introduced no raw evidence runtime wiring and no storage.py, DB/API/Dashboard/V-PLC/deploy changes.
 Docs/status sync completed at fd79e21.
 Docs/status baseline repair completed at 4f424c6.
 PM rules / baseline semantics repair pre-baseline: e284a06 Repair PM rules and Sprint 3 baseline status.
@@ -194,6 +216,25 @@ Slice B runtime adapter gate characteristics:
 - no `storage.py`, DB migration, API, Dashboard, V-PLC, deploy, tag, rollback
   or real PLC pilot changes.
 
+Slice C runtime adapter diagnostic observability characteristics:
+
+- adapter exception diagnostics remain on the existing collector error path and
+  record `ADAPTER_GATE_FAILED`;
+- non-accepted adapter decision diagnostics remain on the existing collector
+  error path and record `ADAPTER_DECISION_NOT_ACCEPTED`;
+- diagnostic `raw_context` includes `adapter_phase`, `adapter_disposition`,
+  `adapter_error_code` and `adapter_reason` where available;
+- collector state remains a non-production diagnostic state such as
+  `ADAPTER_REJECTED`;
+- accepted-only persist path remains unchanged;
+- rejected, deferred, quarantined, duplicate, conflict and raw_variant decisions
+  still do not call `storage.persist_cycle()`, do not project, do not write
+  defect detail, and do not ACK;
+- adapter remains non-owner of ACK/read_done;
+- no raw evidence runtime wiring was introduced;
+- no `storage.py`, DB migration, API, Dashboard, V-PLC, deploy, tag, rollback
+  or real PLC pilot changes.
+
 ## 6. Required validation commands
 
 Last observed validation results before exact allowlist commit:
@@ -211,6 +252,16 @@ Last observed Slice B validation results before exact allowlist commit:
 
 ```text
 collector runtime adapter/reliability regression: 18 passed
+runtime source + adapter regression: 59 passed
+compileall collector/app/plc collector/app/services: PASS
+git diff --check: PASS
+git diff --cached --check: PASS
+```
+
+Last observed Slice C validation results before exact allowlist commit:
+
+```text
+collector runtime adapter/reliability regression: 19 passed
 runtime source + adapter regression: 59 passed
 compileall collector/app/plc collector/app/services: PASS
 git diff --check: PASS
@@ -264,6 +315,30 @@ Commit message used:
 
 ```text
 Implement Sprint 3 Slice B runtime adapter gate
+```
+
+The Slice C runtime adapter diagnostic observability exact allowlist commit has
+also been completed. The only files committed in `e02e39d` were:
+
+```text
+collector/app/services/event_collector.py
+collector/tests/test_event_collector_adapter_gate.py
+```
+
+Commit message used:
+
+```text
+Harden Sprint 3 adapter diagnostics
+```
+
+Slice C carry-forward recommendations:
+
+```text
+R-N1: future raw-capable/raw-required runtime source still needs separate raw evidence focused review.
+R-N2: diagnostic enrichment must remain non-owner of ACK/read_done.
+R-N3: adapter_reason must remain read-only diagnostic if later used for metrics/alerting/retry policy; it must not become a production success, PLC release, or ACK retry criterion.
+DQ-N1: metrics/alerting should use adapter_phase / adapter_error_code as observability dimensions and must not reuse NOK code, quality result, or production outcome naming.
+Next gate: eligible for downstream PM planning; raw evidence runtime wiring, DB/API/Dashboard/V-PLC/deploy/tag/rollback/real PLC pilot and further runtime implementation require separate PM approval.
 ```
 
 Required exclusions for future tasks remain:

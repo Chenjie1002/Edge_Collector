@@ -6,14 +6,14 @@
 
 ## 0. 当前 PM / Codex 协作状态
 
-当前主线：Phase-2 Sprint 3 Slice B runtime adapter gate closeout。
+当前主线：Phase-2 Sprint 3 Slice C runtime adapter diagnostic observability closeout。
 
 Last verified baseline before this docs sync:
 
 ```text
 last verified HEAD / origin/main at authoring time:
-c677515eab36ec0e39bb587a1f3c7bc3edbf2f41
-c677515 Implement Sprint 3 Slice B runtime adapter gate
+e02e39df7b4db7d717bc1ef952e31326e84971da
+e02e39d Harden Sprint 3 adapter diagnostics
 
 branch:
 main
@@ -30,6 +30,11 @@ commits.
 当前 Sprint 3 gate：
 
 ```text
+Slice C runtime adapter diagnostic observability implementation: PASS
+Slice C Reliability focused review: PASS WITH RECOMMENDATIONS, no blocker
+Slice C Data Quality focused review: PASS WITH RECOMMENDATIONS, no blocker
+Slice C Verification focused review / allowlist audit: PASS WITH RECOMMENDATIONS, no blocker
+Slice C exact allowlist commit/push: PASS, commit e02e39d
 Slice B runtime adapter gate implementation: PASS
 Slice B Reliability focused review: PASS WITH RECOMMENDATIONS, no blocker
 Slice B Data Quality focused review: PASS WITH RECOMMENDATIONS, no blocker
@@ -70,6 +75,28 @@ non-accepted decisions do not persist, do not project, do not write defect detai
 adapter remains non-owner of ACK/read_done.
 ```
 
+当前 Sprint 3 Slice C diagnostic observability files 已提交：
+
+```text
+collector/app/services/event_collector.py
+collector/tests/test_event_collector_adapter_gate.py
+```
+
+Slice C runtime adapter diagnostic observability summary:
+
+```text
+runtime adapter diagnostic observability hardening implemented and committed at e02e39d.
+adapter exception path records ADAPTER_GATE_FAILED.
+non-accepted decision path records ADAPTER_DECISION_NOT_ACCEPTED.
+diagnostic raw_context includes adapter_phase, adapter_disposition, adapter_error_code and adapter_reason where available.
+collector state remains non-production diagnostic state, for example ADAPTER_REJECTED.
+accepted-only persist path remains unchanged.
+non-accepted decisions still do not persist, do not project, do not write defect detail, and do not ACK.
+adapter remains non-owner of ACK/read_done.
+no raw evidence runtime wiring was introduced.
+no storage.py, DB/API/Dashboard/V-PLC/deploy changes were made.
+```
+
 当前 Sprint 3 offline adapter implementation files 已提交：
 
 ```text
@@ -90,11 +117,14 @@ Docs/status baseline repair completed at 4f424c6.
 PM rules / baseline semantics repair completed at e284a06.
 ```
 
-Slice B carry-forward recommendations:
+Slice C carry-forward recommendations:
 
 ```text
-R-N1: future raw-capable/raw-required runtime source needs renewed raw evidence focused review.
-R-N2: future diagnostic enrichment may split ADAPTER_GATE_FAILED vs non-accepted decisions, without changing ACK or production fact semantics.
+R-N1: future raw-capable/raw-required runtime source still needs separate raw evidence focused review.
+R-N2: diagnostic enrichment must remain non-owner of ACK/read_done.
+R-N3: adapter_reason must remain read-only diagnostic if later used for metrics/alerting/retry policy; it must not become a production success, PLC release, or ACK retry criterion.
+DQ-N1: metrics/alerting should use adapter_phase / adapter_error_code as observability dimensions and must not reuse NOK code, quality result, or production outcome naming.
+Next gate: eligible for downstream PM planning; raw evidence runtime wiring, DB/API/Dashboard/V-PLC/deploy/tag/rollback/real PLC pilot and further runtime implementation require separate PM approval.
 ```
 
 当前外部既有 dirty artifacts，应排除，除非 PM 明确授权：
