@@ -162,6 +162,17 @@ def assert_no_projection(decision) -> None:
     assert decision.lifecycle is None or decision.disposition in {"duplicate", "conflict"}
 
 
+def assert_diagnostic_only_rejection(decision, expected_code: str) -> None:
+    assert (decision.disposition, decision.final_error_code) == ("rejected", expected_code)
+    assert decision.normalized_event is None
+    assert decision.canonical_bytes is None
+    assert decision.fact_key is None
+    assert decision.content_fingerprint is None
+    assert decision.raw_evidence_fingerprint is None
+    assert decision.projection_metadata is None
+    assert decision.lifecycle is None
+
+
 @pytest.mark.parametrize(
     ("event_type", "result"),
     [
@@ -347,6 +358,49 @@ def test_raw_authority_negative_cases_fail_closed_without_projection(snap, paylo
 
     assert (decision.disposition, decision.final_error_code) == ("rejected", expected)
     assert_no_projection(decision)
+
+
+def test_normalized_only_is_accepted_only_when_immutable_snapshot_declares_raw_not_provided() -> None:
+    no_raw = snapshot(raw_policy="raw_not_provided")
+    raw_capable = snapshot(raw_policy="raw_capable")
+    normalized_only = source(normalized_payload={"torque": 4.8})
+
+    accepted = adapt_source_payload(
+        normalized_only | {"config_hash": no_raw.config_hash},
+        registry(no_raw),
+    )
+    rejected = adapt_source_payload(
+        normalized_only | {"config_hash": raw_capable.config_hash},
+        registry(raw_capable),
+    )
+
+    assert accepted.disposition == "accepted"
+    assert accepted.raw_evidence_fingerprint is None
+    assert accepted.projection_metadata.production_outcome == "ok"
+    assert_diagnostic_only_rejection(rejected, "RAW_EVIDENCE_MISSING")
+
+
+@pytest.mark.parametrize("raw_policy", ["raw_required", "raw_capable"])
+def test_missing_raw_under_required_or_capable_policy_is_diagnostic_only(raw_policy: str) -> None:
+    snap = snapshot(raw_policy=raw_policy)
+
+    decision = adapt_source_payload(
+        source(normalized_payload={"torque": 4.8}, config_hash=snap.config_hash),
+        registry(snap),
+    )
+
+    assert_diagnostic_only_rejection(decision, "RAW_EVIDENCE_MISSING")
+
+
+def test_raw_only_rejects_before_event_identity_or_projection() -> None:
+    snap = snapshot(raw_policy="raw_required")
+
+    decision = adapt_source_payload(
+        source(normalized_payload=None, raw_payload={"torque": 4.8}, config_hash=snap.config_hash),
+        registry(snap),
+    )
+
+    assert_diagnostic_only_rejection(decision, "RAW_ONLY_UNSUPPORTED")
 
 
 def test_raw_plus_normalized_match_and_declared_no_raw_normalized_only_can_validate() -> None:

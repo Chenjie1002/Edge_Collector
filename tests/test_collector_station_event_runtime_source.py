@@ -270,6 +270,62 @@ def test_source_builder_emits_deterministic_source_event_id_and_excludes_runtime
     assert first["observed_at"] != second["observed_at"]
 
 
+def test_source_builder_normalized_only_runtime_path_depends_on_raw_not_provided_policy() -> None:
+    mapping = parse()
+    station = mapping.runtime_snapshot.station_for("WS01")
+
+    payload = build_runtime_source_payload(
+        decoded_fields={
+            "station_status": 1,
+            "cycle_counter": 42,
+            "cycle_valid": True,
+            "result": 1,
+            "unit_id": "UNIT-42",
+            "station_dmc": "DMC-42",
+            "plc_start_time": "2026-06-26T10:00:00+08:00",
+            "plc_end_time": "2026-06-26T10:00:30+08:00",
+            "nok_code_count": 0,
+        },
+        raw_bytes=None,
+        station_snapshot=station,
+        resolved_config_hash=mapping.runtime_snapshot.config_hash,
+        plc_boot_id="BOOT-1",
+        observed_at="2026-06-26T02:00:31Z",
+        code_tables=mapping.code_tables,
+    )
+
+    assert station.raw_policy == "raw_not_provided"
+    assert "raw_payload" not in payload
+    assert payload["payload"]["station_status"] == 1
+    assert payload["config_hash"] == mapping.runtime_snapshot.config_hash
+
+
+@pytest.mark.parametrize("raw_policy", ["raw_required", "raw_capable", "unexpected_policy"])
+def test_source_builder_missing_raw_fails_closed_unless_snapshot_declares_no_raw(raw_policy: str) -> None:
+    mapping = parse()
+    station = replace(mapping.runtime_snapshot.station_for("WS01"), raw_policy=raw_policy)
+
+    with pytest.raises(RuntimeSourcePayloadError, match="RAW_EVIDENCE_MISSING"):
+        build_runtime_source_payload(
+            decoded_fields={
+                "cycle_counter": 42,
+                "cycle_valid": True,
+                "result": 1,
+                "unit_id": "UNIT-42",
+                "station_dmc": "DMC-42",
+                "plc_start_time": "2026-06-26T10:00:00+08:00",
+                "plc_end_time": "2026-06-26T10:00:30+08:00",
+                "nok_code_count": 0,
+            },
+            raw_bytes=None,
+            station_snapshot=station,
+            resolved_config_hash=mapping.runtime_snapshot.config_hash,
+            plc_boot_id="BOOT-1",
+            observed_at="2026-06-26T02:00:31Z",
+            code_tables=mapping.code_tables,
+        )
+
+
 def test_source_builder_station_nok_identity_appends_detail_fields() -> None:
     station = parse().runtime_snapshot.station_for("WS01")
     payload = build_runtime_source_payload(

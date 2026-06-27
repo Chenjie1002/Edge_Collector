@@ -101,6 +101,7 @@ def make_worker(
     storage: FakeStorage | None = None,
     client: FakeClient | None = None,
     adapter_disposition: str = "accepted",
+    adapter_error_code: str | None = None,
     adapter_exception: Exception | None = None,
 ) -> tuple[EventCollectorWorker, FakeStorage, FakeClient]:
     storage = storage or FakeStorage()
@@ -118,7 +119,11 @@ def make_worker(
             raise adapter_exception
         return SimpleNamespace(
             disposition=adapter_disposition,
-            final_error_code=None if adapter_disposition == "accepted" else adapter_disposition.upper(),
+            final_error_code=adapter_error_code
+            if adapter_error_code is not None
+            else None
+            if adapter_disposition == "accepted"
+            else adapter_disposition.upper(),
         )
 
     worker._adapt_station_runtime_payload = adapter
@@ -172,6 +177,36 @@ def test_adapter_exception_records_distinct_diagnostic_context_without_persist_o
     assert context["adapter_error_code"] == "RuntimeError"
     assert context["adapter_reason"] == "simulated adapter failure"
     assert context["cycle_counter"] == 5
+    assert storage.runtime_updates[-1]["collector_state"] == "ADAPTER_REJECTED"
+
+
+@pytest.mark.parametrize(
+    "raw_error_code",
+    [
+        "RAW_EVIDENCE_MISSING",
+        "RAW_ONLY_UNSUPPORTED",
+        "RAW_PARSE_ERROR",
+        "RAW_NORMALIZED_MISMATCH",
+        "RAW_CONTENT_FORBIDDEN",
+    ],
+)
+def test_raw_boundary_non_accepted_decisions_do_not_persist_or_ack(raw_error_code: str) -> None:
+    worker, storage, client = make_worker(
+        adapter_disposition="rejected",
+        adapter_error_code=raw_error_code,
+    )
+
+    worker._process_station(make_runtime(), bytearray(64), ready_payload(), BOOT_ID)
+
+    assert storage.persist_calls == 0
+    assert storage.ack_ok_calls == 0
+    assert storage.ack_failed_calls == 0
+    assert client.writes == []
+    assert storage.errors[-1]["error_type"] == "ADAPTER_DECISION_NOT_ACCEPTED"
+    context = storage.errors[-1]["raw_context"]
+    assert context["adapter_phase"] == "adapter_decision"
+    assert context["adapter_disposition"] == "rejected"
+    assert context["adapter_error_code"] == raw_error_code
     assert storage.runtime_updates[-1]["collector_state"] == "ADAPTER_REJECTED"
 
 
