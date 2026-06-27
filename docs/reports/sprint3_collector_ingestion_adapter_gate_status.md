@@ -15,8 +15,8 @@ Read this file together with:
 
 ```text
 last verified HEAD / origin/main at authoring time:
-e02e39df7b4db7d717bc1ef952e31326e84971da
-e02e39d Harden Sprint 3 adapter diagnostics
+0358b6047fd657e272e636d2c8754a26bf793c03
+0358b60 Harden Sprint 3 Slice D1 raw boundary tests
 
 Branch:
 main
@@ -30,6 +30,7 @@ not created
 Runtime integration:
 Slice B runtime adapter gate implemented and committed
 Slice C runtime adapter diagnostic observability hardening implemented and committed
+Slice D1 raw boundary test-only hardening implemented and committed
 
 Deploy / rollback drill:
 not performed
@@ -48,6 +49,7 @@ The docs/status sync is tracked in commit `fd79e21`; the baseline status repair 
 Slice A mapping contract hardening is tracked in commit `706f5da`.
 Slice B runtime adapter gate is tracked in commit `c677515`.
 Slice C runtime adapter diagnostic observability hardening is tracked in commit `e02e39d`.
+Slice D1 raw boundary test-only hardening is tracked in commit `0358b60`.
 
 Sprint 3 implementation files committed:
 
@@ -73,6 +75,14 @@ Sprint 3 Slice C runtime adapter diagnostic observability files committed:
 ```text
 collector/app/services/event_collector.py
 collector/tests/test_event_collector_adapter_gate.py
+```
+
+Sprint 3 Slice D1 raw boundary test-only hardening files committed:
+
+```text
+collector/tests/test_event_collector_adapter_gate.py
+tests/test_collector_station_event_adapter.py
+tests/test_collector_station_event_runtime_source.py
 ```
 
 External dirty artifacts currently expected and excluded unless PM explicitly says otherwise:
@@ -153,6 +163,11 @@ Explicit non-goals for the current slice:
 | Slice C Data Quality focused review | PASS WITH RECOMMENDATIONS | none |
 | Slice C Verification focused review / allowlist audit | PASS WITH RECOMMENDATIONS | none |
 | Slice C exact allowlist commit/push | PASS | none |
+| Slice D1 raw boundary test-only hardening implementation | PASS WITH RECOMMENDATIONS | none |
+| Slice D1 Reliability focused review | PASS WITH RECOMMENDATIONS | none |
+| Slice D1 Data Quality focused review | PASS | none |
+| Slice D1 Verification focused review / allowlist audit | PASS | none |
+| Slice D1 exact allowlist commit/push | PASS | none |
 
 Current overall status:
 
@@ -161,6 +176,7 @@ Sprint 3 Collector Ingestion Adapter offline implementation and R-N1/R-N2 harden
 Sprint 3 Slice A mapping contract hardening: implemented, reviewed, committed and pushed at 706f5da.
 Sprint 3 Slice B runtime adapter gate: implemented, reviewed, committed and pushed at c677515.
 Sprint 3 Slice C runtime adapter diagnostic observability hardening: implemented, reviewed, committed and pushed at e02e39d.
+Sprint 3 Slice D1 raw boundary test-only hardening: implemented, reviewed, committed and pushed at 0358b60.
 Slice B inserted the adapter gate after payload/cycle/counter guards and counter reset fail-safe, before existing storage.persist_cycle().
 Slice B accepted-only path continues to existing storage.persist_cycle() plus existing read_done/ACK behavior.
 Slice B non-accepted decisions do not persist, do not project, do not write defect detail, and do not ACK.
@@ -172,10 +188,20 @@ Slice C collector state remains non-production diagnostic state, for example ADA
 Slice C accepted-only persist path remains unchanged.
 Slice C non-accepted decisions still do not persist, do not project, do not write defect detail, and do not ACK.
 Slice C introduced no raw evidence runtime wiring and no storage.py, DB/API/Dashboard/V-PLC/deploy changes.
+Slice D1 is test-only hardening; no production code changed.
+Slice D1 is not raw runtime support.
+Slice D1 introduced no schema/config/mapping change, no decoder registry, no raw runtime wiring, no event_collector.py implementation change, and no storage.py / DB / API / Dashboard / V-PLC / Docker / deploy change.
+Slice D1 leaves ACK/read_done ownership unchanged.
+Slice D1 confirms raw_not_provided normalized-only path remains accepted only under immutable mapping/resolved snapshot authority.
+Slice D1 confirms raw_capable/raw_required missing raw fail closed as RAW_EVIDENCE_MISSING.
+Slice D1 confirms raw-only rejects as RAW_ONLY_UNSUPPORTED before identity/projection/fingerprint production.
+Slice D1 confirms RAW_EVIDENCE_MISSING / RAW_ONLY_UNSUPPORTED / RAW_PARSE_ERROR / RAW_NORMALIZED_MISMATCH / RAW_CONTENT_FORBIDDEN non-accepted decisions assert no persist / no ACK.
 Docs/status sync completed at fd79e21.
 Docs/status baseline repair completed at 4f424c6.
 PM rules / baseline semantics repair pre-baseline: e284a06 Repair PM rules and Sprint 3 baseline status.
-Eligible for downstream PM planning for next runtime slice: yes.
+Eligible for downstream PM planning for D2 decoder registry / decoder callable authority: yes.
+D2 decoder registry / decoder callable authority remains separate and requires PM approval.
+D3 actual raw-capable/raw-required runtime wiring remains HOLD until D2 authority is resolved.
 DB/API/Dashboard/V-PLC/deploy/tag/rollback/real PLC pilot: not authorized.
 ```
 
@@ -268,6 +294,15 @@ git diff --check: PASS
 git diff --cached --check: PASS
 ```
 
+Last observed Slice D1 validation results before exact allowlist commit:
+
+```text
+D1 focused tests: 84 passed
+collector reliability + Snap7 regression: 7 passed
+git diff --check: PASS
+git diff --cached --check: PASS
+```
+
 For future hardening or next-slice work, rerun the relevant focused and regression tests before staging.
 
 ## 7. Exact commit allowlist history
@@ -331,6 +366,21 @@ Commit message used:
 Harden Sprint 3 adapter diagnostics
 ```
 
+The Slice D1 raw boundary test-only hardening exact allowlist commit has also
+been completed. The only files committed in `0358b60` were:
+
+```text
+collector/tests/test_event_collector_adapter_gate.py
+tests/test_collector_station_event_adapter.py
+tests/test_collector_station_event_runtime_source.py
+```
+
+Commit message used:
+
+```text
+Harden Sprint 3 Slice D1 raw boundary tests
+```
+
 Slice C carry-forward recommendations:
 
 ```text
@@ -339,6 +389,16 @@ R-N2: diagnostic enrichment must remain non-owner of ACK/read_done.
 R-N3: adapter_reason must remain read-only diagnostic if later used for metrics/alerting/retry policy; it must not become a production success, PLC release, or ACK retry criterion.
 DQ-N1: metrics/alerting should use adapter_phase / adapter_error_code as observability dimensions and must not reuse NOK code, quality result, or production outcome naming.
 Next gate: eligible for downstream PM planning; raw evidence runtime wiring, DB/API/Dashboard/V-PLC/deploy/tag/rollback/real PLC pilot and further runtime implementation require separate PM approval.
+```
+
+Slice D1 carry-forward recommendations:
+
+```text
+D2 decoder registry / decoder callable authority remains separate.
+D3 actual raw-capable/raw-required runtime wiring remains HOLD until D2 authority is resolved.
+raw_capable/raw_required missing raw remains fail-closed unless PM approves contract change.
+Adapter diagnostics remain read-only observability, not ACK policy or production policy.
+No schema/config/mapping/storage/API/Dashboard/V-PLC/deploy work without separate PM approval.
 ```
 
 Required exclusions for future tasks remain:

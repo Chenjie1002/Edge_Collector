@@ -6,14 +6,14 @@
 
 ## 0. 当前 PM / Codex 协作状态
 
-当前主线：Phase-2 Sprint 3 Slice C runtime adapter diagnostic observability closeout。
+当前主线：Phase-2 Sprint 3 Slice D1 raw boundary test-only hardening closeout。
 
 Last verified baseline before this docs sync:
 
 ```text
 last verified HEAD / origin/main at authoring time:
-e02e39df7b4db7d717bc1ef952e31326e84971da
-e02e39d Harden Sprint 3 adapter diagnostics
+0358b6047fd657e272e636d2c8754a26bf793c03
+0358b60 Harden Sprint 3 Slice D1 raw boundary tests
 
 branch:
 main
@@ -30,6 +30,11 @@ commits.
 当前 Sprint 3 gate：
 
 ```text
+Slice D1 raw boundary test-only hardening implementation: PASS WITH RECOMMENDATIONS
+Slice D1 Reliability focused review: PASS WITH RECOMMENDATIONS, no blocker
+Slice D1 Data Quality focused review: PASS, no blocker
+Slice D1 Verification focused review / allowlist audit: PASS, no blocker
+Slice D1 exact allowlist commit/push: PASS, commit 0358b60
 Slice C runtime adapter diagnostic observability implementation: PASS
 Slice C Reliability focused review: PASS WITH RECOMMENDATIONS, no blocker
 Slice C Data Quality focused review: PASS WITH RECOMMENDATIONS, no blocker
@@ -51,7 +56,35 @@ Docs/status sync: PASS, commit fd79e21
 Docs/status baseline repair: PASS, commit 4f424c6
 PM rules / baseline semantics repair: PASS, commit e284a06
 Eligible for downstream PM planning for next runtime slice: yes
+D2 decoder registry / decoder callable authority: HOLD until separately authorized
+D3 actual raw-capable/raw-required runtime wiring: HOLD until D2 authority is resolved
 DB/API/Dashboard/V-PLC/deploy/tag/rollback/real PLC pilot: not authorized
+```
+
+当前 Sprint 3 Slice D1 test-only hardening files 已提交：
+
+```text
+collector/tests/test_event_collector_adapter_gate.py
+tests/test_collector_station_event_adapter.py
+tests/test_collector_station_event_runtime_source.py
+```
+
+Slice D1 raw boundary test-only hardening summary:
+
+```text
+Slice D1 raw_not_provided regression and raw boundary fixture hardening implemented, reviewed, committed and pushed at 0358b60.
+D1 is test-only hardening; no production code changed.
+D1 is not raw runtime support.
+No schema/config/mapping change.
+No decoder registry.
+No raw runtime wiring.
+No event_collector.py implementation change.
+No storage.py / DB / API / Dashboard / V-PLC / Docker / deploy change.
+ACK/read_done ownership unchanged.
+raw_not_provided normalized-only path remains accepted only under immutable mapping/resolved snapshot authority.
+raw_capable/raw_required missing raw fail closed as RAW_EVIDENCE_MISSING.
+raw-only rejects as RAW_ONLY_UNSUPPORTED before identity/projection/fingerprint production.
+RAW_EVIDENCE_MISSING / RAW_ONLY_UNSUPPORTED / RAW_PARSE_ERROR / RAW_NORMALIZED_MISMATCH / RAW_CONTENT_FORBIDDEN non-accepted decisions assert no persist / no ACK.
 ```
 
 当前 Sprint 3 Slice B implementation files 已提交：
@@ -125,6 +158,16 @@ R-N2: diagnostic enrichment must remain non-owner of ACK/read_done.
 R-N3: adapter_reason must remain read-only diagnostic if later used for metrics/alerting/retry policy; it must not become a production success, PLC release, or ACK retry criterion.
 DQ-N1: metrics/alerting should use adapter_phase / adapter_error_code as observability dimensions and must not reuse NOK code, quality result, or production outcome naming.
 Next gate: eligible for downstream PM planning; raw evidence runtime wiring, DB/API/Dashboard/V-PLC/deploy/tag/rollback/real PLC pilot and further runtime implementation require separate PM approval.
+```
+
+Slice D1 carry-forward recommendations:
+
+```text
+D2 decoder registry / decoder callable authority remains separate.
+D3 actual raw-capable/raw-required runtime wiring remains HOLD until D2 authority is resolved.
+raw_capable/raw_required missing raw remains fail-closed unless PM approves contract change.
+Adapter diagnostics remain read-only observability, not ACK policy or production policy.
+No schema/config/mapping/storage/API/Dashboard/V-PLC/deploy work without separate PM approval.
 ```
 
 当前外部既有 dirty artifacts，应排除，除非 PM 明确授权：
