@@ -101,6 +101,7 @@ def make_worker(
     storage: FakeStorage | None = None,
     client: FakeClient | None = None,
     adapter_disposition: str = "accepted",
+    adapter_exception: Exception | None = None,
 ) -> tuple[EventCollectorWorker, FakeStorage, FakeClient]:
     storage = storage or FakeStorage()
     client = client or FakeClient()
@@ -111,10 +112,16 @@ def make_worker(
     worker.line_id = "LINE_001"
     worker.timezone = ZoneInfo("Asia/Shanghai")
     worker.mapping = SimpleNamespace(code_tables={})
-    worker._adapt_station_runtime_payload = lambda *args, **kwargs: SimpleNamespace(
-        disposition=adapter_disposition,
-        final_error_code=None if adapter_disposition == "accepted" else adapter_disposition.upper(),
-    )
+
+    def adapter(*args, **kwargs):
+        if adapter_exception is not None:
+            raise adapter_exception
+        return SimpleNamespace(
+            disposition=adapter_disposition,
+            final_error_code=None if adapter_disposition == "accepted" else adapter_disposition.upper(),
+        )
+
+    worker._adapt_station_runtime_payload = adapter
     return worker, storage, client
 
 
@@ -142,6 +149,29 @@ def test_non_accepted_adapter_decisions_do_not_persist_or_ack(disposition: str) 
     assert storage.ack_failed_calls == 0
     assert client.writes == []
     assert storage.errors[-1]["error_type"] == "ADAPTER_DECISION_NOT_ACCEPTED"
+    context = storage.errors[-1]["raw_context"]
+    assert context["adapter_phase"] == "adapter_decision"
+    assert context["adapter_disposition"] == disposition
+    assert context["adapter_error_code"] == disposition.upper()
+    assert "adapter decision not accepted" in context["adapter_reason"]
+    assert storage.runtime_updates[-1]["collector_state"] == "ADAPTER_REJECTED"
+
+
+def test_adapter_exception_records_distinct_diagnostic_context_without_persist_or_ack() -> None:
+    worker, storage, client = make_worker(adapter_exception=RuntimeError("simulated adapter failure"))
+
+    worker._process_station(make_runtime(), bytearray(64), ready_payload(), BOOT_ID)
+
+    assert storage.persist_calls == 0
+    assert storage.ack_ok_calls == 0
+    assert storage.ack_failed_calls == 0
+    assert client.writes == []
+    assert storage.errors[-1]["error_type"] == "ADAPTER_GATE_FAILED"
+    context = storage.errors[-1]["raw_context"]
+    assert context["adapter_phase"] == "adapter_exception"
+    assert context["adapter_error_code"] == "RuntimeError"
+    assert context["adapter_reason"] == "simulated adapter failure"
+    assert context["cycle_counter"] == 5
     assert storage.runtime_updates[-1]["collector_state"] == "ADAPTER_REJECTED"
 
 

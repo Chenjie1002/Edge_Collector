@@ -157,13 +157,19 @@ class EventCollectorWorker:
         try:
             adapter_decision = self._adapt_station_runtime_payload(runtime, data, decoded, plc_boot_id)
         except Exception as exc:
+            context = self._adapter_diagnostic_context(
+                decoded,
+                adapter_phase="adapter_exception",
+                adapter_error_code=exc.__class__.__name__,
+                adapter_reason=str(exc),
+            )
             self._record_station_error(
                 runtime,
                 "ADAPTER_GATE_FAILED",
                 exc,
                 plc_boot_id=plc_boot_id,
                 cycle_counter=cycle_counter,
-                decoded=decoded,
+                decoded=context,
                 collector_state="ADAPTER_REJECTED",
             )
             return
@@ -172,9 +178,13 @@ class EventCollectorWorker:
                 f"adapter decision not accepted: disposition={adapter_decision.disposition} "
                 f"error={adapter_decision.final_error_code}"
             )
-            context = dict(decoded)
-            context["adapter_disposition"] = adapter_decision.disposition
-            context["adapter_error_code"] = adapter_decision.final_error_code
+            context = self._adapter_diagnostic_context(
+                decoded,
+                adapter_phase="adapter_decision",
+                adapter_disposition=adapter_decision.disposition,
+                adapter_error_code=adapter_decision.final_error_code,
+                adapter_reason=message,
+            )
             self._record_station_error(
                 runtime,
                 "ADAPTER_DECISION_NOT_ACCEPTED",
@@ -279,6 +289,25 @@ class EventCollectorWorker:
             code_tables=self.mapping.code_tables,
         )
         return adapt_source_payload(source_payload, self.resolved_config_registry)
+
+    def _adapter_diagnostic_context(
+        self,
+        decoded: dict[str, object],
+        *,
+        adapter_phase: str,
+        adapter_disposition: str | None = None,
+        adapter_error_code: str | None = None,
+        adapter_reason: str | None = None,
+    ) -> dict[str, object]:
+        context = dict(decoded)
+        context["adapter_phase"] = adapter_phase
+        if adapter_disposition is not None:
+            context["adapter_disposition"] = adapter_disposition
+        if adapter_error_code is not None:
+            context["adapter_error_code"] = adapter_error_code
+        if adapter_reason:
+            context["adapter_reason"] = adapter_reason
+        return context
 
     def _read_plc_boot_id(self) -> str:
         if self.line_plan is None:
