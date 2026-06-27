@@ -1,6 +1,6 @@
 # ChatGPT PM Operating Rules
 
-Updated: 2026-06-25
+Updated: 2026-06-27
 
 Applies to: Edge MES Demo ChatGPT PM / Codex Thread workflow.
 
@@ -111,6 +111,7 @@ docs/Edge MES Demo — ChatGPT PM Handoff - 20260623.md
 docs/thread_handoff/chatgpt_pm_handoff_20260624.md
 docs/thread_handoff/chatgpt_pm_handoff_20260625.md
 docs/thread_handoff/chatgpt_pm_handoff_20260625_final.md
+docs/thread_handoff/chatgpt_pm_handoff_20260626_slice_a_commit.md
 docs/reports/phase1_to_sprint2_management_keynote_10p.html
 ```
 
@@ -165,7 +166,25 @@ Subagent constraints:
 - subagents must not stage/commit/push/tag;
 - subagent conclusions are review input only; final gate decision remains with PM.
 
-## 9. Minimal prompt pattern
+## 9. Thread handoff and governance docs
+
+When a Thread becomes long or carries too much prior context, PM should start a new Thread instead of continuing by momentum. The new prompt must restate the live repository baseline, current gate state, expected dirty artifacts, exact allowlist, explicit non-goals and next authorized action. A new Thread must not infer authority from the previous chat window.
+
+For handoff between Threads, PM should include:
+
+- project absolute path;
+- live `HEAD` and `origin/main` from the latest PM or Thread check;
+- latest relevant commit and gate conclusion;
+- files already changed, staged, committed or pushed;
+- known external dirty artifacts to exclude;
+- exact allowlist for the new task;
+- explicit surfaces not authorized, especially runtime wiring, schema/config changes, DB/API/Dashboard/V-PLC/deploy/tag/rollback and real PLC pilot work.
+
+Governance documents such as this file, `README.md`, `docs/current_status.md` and gate status reports are durable project controls. They should be updated when PM rules, phase roadmap, Thread roles, baseline semantics or gate state materially change. Those updates require an explicit PM task and exact allowlist. They must not be bundled into code, runtime, schema, deployment or handoff artifact commits unless PM explicitly authorizes that bundle.
+
+`README.md` is a public orientation document. It may summarize the project phases, Thread model and development workflow, but it must not replace the live gate/status documents. When README, PM rules and status files disagree on current authorization, Threads must stop and ask PM for a status repair instead of guessing.
+
+## 10. Minimal prompt pattern
 
 Before assigning a task, PM must record:
 
@@ -210,7 +229,7 @@ out-of-scope surfaces, stop and report `HOLD`. A durable baseline hash that
 names the last verified docs/status sync baseline is not by itself a blocker
 when live `git rev-parse` output shows only later authorized docs-only commits.
 
-## 10. Window report vs repository report
+## 11. Window report vs repository report
 
 Future Codex Threads should keep the chat-window report short and put durable detail in repository documents when the task is important enough to preserve.
 
