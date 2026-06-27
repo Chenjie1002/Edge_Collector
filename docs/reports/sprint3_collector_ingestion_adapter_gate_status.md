@@ -15,8 +15,8 @@ Read this file together with:
 
 ```text
 last verified HEAD / origin/main at authoring time:
-0358b6047fd657e272e636d2c8754a26bf793c03
-0358b60 Harden Sprint 3 Slice D1 raw boundary tests
+2f6294cbe8b2fba66da6c89169b0c2640e22c68f
+2f6294c Clarify Sprint 3 Slice D2-A decoder authority contract
 
 Branch:
 main
@@ -31,6 +31,7 @@ Runtime integration:
 Slice B runtime adapter gate implemented and committed
 Slice C runtime adapter diagnostic observability hardening implemented and committed
 Slice D1 raw boundary test-only hardening implemented and committed
+Slice D2-A decoder authority docs/contract-only repair implemented and committed
 
 Deploy / rollback drill:
 not performed
@@ -50,6 +51,7 @@ Slice A mapping contract hardening is tracked in commit `706f5da`.
 Slice B runtime adapter gate is tracked in commit `c677515`.
 Slice C runtime adapter diagnostic observability hardening is tracked in commit `e02e39d`.
 Slice D1 raw boundary test-only hardening is tracked in commit `0358b60`.
+Slice D2-A decoder authority docs/contract-only repair is tracked in commit `2f6294c`.
 
 Sprint 3 implementation files committed:
 
@@ -83,6 +85,13 @@ Sprint 3 Slice D1 raw boundary test-only hardening files committed:
 collector/tests/test_event_collector_adapter_gate.py
 tests/test_collector_station_event_adapter.py
 tests/test_collector_station_event_runtime_source.py
+```
+
+Sprint 3 Slice D2-A decoder authority docs/contract-only repair files committed:
+
+```text
+docs/contracts/collector_ingestion_adapter.md
+docs/reports/sprint3_collector_ingestion_adapter_plan.md
 ```
 
 External dirty artifacts currently expected and excluded unless PM explicitly says otherwise:
@@ -168,6 +177,11 @@ Explicit non-goals for the current slice:
 | Slice D1 Data Quality focused review | PASS | none |
 | Slice D1 Verification focused review / allowlist audit | PASS | none |
 | Slice D1 exact allowlist commit/push | PASS | none |
+| Slice D2-A decoder authority docs/contract-only repair | PASS WITH RECOMMENDATIONS | none |
+| Slice D2-A Reliability focused review | PASS | none |
+| Slice D2-A Data Quality focused review | PASS WITH RECOMMENDATIONS | none; recommendation repaired |
+| Slice D2-A Verification focused review | PASS WITH RECOMMENDATIONS | none |
+| Slice D2-A exact allowlist commit/push | PASS | none |
 
 Current overall status:
 
@@ -177,6 +191,7 @@ Sprint 3 Slice A mapping contract hardening: implemented, reviewed, committed an
 Sprint 3 Slice B runtime adapter gate: implemented, reviewed, committed and pushed at c677515.
 Sprint 3 Slice C runtime adapter diagnostic observability hardening: implemented, reviewed, committed and pushed at e02e39d.
 Sprint 3 Slice D1 raw boundary test-only hardening: implemented, reviewed, committed and pushed at 0358b60.
+Sprint 3 Slice D2-A decoder authority docs/contract-only repair: reviewed, recommendation-repaired, committed and pushed at 2f6294c.
 Slice B inserted the adapter gate after payload/cycle/counter guards and counter reset fail-safe, before existing storage.persist_cycle().
 Slice B accepted-only path continues to existing storage.persist_cycle() plus existing read_done/ACK behavior.
 Slice B non-accepted decisions do not persist, do not project, do not write defect detail, and do not ACK.
@@ -196,12 +211,19 @@ Slice D1 confirms raw_not_provided normalized-only path remains accepted only un
 Slice D1 confirms raw_capable/raw_required missing raw fail closed as RAW_EVIDENCE_MISSING.
 Slice D1 confirms raw-only rejects as RAW_ONLY_UNSUPPORTED before identity/projection/fingerprint production.
 Slice D1 confirms RAW_EVIDENCE_MISSING / RAW_ONLY_UNSUPPORTED / RAW_PARSE_ERROR / RAW_NORMALIZED_MISMATCH / RAW_CONTENT_FORBIDDEN non-accepted decisions assert no persist / no ACK.
+Slice D2-A is docs/contract-only and introduced no code, tests, schema/config/mapping change, decoder implementation or runtime raw wiring.
+Slice D2-A binds decoder registry identity, decoder id, decoder version, callable decoder, raw_policy and payload template authority to immutable resolved config snapshot / registry snapshot.
+Slice D2-A forbids fallback to latest/current runtime config, latest registry, current mapping file, environment defaults or ad hoc fixture fields.
+Slice D2-A fail-closed taxonomy includes RAW_PARSE_ERROR, RAW_NORMALIZED_MISMATCH, RAW_CONTENT_FORBIDDEN and RAW_EVIDENCE_MISSING.
+Slice D2-A keeps raw_not_provided as the only normalized-only authority and keeps raw_capable/raw_required missing raw fail-closed unless PM later approves a contract change.
+Slice D2-A keeps adapter non-owner of ACK/read_done and keeps D2-B/D2-C/D3 as separate future gates.
 Docs/status sync completed at fd79e21.
 Docs/status baseline repair completed at 4f424c6.
 PM rules / baseline semantics repair pre-baseline: e284a06 Repair PM rules and Sprint 3 baseline status.
-Eligible for downstream PM planning for D2 decoder registry / decoder callable authority: yes.
-D2 decoder registry / decoder callable authority remains separate and requires PM approval.
-D3 actual raw-capable/raw-required runtime wiring remains HOLD until D2 authority is resolved.
+Eligible for downstream PM planning for D2-B fixture/test-only decoder authority hardening: yes.
+D2-B fixture/test-only decoder authority hardening is not yet authorized.
+D2-C decoder registry/schema implementation remains HOLD until separately authorized.
+D3 actual raw-capable/raw-required runtime wiring remains HOLD until D2 authority is resolved and separately authorized.
 DB/API/Dashboard/V-PLC/deploy/tag/rollback/real PLC pilot: not authorized.
 ```
 
@@ -399,6 +421,17 @@ D3 actual raw-capable/raw-required runtime wiring remains HOLD until D2 authorit
 raw_capable/raw_required missing raw remains fail-closed unless PM approves contract change.
 Adapter diagnostics remain read-only observability, not ACK policy or production policy.
 No schema/config/mapping/storage/API/Dashboard/V-PLC/deploy work without separate PM approval.
+```
+
+Slice D2-A carry-forward recommendations:
+
+```text
+D2-B fixture/test-only decoder authority hardening is eligible for PM planning/authorization, but not yet authorized.
+D2-B should keep an exact fixture/test-only allowlist and cover unknown decoder id, missing callable, callable exception, decoded output mismatch, forbidden raw content, RAW_EVIDENCE_MISSING, raw-only, raw_capable/raw_required missing raw and no-fallback-to-latest/current cases.
+D2-C minimal registry/schema implementation remains HOLD until PM separately authorizes implementation/schema/registry work.
+D3 actual raw-capable/raw-required runtime wiring remains HOLD until D2 authority is resolved and separately authorized.
+Adapter remains non-owner of ACK/read_done.
+No DB/API/Dashboard/V-PLC/deploy/tag/rollback/real PLC pilot is authorized.
 ```
 
 Required exclusions for future tasks remain:

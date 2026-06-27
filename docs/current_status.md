@@ -6,14 +6,14 @@
 
 ## 0. 当前 PM / Codex 协作状态
 
-当前主线：Phase-2 Sprint 3 Slice D1 raw boundary test-only hardening closeout。
+当前主线：Phase-2 Sprint 3 Slice D2-A decoder authority docs/status sync closeout。
 
 Last verified baseline before this docs sync:
 
 ```text
 last verified HEAD / origin/main at authoring time:
-0358b6047fd657e272e636d2c8754a26bf793c03
-0358b60 Harden Sprint 3 Slice D1 raw boundary tests
+2f6294cbe8b2fba66da6c89169b0c2640e22c68f
+2f6294c Clarify Sprint 3 Slice D2-A decoder authority contract
 
 branch:
 main
@@ -30,6 +30,11 @@ commits.
 当前 Sprint 3 gate：
 
 ```text
+Slice D2-A decoder authority docs/contract-only repair: PASS WITH RECOMMENDATIONS, closed after recommendation repair
+Slice D2-A Reliability focused review: PASS, no blocker
+Slice D2-A Data Quality focused review: PASS WITH RECOMMENDATIONS, recommendation repaired, no blocker
+Slice D2-A Verification focused review: PASS WITH RECOMMENDATIONS, no blocker
+Slice D2-A exact allowlist commit/push: PASS, commit 2f6294c
 Slice D1 raw boundary test-only hardening implementation: PASS WITH RECOMMENDATIONS
 Slice D1 Reliability focused review: PASS WITH RECOMMENDATIONS, no blocker
 Slice D1 Data Quality focused review: PASS, no blocker
@@ -56,9 +61,33 @@ Docs/status sync: PASS, commit fd79e21
 Docs/status baseline repair: PASS, commit 4f424c6
 PM rules / baseline semantics repair: PASS, commit e284a06
 Eligible for downstream PM planning for next runtime slice: yes
-D2 decoder registry / decoder callable authority: HOLD until separately authorized
+D2-B fixture/test-only decoder authority hardening: eligible for PM planning/authorization, not yet authorized
+D2-C decoder registry/schema implementation: HOLD until separately authorized
 D3 actual raw-capable/raw-required runtime wiring: HOLD until D2 authority is resolved
 DB/API/Dashboard/V-PLC/deploy/tag/rollback/real PLC pilot: not authorized
+```
+
+当前 Sprint 3 Slice D2-A docs/contract-only authority repair files 已提交：
+
+```text
+docs/contracts/collector_ingestion_adapter.md
+docs/reports/sprint3_collector_ingestion_adapter_plan.md
+```
+
+Slice D2-A decoder authority docs/contract-only repair summary:
+
+```text
+Slice D2-A decoder registry / decoder callable authority contract repair implemented, reviewed, committed and pushed at 2f6294c.
+D2-A is docs/contract-only; no code or tests changed.
+D2-A does not implement decoder registry, decoder callable, schema/config/mapping change, or runtime raw wiring.
+D2-A binds decoder registry identity, decoder id, decoder version, callable decoder, raw_policy and payload template authority to immutable resolved config snapshot / registry snapshot.
+D2-A forbids fallback to latest/current runtime config, latest registry, current mapping file, environment defaults or ad hoc fixture fields.
+D2-A fail-closed taxonomy includes RAW_PARSE_ERROR, RAW_NORMALIZED_MISMATCH, RAW_CONTENT_FORBIDDEN and RAW_EVIDENCE_MISSING.
+unknown decoder id, missing callable, decoder exception, decoder output mismatch, forbidden raw content and raw-only inputs fail closed without production fact, projection, defect/Pareto/API-visible state or ACK.
+raw_not_provided remains the only normalized-only authority.
+raw_capable/raw_required missing raw remain fail-closed unless PM later approves a contract change.
+Reliability review PASS; Data Quality review PASS WITH RECOMMENDATIONS and recommendation repaired; Verification review PASS WITH RECOMMENDATIONS.
+D2-B fixture/test-only, D2-C registry/schema implementation and D3 runtime raw wiring remain separate future gates requiring PM approval.
 ```
 
 当前 Sprint 3 Slice D1 test-only hardening files 已提交：
@@ -168,6 +197,17 @@ D3 actual raw-capable/raw-required runtime wiring remains HOLD until D2 authorit
 raw_capable/raw_required missing raw remains fail-closed unless PM approves contract change.
 Adapter diagnostics remain read-only observability, not ACK policy or production policy.
 No schema/config/mapping/storage/API/Dashboard/V-PLC/deploy work without separate PM approval.
+```
+
+Slice D2-A carry-forward recommendations:
+
+```text
+D2-B fixture/test-only decoder authority hardening is eligible for PM planning/authorization, but not yet authorized.
+D2-B should keep an exact fixture/test-only allowlist and cover unknown decoder id, missing callable, callable exception, decoded output mismatch, forbidden raw content, RAW_EVIDENCE_MISSING, raw-only, raw_capable/raw_required missing raw and no-fallback-to-latest/current cases.
+D2-C minimal registry/schema implementation remains HOLD until PM separately authorizes implementation/schema/registry work.
+D3 actual raw-capable/raw-required runtime wiring remains HOLD until D2 authority is resolved and separately authorized.
+Adapter remains non-owner of ACK/read_done.
+No DB/API/Dashboard/V-PLC/deploy/tag/rollback/real PLC pilot is authorized.
 ```
 
 当前外部既有 dirty artifacts，应排除，除非 PM 明确授权：
