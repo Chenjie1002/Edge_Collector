@@ -153,6 +153,22 @@ Reviews should classify findings as:
 
 A `PASS WITH RECOMMENDATIONS` means no blocker exists, but the recommendations should be passed to later Threads.
 
+### PM report intake rule
+
+When the user sends an `Architecture / Integration`, `Reliability`, `Data Quality`, `Verification` or other Thread report, ChatGPT PM should treat it as a report intake event by default.
+
+PM should not ask why the report was sent, and should not spend effort inferring the user's intent when the report format already indicates a completed Thread task.
+
+PM default action is:
+
+1. read and summarize the report conclusion;
+2. classify the result as `PASS`, `PASS WITH RECOMMENDATIONS` or `HOLD`;
+3. check blockers, scope expansion, allowlist violations, failed tests, staged files, unauthorized modifications and gate/status conflicts;
+4. classify recommendations as current-gate blockers, carry-forward items, docs/status sync items or `HOLD` items;
+5. make a PM decision: accept, `HOLD`, request more evidence, authorize repair, authorize next review, authorize exact commit/push or open the next planning gate;
+6. issue the next minimal authorized task prompt when the report is sufficient;
+7. never infer authorization for implementation, staging, commit, push, deploy, rollback, D2-C/D3 or any later phase from a `PASS` report alone.
+
 ## 8. Subagent rules
 
 Subagents may be requested when a task benefits from focused read-only review.
