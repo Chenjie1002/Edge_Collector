@@ -1,6 +1,6 @@
 # Sprint 3 Collector Ingestion Adapter Gate Status
 
-Updated: 2026-06-25
+Updated: 2026-06-27
 
 Purpose: compact current gate/status source for Codex Threads working on Sprint 3 Collector Ingestion Adapter.
 
@@ -15,8 +15,8 @@ Read this file together with:
 
 ```text
 last verified HEAD / origin/main at authoring time:
-e284a061b16f07c8b03f8b23075a3031a873fec7
-e284a06 Repair PM rules and Sprint 3 baseline status
+c677515eab36ec0e39bb587a1f3c7bc3edbf2f41
+c677515 Implement Sprint 3 Slice B runtime adapter gate
 
 Branch:
 main
@@ -28,7 +28,7 @@ Phase-2 tag:
 not created
 
 Runtime integration:
-not started
+Slice B runtime adapter gate implemented and committed
 
 Deploy / rollback drill:
 not performed
@@ -44,6 +44,8 @@ without invalidating this status document.
 Current local working tree contains external dirty artifacts. The Sprint 3 implementation files are now tracked in commit `b43a12f`.
 R-N1/R-N2 hardening is tracked in commit `577c1a1`.
 The docs/status sync is tracked in commit `fd79e21`; the baseline status repair is tracked in commit `4f424c6`; the PM rules / baseline semantics repair pre-baseline is tracked in commit `e284a06`.
+Slice A mapping contract hardening is tracked in commit `706f5da`.
+Slice B runtime adapter gate is tracked in commit `c677515`.
 
 Sprint 3 implementation files committed:
 
@@ -51,6 +53,17 @@ Sprint 3 implementation files committed:
 collector/app/services/resolved_config_registry.py
 collector/app/services/station_event_adapter.py
 tests/test_collector_station_event_adapter.py
+```
+
+Sprint 3 Slice B runtime adapter gate files committed:
+
+```text
+collector/app/services/event_collector.py
+collector/app/services/station_event_runtime_source.py
+collector/tests/test_event_collector_reliability.py
+collector/tests/test_snap7_reliability_integration.py
+tests/test_collector_station_event_runtime_source.py
+collector/tests/test_event_collector_adapter_gate.py
 ```
 
 External dirty artifacts currently expected and excluded unless PM explicitly says otherwise:
@@ -62,6 +75,7 @@ M .gitignore
 ?? docs/thread_handoff/chatgpt_pm_handoff_20260624.md
 ?? docs/thread_handoff/chatgpt_pm_handoff_20260625.md
 ?? docs/thread_handoff/chatgpt_pm_handoff_20260625_final.md
+?? docs/thread_handoff/chatgpt_pm_handoff_20260626_slice_a_commit.md
 ```
 
 The external artifacts are PM handoff / Keynote / reporting artifacts and are not part of the Sprint 3 technical implementation.
@@ -119,16 +133,28 @@ Explicit non-goals for the current slice:
 | R-N1/R-N2 exact allowlist commit/push | PASS | none |
 | Docs/status sync for R-N1/R-N2 hardening baseline | PASS | none |
 | Docs/status baseline repair | PASS | none |
+| Slice A mapping contract hardening | PASS | none |
+| Slice B runtime adapter gate implementation | PASS | none |
+| Slice B Reliability focused review | PASS WITH RECOMMENDATIONS | none |
+| Slice B Data Quality focused review | PASS WITH RECOMMENDATIONS | none |
+| Slice B Verification focused review / allowlist audit | PASS WITH RECOMMENDATIONS | none |
+| Slice B exact allowlist commit/push | PASS | none |
 
 Current overall status:
 
 ```text
 Sprint 3 Collector Ingestion Adapter offline implementation and R-N1/R-N2 hardening: implemented, reviewed, committed and pushed.
+Sprint 3 Slice A mapping contract hardening: implemented, reviewed, committed and pushed at 706f5da.
+Sprint 3 Slice B runtime adapter gate: implemented, reviewed, committed and pushed at c677515.
+Slice B inserted the adapter gate after payload/cycle/counter guards and counter reset fail-safe, before existing storage.persist_cycle().
+Slice B accepted-only path continues to existing storage.persist_cycle() plus existing read_done/ACK behavior.
+Slice B non-accepted decisions do not persist, do not project, do not write defect detail, and do not ACK.
+Adapter remains non-owner of ACK/read_done.
 Docs/status sync completed at fd79e21.
 Docs/status baseline repair completed at 4f424c6.
 PM rules / baseline semantics repair pre-baseline: e284a06 Repair PM rules and Sprint 3 baseline status.
-Eligible for runtime integration: no.
-Next recommended gate: runtime integration planning gate, not runtime implementation.
+Eligible for downstream PM planning for next runtime slice: yes.
+DB/API/Dashboard/V-PLC/deploy/tag/rollback/real PLC pilot: not authorized.
 ```
 
 ## 5. Implementation summary
@@ -152,6 +178,22 @@ Implementation characteristics:
 - no API/Dashboard/V-PLC/deploy changes;
 - uses shared `common.station_event` helpers for parsing, validation, lifecycle, projection and fingerprints.
 
+Slice B runtime adapter gate characteristics:
+
+- runtime adapter gate inserted in `EventCollectorWorker._process_station()`;
+- insertion point is after `payload_ready` / `cycle_valid` / `cycle_counter`
+  guard and `CounterDecision.RESET` fail-safe, before existing
+  `storage.persist_cycle()`;
+- accepted adapter/shared validation decision is required before the existing
+  `storage.persist_cycle()` path;
+- rejected, deferred, quarantined, duplicate, conflict and raw_variant decisions
+  do not call `storage.persist_cycle()`, do not project, do not write defect
+  detail, and do not ACK;
+- ACK/read_done ownership remains with the existing EventCollectorWorker
+  handshake path after accepted-only persist success;
+- no `storage.py`, DB migration, API, Dashboard, V-PLC, deploy, tag, rollback
+  or real PLC pilot changes.
+
 ## 6. Required validation commands
 
 Last observed validation results before exact allowlist commit:
@@ -163,6 +205,16 @@ collector runtime reliability regression: 6 passed
 compileall collector/app/services: PASS
 git diff --check: PASS
 trailing whitespace scan on implementation files: PASS
+```
+
+Last observed Slice B validation results before exact allowlist commit:
+
+```text
+collector runtime adapter/reliability regression: 18 passed
+runtime source + adapter regression: 59 passed
+compileall collector/app/plc collector/app/services: PASS
+git diff --check: PASS
+git diff --cached --check: PASS
 ```
 
 For future hardening or next-slice work, rerun the relevant focused and regression tests before staging.
@@ -197,6 +249,23 @@ Commit message used:
 Harden Sprint 3 collector adapter recommendations
 ```
 
+The Slice B runtime adapter gate exact allowlist commit has also been completed. The only files committed in `c677515` were:
+
+```text
+collector/app/services/event_collector.py
+collector/app/services/station_event_runtime_source.py
+collector/tests/test_event_collector_reliability.py
+collector/tests/test_snap7_reliability_integration.py
+tests/test_collector_station_event_runtime_source.py
+collector/tests/test_event_collector_adapter_gate.py
+```
+
+Commit message used:
+
+```text
+Implement Sprint 3 Slice B runtime adapter gate
+```
+
 Required exclusions for future tasks remain:
 
 ```text
@@ -205,6 +274,8 @@ docs/Edge MES Demo — ChatGPT PM Handoff - 20260623.md
 docs/reports/phase1_to_sprint2_management_keynote_10p.html
 docs/thread_handoff/chatgpt_pm_handoff_20260624.md
 docs/thread_handoff/chatgpt_pm_handoff_20260625.md
+docs/thread_handoff/chatgpt_pm_handoff_20260625_final.md
+docs/thread_handoff/chatgpt_pm_handoff_20260626_slice_a_commit.md
 ```
 
 Do not stage or commit any docs/runtime/deploy artifacts unless PM explicitly changes a future task allowlist.
@@ -222,9 +293,19 @@ Suggested handling:
 
 - preserve the closed recommendation history for later review context;
 - do not treat these closed recommendations as blockers;
-- runtime Collector integration remains unauthorized.
+- runtime Collector integration beyond the Slice B adapter gate remains
+  unauthorized unless PM explicitly approves the next runtime slice.
 
-## 9. Future prompt minimization
+## 9. Slice B carry-forward recommendations
+
+These recommendations are not blockers for the `c677515` Slice B commit:
+
+| ID | Status |
+| --- | --- |
+| R-N1 | Carry forward. Future raw-capable/raw-required runtime source needs renewed raw evidence focused review. |
+| R-N2 | Carry forward. Future diagnostic enrichment may split `ADAPTER_GATE_FAILED` vs non-accepted decisions, without changing ACK or production fact semantics. |
+
+## 10. Future prompt minimization
 
 Future Codex prompts for Sprint 3 can be short. They should tell the Thread to read:
 

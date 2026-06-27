@@ -1,19 +1,19 @@
 # 当前状态 / Codex 恢复上下文
 
-更新时间：2026-06-25
+更新时间：2026-06-27
 工作目录：`/Users/chenjie/Documents/MES/edge-mes-demo`
 树莓派部署目录：`/opt/edge-mes-demo`
 
 ## 0. 当前 PM / Codex 协作状态
 
-当前主线：Phase-2 Sprint 3 Collector Ingestion Adapter offline implementation closeout。
+当前主线：Phase-2 Sprint 3 Slice B runtime adapter gate closeout。
 
-Last verified baseline before this docs repair:
+Last verified baseline before this docs sync:
 
 ```text
 last verified HEAD / origin/main at authoring time:
-e284a061b16f07c8b03f8b23075a3031a873fec7
-e284a06 Repair PM rules and Sprint 3 baseline status
+c677515eab36ec0e39bb587a1f3c7bc3edbf2f41
+c677515 Implement Sprint 3 Slice B runtime adapter gate
 
 branch:
 main
@@ -30,6 +30,12 @@ commits.
 当前 Sprint 3 gate：
 
 ```text
+Slice B runtime adapter gate implementation: PASS
+Slice B Reliability focused review: PASS WITH RECOMMENDATIONS, no blocker
+Slice B Data Quality focused review: PASS WITH RECOMMENDATIONS, no blocker
+Slice B Verification focused review / allowlist audit: PASS WITH RECOMMENDATIONS, no blocker
+Slice B exact allowlist commit/push: PASS, commit c677515
+Slice A mapping contract hardening: PASS, commit 706f5da
 Offline adapter implementation: PASS
 Reliability focused review: PASS WITH RECOMMENDATIONS, no blocker
 Data Quality focused review: PASS WITH RECOMMENDATIONS, no blocker
@@ -39,10 +45,32 @@ R-N1/R-N2 hardening commit/push: PASS, commit 577c1a1
 Docs/status sync: PASS, commit fd79e21
 Docs/status baseline repair: PASS, commit 4f424c6
 PM rules / baseline semantics repair: PASS, commit e284a06
-Eligible for runtime integration: no
+Eligible for downstream PM planning for next runtime slice: yes
+DB/API/Dashboard/V-PLC/deploy/tag/rollback/real PLC pilot: not authorized
 ```
 
-当前 Sprint 3 implementation files 已提交：
+当前 Sprint 3 Slice B implementation files 已提交：
+
+```text
+collector/app/services/event_collector.py
+collector/app/services/station_event_runtime_source.py
+collector/tests/test_event_collector_reliability.py
+collector/tests/test_snap7_reliability_integration.py
+tests/test_collector_station_event_runtime_source.py
+collector/tests/test_event_collector_adapter_gate.py
+```
+
+Slice B runtime adapter gate summary:
+
+```text
+runtime adapter gate implemented and committed at c677515.
+adapter gate inserted after payload/cycle/counter guards and counter reset fail-safe, before existing storage.persist_cycle().
+accepted-only path continues to existing storage.persist_cycle() plus existing read_done/ACK behavior.
+non-accepted decisions do not persist, do not project, do not write defect detail, and do not ACK.
+adapter remains non-owner of ACK/read_done.
+```
+
+当前 Sprint 3 offline adapter implementation files 已提交：
 
 ```text
 collector/app/services/resolved_config_registry.py
@@ -62,6 +90,13 @@ Docs/status baseline repair completed at 4f424c6.
 PM rules / baseline semantics repair completed at e284a06.
 ```
 
+Slice B carry-forward recommendations:
+
+```text
+R-N1: future raw-capable/raw-required runtime source needs renewed raw evidence focused review.
+R-N2: future diagnostic enrichment may split ADAPTER_GATE_FAILED vs non-accepted decisions, without changing ACK or production fact semantics.
+```
+
 当前外部既有 dirty artifacts，应排除，除非 PM 明确授权：
 
 ```text
@@ -71,6 +106,7 @@ M .gitignore
 ?? docs/thread_handoff/chatgpt_pm_handoff_20260624.md
 ?? docs/thread_handoff/chatgpt_pm_handoff_20260625.md
 ?? docs/thread_handoff/chatgpt_pm_handoff_20260625_final.md
+?? docs/thread_handoff/chatgpt_pm_handoff_20260626_slice_a_commit.md
 ```
 
 Codex Thread 应先读取：
