@@ -210,6 +210,37 @@ def test_raw_boundary_non_accepted_decisions_do_not_persist_or_ack(raw_error_cod
     assert storage.runtime_updates[-1]["collector_state"] == "ADAPTER_REJECTED"
 
 
+@pytest.mark.parametrize(
+    "decoder_error_code",
+    [
+        "RAW_PARSE_ERROR",
+        "RAW_NORMALIZED_MISMATCH",
+        "RAW_CONTENT_FORBIDDEN",
+        "RAW_EVIDENCE_MISSING",
+        "RAW_ONLY_UNSUPPORTED",
+    ],
+)
+def test_decoder_authority_rejections_record_diagnostics_without_persist_or_ack(decoder_error_code: str) -> None:
+    worker, storage, client = make_worker(
+        adapter_disposition="rejected",
+        adapter_error_code=decoder_error_code,
+    )
+
+    worker._process_station(make_runtime(), bytearray(64), ready_payload(read_done=False), BOOT_ID)
+
+    assert storage.persist_calls == 0
+    assert storage.ack_ok_calls == 0
+    assert storage.ack_failed_calls == 0
+    assert client.writes == []
+    assert storage.errors[-1]["error_type"] == "ADAPTER_DECISION_NOT_ACCEPTED"
+    context = storage.errors[-1]["raw_context"]
+    assert context["adapter_phase"] == "adapter_decision"
+    assert context["adapter_disposition"] == "rejected"
+    assert context["adapter_error_code"] == decoder_error_code
+    assert "adapter decision not accepted" in context["adapter_reason"]
+    assert storage.runtime_updates[-1]["collector_state"] == "ADAPTER_REJECTED"
+
+
 def test_storage_failure_after_accepted_adapter_decision_still_does_not_ack() -> None:
     worker, storage, client = make_worker(
         storage=FakeStorage(fail_persist=True),

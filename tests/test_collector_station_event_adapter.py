@@ -35,6 +35,7 @@ def snapshot(
     cycle_profile: str = "normal_screwdriving",
     raw_policy: str = "raw_not_provided",
     raw_decoder=decoder,
+    decoder_id: str | None = None,
     route_from: str = "WS01",
     line_id: str = "LINE-01",
 ) -> ResolvedConfigSnapshot:
@@ -52,6 +53,7 @@ def snapshot(
                 payload_template=payload_template,
                 raw_policy=raw_policy,
                 decoder=raw_decoder,
+                decoder_id=decoder_id,
             ),
             ResolvedStationSnapshot(
                 station_id="WS02",
@@ -62,6 +64,7 @@ def snapshot(
                 payload_template=payload_template,
                 raw_policy=raw_policy,
                 decoder=raw_decoder,
+                decoder_id=decoder_id,
             ),
         ),
         route_graph=RouteGraphSnapshot(
@@ -401,6 +404,81 @@ def test_raw_only_rejects_before_event_identity_or_projection() -> None:
     )
 
     assert_diagnostic_only_rejection(decision, "RAW_ONLY_UNSUPPORTED")
+
+
+def test_unknown_decoder_id_without_authorized_callable_fails_closed() -> None:
+    snap = snapshot(
+        raw_policy="raw_required",
+        raw_decoder=None,
+        decoder_id="unknown.decoder:v9",
+    )
+
+    decision = adapt_source_payload(
+        source(
+            normalized_payload={"torque": 4.8},
+            raw_payload={"torque": 4.8},
+            config_hash=snap.config_hash,
+        ),
+        registry(snap),
+    )
+
+    assert (decision.disposition, decision.final_error_code) == ("rejected", "RAW_PARSE_ERROR")
+    assert decision.normalized_event is not None
+    assert decision.canonical_bytes is not None
+    assert decision.fact_key is not None
+    assert decision.projection_metadata is None
+    assert decision.lifecycle is None
+
+
+def test_historical_decoder_binding_never_falls_back_to_latest_callable() -> None:
+    def latest_decoder(raw_payload, _event):
+        return {"torque": raw_payload["torque"]}
+
+    historical = snapshot(
+        raw_policy="raw_required",
+        raw_decoder=None,
+        decoder_id="collector.decoder:v1",
+    )
+    latest = snapshot(
+        raw_policy="raw_required",
+        raw_decoder=latest_decoder,
+        decoder_id="collector.decoder:v2",
+    )
+    payload = source(
+        normalized_payload={"torque": 4.8},
+        raw_payload={"torque": 4.8},
+        config_hash=historical.config_hash,
+    )
+
+    missing_callable = adapt_source_payload(payload, registry(historical, latest))
+    missing_historical_snapshot = adapt_source_payload(payload, registry(latest))
+
+    assert (missing_callable.disposition, missing_callable.final_error_code) == ("rejected", "RAW_PARSE_ERROR")
+    assert missing_callable.normalized_event is not None
+    assert missing_callable.projection_metadata is None
+    assert missing_callable.lifecycle is None
+    assert_diagnostic_only_rejection(missing_historical_snapshot, "CONFIG_NOT_FOUND")
+
+
+def test_decoded_output_mismatch_keeps_evidence_but_never_projects() -> None:
+    snap = snapshot(raw_policy="raw_required")
+
+    decision = adapt_source_payload(
+        source(
+            normalized_payload={"torque": 4.8},
+            raw_payload={"torque": 4.9},
+            config_hash=snap.config_hash,
+        ),
+        registry(snap),
+    )
+
+    assert (decision.disposition, decision.final_error_code) == ("rejected", "RAW_NORMALIZED_MISMATCH")
+    assert decision.normalized_event is not None
+    assert decision.canonical_bytes is not None
+    assert decision.fact_key is not None
+    assert decision.raw_evidence_fingerprint is not None
+    assert decision.projection_metadata is None
+    assert decision.lifecycle is None
 
 
 def test_raw_plus_normalized_match_and_declared_no_raw_normalized_only_can_validate() -> None:
