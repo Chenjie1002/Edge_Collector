@@ -1,6 +1,6 @@
 # ChatGPT PM Operating Rules
 
-Updated: 2026-06-27
+Updated: 2026-06-28
 
 Applies to: Edge MES Demo ChatGPT PM / Codex Thread workflow.
 
@@ -59,6 +59,23 @@ PM must explicitly authorize each of the following:
 - real PLC pilot work.
 
 If a task is review-only or planning-only, the Thread must not modify files.
+
+### Task risk tiers
+
+Before executing or issuing the next task, PM must classify it as one of these tiers:
+
+| Tier | Default owner | Typical scope | Required workflow |
+| --- | --- | --- | --- |
+| Level 0 | PM directly | exact-path commit/push, small PM rule edits, simple status/hash sync, mechanical docs updates | exact allowlist, staged-set audit when applicable, concise PM report |
+| Level 1 | one focused Thread | low-risk docs/tests/contracts changes that do not alter runtime behavior or authority semantics | compact prompt, exact allowlist, focused validation |
+| Level 2 | full gate sequence | runtime behavior, PLC/V-PLC, ACK/read_done, DB write path, `storage.py`, decoder/registry authority, raw/normalized evidence, schema/config semantics | planning before implementation, exact implementation allowlist, Reliability/Data Quality/Verification focused reviews before commit |
+
+Do not use the Level 2 workflow for Level 0 work. Do not downgrade Level 2 work because it looks small in line count.
+
+Uncertainty handling follows the same tiering:
+
+- If uncertainty affects safety, authority, PLC/V-PLC/runtime behavior, DB write path, ACK/read_done, deployment, or irreversible Git actions, stop and ask PM.
+- If uncertainty only affects low-risk wording or mechanical docs, make a conservative best effort and report assumptions.
 
 ## 4. Git safety rules
 
@@ -168,9 +185,12 @@ PM default action is:
 2. classify the result as `PASS`, `PASS WITH RECOMMENDATIONS` or `HOLD`;
 3. check blockers, scope expansion, allowlist violations, failed tests, staged files, unauthorized modifications and gate/status conflicts;
 4. classify recommendations as current-gate blockers, carry-forward items, docs/status sync items or `HOLD` items;
-5. make a PM decision: accept, `HOLD`, request more evidence, authorize repair, authorize next review, authorize exact commit/push or open the next planning gate;
-6. issue the next minimal authorized task prompt when the report is sufficient;
-7. never infer authorization for implementation, staging, commit, push, deploy, rollback, D2-C/D3 or any later phase from a `PASS` report alone.
+5. classify the next action as Level 0, Level 1 or Level 2;
+6. decide whether to pause for process review, perform a PM-direct action, authorize repair, authorize next review, authorize exact commit/push or open the next planning gate;
+7. issue the next minimal authorized task prompt only when continuing is clearly the right PM decision;
+8. never infer authorization for implementation, staging, commit, push, deploy, rollback, D2-C/D3 or any later phase from a `PASS` report alone.
+
+After every Level 2 task closes, PM should pause before chaining the next task and check whether any process rule, allowlist habit, validation gap or recurring mistake should be added to this file. Complex-task lessons should be recorded here only when they are stable project rules, not one-off observations.
 
 ## 8. Subagent rules
 
