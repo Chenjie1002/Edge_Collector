@@ -32,7 +32,10 @@ Default ownership:
 | runtime safety, ACK, retry, authority, fail-closed behavior | Reliability |
 | fact authority, lineage, projection, raw/normalized evidence, NOK outcome/detail | Data Quality |
 | fixture matrix, negative cases, regression gate, final allowlist audit | Verification |
+| simple exact-path stage/commit/push after review gates pass | PM directly |
 | commit authorization, push authorization, tag/deploy/rollback authorization | PM only |
+
+Simple commit gates are PM execution work, not a separate long-lived Thread. After Architecture / Reliability / Data Quality / Verification review gates pass with no blockers, PM may directly run the exact-path stage/commit/push sequence when explicitly authorized by the user. PM must still preserve the exact allowlist, verify the staged set before commit, exclude external dirty artifacts, and report commit/push evidence.
 
 ## 3. Authority gates
 
@@ -69,7 +72,7 @@ git add -A
 git add docs/
 ```
 
-Commit/push tasks must use exact path allowlists and verify staged files before committing:
+Commit/push tasks must use exact path allowlists and verify staged files before committing. For simple commit gates, PM should perform this directly after explicit user authorization instead of creating another Thread prompt.
 
 ```bash
 git diff --cached --name-only
