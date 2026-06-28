@@ -15,8 +15,8 @@ Read this file together with:
 
 ```text
 live HEAD / origin/main at authoring time:
-5e5a61781d7651da3f629f2d770eaca954e861cd
-5e5a617 Implement Sprint 3 Slice D2-C decoder registry authority
+c9e7c22c105977ba44d99610999b3e5ce7b72a37
+c9e7c22 Implement Sprint 3 Slice D3 runtime raw wiring
 
 Branch:
 main
@@ -34,6 +34,7 @@ Slice D1 raw boundary test-only hardening implemented and committed
 Slice D2-A decoder authority docs/contract-only repair implemented and committed
 Slice D2-B decoder authority tests-only hardening implemented and committed
 Slice D2-C decoder registry authority implemented and committed
+Slice D3 runtime raw wiring implemented and committed
 
 Deploy / rollback drill:
 not performed
@@ -56,6 +57,7 @@ Slice D1 raw boundary test-only hardening is tracked in commit `0358b60`.
 Slice D2-A decoder authority docs/contract-only repair is tracked in commit `2f6294c`.
 Slice D2-B decoder authority tests-only hardening is tracked in commit `dafbbf8`.
 Slice D2-C decoder registry authority is tracked in commit `5e5a617`.
+Slice D3 runtime raw wiring is tracked in commit `c9e7c22`.
 
 Sprint 3 implementation files committed:
 
@@ -113,11 +115,21 @@ collector/app/services/resolved_config_registry.py
 tests/test_collector_station_event_adapter.py
 ```
 
+Sprint 3 Slice D3 runtime raw wiring files committed:
+
+```text
+collector/app/plc/mapping.py
+collector/app/services/event_collector.py
+collector/app/services/resolved_config_registry.py
+collector/tests/test_event_collector_adapter_gate.py
+config/mapping.yaml
+tests/test_collector_station_event_runtime_source.py
+```
+
 External dirty artifacts currently expected and excluded unless PM explicitly says otherwise:
 
 ```text
 M .gitignore
-M docs/thread_handoff/pm_operating_rules.md
 ?? docs/Edge MES Demo — ChatGPT PM Handoff - 20260623.md
 ?? docs/reports/phase1_to_sprint2_management_keynote_10p.html
 ?? docs/thread_handoff/chatgpt_pm_handoff_20260624.md
@@ -130,13 +142,13 @@ The external artifacts are PM handoff / Keynote / reporting artifacts and are no
 
 ## 3. Sprint 3 slice boundary
 
-Slice name:
+Historical first slice name:
 
 ```text
 Collector ingestion adapter offline fixtures
 ```
 
-Input/output boundary:
+Historical first-slice input/output boundary:
 
 ```text
 source payload fixture
@@ -147,7 +159,7 @@ source payload fixture
 -> adapter diagnostic decision wrapper
 ```
 
-Explicit non-goals for the current slice:
+Explicit non-goals for the historical first slice:
 
 - runtime Collector integration;
 - DB write path;
@@ -159,6 +171,20 @@ Explicit non-goals for the current slice:
 - Docker/deploy;
 - tag;
 - rollback.
+
+Current D3 runtime raw wiring boundary:
+
+```text
+runtime station db_read(...) bytes
+-> raw_bytes on runtime source
+-> build_runtime_source_payload() raw_payload={"raw_hex": ...}
+-> adapt_source_payload()
+-> normalized candidate + adapter decision gate
+-> accepted-only existing persist/ACK path
+```
+
+D3 does not change DB/API/Dashboard-visible behavior, storage.py, V-PLC
+behavior, Docker/deploy/tag/rollback or ACK/read_done ownership.
 
 ## 4. Completed gates
 
@@ -212,6 +238,11 @@ Explicit non-goals for the current slice:
 | Slice D2-C Data Quality implementation review | PASS WITH RECOMMENDATIONS | none |
 | Slice D2-C Verification implementation review / exact allowlist audit | PASS WITH RECOMMENDATIONS | none |
 | Slice D2-C exact allowlist commit/push | PASS | none |
+| Slice D3 runtime raw wiring implementation | PASS WITH RECOMMENDATIONS | none |
+| Slice D3 Reliability focused implementation review | PASS WITH RECOMMENDATIONS | none |
+| Slice D3 Data Quality focused implementation review | PASS WITH RECOMMENDATIONS | none |
+| Slice D3 Verification focused implementation review / exact allowlist audit | PASS WITH RECOMMENDATIONS | none |
+| Slice D3 exact allowlist commit/push | PASS | none |
 
 Current overall status:
 
@@ -224,6 +255,7 @@ Sprint 3 Slice D1 raw boundary test-only hardening: implemented, reviewed, commi
 Sprint 3 Slice D2-A decoder authority docs/contract-only repair: reviewed, recommendation-repaired, committed and pushed at 2f6294c.
 Sprint 3 Slice D2-B fixture/test-only decoder authority hardening: implemented, reviewed, committed and pushed at dafbbf8.
 Sprint 3 Slice D2-C decoder registry authority: implemented, reviewed, committed and pushed at 5e5a617.
+Sprint 3 Slice D3 runtime raw wiring: implemented, reviewed, committed and pushed at c9e7c22.
 Slice B inserted the adapter gate after payload/cycle/counter guards and counter reset fail-safe, before existing storage.persist_cycle().
 Slice B accepted-only path continues to existing storage.persist_cycle() plus existing read_done/ACK behavior.
 Slice B non-accepted decisions do not persist, do not project, do not write defect detail, and do not ACK.
@@ -248,7 +280,7 @@ Slice D2-A binds decoder registry identity, decoder id, decoder version, callabl
 Slice D2-A forbids fallback to latest/current runtime config, latest registry, current mapping file, environment defaults or ad hoc fixture fields.
 Slice D2-A fail-closed taxonomy includes RAW_PARSE_ERROR, RAW_NORMALIZED_MISMATCH, RAW_CONTENT_FORBIDDEN and RAW_EVIDENCE_MISSING.
 Slice D2-A keeps raw_not_provided as the only normalized-only authority and keeps raw_capable/raw_required missing raw fail-closed unless PM later approves a contract change.
-Slice D2-A keeps adapter non-owner of ACK/read_done and kept D2-B/D2-C/D3 as separate later gates; D2-B and D2-C are now closed, while D3 remains a future PM-authorized gate.
+Slice D2-A keeps adapter non-owner of ACK/read_done and kept D2-B/D2-C/D3 as separate later gates; D2-B, D2-C and D3 are now closed.
 Slice D2-B is tests-only hardening; no production code changed.
 Slice D2-B introduced no docs/contracts/plan change in the implementation commit.
 Slice D2-B introduced no schema/config/mapping change, no decoder registry/schema implementation, no runtime raw wiring, no DB/API/Dashboard/V-PLC/Docker/deploy change, and no ACK/read_done ownership change.
@@ -262,11 +294,22 @@ Slice D2-C has no fallback to latest/current registry, latest/current config, cu
 Slice D2-C introduced no D3 runtime raw wiring and no mapping/config/runtime/deploy changes.
 Slice D2-C introduced no event_collector.py, station_event_runtime_source.py, storage.py, DB/API/Dashboard/V-PLC/Docker/deploy changes.
 Slice D2-C leaves ACK/read_done ownership unchanged.
+Slice D3 passes runtime station db_read(...) bytes as raw_bytes into runtime source.
+Slice D3 build_runtime_source_payload() generates raw_payload={"raw_hex": ...}.
+Slice D3 raw_payload enters adapt_source_payload().
+Slice D3 keeps raw evidence as evidence, not production fact.
+Slice D3 keeps decoder output as normalized candidate only.
+Slice D3 still requires an accepted adapter decision before persist/ACK.
+Slice D3 config/mapping.yaml carries decoder_version and decoder_registry snapshot id/content hash.
+Slice D3 mapping.py parses, validates and hash-covers authority fields.
+Slice D3 resolved_config_registry.py builds immutable decoder registry snapshot binding from runtime mapping.
+Slice D3 intends no env/default/latest/ad hoc fallback.
+Slice D3 introduced no DB/API/Dashboard-visible behavior change, no storage.py change, no V-PLC behavior change, no Docker/deploy/tag/rollback change and no ACK/read_done ownership change.
 Docs/status sync completed at fd79e21.
 Docs/status baseline repair completed at 4f424c6.
 PM rules / baseline semantics repair pre-baseline: e284a06 Repair PM rules and Sprint 3 baseline status.
-Eligible for D2-C docs/status sync exact allowlist commit/push after this sync: yes.
-D3 actual raw-capable/raw-required runtime wiring remains HOLD until separately authorized.
+Eligible for D3 docs/status sync exact allowlist after implementation commit c9e7c22: yes.
+D3 actual raw-capable/raw-required runtime wiring: CLOSED at c9e7c22.
 DB/API/Dashboard/V-PLC/deploy/tag/rollback/real PLC pilot: not authorized.
 ```
 
@@ -389,6 +432,17 @@ git diff --check: PASS
 git diff --cached --check: PASS
 ```
 
+Last observed Slice D3 validation/review results before exact allowlist commit:
+
+```text
+Architecture / Integration implementation: PASS WITH RECOMMENDATIONS
+Reliability focused implementation review: PASS WITH RECOMMENDATIONS
+Data Quality focused implementation review: PASS WITH RECOMMENDATIONS
+Verification focused implementation review / exact allowlist audit: PASS WITH RECOMMENDATIONS
+git diff --check: PASS
+git diff --cached --check: PASS
+```
+
 For future hardening or next-slice work, rerun the relevant focused and regression tests before staging.
 
 ## 7. Exact commit allowlist history
@@ -496,6 +550,24 @@ Commit message used:
 Implement Sprint 3 Slice D2-C decoder registry authority
 ```
 
+The Slice D3 runtime raw wiring exact allowlist commit has also been completed.
+The only files committed in `c9e7c22` were:
+
+```text
+collector/app/plc/mapping.py
+collector/app/services/event_collector.py
+collector/app/services/resolved_config_registry.py
+collector/tests/test_event_collector_adapter_gate.py
+config/mapping.yaml
+tests/test_collector_station_event_runtime_source.py
+```
+
+Commit message used:
+
+```text
+Implement Sprint 3 Slice D3 runtime raw wiring
+```
+
 Slice C carry-forward recommendations:
 
 ```text
@@ -510,7 +582,7 @@ Slice D1 carry-forward recommendations:
 
 ```text
 D2 decoder registry / decoder callable authority remains separate.
-D3 actual raw-capable/raw-required runtime wiring remains HOLD until D2 authority is resolved.
+D3 actual raw-capable/raw-required runtime wiring later closed at c9e7c22.
 raw_capable/raw_required missing raw remains fail-closed unless PM approves contract change.
 Adapter diagnostics remain read-only observability, not ACK policy or production policy.
 No schema/config/mapping/storage/API/Dashboard/V-PLC/deploy work without separate PM approval.
@@ -521,9 +593,8 @@ Slice D2-A carry-forward recommendations:
 ```text
 D2-B fixture/test-only decoder authority hardening is implemented, reviewed, committed and pushed at dafbbf8.
 D2-C full decoder registry/schema lookup for unknown decoder id / version mismatch / callable binding is implemented, reviewed, committed and pushed at 5e5a617.
-D3 or a separate runtime-source gate is required before claiming runtime current mapping-file path no-fallback is fully closed.
+D3 runtime raw wiring is implemented, reviewed, committed and pushed at c9e7c22.
 If diagnostic evidence later enters metrics/alerting, avoid production fact, NOK code, Quality/Pareto outcome naming.
-D3 actual raw-capable/raw-required runtime wiring remains HOLD until separately authorized.
 Adapter remains non-owner of ACK/read_done.
 No DB/API/Dashboard/V-PLC/deploy/tag/rollback/real PLC pilot is authorized.
 ```
@@ -531,11 +602,19 @@ No DB/API/Dashboard/V-PLC/deploy/tag/rollback/real PLC pilot is authorized.
 Slice D2-C carry-forward recommendations:
 
 ```text
-D3 runtime raw wiring remains a separate PM-authorized gate.
-Do not infer runtime raw support or runtime current mapping-file no-fallback closure from D2-C PASS.
+D3 runtime raw wiring remained a separate PM-authorized gate after D2-C and is now closed at c9e7c22.
+D2-C PASS alone did not prove runtime raw support; D3 c9e7c22 is the runtime raw wiring closure.
 Keep rejected-decision normalized_event/canonical_bytes/fact_key diagnostic-only, not production fact or Quality/Pareto/API-visible state.
 Registry failures currently surface as RAW_PARSE_ERROR rather than dedicated decoder-authority public codes; this is non-blocking unless PM opens a future taxonomy gate.
-No runtime raw wiring, mapping/config/runtime/deploy, DB/API/Dashboard/V-PLC/deploy/tag/rollback or ACK/read_done ownership change is authorized by D2-C.
+No runtime raw wiring, mapping/config/runtime/deploy, DB/API/Dashboard/V-PLC/deploy/tag/rollback or ACK/read_done ownership change was authorized by D2-C alone.
+```
+
+Slice D3 carry-forward recommendations:
+
+```text
+current config/mapping.yaml runtime default still uses raw_policy: raw_not_provided; D3 runtime code path always passes raw_bytes=data, so this is not a blocker.
+If PM later wants runtime source policy explicitly changed to raw_capable/raw_required, it needs a separate mapping/config authority change and review.
+Next technical gate should not expand DB/API/Dashboard/V-PLC/storage.py/ACK/deploy without separate PM authorization.
 ```
 
 Required exclusions for future tasks remain:

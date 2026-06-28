@@ -76,7 +76,7 @@ replace PLC control logic or decide production flow.
 | Phase 1: closed-loop demo | Prove the end-to-end V-PLC -> Collector -> PostgreSQL -> FastAPI -> Grafana / Traceability loop on a Raspberry Pi. | Build one stable single-line demo, validate strict ACK behavior, preserve legacy snapshot compatibility and freeze the PASS baseline. | PASS; tag `phase1-pass-20260619`. |
 | Phase 2 Sprint 1: flexible line configuration | Make line, station and mapping configuration explicit and bounded. | Freeze architecture, implement configuration loader/validator/resolver, then pass focused review and exact allowlist commit gates. | PASS. |
 | Phase 2 Sprint 2: generic station event model | Define normalized station events, lifecycle derivation, lineage, duplicate/conflict handling and production result boundaries. | Contract-first implementation with Reliability, Data Quality and Verification review gates before commit/push. | PASS. |
-| Phase 2 Sprint 3: collector ingestion adapter | Bridge Collector source payloads into the shared station event model without breaking ACK, storage or production fact authority. | Advance in small slices: offline adapter, mapping hardening, runtime adapter gate, diagnostics, raw boundary tests, decoder authority, then future raw runtime work. | Slice D2-C decoder registry authority is completed and committed at `5e5a617`; D3 raw runtime wiring remains a separate future gate. |
+| Phase 2 Sprint 3: collector ingestion adapter | Bridge Collector source payloads into the shared station event model without breaking ACK, storage or production fact authority. | Advance in small slices: offline adapter, mapping hardening, runtime adapter gate, diagnostics, raw boundary tests, decoder authority, then runtime raw wiring. | Slice D3 runtime raw wiring is completed and committed at `c9e7c22`; DB/API/Dashboard/V-PLC/storage.py/ACK/deploy surfaces remain unchanged unless separately authorized. |
 | Future productization | Expand from demo to stronger runtime operations, dashboard UX, data quality visibility and selected real integration pilots. | Only after explicit PM approval for DB/API/Dashboard/V-PLC/deploy/real PLC work; keep non-invasive PLC boundary. | Not authorized by default. |
 
 ### How work progresses
@@ -101,9 +101,9 @@ deploy, rollback, runtime wiring and any schema or API surface change.
 The current durable status source is `docs/current_status.md`; the Sprint 3 gate
 source is `docs/reports/sprint3_collector_ingestion_adapter_gate_status.md`.
 `README.md` is an orientation summary and should not be treated as the live gate
-authority when it conflicts with the status documents. D2-C proves offline
-decoder registry/schema authority only; D3 runtime raw wiring still requires a
-separate PM-authorized gate.
+authority when it conflicts with the status documents. D3 proves runtime raw
+wiring into the adapter source path only; DB/API/Dashboard/V-PLC/storage.py/ACK
+or deploy changes still require separate PM authorization.
 
 ## License
 

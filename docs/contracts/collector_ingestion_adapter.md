@@ -1,12 +1,13 @@
 # Collector Ingestion Adapter Contract
 
 Status: Sprint 3 Collector ingestion adapter contract. Offline adapter,
-runtime adapter gate, diagnostics, raw boundary tests and D2-C offline decoder
-registry authority are implemented/reviewed/committed. Runtime raw wiring, DB
-writes, API endpoints, Dashboard, V-PLC behavior changes, PLC pilot, deploy,
-tag and rollback are not authorized.
+runtime adapter gate, diagnostics, raw boundary tests, D2-C offline decoder
+registry authority and D3 runtime raw wiring are implemented/reviewed/committed.
+DB writes, API endpoints, Dashboard, V-PLC behavior changes, PLC pilot,
+storage.py changes, ACK/read_done ownership changes, deploy, tag and rollback
+are not authorized.
 
-Updated: 2026-06-27
+Updated: 2026-06-28
 
 Applies to: Phase-2 Sprint 3 Collector ingestion adapter offline fixtures.
 
@@ -228,9 +229,9 @@ The resolved snapshot fixture must contain:
 D2-C decoder registry authority is implemented, reviewed, committed and pushed
 at `5e5a617` for the offline adapter authority path. It implements immutable
 decoder registry/schema authority and decoder callable binding for resolved
-config snapshots. It does not implement D3 runtime raw wiring, runtime Collector
-raw evidence connection, DB/API/Dashboard/V-PLC/deploy changes or ACK/read_done
-ownership changes.
+config snapshots. D3 runtime raw wiring is implemented, reviewed, committed and
+pushed at `c9e7c22`. DB/API/Dashboard/V-PLC/deploy changes, storage.py changes
+and ACK/read_done ownership changes remain unauthorized.
 
 For any source that carries raw evidence or is declared `raw_capable` /
 `raw_required`, the resolved config snapshot must bind interpretation to an
@@ -297,11 +298,28 @@ git diff --check -> PASS
 git diff --cached --check before commit -> PASS
 ```
 
-D3 owns actual raw-capable/raw-required runtime wiring. D3 remains HOLD until
-separately authorized. D2-C must not be read as runtime raw support or runtime
-current mapping-file no-fallback closure. D2-C does not authorize D3 raw
-runtime wiring, DB/API/Dashboard/V-PLC/deploy changes or ACK/read_done
-ownership changes.
+D3 owns actual raw-capable/raw-required runtime wiring and is closed at
+`c9e7c22`. D2-C must not be read as runtime raw support or runtime current
+mapping-file no-fallback closure; D3 `c9e7c22` is the runtime raw wiring
+closure. D3 passes runtime station `db_read(...)` bytes as `raw_bytes` into the
+runtime source, `build_runtime_source_payload()` generates
+`raw_payload={"raw_hex": ...}`, and `raw_payload` enters
+`adapt_source_payload()`.
+
+Runtime raw evidence remains evidence, not production fact. Decoder output
+remains a normalized candidate only. Accepted adapter decision remains required
+before persist/ACK. `config/mapping.yaml` carries `decoder_version` and
+`decoder_registry` snapshot id/content hash; `mapping.py` parses, validates and
+hash-covers those authority fields; `resolved_config_registry.py` builds the
+immutable decoder registry snapshot binding from runtime mapping. No
+env/default/latest/ad hoc fallback is intended.
+
+D3 does not authorize DB/API/Dashboard/V-PLC/deploy changes, storage.py changes
+or ACK/read_done ownership changes. Current `config/mapping.yaml` runtime
+default still uses `raw_policy: raw_not_provided`; the D3 runtime code path
+always passes `raw_bytes=data`, so this is not a blocker. If PM later wants
+runtime source policy explicitly changed to `raw_capable` / `raw_required`, it
+needs a separate mapping/config authority change and review.
 
 ### 4.4 Fail-closed cases
 
@@ -483,25 +501,30 @@ future authorized implementation thread.
 
 ## 11. Current control conclusion
 
-Architecture contract/status sync: `PASS`.
+Architecture contract/status sync: `PASS WITH RECOMMENDATIONS`.
 
 Reliability Review: `PASS WITH RECOMMENDATIONS`, no blocker.
 
-Data Quality targeted re-review: `PASS WITH RECOMMENDATIONS`, DQ-B1 CLOSED.
+Data Quality focused implementation review: `PASS WITH RECOMMENDATIONS`, no blocker.
 
-Verification Review: `PASS WITH RECOMMENDATIONS`, no blocker.
+Verification focused implementation review / exact allowlist audit: `PASS WITH RECOMMENDATIONS`, no blocker.
 
 Eligible for docs-only closeout decision: yes.
 
 D2-A decoder authority docs/contract-only repair: recorded. D2-C decoder
 registry authority is implemented, reviewed, committed and pushed at
 `5e5a617`. D2-C implements offline immutable decoder registry/schema authority
-and decoder callable binding, but does not implement runtime raw support or D3
-runtime raw wiring.
+and decoder callable binding. D3 runtime raw wiring is implemented, reviewed,
+committed and pushed at `c9e7c22`.
 
-Eligible for D3 planning gate: yes, after PM approval.
+D3 carry-forward recommendation: current `config/mapping.yaml` runtime default
+still uses `raw_policy: raw_not_provided`; D3 runtime code path always passes
+`raw_bytes=data`, so this is not a blocker. If PM later wants runtime source
+policy explicitly changed to `raw_capable` / `raw_required`, it needs a separate
+mapping/config authority change and review.
+
+Eligible for next PM planning gate: yes.
 
 Eligible for implementation without PM approval: no. PM approval is required
-before runtime Collector raw wiring, DB/API/Dashboard/V-PLC/PLC pilot,
-commit/push, tag, deploy, rollback or any change outside the approved docs
-allowlist.
+before DB/API/Dashboard/V-PLC/PLC pilot/storage.py/ACK/deploy, commit/push,
+tag, rollback or any change outside the approved docs allowlist.

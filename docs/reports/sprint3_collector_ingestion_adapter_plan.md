@@ -1,17 +1,16 @@
 # Sprint 3 Collector Ingestion Adapter Plan
 
-Date: 2026-06-27
+Date: 2026-06-28
 
-Status: Sprint 3 Collector Ingestion Adapter planning/status reference. D2-C
-decoder registry authority is implemented, reviewed, committed and pushed at
-`5e5a617`. D3 runtime raw wiring, DB/API/Dashboard/V-PLC/PLC pilot/deploy/tag/
-rollback remain not authorized.
+Status: Sprint 3 Collector Ingestion Adapter planning/status reference. D3
+runtime raw wiring is implemented, reviewed, committed and pushed at `c9e7c22`.
+DB/API/Dashboard/V-PLC/PLC pilot/deploy/tag/rollback remain not authorized.
 
-Live baseline at D2-C docs/status sync authoring time:
+Live baseline at D3 docs/status sync authoring time:
 
 - Branch: `main`.
-- HEAD / `origin/main`: `5e5a61781d7651da3f629f2d770eaca954e861cd`.
-- Latest commit: `5e5a617 Implement Sprint 3 Slice D2-C decoder registry authority`.
+- HEAD / `origin/main`: `c9e7c22c105977ba44d99610999b3e5ce7b72a37`.
+- Latest commit: `c9e7c22 Implement Sprint 3 Slice D3 runtime raw wiring`.
 - Sprint 2 implementation commit: `17cf5d2 Implement Sprint 2 generic station event model`.
 - Sprint 2 docs-only closeout commit: `82b2127 Close out Sprint 2 documentation state`.
 - Phase-1 tag: `phase1-pass-20260619`.
@@ -197,10 +196,41 @@ git diff --check -> PASS
 git diff --cached --check before commit -> PASS
 ```
 
-D3 actual raw-capable/raw-required runtime wiring remains HOLD until D2
-authority is reviewed and separately authorized. D3 owns runtime raw evidence
-wiring, not the D2-A contract repair, D2-B tests-only hardening or D2-C offline
-registry/schema implementation.
+D3 actual raw-capable/raw-required runtime wiring is implemented, reviewed,
+committed and pushed at `c9e7c22`. D3 owns runtime raw evidence wiring, not the
+D2-A contract repair, D2-B tests-only hardening or D2-C offline registry/schema
+implementation.
+
+D3 committed files:
+
+```text
+collector/app/plc/mapping.py
+collector/app/services/event_collector.py
+collector/app/services/resolved_config_registry.py
+collector/tests/test_event_collector_adapter_gate.py
+config/mapping.yaml
+tests/test_collector_station_event_runtime_source.py
+```
+
+D3 implementation summary:
+
+```text
+runtime station db_read(...) bytes are passed as raw_bytes into runtime source.
+build_runtime_source_payload() generates raw_payload={"raw_hex": ...}.
+raw_payload enters adapt_source_payload().
+raw evidence remains evidence, not production fact.
+decoder output remains normalized candidate only.
+accepted adapter decision remains required before persist/ACK.
+config/mapping.yaml now carries decoder_version and decoder_registry snapshot id/content hash.
+mapping.py parses, validates and hash-covers authority fields.
+resolved_config_registry.py builds immutable decoder registry snapshot binding from runtime mapping.
+No env/default/latest/ad hoc fallback is intended.
+DB/API/Dashboard-visible behavior unchanged.
+storage.py not touched.
+V-PLC behavior unchanged.
+Docker/deploy/tag/rollback not authorized.
+ACK/read_done ownership unchanged.
+```
 
 ### 4.4 Raw / normalized authority matrix
 
@@ -349,35 +379,43 @@ Explicitly excluded:
 
 ## 8. Current control conclusion
 
-Conclusion: `PASS` for D2-C docs/status sync preparation. D2-C review status
-has been synchronized after implementation, focused reviews and exact allowlist
-commit/push.
+Conclusion: `PASS WITH RECOMMENDATIONS` for D3 docs/status sync preparation.
+D3 review status has been synchronized after implementation, focused reviews
+and exact allowlist commit/push at `c9e7c22`.
 
 Reliability Review: `PASS WITH RECOMMENDATIONS`, no blocker.
 
-Data Quality targeted re-review: `PASS WITH RECOMMENDATIONS`, DQ-B1 CLOSED.
+Data Quality focused implementation review: `PASS WITH RECOMMENDATIONS`, no blocker.
 
-Verification Review: `PASS WITH RECOMMENDATIONS`, no blocker.
+Verification focused implementation review / exact allowlist audit: `PASS WITH RECOMMENDATIONS`, no blocker.
 
 Eligible for docs-only closeout decision: yes.
 
 D2-A decoder authority docs/contract-only repair: recorded. D2-A adds no code,
 tests, config, schema, mapping, runtime Collector integration or raw runtime
 wiring. D2-B fixture/test-only hardening is recorded at `dafbbf8`. D2-C minimal
-registry/schema implementation is recorded at `5e5a617`.
+registry/schema implementation is recorded at `5e5a617`. D3 runtime raw wiring
+is recorded at `c9e7c22`.
 
 D2-C carry-forward recommendations:
 
 ```text
-D3 runtime raw wiring remains a separate PM-authorized gate.
-Do not infer runtime raw support or runtime current mapping-file no-fallback closure from D2-C PASS.
+D3 runtime raw wiring remained a separate PM-authorized gate after D2-C and is now closed at c9e7c22.
+D2-C PASS alone did not prove runtime raw support; D3 c9e7c22 is the runtime raw wiring closure.
 Keep rejected-decision normalized_event/canonical_bytes/fact_key diagnostic-only, not production fact or Quality/Pareto/API-visible state.
 Registry failures currently surface as RAW_PARSE_ERROR rather than dedicated decoder-authority public codes; this is non-blocking unless PM opens a future taxonomy gate.
 ```
 
-Eligible for D3 planning gate: yes, after PM approval.
+D3 carry-forward recommendations:
+
+```text
+current config/mapping.yaml runtime default still uses raw_policy: raw_not_provided; D3 runtime code path always passes raw_bytes=data, so this is not a blocker.
+If PM later wants runtime source policy explicitly changed to raw_capable/raw_required, it needs a separate mapping/config authority change and review.
+Next technical gate should not expand DB/API/Dashboard/V-PLC/storage.py/ACK/deploy without separate PM authorization.
+```
+
+Eligible for next PM planning gate: yes.
 
 Eligible for implementation without PM approval: no. PM approval is required
-before runtime Collector raw wiring, DB/API/Dashboard/V-PLC/PLC pilot,
-commit/push, tag, deploy, rollback or any change outside the approved docs
-allowlist.
+before DB/API/Dashboard/V-PLC/PLC pilot/storage.py/ACK/deploy, commit/push,
+tag, rollback or any change outside the approved docs allowlist.
