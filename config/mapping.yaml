@@ -7,13 +7,18 @@ plc_identity_namespace: vplc-db104
 version: 1
 timezone: Asia/Shanghai
 
+decoder_registry:
+  snapshot_id: runtime-decoder-registry-2026-06-28
+  content_hash: 906ddfac857c96e8edccd37075b06e58e3429a456a126a15f842226d0b0bb129
+
 runtime_defaults:
   station_enabled: true
   plc_id: PLC_001
   payload_template: station_runtime_payload_v1
   nok_template: station_runtime_nok_v1
   raw_policy: raw_not_provided
-  decoder_id: collector.app.plc.decoder.decode_read_plan:v1
+  decoder_id: collector.app.plc.decoder.decode_read_plan
+  decoder_version: "1.0.0"
   source_namespace: vplc-db101-db103
 
 route_graph:

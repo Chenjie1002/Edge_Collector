@@ -7,6 +7,7 @@ import pytest
 
 from app.plc.mapping import StationMapping
 from app.plc.read_plan import ReadPlan
+from app.services.resolved_config_registry import ResolvedStationSnapshot
 from app.services.event_collector import EventCollectorWorker, StationRuntime
 
 
@@ -311,3 +312,60 @@ def test_read_done_ack_status_repair_remains_after_accepted_adapter_decision() -
     assert storage.persist_calls == 1
     assert client.writes == []
     assert storage.ack_ok_calls == 1
+
+
+def test_runtime_adapter_source_receives_station_read_plan_raw_bytes(monkeypatch) -> None:
+    worker = EventCollectorWorker.__new__(EventCollectorWorker)
+    station_snapshot = ResolvedStationSnapshot(
+        station_id="WS01",
+        line_id="LINE_001",
+        plc_id="PLC_001",
+        station_type="screw",
+        cycle_profile="normal_screwdriving",
+        mapping_id="ws01_runtime_v1",
+        payload_template="station_runtime_payload_v1",
+        raw_policy="raw_capable",
+        decoder_id="collector.app.plc.decoder.decode_read_plan",
+        decoder_version="1.0.0",
+    )
+    worker.resolved_config_snapshot = SimpleNamespace(
+        config_hash="config-hash-1",
+        station_for=lambda station_id: station_snapshot if station_id == "WS01" else None,
+    )
+    worker.resolved_config_registry = object()
+    worker.mapping = SimpleNamespace(code_tables={})
+    captured: dict[str, object] = {}
+
+    def fake_build_runtime_source_payload(**kwargs):
+        captured.update(kwargs)
+        return {
+            "config_hash": "config-hash-1",
+            "station_id": "WS01",
+            "raw_payload": {"raw_hex": bytes(kwargs["raw_bytes"]).hex()},
+        }
+
+    def fake_adapt_source_payload(source_payload, registry):
+        captured["source_payload"] = source_payload
+        captured["registry"] = registry
+        return SimpleNamespace(disposition="accepted", final_error_code=None)
+
+    monkeypatch.setattr(
+        "app.services.event_collector.build_runtime_source_payload",
+        fake_build_runtime_source_payload,
+    )
+    monkeypatch.setattr(
+        "app.services.event_collector.adapt_source_payload",
+        fake_adapt_source_payload,
+    )
+
+    decision = worker._adapt_station_runtime_payload(
+        make_runtime(),
+        b"\x00\x06\x10\x20",
+        ready_payload(),
+        BOOT_ID,
+    )
+
+    assert decision.disposition == "accepted"
+    assert captured["raw_bytes"] == b"\x00\x06\x10\x20"
+    assert captured["source_payload"]["raw_payload"] == {"raw_hex": "00061020"}
+    assert captured["registry"] is worker.resolved_config_registry

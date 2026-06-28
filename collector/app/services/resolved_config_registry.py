@@ -6,8 +6,11 @@ from collections.abc import Mapping
 from dataclasses import dataclass, replace
 from typing import Any
 
-from app.plc.mapping import RuntimeMappingSnapshot, runtime_mapping_hash_content
-from .decoder_registry import DecoderRegistrySnapshot, RawDecoder
+from app.plc.address import byte_size_for_type
+from app.plc.decoder import decode_read_plan
+from app.plc.mapping import FieldMapping, RuntimeMappingSnapshot, runtime_mapping_hash_content
+from app.plc.read_plan import ReadPlan
+from .decoder_registry import DecoderBinding, DecoderRegistrySnapshot, RawDecoder
 
 
 @dataclass(frozen=True)
@@ -39,6 +42,7 @@ class ResolvedStationSnapshot:
     source_namespace: str | None = None
     db_number: int | None = None
     db_read_layout: tuple[str, ...] = ()
+    db_read_fields: tuple[FieldMapping, ...] = ()
     direct_predecessor_station_id: str | None = None
     decoder_version: str | None = None
 
@@ -135,6 +139,7 @@ def compute_resolved_config_hash(snapshot: ResolvedConfigSnapshot) -> str:
                 "source_namespace": station.source_namespace,
                 "db_number": station.db_number,
                 "db_read_layout": list(station.db_read_layout),
+                "db_read_fields": _field_hash_content(station.db_read_fields),
                 "direct_predecessor_station_id": station.direct_predecessor_station_id,
             }
             for station in sorted(snapshot.stations, key=lambda item: item.station_id)
@@ -166,6 +171,7 @@ def build_resolved_config_snapshot_from_mapping(
 ) -> ResolvedConfigSnapshot:
     if not mapping_snapshot.content_hash_matches():
         raise ValueError("CONFIG_HASH_MISMATCH")
+    decoder_registry = _build_decoder_registry_from_mapping(mapping_snapshot)
     candidate = ResolvedConfigSnapshot(
         config_hash=mapping_snapshot.config_hash,
         config_version=mapping_snapshot.config_version,
@@ -187,6 +193,7 @@ def build_resolved_config_snapshot_from_mapping(
                 source_namespace=station.source_namespace,
                 db_number=station.db_number,
                 db_read_layout=station.db_read_layout,
+                db_read_fields=station.db_read_fields,
                 direct_predecessor_station_id=station.direct_predecessor_station_id,
                 decoder_version=getattr(station, "decoder_version", None),
             )
@@ -207,6 +214,9 @@ def build_resolved_config_snapshot_from_mapping(
         hash_algorithm=mapping_snapshot.hash_algorithm,
         plc_identity_namespace=mapping_snapshot.plc_identity_namespace,
         interpretation_code_tables=dict(mapping_snapshot.interpretation_code_tables),
+        decoder_registry_snapshot_id=mapping_snapshot.decoder_registry_snapshot_id,
+        decoder_registry_content_hash=mapping_snapshot.decoder_registry_content_hash,
+        decoder_registry=decoder_registry,
     )
     if candidate.compute_content_hash() != mapping_snapshot.config_hash:
         # Keep this construction coupled to the runtime mapping hash surface.
@@ -249,6 +259,7 @@ def build_resolved_config_snapshot_from_mapping(
                             "source_namespace": station.source_namespace,
                             "db_number": station.db_number,
                             "db_read_layout": list(station.db_read_layout),
+                            "db_read_fields": _field_hash_content(station.db_read_fields),
                             "direct_predecessor_station_id": station.direct_predecessor_station_id,
                         }
                         for station in sorted(candidate.stations, key=lambda item: item.station_id)
@@ -270,6 +281,117 @@ def build_resolved_config_snapshot_from_mapping(
         if resolved_content != mapping_content:
             raise ValueError("CONFIG_HASH_MISMATCH")
     return candidate
+
+
+def _build_decoder_registry_from_mapping(
+    mapping_snapshot: RuntimeMappingSnapshot,
+) -> DecoderRegistrySnapshot:
+    decoder = _runtime_raw_hex_decoder(mapping_snapshot)
+    bindings = tuple(
+        DecoderBinding(
+            decoder_id=decoder_id,
+            decoder_version=decoder_version,
+            callable_ref=_runtime_decoder_callable_ref(),
+            decoder=decoder,
+            payload_template=payload_template,
+        )
+        for decoder_id, decoder_version, payload_template in sorted(
+            {
+                (station.decoder_id, station.decoder_version, station.payload_template)
+                for station in mapping_snapshot.stations
+            }
+        )
+    )
+    candidate = DecoderRegistrySnapshot(
+        registry_snapshot_id=mapping_snapshot.decoder_registry_snapshot_id,
+        registry_content_hash=mapping_snapshot.decoder_registry_content_hash,
+        decoders=bindings,
+    )
+    if not candidate.content_hash_matches():
+        raise ValueError("DECODER_REGISTRY_HASH_MISMATCH")
+    return candidate
+
+
+def _runtime_raw_hex_decoder(
+    mapping_snapshot: RuntimeMappingSnapshot,
+) -> RawDecoder:
+    plans = {
+        station.station_id: ReadPlan(
+            scope=station.station_id,
+            db_number=station.db_number,
+            read_start=min(field.address.byte_offset for field in station.db_read_fields),
+            read_size=(
+                max(
+                    field.address.byte_offset + byte_size_for_type(field.data_type, field.max_length)
+                    for field in station.db_read_fields
+                )
+                - min(field.address.byte_offset for field in station.db_read_fields)
+            ),
+            fields=station.db_read_fields,
+        )
+        for station in mapping_snapshot.stations
+    }
+
+    def decode_runtime_raw_hex_payload(
+        raw_payload: Mapping[str, Any],
+        event: Mapping[str, Any],
+    ) -> Mapping[str, Any]:
+        raw_hex = raw_payload.get("raw_hex")
+        if not isinstance(raw_hex, str) or not raw_hex:
+            raise ValueError("RAW_HEX_MISSING")
+        station_id = str(event.get("station_id", ""))
+        plan = plans.get(station_id)
+        if plan is None:
+            raise ValueError("DECODER_STATION_UNKNOWN")
+        decoded = decode_read_plan(bytes.fromhex(raw_hex), plan, mapping_snapshot.timezone)
+        return _normalized_payload(decoded)
+
+    return decode_runtime_raw_hex_payload
+
+
+def _normalized_payload(decoded_fields: Mapping[str, Any]) -> dict[str, Any]:
+    excluded = {
+        "cycle_counter",
+        "cycle_valid",
+        "result",
+        "unit_id",
+        "station_dmc",
+        "dmc",
+        "plc_start_time",
+        "plc_end_time",
+        "nok_code_count",
+        "nok_codes",
+        "nok_codes_1",
+        "nok_code_1",
+        "nok_code",
+        "station_type",
+        "cycle_profile",
+        "payload_template",
+    }
+    return {
+        str(key): value
+        for key, value in decoded_fields.items()
+        if key not in excluded and value is not None
+    }
+
+
+def _runtime_decoder_callable_ref() -> str:
+    return "collector.app.plc.decoder.decode_runtime_raw_hex_payload"
+
+
+def _field_hash_content(fields: tuple[FieldMapping, ...]) -> list[dict[str, Any]]:
+    return [
+        {
+            "name": field.name,
+            "address": field.address.raw,
+            "data_type": field.data_type,
+            "direction": field.direction,
+            "required": field.required,
+            "max_length": field.max_length,
+            "group": field.group,
+        }
+        for field in sorted(fields, key=lambda item: item.name)
+    ]
 
 
 def _decoder_identity(decoder: RawDecoder | None) -> str | None:

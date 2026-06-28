@@ -10,6 +10,10 @@ from collector.app.plc.mapping import (
     compute_runtime_mapping_hash,
     parse_edge_mapping,
 )
+from collector.app.services.decoder_registry import (
+    DecoderBinding,
+    DecoderRegistrySnapshot,
+)
 from collector.app.services.resolved_config_registry import (
     InMemoryResolvedConfigRegistry,
     ResolvedConfigSnapshot,
@@ -21,6 +25,22 @@ from collector.app.services.station_event_runtime_source import (
 )
 
 
+def runtime_decoder_registry_hash() -> str:
+    return DecoderRegistrySnapshot(
+        registry_snapshot_id="runtime-decoder-registry-2026-06-28",
+        registry_content_hash="",
+        decoders=(
+            DecoderBinding(
+                decoder_id="collector.app.plc.decoder.decode_read_plan",
+                decoder_version="1.0.0",
+                callable_ref="collector.app.plc.decoder.decode_runtime_raw_hex_payload",
+                decoder=None,
+                payload_template="station_runtime_payload_v1",
+            ),
+        ),
+    ).with_content_hash().registry_content_hash
+
+
 def mapping_doc() -> dict:
     return {
         "schema_version": "runtime-mapping/v1",
@@ -30,6 +50,10 @@ def mapping_doc() -> dict:
         "timezone": "Asia/Shanghai",
         "hash_algorithm": "sha256",
         "plc_identity_namespace": "vplc-db104",
+        "decoder_registry": {
+            "snapshot_id": "runtime-decoder-registry-2026-06-28",
+            "content_hash": runtime_decoder_registry_hash(),
+        },
         "runtime_defaults": {
             "station_enabled": True,
             "plc_id": "PLC_001",
@@ -38,7 +62,8 @@ def mapping_doc() -> dict:
             "payload_template": "station_runtime_payload_v1",
             "nok_template": "station_runtime_nok_v1",
             "raw_policy": "raw_not_provided",
-            "decoder_id": "collector.app.plc.decoder.decode_read_plan:v1",
+            "decoder_id": "collector.app.plc.decoder.decode_read_plan",
+            "decoder_version": "1.0.0",
             "source_namespace": "plc-runtime",
         },
         "route_graph": [
@@ -116,12 +141,26 @@ def test_mapping_loader_accepts_explicit_contract_fields_and_freezes_computed_ha
 
     assert mapping.config_version == "2026.06.26-slice-a"
     assert mapping.runtime_snapshot.config_hash == compute_runtime_mapping_hash(mapping.runtime_snapshot)
+    assert mapping.runtime_snapshot.decoder_registry_snapshot_id == "runtime-decoder-registry-2026-06-28"
+    assert mapping.runtime_snapshot.decoder_registry_content_hash == runtime_decoder_registry_hash()
     assert mapping.runtime_snapshot.hash_algorithm == "sha256"
     assert mapping.runtime_snapshot.stations[0].mapping_id == "ws01_runtime_v1"
+    assert mapping.runtime_snapshot.stations[0].decoder_id == "collector.app.plc.decoder.decode_read_plan"
+    assert mapping.runtime_snapshot.stations[0].decoder_version == "1.0.0"
     assert mapping.runtime_snapshot.stations[1].direct_predecessor_station_id == "WS01"
 
 
-@pytest.mark.parametrize("missing_field", ["mapping_id", "payload_template", "station_type", "cycle_profile", "raw_policy"])
+@pytest.mark.parametrize(
+    "missing_field",
+    [
+        "mapping_id",
+        "payload_template",
+        "station_type",
+        "cycle_profile",
+        "raw_policy",
+        "decoder_version",
+    ],
+)
 def test_mapping_loader_missing_required_contract_fields_fail_closed(missing_field: str) -> None:
     doc = mapping_doc()
     if missing_field in {"station_type", "cycle_profile"}:
@@ -133,6 +172,23 @@ def test_mapping_loader_missing_required_contract_fields_fail_closed(missing_fie
         del doc["stations"][0][missing_field]
 
     with pytest.raises(RuntimeMappingContractError, match=missing_field):
+        parse(doc)
+
+
+@pytest.mark.parametrize("missing_field", ["snapshot_id", "content_hash"])
+def test_mapping_loader_missing_decoder_registry_authority_fails_closed(missing_field: str) -> None:
+    doc = mapping_doc()
+    del doc["decoder_registry"][missing_field]
+
+    with pytest.raises(RuntimeMappingContractError, match=f"decoder_registry.{missing_field}"):
+        parse(doc)
+
+
+def test_mapping_loader_rejects_decoder_registry_hash_mismatch() -> None:
+    doc = mapping_doc()
+    doc["decoder_registry"]["content_hash"] = "0" * 64
+
+    with pytest.raises(RuntimeMappingContractError, match="decoder_registry.content_hash"):
         parse(doc)
 
 
@@ -153,10 +209,8 @@ def test_runtime_mapping_hash_is_stable_for_semantic_same_content() -> None:
         (("config_version",), "2026.06.26-slice-b"),
         (("stations", 0, "station_enabled"), False),
         (("stations", 0, "mapping_id"), "ws01_runtime_v2"),
-        (("stations", 0, "payload_template"), "station_runtime_payload_v2"),
         (("stations", 0, "nok_template"), "station_runtime_nok_v2"),
         (("stations", 0, "raw_policy"), "raw_required"),
-        (("stations", 0, "decoder_id"), "decoder:v2"),
         (("stations", 0, "station_type"), "inspection"),
         (("stations", 0, "cycle_profile"), "fast_screwdriving"),
         (("route_graph", 0, "from_station_id"), "WS03"),
@@ -171,6 +225,26 @@ def test_runtime_mapping_hash_changes_for_interpretation_affecting_fields(path: 
     target[path[-1]] = value
 
     assert parse(doc).runtime_snapshot.config_hash != baseline
+
+
+@pytest.mark.parametrize(
+    ("path", "value"),
+    [
+        (("stations", 0, "payload_template"), "station_runtime_payload_v2"),
+        (("stations", 0, "decoder_id"), "decoder:v2"),
+        (("stations", 0, "decoder_version"), "2.0.0"),
+        (("decoder_registry", "snapshot_id"), "runtime-decoder-registry-2026-06-29"),
+    ],
+)
+def test_decoder_bound_mapping_changes_without_registry_hash_sync_fail_closed(path: tuple, value) -> None:
+    doc = mapping_doc()
+    target = doc
+    for key in path[:-1]:
+        target = target[key]
+    target[path[-1]] = value
+
+    with pytest.raises(RuntimeMappingContractError, match="decoder_registry.content_hash"):
+        parse(doc)
 
 
 @pytest.mark.parametrize(
@@ -194,6 +268,11 @@ def test_registry_builds_resolved_config_snapshot_from_runtime_mapping_snapshot(
     assert isinstance(snapshot, ResolvedConfigSnapshot)
     assert snapshot.config_hash == parse().runtime_snapshot.config_hash
     assert snapshot.content_hash_matches()
+    assert snapshot.decoder_registry_snapshot_id == "runtime-decoder-registry-2026-06-28"
+    assert snapshot.decoder_registry_content_hash == runtime_decoder_registry_hash()
+    assert snapshot.decoder_registry is not None
+    assert snapshot.decoder_registry.content_hash_matches()
+    assert snapshot.station_for("WS02").decoder_version == "1.0.0"
     assert snapshot.station_for("WS02").payload_template == "station_runtime_payload_v1"
     assert snapshot.route_graph.edges[0].from_station_id == "WS01"
 
@@ -298,6 +377,34 @@ def test_source_builder_normalized_only_runtime_path_depends_on_raw_not_provided
     assert "raw_payload" not in payload
     assert payload["payload"]["station_status"] == 1
     assert payload["config_hash"] == mapping.runtime_snapshot.config_hash
+
+
+def test_source_builder_emits_raw_hex_from_station_read_plan_bytes() -> None:
+    mapping = parse()
+    station = replace(mapping.runtime_snapshot.station_for("WS01"), raw_policy="raw_capable")
+
+    payload = build_runtime_source_payload(
+        decoded_fields={
+            "station_status": 1,
+            "cycle_counter": 42,
+            "cycle_valid": True,
+            "result": 1,
+            "unit_id": "UNIT-42",
+            "station_dmc": "DMC-42",
+            "plc_start_time": "2026-06-26T10:00:00+08:00",
+            "plc_end_time": "2026-06-26T10:00:30+08:00",
+            "nok_code_count": 0,
+        },
+        raw_bytes=b"\x01\x02\xfe\xff",
+        station_snapshot=station,
+        resolved_config_hash=mapping.runtime_snapshot.config_hash,
+        plc_boot_id="BOOT-1",
+        observed_at="2026-06-26T02:00:31Z",
+        code_tables=mapping.code_tables,
+    )
+
+    assert payload["raw_payload"] == {"raw_hex": "0102feff"}
+    assert payload["payload"]["station_status"] == 1
 
 
 @pytest.mark.parametrize("raw_policy", ["raw_required", "raw_capable", "unexpected_policy"])

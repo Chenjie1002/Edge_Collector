@@ -44,6 +44,7 @@ class StationMapping:
     nok_template: str | None = None
     raw_policy: str | None = None
     decoder_id: str | None = None
+    decoder_version: str | None = None
     source_namespace: str | None = None
 
 
@@ -67,9 +68,11 @@ class RuntimeStationMapping:
     nok_template: str
     raw_policy: str
     decoder_id: str
+    decoder_version: str
     source_namespace: str
     db_number: int
     db_read_layout: tuple[str, ...]
+    db_read_fields: tuple[FieldMapping, ...] = ()
     direct_predecessor_station_id: str | None = None
 
 
@@ -82,6 +85,8 @@ class RuntimeMappingSnapshot:
     timezone: str
     hash_algorithm: str
     plc_identity_namespace: str
+    decoder_registry_snapshot_id: str
+    decoder_registry_content_hash: str
     stations: tuple[RuntimeStationMapping, ...]
     route_graph: tuple[RouteEdgeMapping, ...]
     interpretation_code_tables: dict[str, dict[str, Any]]
@@ -108,6 +113,8 @@ class EdgeMapping:
     authoritative_source: str = "config/mapping.yaml"
     hash_algorithm: str = "sha256"
     plc_identity_namespace: str = "default"
+    decoder_registry_snapshot_id: str | None = None
+    decoder_registry_content_hash: str | None = None
     runtime_snapshot: RuntimeMappingSnapshot | None = None
 
 
@@ -129,6 +136,15 @@ def parse_edge_mapping(raw: dict[str, Any]) -> EdgeMapping:
     plc_identity_namespace = _required(raw, "plc_identity_namespace")
     if hash_algorithm != "sha256":
         raise RuntimeMappingContractError("hash_algorithm must be sha256")
+    decoder_registry = raw.get("decoder_registry") or {}
+    decoder_registry_snapshot_id = str(
+        _required(decoder_registry, "snapshot_id", _missing_key="decoder_registry.snapshot_id")
+    )
+    decoder_registry_content_hash = str(
+        _required(decoder_registry, "content_hash", _missing_key="decoder_registry.content_hash")
+    )
+    if len(decoder_registry_content_hash) != 64:
+        raise RuntimeMappingContractError("decoder_registry.content_hash must be a sha256 hex digest")
 
     line_fields = tuple(
         _parse_field(name, cfg, group="line")
@@ -174,11 +190,18 @@ def parse_edge_mapping(raw: dict[str, Any]) -> EdgeMapping:
                 nok_template=runtime_station.nok_template,
                 raw_policy=runtime_station.raw_policy,
                 decoder_id=runtime_station.decoder_id,
+                decoder_version=runtime_station.decoder_version,
                 source_namespace=runtime_station.source_namespace,
             )
         )
 
     route_graph = _parse_route_graph(raw.get("route_graph"), runtime_stations)
+    expected_decoder_registry_hash = _compute_runtime_decoder_registry_hash(
+        decoder_registry_snapshot_id,
+        runtime_stations,
+    )
+    if decoder_registry_content_hash != expected_decoder_registry_hash:
+        raise RuntimeMappingContractError("decoder_registry.content_hash mismatch")
     runtime_snapshot = RuntimeMappingSnapshot(
         schema_version=schema_version,
         config_version=config_version,
@@ -187,6 +210,8 @@ def parse_edge_mapping(raw: dict[str, Any]) -> EdgeMapping:
         timezone=timezone,
         hash_algorithm=hash_algorithm,
         plc_identity_namespace=plc_identity_namespace,
+        decoder_registry_snapshot_id=decoder_registry_snapshot_id,
+        decoder_registry_content_hash=decoder_registry_content_hash,
         stations=tuple(runtime_stations),
         route_graph=route_graph,
         interpretation_code_tables=_interpretation_code_tables(raw.get("code_tables", {})),
@@ -211,6 +236,8 @@ def parse_edge_mapping(raw: dict[str, Any]) -> EdgeMapping:
         authoritative_source=authoritative_source,
         hash_algorithm=hash_algorithm,
         plc_identity_namespace=plc_identity_namespace,
+        decoder_registry_snapshot_id=decoder_registry_snapshot_id,
+        decoder_registry_content_hash=decoder_registry_content_hash,
         runtime_snapshot=runtime_snapshot,
     )
 
@@ -239,6 +266,8 @@ def _runtime_hash_content(snapshot: RuntimeMappingSnapshot) -> dict[str, Any]:
         "timezone": snapshot.timezone,
         "hash_algorithm": snapshot.hash_algorithm,
         "plc_identity_namespace": snapshot.plc_identity_namespace,
+        "decoder_registry_snapshot_id": snapshot.decoder_registry_snapshot_id,
+        "decoder_registry_content_hash": snapshot.decoder_registry_content_hash,
         "route_graph": [
             {
                 "from_station_id": edge.from_station_id,
@@ -264,14 +293,64 @@ def _runtime_hash_content(snapshot: RuntimeMappingSnapshot) -> dict[str, Any]:
                 "nok_template": station.nok_template,
                 "raw_policy": station.raw_policy,
                 "decoder_id": station.decoder_id,
+                "decoder_version": station.decoder_version,
                 "source_namespace": station.source_namespace,
                 "db_number": station.db_number,
                 "db_read_layout": list(station.db_read_layout),
+                "db_read_fields": [
+                    {
+                        "name": field.name,
+                        "address": field.address.raw,
+                        "data_type": field.data_type,
+                        "direction": field.direction,
+                        "required": field.required,
+                        "max_length": field.max_length,
+                        "group": field.group,
+                    }
+                    for field in sorted(station.db_read_fields, key=lambda item: item.name)
+                ],
                 "direct_predecessor_station_id": station.direct_predecessor_station_id,
             }
             for station in sorted(snapshot.stations, key=lambda item: item.station_id)
         ],
     }
+
+
+def _compute_runtime_decoder_registry_hash(
+    registry_snapshot_id: str,
+    stations: list[RuntimeStationMapping],
+) -> str:
+    content = {
+        "schema_version": "decoder-registry/v1",
+        "registry_snapshot_id": registry_snapshot_id,
+        "hash_algorithm": "sha256",
+        "decoders": [
+            {
+                "decoder_id": decoder_id,
+                "decoder_version": decoder_version,
+                "callable_ref": _runtime_decoder_callable_ref(),
+                "payload_template": payload_template,
+            }
+            for decoder_id, decoder_version, payload_template in sorted(
+                {
+                    (station.decoder_id, station.decoder_version, station.payload_template)
+                    for station in stations
+                }
+            )
+        ],
+    }
+    encoded = json.dumps(
+        content,
+        ensure_ascii=False,
+        sort_keys=True,
+        separators=(",", ":"),
+        allow_nan=False,
+    ).encode("utf-8")
+    return hashlib.sha256(encoded).hexdigest()
+
+
+def _runtime_decoder_callable_ref() -> str:
+    return "collector.app.plc.decoder.decode_runtime_raw_hex_payload"
 
 
 def _parse_runtime_station(
@@ -296,9 +375,11 @@ def _parse_runtime_station(
         nok_template=str(_required(station_raw, "nok_template", defaults.get("nok_template"))),
         raw_policy=str(_required(station_raw, "raw_policy", defaults.get("raw_policy"))),
         decoder_id=str(_required(station_raw, "decoder_id", defaults.get("decoder_id"))),
+        decoder_version=str(_required(station_raw, "decoder_version", defaults.get("decoder_version"))),
         source_namespace=str(_required(station_raw, "source_namespace", defaults.get("source_namespace"))),
         db_number=db_number,
         db_read_layout=tuple(sorted(field.name for field in fields)),
+        db_read_fields=tuple(sorted(fields, key=lambda item: item.name)),
         direct_predecessor_station_id=station_raw.get("upstream_station_id"),
     )
 
@@ -344,10 +425,12 @@ def _parse_route_graph(
     return edges
 
 
-def _required(raw: dict[str, Any], key: str, fallback: Any = None) -> Any:
+def _required(raw: dict[str, Any], key: str, fallback: Any = None, *, _missing_key: str | None = None) -> Any:
     value = raw.get(key, fallback)
     if value is None or value == "":
-        raise RuntimeMappingContractError(f"missing required runtime mapping field: {key}")
+        raise RuntimeMappingContractError(
+            f"missing required runtime mapping field: {_missing_key or key}"
+        )
     return value
 
 

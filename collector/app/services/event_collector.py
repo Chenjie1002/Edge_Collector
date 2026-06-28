@@ -281,7 +281,7 @@ class EventCollectorWorker:
             raise ValueError(f"resolved station snapshot missing: {runtime.station.station_id}")
         source_payload = build_runtime_source_payload(
             decoded_fields=decoded,
-            raw_bytes=None,
+            raw_bytes=data,
             station_snapshot=station_snapshot,
             resolved_config_hash=self.resolved_config_snapshot.config_hash,
             plc_boot_id=plc_boot_id,
