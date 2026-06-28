@@ -2,14 +2,12 @@ from __future__ import annotations
 
 import hashlib
 import json
-from collections.abc import Callable, Mapping
+from collections.abc import Mapping
 from dataclasses import dataclass, replace
 from typing import Any
 
 from app.plc.mapping import RuntimeMappingSnapshot, runtime_mapping_hash_content
-
-
-RawDecoder = Callable[[Mapping[str, Any], Mapping[str, Any]], Mapping[str, Any]]
+from .decoder_registry import DecoderRegistrySnapshot, RawDecoder
 
 
 @dataclass(frozen=True)
@@ -42,6 +40,7 @@ class ResolvedStationSnapshot:
     db_number: int | None = None
     db_read_layout: tuple[str, ...] = ()
     direct_predecessor_station_id: str | None = None
+    decoder_version: str | None = None
 
 
 @dataclass(frozen=True)
@@ -57,6 +56,9 @@ class ResolvedConfigSnapshot:
     hash_algorithm: str = "sha256"
     plc_identity_namespace: str = "default"
     interpretation_code_tables: dict[str, dict[str, Any]] | None = None
+    decoder_registry_snapshot_id: str | None = None
+    decoder_registry_content_hash: str | None = None
+    decoder_registry: DecoderRegistrySnapshot | None = None
 
     def compute_content_hash(self) -> str:
         return compute_resolved_config_hash(self)
@@ -76,10 +78,24 @@ class ResolvedConfigSnapshot:
         event: Mapping[str, Any],
     ) -> Mapping[str, Any]:
         station = self.station_for(str(event.get("station_id", "")))
-        decoder = station.decoder if station is not None else None
-        if decoder is None:
-            raise ValueError("decoder missing")
-        return decoder(raw_payload, event)
+        if station is None or not station.decoder_id or not station.decoder_version:
+            raise ValueError("decoder binding missing")
+        if self.decoder_registry is None:
+            raise ValueError("decoder registry missing")
+        if (
+            self.decoder_registry_snapshot_id is None
+            or self.decoder_registry_content_hash is None
+            or self.decoder_registry.registry_snapshot_id != self.decoder_registry_snapshot_id
+            or self.decoder_registry.registry_content_hash != self.decoder_registry_content_hash
+            or not self.decoder_registry.content_hash_matches()
+        ):
+            raise ValueError("decoder registry mismatch")
+        return self.decoder_registry.decode_raw_payload(
+            decoder_id=station.decoder_id,
+            decoder_version=station.decoder_version,
+            raw_payload=raw_payload,
+            event=event,
+        )
 
 
 def compute_resolved_config_hash(snapshot: ResolvedConfigSnapshot) -> str:
@@ -124,6 +140,17 @@ def compute_resolved_config_hash(snapshot: ResolvedConfigSnapshot) -> str:
             for station in sorted(snapshot.stations, key=lambda item: item.station_id)
         ],
     }
+    if snapshot.decoder_registry_snapshot_id is not None:
+        content["decoder_registry_snapshot_id"] = snapshot.decoder_registry_snapshot_id
+    if snapshot.decoder_registry_content_hash is not None:
+        content["decoder_registry_content_hash"] = snapshot.decoder_registry_content_hash
+    for station_content, station in zip(
+        content["stations"],
+        sorted(snapshot.stations, key=lambda item: item.station_id),
+        strict=True,
+    ):
+        if station.decoder_version is not None:
+            station_content["decoder_version"] = station.decoder_version
     encoded = json.dumps(
         content,
         ensure_ascii=False,
@@ -161,6 +188,7 @@ def build_resolved_config_snapshot_from_mapping(
                 db_number=station.db_number,
                 db_read_layout=station.db_read_layout,
                 direct_predecessor_station_id=station.direct_predecessor_station_id,
+                decoder_version=getattr(station, "decoder_version", None),
             )
             for station in mapping_snapshot.stations
         ),
@@ -228,6 +256,17 @@ def build_resolved_config_snapshot_from_mapping(
                 }
             )
         )
+        if candidate.decoder_registry_snapshot_id is not None:
+            resolved_content["decoder_registry_snapshot_id"] = candidate.decoder_registry_snapshot_id
+        if candidate.decoder_registry_content_hash is not None:
+            resolved_content["decoder_registry_content_hash"] = candidate.decoder_registry_content_hash
+        for station_content, station in zip(
+            resolved_content["stations"],
+            sorted(candidate.stations, key=lambda item: item.station_id),
+            strict=True,
+        ):
+            if station.decoder_version is not None:
+                station_content["decoder_version"] = station.decoder_version
         if resolved_content != mapping_content:
             raise ValueError("CONFIG_HASH_MISMATCH")
     return candidate

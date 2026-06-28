@@ -6,6 +6,7 @@ from uuid import uuid4
 
 import pytest
 
+from collector.app.services.decoder_registry import DecoderBinding, DecoderRegistrySnapshot
 from collector.app.services.resolved_config_registry import (
     InMemoryResolvedConfigRegistry,
     ResolvedConfigSnapshot,
@@ -26,6 +27,34 @@ def decoder(raw_payload, _event):
     return dict(raw_payload)
 
 
+def decoder_registry_snapshot(
+    *,
+    registry_snapshot_id: str = "decoder-registry-2026-06-20",
+    decoder_id: str = "collector.decoder",
+    decoder_version: str = "1.0.0",
+    callable_ref: str = "tests.decoder",
+    raw_decoder=decoder,
+    payload_template: str = "screw_result_v1",
+    content_hash: str | None = None,
+) -> DecoderRegistrySnapshot:
+    candidate = DecoderRegistrySnapshot(
+        registry_snapshot_id=registry_snapshot_id,
+        registry_content_hash=content_hash or "",
+        decoders=(
+            DecoderBinding(
+                decoder_id=decoder_id,
+                decoder_version=decoder_version,
+                callable_ref=callable_ref,
+                decoder=raw_decoder,
+                payload_template=payload_template,
+            ),
+        ),
+    )
+    if content_hash is not None:
+        return candidate
+    return candidate.with_content_hash()
+
+
 def snapshot(
     *,
     config_hash: str | None = None,
@@ -36,9 +65,25 @@ def snapshot(
     raw_policy: str = "raw_not_provided",
     raw_decoder=decoder,
     decoder_id: str | None = None,
+    decoder_version: str | None = None,
+    decoder_registry: DecoderRegistrySnapshot | None = None,
+    bind_decoder_registry: bool = True,
     route_from: str = "WS01",
     line_id: str = "LINE-01",
 ) -> ResolvedConfigSnapshot:
+    if bind_decoder_registry and decoder_registry is None and raw_decoder is not None:
+        decoder_registry = decoder_registry_snapshot(
+            decoder_id=decoder_id or "collector.decoder",
+            decoder_version=decoder_version or "1.0.0",
+            raw_decoder=raw_decoder,
+            payload_template=payload_template,
+        )
+    station_decoder_id = decoder_id or (
+        decoder_registry.decoders[0].decoder_id if decoder_registry is not None else None
+    )
+    station_decoder_version = decoder_version or (
+        decoder_registry.decoders[0].decoder_version if decoder_registry is not None else None
+    )
     candidate = ResolvedConfigSnapshot(
         config_hash=config_hash or "",
         config_version="2026.06.20-1",
@@ -53,7 +98,8 @@ def snapshot(
                 payload_template=payload_template,
                 raw_policy=raw_policy,
                 decoder=raw_decoder,
-                decoder_id=decoder_id,
+                decoder_id=station_decoder_id,
+                decoder_version=station_decoder_version,
             ),
             ResolvedStationSnapshot(
                 station_id="WS02",
@@ -64,12 +110,20 @@ def snapshot(
                 payload_template=payload_template,
                 raw_policy=raw_policy,
                 decoder=raw_decoder,
-                decoder_id=decoder_id,
+                decoder_id=station_decoder_id,
+                decoder_version=station_decoder_version,
             ),
         ),
         route_graph=RouteGraphSnapshot(
             edges=(RouteEdgeSnapshot(from_station_id=route_from, to_station_id="WS02"),)
         ),
+        decoder_registry_snapshot_id=(
+            decoder_registry.registry_snapshot_id if decoder_registry is not None else None
+        ),
+        decoder_registry_content_hash=(
+            decoder_registry.registry_content_hash if decoder_registry is not None else None
+        ),
+        decoder_registry=decoder_registry,
     )
     if config_hash is not None:
         return candidate
@@ -430,6 +484,172 @@ def test_unknown_decoder_id_without_authorized_callable_fails_closed() -> None:
     assert decision.lifecycle is None
 
 
+def test_raw_decoder_requires_immutable_registry_snapshot_binding() -> None:
+    snap = snapshot(
+        raw_policy="raw_required",
+        raw_decoder=decoder,
+        decoder_id="collector.decoder:v1",
+        bind_decoder_registry=False,
+    )
+
+    decision = adapt_source_payload(
+        source(
+            normalized_payload={"torque": 4.8},
+            raw_payload={"torque": 4.8},
+            config_hash=snap.config_hash,
+        ),
+        registry(snap),
+    )
+
+    assert (decision.disposition, decision.final_error_code) == ("rejected", "RAW_PARSE_ERROR")
+    assert decision.normalized_event is not None
+    assert decision.projection_metadata is None
+    assert decision.lifecycle is None
+
+
+def test_decoder_registry_snapshot_identity_and_hash_accept_authorized_raw_decode() -> None:
+    decoder_registry = decoder_registry_snapshot(
+        registry_snapshot_id="registry-historical-v1",
+        decoder_id="collector.screw_result",
+        decoder_version="1.2.0",
+        callable_ref="collector.decoders.screw_result_v1",
+    )
+    snap = snapshot(
+        raw_policy="raw_required",
+        decoder_id="collector.screw_result",
+        decoder_version="1.2.0",
+        decoder_registry=decoder_registry,
+    )
+
+    decision = adapt_source_payload(
+        source(
+            normalized_payload={"torque": 4.8},
+            raw_payload={"torque": 4.8},
+            config_hash=snap.config_hash,
+        ),
+        registry(snap),
+    )
+
+    assert decision.disposition == "accepted"
+    assert snap.decoder_registry_snapshot_id == "registry-historical-v1"
+    assert snap.decoder_registry_content_hash == decoder_registry.registry_content_hash
+    assert decoder_registry.content_hash_matches()
+    assert decision.projection_metadata.production_outcome == "ok"
+
+
+def test_decoder_registry_hash_mismatch_fails_closed_without_projection() -> None:
+    mismatched_registry = decoder_registry_snapshot(content_hash="0" * 64)
+    snap = snapshot(raw_policy="raw_required", decoder_registry=mismatched_registry)
+
+    decision = adapt_source_payload(
+        source(
+            normalized_payload={"torque": 4.8},
+            raw_payload={"torque": 4.8},
+            config_hash=snap.config_hash,
+        ),
+        registry(snap),
+    )
+
+    assert (decision.disposition, decision.final_error_code) == ("rejected", "RAW_PARSE_ERROR")
+    assert decision.normalized_event is not None
+    assert decision.projection_metadata is None
+    assert decision.lifecycle is None
+
+
+def test_unknown_decoder_id_in_registry_fails_closed_without_latest_fallback() -> None:
+    registry_snapshot = decoder_registry_snapshot(decoder_id="collector.known")
+    snap = snapshot(
+        raw_policy="raw_required",
+        decoder_id="collector.unknown",
+        decoder_registry=registry_snapshot,
+    )
+
+    decision = adapt_source_payload(
+        source(
+            normalized_payload={"torque": 4.8},
+            raw_payload={"torque": 4.8},
+            config_hash=snap.config_hash,
+        ),
+        registry(snap),
+    )
+
+    assert (decision.disposition, decision.final_error_code) == ("rejected", "RAW_PARSE_ERROR")
+    assert decision.projection_metadata is None
+    assert decision.lifecycle is None
+
+
+def test_decoder_version_mismatch_fails_closed_without_registry_fallback() -> None:
+    registry_snapshot = decoder_registry_snapshot(
+        decoder_id="collector.screw_result",
+        decoder_version="1.0.0",
+    )
+    snap = snapshot(
+        raw_policy="raw_required",
+        decoder_id="collector.screw_result",
+        decoder_version="2.0.0",
+        decoder_registry=registry_snapshot,
+    )
+
+    decision = adapt_source_payload(
+        source(
+            normalized_payload={"torque": 4.8},
+            raw_payload={"torque": 4.8},
+            config_hash=snap.config_hash,
+        ),
+        registry(snap),
+    )
+
+    assert (decision.disposition, decision.final_error_code) == ("rejected", "RAW_PARSE_ERROR")
+    assert decision.projection_metadata is None
+    assert decision.lifecycle is None
+
+
+def test_decoder_callable_missing_in_registry_fails_closed_without_station_callable_fallback() -> None:
+    missing_callable_registry = decoder_registry_snapshot(raw_decoder=None)
+    snap = snapshot(
+        raw_policy="raw_required",
+        raw_decoder=decoder,
+        decoder_registry=missing_callable_registry,
+    )
+
+    decision = adapt_source_payload(
+        source(
+            normalized_payload={"torque": 4.8},
+            raw_payload={"torque": 4.8},
+            config_hash=snap.config_hash,
+        ),
+        registry(snap),
+    )
+
+    assert (decision.disposition, decision.final_error_code) == ("rejected", "RAW_PARSE_ERROR")
+    assert decision.projection_metadata is None
+    assert decision.lifecycle is None
+
+
+def test_missing_registry_snapshot_does_not_fallback_to_environment_default(monkeypatch) -> None:
+    monkeypatch.setenv("DECODER_REGISTRY_SNAPSHOT_ID", "registry-from-env")
+    monkeypatch.setenv("DECODER_ID", "collector.decoder")
+    snap = snapshot(
+        raw_policy="raw_required",
+        raw_decoder=decoder,
+        decoder_id="collector.decoder",
+        decoder_version="1.0.0",
+        bind_decoder_registry=False,
+    )
+
+    decision = adapt_source_payload(
+        source(
+            normalized_payload={"torque": 4.8},
+            raw_payload={"torque": 4.8},
+            config_hash=snap.config_hash,
+        ),
+        registry(snap),
+    )
+
+    assert (decision.disposition, decision.final_error_code) == ("rejected", "RAW_PARSE_ERROR")
+    assert decision.projection_metadata is None
+
+
 def test_historical_decoder_binding_never_falls_back_to_latest_callable() -> None:
     def latest_decoder(raw_payload, _event):
         return {"torque": raw_payload["torque"]}
@@ -458,6 +678,57 @@ def test_historical_decoder_binding_never_falls_back_to_latest_callable() -> Non
     assert missing_callable.projection_metadata is None
     assert missing_callable.lifecycle is None
     assert_diagnostic_only_rejection(missing_historical_snapshot, "CONFIG_NOT_FOUND")
+
+
+def test_historical_event_uses_historical_config_and_registry_snapshot() -> None:
+    def historical_decoder(raw_payload, _event):
+        return {"torque": raw_payload["legacy_torque"]}
+
+    def current_decoder(raw_payload, _event):
+        return {"torque": raw_payload["torque"]}
+
+    old_registry = decoder_registry_snapshot(
+        registry_snapshot_id="registry-v1",
+        decoder_id="collector.screw_result",
+        decoder_version="1.0.0",
+        raw_decoder=historical_decoder,
+        callable_ref="collector.decoders.legacy_screw_result",
+    )
+    current_registry = decoder_registry_snapshot(
+        registry_snapshot_id="registry-v2",
+        decoder_id="collector.screw_result",
+        decoder_version="2.0.0",
+        raw_decoder=current_decoder,
+        callable_ref="collector.decoders.current_screw_result",
+    )
+    old = snapshot(
+        station_type="historical_screw",
+        raw_policy="raw_required",
+        decoder_id="collector.screw_result",
+        decoder_version="1.0.0",
+        decoder_registry=old_registry,
+    )
+    current = snapshot(
+        station_type="current_screw",
+        raw_policy="raw_required",
+        decoder_id="collector.screw_result",
+        decoder_version="2.0.0",
+        decoder_registry=current_registry,
+    )
+    payload = source(
+        config_hash=old.config_hash,
+        normalized_payload={"torque": 4.8},
+        raw_payload={"legacy_torque": 4.8, "torque": 9.9},
+    )
+
+    decision = adapt_source_payload(payload, registry(old, current))
+    missing_historical = adapt_source_payload(payload, registry(current))
+
+    assert decision.disposition == "accepted"
+    assert decision.normalized_event["station_type"] == "historical_screw"
+    assert old.decoder_registry_snapshot_id == "registry-v1"
+    assert current.decoder_registry_snapshot_id == "registry-v2"
+    assert_diagnostic_only_rejection(missing_historical, "CONFIG_NOT_FOUND")
 
 
 def test_decoded_output_mismatch_keeps_evidence_but_never_projects() -> None:
