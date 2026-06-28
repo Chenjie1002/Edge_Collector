@@ -407,6 +407,87 @@ def test_source_builder_emits_raw_hex_from_station_read_plan_bytes() -> None:
     assert payload["payload"]["station_status"] == 1
 
 
+def test_source_builder_empty_raw_bytes_keeps_explicit_empty_raw_hex() -> None:
+    mapping = parse()
+    station = replace(mapping.runtime_snapshot.station_for("WS01"), raw_policy="raw_capable")
+
+    payload = build_runtime_source_payload(
+        decoded_fields={
+            "station_status": 1,
+            "cycle_counter": 42,
+            "cycle_valid": True,
+            "result": 1,
+            "unit_id": "UNIT-42",
+            "station_dmc": "DMC-42",
+            "plc_start_time": "2026-06-26T10:00:00+08:00",
+            "plc_end_time": "2026-06-26T10:00:30+08:00",
+            "nok_code_count": 0,
+        },
+        raw_bytes=b"",
+        station_snapshot=station,
+        resolved_config_hash=mapping.runtime_snapshot.config_hash,
+        plc_boot_id="BOOT-1",
+        observed_at="2026-06-26T02:00:31Z",
+        code_tables=mapping.code_tables,
+    )
+
+    assert payload["raw_payload"] == {"raw_hex": ""}
+
+
+def test_source_builder_accepts_bytes_like_raw_without_mutating_normalized_payload() -> None:
+    mapping = parse()
+    station = replace(mapping.runtime_snapshot.station_for("WS01"), raw_policy="raw_capable")
+
+    payload = build_runtime_source_payload(
+        decoded_fields={
+            "station_status": 1,
+            "cycle_counter": 42,
+            "cycle_valid": True,
+            "result": 1,
+            "unit_id": "UNIT-42",
+            "station_dmc": "DMC-42",
+            "plc_start_time": "2026-06-26T10:00:00+08:00",
+            "plc_end_time": "2026-06-26T10:00:30+08:00",
+            "nok_code_count": 0,
+        },
+        raw_bytes=memoryview(b"\x01\x02\x03"),
+        station_snapshot=station,
+        resolved_config_hash=mapping.runtime_snapshot.config_hash,
+        plc_boot_id="BOOT-1",
+        observed_at="2026-06-26T02:00:31Z",
+        code_tables=mapping.code_tables,
+    )
+
+    assert payload["raw_payload"] == {"raw_hex": "010203"}
+    assert payload["payload"]["station_status"] == 1
+
+
+def test_source_builder_wrong_type_raw_bytes_fails_before_adapter_side_effects() -> None:
+    mapping = parse()
+    station = replace(mapping.runtime_snapshot.station_for("WS01"), raw_policy="raw_capable")
+
+    with pytest.raises(TypeError):
+        build_runtime_source_payload(
+            decoded_fields={
+                "station_status": 1,
+                "cycle_counter": 42,
+                "cycle_valid": True,
+                "result": 1,
+                "unit_id": "UNIT-42",
+                "station_dmc": "DMC-42",
+                "plc_start_time": "2026-06-26T10:00:00+08:00",
+                "plc_end_time": "2026-06-26T10:00:30+08:00",
+                "nok_code_count": 0,
+            },
+            raw_bytes=object(),
+            station_snapshot=station,
+            resolved_config_hash=mapping.runtime_snapshot.config_hash,
+            plc_boot_id="BOOT-1",
+            observed_at="2026-06-26T02:00:31Z",
+            code_tables=mapping.code_tables,
+        )
+
+
 @pytest.mark.parametrize("raw_policy", ["raw_required", "raw_capable", "unexpected_policy"])
 def test_source_builder_missing_raw_fails_closed_unless_snapshot_declares_no_raw(raw_policy: str) -> None:
     mapping = parse()

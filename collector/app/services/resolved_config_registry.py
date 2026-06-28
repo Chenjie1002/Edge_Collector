@@ -343,7 +343,7 @@ def _runtime_raw_hex_decoder(
         plan = plans.get(station_id)
         if plan is None:
             raise ValueError("DECODER_STATION_UNKNOWN")
-        decoded = decode_read_plan(bytes.fromhex(raw_hex), plan, mapping_snapshot.timezone)
+        decoded = decode_read_plan(bytearray.fromhex(raw_hex), plan, mapping_snapshot.timezone)
         return _normalized_payload(decoded)
 
     return decode_runtime_raw_hex_payload
