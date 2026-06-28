@@ -210,7 +210,11 @@ Before assigning a task, PM must record:
 - whether a new Thread is needed;
 - the reason for continuing the current Thread or opening a new one.
 
-Future Codex prompts should prefer this short pattern:
+Future Codex prompts should prefer this short pattern.
+
+When PM issues a task prompt for another Thread, the prompt should be returned as one complete copyable Markdown block. Do not split a prompt across multiple separate code fences in the ChatGPT answer. Inside the copyable prompt, nested command, file, and path examples may still use fenced blocks when useful.
+
+Future Codex prompts should use this pattern:
 
 ```text
 报告名称：
