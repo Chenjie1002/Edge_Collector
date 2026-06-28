@@ -2,15 +2,16 @@
 
 Date: 2026-06-28
 
-Status: Sprint 3 Collector Ingestion Adapter planning/status reference. D3
-runtime raw wiring is implemented, reviewed, committed and pushed at `c9e7c22`.
+Status: Sprint 3 Collector Ingestion Adapter planning/status reference. E1
+runtime raw decoder repair is implemented, reviewed, committed and pushed at
+`2c73410`.
 DB/API/Dashboard/V-PLC/PLC pilot/deploy/tag/rollback remain not authorized.
 
-Live baseline at D3 docs/status sync authoring time:
+Live baseline at E1 docs/status sync authoring time:
 
 - Branch: `main`.
-- HEAD / `origin/main`: `c9e7c22c105977ba44d99610999b3e5ce7b72a37`.
-- Latest commit: `c9e7c22 Implement Sprint 3 Slice D3 runtime raw wiring`.
+- HEAD / `origin/main`: `2c73410281d1465db166b66ddc23e27d9337b90a`.
+- Latest commit: `2c73410 Repair Sprint 3 Slice E1 runtime raw decoder`.
 - Sprint 2 implementation commit: `17cf5d2 Implement Sprint 2 generic station event model`.
 - Sprint 2 docs-only closeout commit: `82b2127 Close out Sprint 2 documentation state`.
 - Phase-1 tag: `phase1-pass-20260619`.
@@ -232,6 +233,29 @@ Docker/deploy/tag/rollback not authorized.
 ACK/read_done ownership unchanged.
 ```
 
+E1 runtime raw decoder repair is implemented, reviewed, committed and pushed at
+`2c73410`. E1 is a narrow repair after Slice E HOLD. It changes the runtime raw
+decoder payload materialization so `decode_read_plan(...)` receives
+`bytearray.fromhex(raw_hex)` as local mutable decode input, while canonical
+`raw_hex` evidence remains unchanged. Nominal Snap7 raw path persists exactly
+once and ACK/read_done side effect occurs exactly once. Malformed raw remains
+`RAW_PARSE_ERROR` fail-closed, raw/normalized mismatch remains
+`RAW_NORMALIZED_MISMATCH` fail-closed, non-accepted decisions still do not
+persist/ACK, diagnostics remain diagnostics and raw evidence remains evidence,
+not production fact.
+
+E1 committed files:
+
+```text
+collector/app/services/resolved_config_registry.py
+collector/tests/test_event_collector_adapter_gate.py
+tests/test_collector_station_event_runtime_source.py
+```
+
+E1 preserves exclusions: `config/mapping.yaml`, `raw_policy`, `storage.py`,
+DB/API/Dashboard/frontend, V-PLC behavior, Docker/deploy and ACK/read_done
+ownership remain unchanged.
+
 ### 4.4 Raw / normalized authority matrix
 
 The contract defines the matrix for:
@@ -379,9 +403,9 @@ Explicitly excluded:
 
 ## 8. Current control conclusion
 
-Conclusion: `PASS WITH RECOMMENDATIONS` for D3 docs/status sync preparation.
-D3 review status has been synchronized after implementation, focused reviews
-and exact allowlist commit/push at `c9e7c22`.
+Conclusion: `PASS WITH RECOMMENDATIONS` for E1 docs/status sync preparation.
+E1 review status has been synchronized after implementation, focused reviews
+and exact allowlist commit/push at `2c73410`.
 
 Reliability Review: `PASS WITH RECOMMENDATIONS`, no blocker.
 
@@ -395,7 +419,8 @@ D2-A decoder authority docs/contract-only repair: recorded. D2-A adds no code,
 tests, config, schema, mapping, runtime Collector integration or raw runtime
 wiring. D2-B fixture/test-only hardening is recorded at `dafbbf8`. D2-C minimal
 registry/schema implementation is recorded at `5e5a617`. D3 runtime raw wiring
-is recorded at `c9e7c22`.
+is recorded at `c9e7c22`. E1 runtime raw decoder repair is recorded at
+`2c73410` / `2c73410281d1465db166b66ddc23e27d9337b90a`.
 
 D2-C carry-forward recommendations:
 
@@ -412,6 +437,15 @@ D3 carry-forward recommendations:
 current config/mapping.yaml runtime default still uses raw_policy: raw_not_provided; D3 runtime code path always passes raw_bytes=data, so this is not a blocker.
 If PM later wants runtime source policy explicitly changed to raw_capable/raw_required, it needs a separate mapping/config authority change and review.
 Next technical gate should not expand DB/API/Dashboard/V-PLC/storage.py/ACK/deploy without separate PM authorization.
+```
+
+E1 carry-forward recommendations:
+
+```text
+E1 is closed at 2c73410 as a narrow runtime raw decoder repair after Slice E HOLD.
+E1 does not authorize config/mapping.yaml, raw_policy, storage.py, DB/API/Dashboard/frontend, V-PLC behavior, Docker/deploy or ACK/read_done ownership changes.
+Future raw_policy change from raw_not_provided to raw_capable/raw_required requires a separate Level 2 mapping/config authority gate.
+Current eligible next step is PM handoff readiness or next slice planning, not immediate DB/API/Dashboard/V-PLC/deploy.
 ```
 
 Eligible for next PM planning gate: yes.

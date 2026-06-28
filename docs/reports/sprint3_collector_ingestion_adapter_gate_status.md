@@ -15,8 +15,8 @@ Read this file together with:
 
 ```text
 live HEAD / origin/main at authoring time:
-c9e7c22c105977ba44d99610999b3e5ce7b72a37
-c9e7c22 Implement Sprint 3 Slice D3 runtime raw wiring
+2c73410281d1465db166b66ddc23e27d9337b90a
+2c73410 Repair Sprint 3 Slice E1 runtime raw decoder
 
 Branch:
 main
@@ -35,6 +35,7 @@ Slice D2-A decoder authority docs/contract-only repair implemented and committed
 Slice D2-B decoder authority tests-only hardening implemented and committed
 Slice D2-C decoder registry authority implemented and committed
 Slice D3 runtime raw wiring implemented and committed
+Slice E1 runtime raw decoder repair implemented and committed
 
 Deploy / rollback drill:
 not performed
@@ -58,6 +59,7 @@ Slice D2-A decoder authority docs/contract-only repair is tracked in commit `2f6
 Slice D2-B decoder authority tests-only hardening is tracked in commit `dafbbf8`.
 Slice D2-C decoder registry authority is tracked in commit `5e5a617`.
 Slice D3 runtime raw wiring is tracked in commit `c9e7c22`.
+Slice E1 runtime raw decoder repair is tracked in commit `2c73410`.
 
 Sprint 3 implementation files committed:
 
@@ -123,6 +125,14 @@ collector/app/services/event_collector.py
 collector/app/services/resolved_config_registry.py
 collector/tests/test_event_collector_adapter_gate.py
 config/mapping.yaml
+tests/test_collector_station_event_runtime_source.py
+```
+
+Sprint 3 Slice E1 runtime raw decoder repair files committed:
+
+```text
+collector/app/services/resolved_config_registry.py
+collector/tests/test_event_collector_adapter_gate.py
 tests/test_collector_station_event_runtime_source.py
 ```
 
@@ -243,6 +253,11 @@ behavior, Docker/deploy/tag/rollback or ACK/read_done ownership.
 | Slice D3 Data Quality focused implementation review | PASS WITH RECOMMENDATIONS | none |
 | Slice D3 Verification focused implementation review / exact allowlist audit | PASS WITH RECOMMENDATIONS | none |
 | Slice D3 exact allowlist commit/push | PASS | none |
+| Slice E1 runtime raw decoder repair implementation | PASS WITH RECOMMENDATIONS | none |
+| Slice E1 Reliability focused review | PASS | none |
+| Slice E1 Data Quality focused review | PASS | none |
+| Slice E1 Verification focused review / exact allowlist audit | PASS WITH RECOMMENDATIONS | none |
+| Slice E1 exact allowlist commit/push | PASS | none |
 
 Current overall status:
 
@@ -256,6 +271,7 @@ Sprint 3 Slice D2-A decoder authority docs/contract-only repair: reviewed, recom
 Sprint 3 Slice D2-B fixture/test-only decoder authority hardening: implemented, reviewed, committed and pushed at dafbbf8.
 Sprint 3 Slice D2-C decoder registry authority: implemented, reviewed, committed and pushed at 5e5a617.
 Sprint 3 Slice D3 runtime raw wiring: implemented, reviewed, committed and pushed at c9e7c22.
+Sprint 3 Slice E1 runtime raw decoder repair: implemented, reviewed, committed and pushed at 2c73410.
 Slice B inserted the adapter gate after payload/cycle/counter guards and counter reset fail-safe, before existing storage.persist_cycle().
 Slice B accepted-only path continues to existing storage.persist_cycle() plus existing read_done/ACK behavior.
 Slice B non-accepted decisions do not persist, do not project, do not write defect detail, and do not ACK.
@@ -305,11 +321,16 @@ Slice D3 mapping.py parses, validates and hash-covers authority fields.
 Slice D3 resolved_config_registry.py builds immutable decoder registry snapshot binding from runtime mapping.
 Slice D3 intends no env/default/latest/ad hoc fallback.
 Slice D3 introduced no DB/API/Dashboard-visible behavior change, no storage.py change, no V-PLC behavior change, no Docker/deploy/tag/rollback change and no ACK/read_done ownership change.
+Slice E1 repaired the runtime raw decoder by using bytearray.fromhex(raw_hex) as local decode input for decode_read_plan(...).
+Slice E1 keeps canonical raw_hex evidence unchanged; bytearray is not persisted evidence or production fact.
+Slice E1 keeps nominal Snap7 raw path persist/ACK exactly once and malformed raw / raw-normalized mismatch fail-closed.
+Slice E1 introduced no config/mapping.yaml, raw_policy, storage.py, DB/API/Dashboard/frontend, V-PLC behavior, Docker/deploy or ACK/read_done ownership change.
 Docs/status sync completed at fd79e21.
 Docs/status baseline repair completed at 4f424c6.
 PM rules / baseline semantics repair pre-baseline: e284a06 Repair PM rules and Sprint 3 baseline status.
-Eligible for D3 docs/status sync exact allowlist after implementation commit c9e7c22: yes.
+Eligible for PM handoff readiness or downstream next-slice planning after E1 docs/status sync: yes.
 D3 actual raw-capable/raw-required runtime wiring: CLOSED at c9e7c22.
+E1 runtime raw decoder repair: CLOSED at 2c73410 / 2c73410281d1465db166b66ddc23e27d9337b90a.
 DB/API/Dashboard/V-PLC/deploy/tag/rollback/real PLC pilot: not authorized.
 ```
 
@@ -443,6 +464,22 @@ git diff --check: PASS
 git diff --cached --check: PASS
 ```
 
+Last observed Slice E1 validation/review results before exact allowlist commit:
+
+```text
+Architecture / Integration implementation: PASS WITH RECOMMENDATIONS
+Reliability focused review: PASS
+Data Quality focused review: PASS
+Verification focused review / exact allowlist audit: PASS WITH RECOMMENDATIONS
+collector/tests/test_snap7_reliability_integration.py -> 1 passed
+collector/tests/test_event_collector_adapter_gate.py -> 30 passed
+collector/tests/test_event_collector_reliability.py -> 6 passed
+tests/test_collector_station_event_runtime_source.py -> 45 passed
+tests/test_collector_station_event_adapter.py -> 43 passed
+compileall collector/app/plc collector/app/services -> PASS
+git diff --check: PASS
+```
+
 For future hardening or next-slice work, rerun the relevant focused and regression tests before staging.
 
 ## 7. Exact commit allowlist history
@@ -568,6 +605,21 @@ Commit message used:
 Implement Sprint 3 Slice D3 runtime raw wiring
 ```
 
+The Slice E1 runtime raw decoder repair exact allowlist commit has also been
+completed. The only files committed in `2c73410` were:
+
+```text
+collector/app/services/resolved_config_registry.py
+collector/tests/test_event_collector_adapter_gate.py
+tests/test_collector_station_event_runtime_source.py
+```
+
+Commit message used:
+
+```text
+Repair Sprint 3 Slice E1 runtime raw decoder
+```
+
 Slice C carry-forward recommendations:
 
 ```text
@@ -615,6 +667,15 @@ Slice D3 carry-forward recommendations:
 current config/mapping.yaml runtime default still uses raw_policy: raw_not_provided; D3 runtime code path always passes raw_bytes=data, so this is not a blocker.
 If PM later wants runtime source policy explicitly changed to raw_capable/raw_required, it needs a separate mapping/config authority change and review.
 Next technical gate should not expand DB/API/Dashboard/V-PLC/storage.py/ACK/deploy without separate PM authorization.
+```
+
+Slice E1 carry-forward recommendations:
+
+```text
+E1 is closed at 2c73410 as a narrow runtime raw decoder repair after Slice E HOLD.
+E1 does not authorize config/mapping.yaml, raw_policy, storage.py, DB/API/Dashboard/frontend, V-PLC behavior, Docker/deploy or ACK/read_done ownership changes.
+Future raw_policy change from raw_not_provided to raw_capable/raw_required requires a separate Level 2 mapping/config authority gate.
+Current eligible next step is PM handoff readiness or next slice planning, not immediate DB/API/Dashboard/V-PLC/deploy.
 ```
 
 Required exclusions for future tasks remain:

@@ -2,7 +2,8 @@
 
 Status: Sprint 3 Collector ingestion adapter contract. Offline adapter,
 runtime adapter gate, diagnostics, raw boundary tests, D2-C offline decoder
-registry authority and D3 runtime raw wiring are implemented/reviewed/committed.
+registry authority, D3 runtime raw wiring and E1 runtime raw decoder repair are
+implemented/reviewed/committed.
 DB writes, API endpoints, Dashboard, V-PLC behavior changes, PLC pilot,
 storage.py changes, ACK/read_done ownership changes, deploy, tag and rollback
 are not authorized.
@@ -230,8 +231,9 @@ D2-C decoder registry authority is implemented, reviewed, committed and pushed
 at `5e5a617` for the offline adapter authority path. It implements immutable
 decoder registry/schema authority and decoder callable binding for resolved
 config snapshots. D3 runtime raw wiring is implemented, reviewed, committed and
-pushed at `c9e7c22`. DB/API/Dashboard/V-PLC/deploy changes, storage.py changes
-and ACK/read_done ownership changes remain unauthorized.
+pushed at `c9e7c22`. E1 runtime raw decoder repair is implemented, reviewed,
+committed and pushed at `2c73410`. DB/API/Dashboard/V-PLC/deploy changes,
+storage.py changes and ACK/read_done ownership changes remain unauthorized.
 
 For any source that carries raw evidence or is declared `raw_capable` /
 `raw_required`, the resolved config snapshot must bind interpretation to an
@@ -320,6 +322,16 @@ default still uses `raw_policy: raw_not_provided`; the D3 runtime code path
 always passes `raw_bytes=data`, so this is not a blocker. If PM later wants
 runtime source policy explicitly changed to `raw_capable` / `raw_required`, it
 needs a separate mapping/config authority change and review.
+
+E1 closes a narrow runtime raw decoder repair after Slice E HOLD. The runtime
+decoder now uses `decode_read_plan(bytearray.fromhex(raw_hex), plan,
+mapping_snapshot.timezone)` so Snap7 util decode paths that require mutable
+buffers can materialize payloads. The `bytearray` is local decode input only:
+canonical raw evidence still comes from `bytes(raw_bytes).hex()` on the runtime
+source path. E1 preserves malformed raw as `RAW_PARSE_ERROR` fail-closed,
+raw/normalized mismatch as `RAW_NORMALIZED_MISMATCH` fail-closed, accepted-only
+persist/ACK behavior, diagnostic-only rejected paths and all DB/API/Dashboard,
+V-PLC, `storage.py`, deploy and ACK/read_done exclusions.
 
 ### 4.4 Fail-closed cases
 
@@ -515,13 +527,20 @@ D2-A decoder authority docs/contract-only repair: recorded. D2-C decoder
 registry authority is implemented, reviewed, committed and pushed at
 `5e5a617`. D2-C implements offline immutable decoder registry/schema authority
 and decoder callable binding. D3 runtime raw wiring is implemented, reviewed,
-committed and pushed at `c9e7c22`.
+committed and pushed at `c9e7c22`. E1 runtime raw decoder repair is implemented,
+reviewed, committed and pushed at `2c73410`.
 
 D3 carry-forward recommendation: current `config/mapping.yaml` runtime default
 still uses `raw_policy: raw_not_provided`; D3 runtime code path always passes
 `raw_bytes=data`, so this is not a blocker. If PM later wants runtime source
 policy explicitly changed to `raw_capable` / `raw_required`, it needs a separate
 mapping/config authority change and review.
+
+E1 carry-forward recommendation: E1 is closed as a narrow runtime raw decoder
+repair after Slice E HOLD. It does not authorize `config/mapping.yaml`,
+`raw_policy`, `storage.py`, DB/API/Dashboard/frontend, V-PLC behavior,
+Docker/deploy or ACK/read_done ownership changes. Future raw_policy changes
+remain a separate Level 2 mapping/config authority gate.
 
 Eligible for next PM planning gate: yes.
 

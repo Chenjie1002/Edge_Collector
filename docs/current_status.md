@@ -6,14 +6,14 @@
 
 ## 0. 当前 PM / Codex 协作状态
 
-当前主线：Phase-2 Sprint 3 Slice D3 runtime raw wiring docs/status sync closeout。
+当前主线：Phase-2 Sprint 3 Slice E1 runtime raw decoder repair docs/status sync closeout。
 
 Last verified baseline before this docs sync:
 
 ```text
 live HEAD / origin/main at authoring time:
-c9e7c22c105977ba44d99610999b3e5ce7b72a37
-c9e7c22 Implement Sprint 3 Slice D3 runtime raw wiring
+2c73410281d1465db166b66ddc23e27d9337b90a
+2c73410 Repair Sprint 3 Slice E1 runtime raw decoder
 
 branch:
 main
@@ -41,6 +41,11 @@ Slice D3 Reliability focused implementation review: PASS WITH RECOMMENDATIONS, n
 Slice D3 Data Quality focused implementation review: PASS WITH RECOMMENDATIONS, no blocker
 Slice D3 Verification focused implementation review / exact allowlist audit: PASS WITH RECOMMENDATIONS, no blocker
 Slice D3 exact allowlist commit/push: PASS, commit c9e7c22
+Slice E1 runtime raw decoder repair implementation: PASS WITH RECOMMENDATIONS
+Slice E1 Reliability focused review: PASS, no blocker
+Slice E1 Data Quality focused review: PASS, no blocker
+Slice E1 Verification focused review / exact allowlist audit: PASS WITH RECOMMENDATIONS, no blocker
+Slice E1 exact allowlist commit/push: PASS, commit 2c73410
 Slice D2-C decoder registry authority implementation: PASS WITH RECOMMENDATIONS
 Slice D2-C Reliability implementation review: PASS WITH RECOMMENDATIONS, no blocker
 Slice D2-C Data Quality implementation review: PASS WITH RECOMMENDATIONS, no blocker
@@ -76,10 +81,42 @@ R-N1/R-N2 hardening commit/push: PASS, commit 577c1a1
 Docs/status sync: PASS, commit fd79e21
 Docs/status baseline repair: PASS, commit 4f424c6
 PM rules / baseline semantics repair: PASS, commit e284a06
-Eligible for downstream PM planning for next runtime slice: yes
-D3 docs/status sync exact allowlist: local sync prepared after implementation commit c9e7c22
+Eligible for PM handoff readiness or downstream next-slice planning: yes
+D3 docs/status sync exact allowlist: completed after implementation commit c9e7c22
 D3 actual raw-capable/raw-required runtime wiring: CLOSED at c9e7c22
+E1 runtime raw decoder repair: CLOSED at 2c73410 / 2c73410281d1465db166b66ddc23e27d9337b90a
 DB/API/Dashboard/V-PLC/deploy/tag/rollback/real PLC pilot: not authorized
+```
+
+当前 Sprint 3 Slice E1 runtime raw decoder repair files 已提交：
+
+```text
+collector/app/services/resolved_config_registry.py
+collector/tests/test_event_collector_adapter_gate.py
+tests/test_collector_station_event_runtime_source.py
+```
+
+Slice E1 runtime raw decoder repair summary:
+
+```text
+Slice E1 repaired a narrow runtime raw decoder payload materialization issue after Slice E HOLD.
+Commit message: Repair Sprint 3 Slice E1 runtime raw decoder.
+Commit: 2c73410 / 2c73410281d1465db166b66ddc23e27d9337b90a.
+Root cause: runtime raw decoder converted raw_hex with immutable bytes.fromhex(...).
+Snap7 util decode path can require a mutable buffer and raised TypeError: 'bytes' object does not support item assignment.
+Repair: decode_read_plan(bytearray.fromhex(raw_hex), plan, mapping_snapshot.timezone).
+The bytearray is local decode input only.
+Canonical raw_hex evidence remains unchanged and still comes from bytes(raw_bytes).hex().
+Nominal Snap7 raw path persists exactly once and ACK/read_done side effect occurs exactly once.
+Malformed raw remains RAW_PARSE_ERROR fail-closed.
+Raw/normalized mismatch remains RAW_NORMALIZED_MISMATCH fail-closed.
+Non-accepted decisions still do not persist/ACK.
+Diagnostics remain diagnostics.
+Raw evidence remains evidence, not production fact.
+Reliability focused review: PASS.
+Data Quality focused review: PASS.
+Verification focused review / exact allowlist audit: PASS WITH RECOMMENDATIONS.
+config/mapping.yaml, raw_policy, storage.py, DB/API/Dashboard/frontend, V-PLC behavior, Docker/deploy and ACK/read_done ownership unchanged.
 ```
 
 当前 Sprint 3 Slice D3 runtime raw wiring files 已提交：
@@ -322,6 +359,15 @@ Slice D3 carry-forward recommendations:
 current config/mapping.yaml runtime default still uses raw_policy: raw_not_provided; D3 runtime code path always passes raw_bytes=data, so this is not a blocker.
 If PM later wants runtime source policy explicitly changed to raw_capable/raw_required, it needs a separate mapping/config authority change and review.
 Next technical gate should not expand DB/API/Dashboard/V-PLC/storage.py/ACK/deploy without separate PM authorization.
+```
+
+Slice E1 carry-forward recommendations:
+
+```text
+E1 is closed at 2c73410 as a narrow runtime raw decoder repair after Slice E HOLD.
+E1 does not authorize config/mapping.yaml, raw_policy, storage.py, DB/API/Dashboard/frontend, V-PLC behavior, Docker/deploy or ACK/read_done ownership changes.
+Future raw_policy change from raw_not_provided to raw_capable/raw_required requires a separate Level 2 mapping/config authority gate.
+Current eligible next step is PM handoff readiness or next slice planning, not immediate DB/API/Dashboard/V-PLC/deploy.
 ```
 
 Slice D2-A carry-forward recommendations:
