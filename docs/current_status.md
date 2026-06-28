@@ -6,14 +6,14 @@
 
 ## 0. 当前 PM / Codex 协作状态
 
-当前主线：Phase-2 Sprint 3 Slice D2-B decoder authority tests-only docs/status sync closeout。
+当前主线：Phase-2 Sprint 3 Slice D2-C decoder registry authority docs/status sync closeout。
 
 Last verified baseline before this docs sync:
 
 ```text
-last verified HEAD / origin/main at authoring time:
-dafbbf8b93e6e24aa482618ca634b69df3675a94
-dafbbf8 Harden Sprint 3 Slice D2-B decoder authority tests
+live HEAD / origin/main at authoring time:
+5e5a61781d7651da3f629f2d770eaca954e861cd
+5e5a617 Implement Sprint 3 Slice D2-C decoder registry authority
 
 branch:
 main
@@ -36,6 +36,11 @@ Slice D2-B Reliability focused review: PASS WITH RECOMMENDATIONS, no blocker
 Slice D2-B Data Quality focused review: PASS WITH RECOMMENDATIONS, no blocker
 Slice D2-B Verification focused review / exact allowlist audit: PASS WITH RECOMMENDATIONS, no blocker
 Slice D2-B exact two-file tests-only commit/push: PASS, commit dafbbf8
+Slice D2-C decoder registry authority implementation: PASS WITH RECOMMENDATIONS
+Slice D2-C Reliability implementation review: PASS WITH RECOMMENDATIONS, no blocker
+Slice D2-C Data Quality implementation review: PASS WITH RECOMMENDATIONS, no blocker
+Slice D2-C Verification implementation review / exact allowlist audit: PASS WITH RECOMMENDATIONS, no blocker
+Slice D2-C exact allowlist commit/push: PASS, commit 5e5a617
 Slice D2-A decoder authority docs/contract-only repair: PASS WITH RECOMMENDATIONS, closed after recommendation repair
 Slice D2-A Reliability focused review: PASS, no blocker
 Slice D2-A Data Quality focused review: PASS WITH RECOMMENDATIONS, recommendation repaired, no blocker
@@ -67,10 +72,37 @@ Docs/status sync: PASS, commit fd79e21
 Docs/status baseline repair: PASS, commit 4f424c6
 PM rules / baseline semantics repair: PASS, commit e284a06
 Eligible for downstream PM planning for next runtime slice: yes
-D2-B docs/status sync exact allowlist commit/push: eligible after this docs/status sync
-D2-C decoder registry/schema implementation: HOLD until separately authorized
+D2-C docs/status sync exact allowlist commit/push: eligible after this docs/status sync
 D3 actual raw-capable/raw-required runtime wiring: HOLD until separately authorized
 DB/API/Dashboard/V-PLC/deploy/tag/rollback/real PLC pilot: not authorized
+```
+
+当前 Sprint 3 Slice D2-C decoder registry authority files 已提交：
+
+```text
+collector/app/services/decoder_registry.py
+collector/app/services/resolved_config_registry.py
+tests/test_collector_station_event_adapter.py
+```
+
+Slice D2-C decoder registry authority summary:
+
+```text
+Slice D2-C decoder registry authority implemented, reviewed, committed and pushed at 5e5a617.
+Commit message: Implement Sprint 3 Slice D2-C decoder registry authority.
+D2-C adds offline decoder registry/schema authority and immutable decoder binding to resolved config snapshots.
+D2-C requires decoder id/version/callable binding from immutable DecoderRegistrySnapshot and binds decoder registry snapshot identity/content hash to the resolved config snapshot.
+Missing registry, registry hash mismatch, unknown decoder id, decoder version mismatch, callable missing, callable exception and decoded output mismatch fail closed.
+D2-C has no fallback to latest/current registry, latest/current config, current mapping file, environment defaults or ad hoc fixture callable.
+D2-C introduced no D3 runtime raw wiring.
+D2-C introduced no event_collector.py, station_event_runtime_source.py, storage.py, DB/API/Dashboard/V-PLC/Docker/deploy change.
+ACK/read_done ownership unchanged.
+D2-C focused adapter tests: 43 passed.
+Collector adapter gate regression: 22 passed.
+Runtime source regression: 35 passed.
+compileall collector/app/services: PASS.
+git diff --check: PASS.
+git diff --cached --check before commit: PASS.
 ```
 
 当前 Sprint 3 Slice D2-B tests-only hardening files 已提交：
@@ -121,7 +153,9 @@ unknown decoder id, missing callable, decoder exception, decoder output mismatch
 raw_not_provided remains the only normalized-only authority.
 raw_capable/raw_required missing raw remain fail-closed unless PM later approves a contract change.
 Reliability review PASS; Data Quality review PASS WITH RECOMMENDATIONS and recommendation repaired; Verification review PASS WITH RECOMMENDATIONS.
-D2-B fixture/test-only, D2-C registry/schema implementation and D3 runtime raw wiring remain separate future gates requiring PM approval.
+D2-B fixture/test-only and D2-C registry/schema implementation later closed as
+separate PM-authorized gates; D3 runtime raw wiring remains a separate future
+gate requiring PM approval.
 ```
 
 当前 Sprint 3 Slice D1 test-only hardening files 已提交：
@@ -233,14 +267,24 @@ Adapter diagnostics remain read-only observability, not ACK policy or production
 No schema/config/mapping/storage/API/Dashboard/V-PLC/deploy work without separate PM approval.
 ```
 
+Slice D2-C carry-forward recommendations:
+
+```text
+D3 runtime raw wiring remains a separate PM-authorized gate.
+Do not infer runtime raw support or runtime current mapping-file no-fallback closure from D2-C PASS.
+Keep rejected-decision normalized_event/canonical_bytes/fact_key diagnostic-only, not production fact or Quality/Pareto/API-visible state.
+Registry failures currently surface as RAW_PARSE_ERROR rather than dedicated decoder-authority public codes; this is non-blocking unless PM opens a future taxonomy gate.
+Adapter remains non-owner of ACK/read_done.
+No DB/API/Dashboard/V-PLC/deploy/tag/rollback/real PLC pilot is authorized.
+```
+
 Slice D2-A carry-forward recommendations:
 
 ```text
 D2-B fixture/test-only decoder authority hardening is implemented, reviewed, committed and pushed at dafbbf8.
-D2-C should cover full decoder registry/schema lookup for unknown decoder id / version mismatch / callable binding.
+D2-C full decoder registry/schema lookup for unknown decoder id / version mismatch / callable binding is implemented, reviewed, committed and pushed at 5e5a617.
 D3 or a separate runtime-source gate is required before claiming runtime current mapping-file path no-fallback is fully closed.
 If diagnostic evidence later enters metrics/alerting, avoid production fact, NOK code, Quality/Pareto outcome naming.
-D2-C decoder registry/schema implementation remains HOLD until separately authorized.
 D3 actual raw-capable/raw-required runtime wiring remains HOLD until separately authorized.
 Adapter remains non-owner of ACK/read_done.
 No DB/API/Dashboard/V-PLC/deploy/tag/rollback/real PLC pilot is authorized.

@@ -1,6 +1,6 @@
 # Sprint 3 Collector Ingestion Adapter Gate Status
 
-Updated: 2026-06-27
+Updated: 2026-06-28
 
 Purpose: compact current gate/status source for Codex Threads working on Sprint 3 Collector Ingestion Adapter.
 
@@ -14,9 +14,9 @@ Read this file together with:
 ## 1. Last verified baseline
 
 ```text
-last verified HEAD / origin/main at authoring time:
-dafbbf8b93e6e24aa482618ca634b69df3675a94
-dafbbf8 Harden Sprint 3 Slice D2-B decoder authority tests
+live HEAD / origin/main at authoring time:
+5e5a61781d7651da3f629f2d770eaca954e861cd
+5e5a617 Implement Sprint 3 Slice D2-C decoder registry authority
 
 Branch:
 main
@@ -33,6 +33,7 @@ Slice C runtime adapter diagnostic observability hardening implemented and commi
 Slice D1 raw boundary test-only hardening implemented and committed
 Slice D2-A decoder authority docs/contract-only repair implemented and committed
 Slice D2-B decoder authority tests-only hardening implemented and committed
+Slice D2-C decoder registry authority implemented and committed
 
 Deploy / rollback drill:
 not performed
@@ -54,6 +55,7 @@ Slice C runtime adapter diagnostic observability hardening is tracked in commit 
 Slice D1 raw boundary test-only hardening is tracked in commit `0358b60`.
 Slice D2-A decoder authority docs/contract-only repair is tracked in commit `2f6294c`.
 Slice D2-B decoder authority tests-only hardening is tracked in commit `dafbbf8`.
+Slice D2-C decoder registry authority is tracked in commit `5e5a617`.
 
 Sprint 3 implementation files committed:
 
@@ -103,10 +105,19 @@ collector/tests/test_event_collector_adapter_gate.py
 tests/test_collector_station_event_adapter.py
 ```
 
+Sprint 3 Slice D2-C decoder registry authority files committed:
+
+```text
+collector/app/services/decoder_registry.py
+collector/app/services/resolved_config_registry.py
+tests/test_collector_station_event_adapter.py
+```
+
 External dirty artifacts currently expected and excluded unless PM explicitly says otherwise:
 
 ```text
 M .gitignore
+M docs/thread_handoff/pm_operating_rules.md
 ?? docs/Edge MES Demo — ChatGPT PM Handoff - 20260623.md
 ?? docs/reports/phase1_to_sprint2_management_keynote_10p.html
 ?? docs/thread_handoff/chatgpt_pm_handoff_20260624.md
@@ -196,6 +207,11 @@ Explicit non-goals for the current slice:
 | Slice D2-B Data Quality focused review | PASS WITH RECOMMENDATIONS | none |
 | Slice D2-B Verification focused review / exact allowlist audit | PASS WITH RECOMMENDATIONS | none |
 | Slice D2-B exact two-file tests-only commit/push | PASS | none |
+| Slice D2-C decoder registry authority implementation | PASS WITH RECOMMENDATIONS | none |
+| Slice D2-C Reliability implementation review | PASS WITH RECOMMENDATIONS | none |
+| Slice D2-C Data Quality implementation review | PASS WITH RECOMMENDATIONS | none |
+| Slice D2-C Verification implementation review / exact allowlist audit | PASS WITH RECOMMENDATIONS | none |
+| Slice D2-C exact allowlist commit/push | PASS | none |
 
 Current overall status:
 
@@ -207,6 +223,7 @@ Sprint 3 Slice C runtime adapter diagnostic observability hardening: implemented
 Sprint 3 Slice D1 raw boundary test-only hardening: implemented, reviewed, committed and pushed at 0358b60.
 Sprint 3 Slice D2-A decoder authority docs/contract-only repair: reviewed, recommendation-repaired, committed and pushed at 2f6294c.
 Sprint 3 Slice D2-B fixture/test-only decoder authority hardening: implemented, reviewed, committed and pushed at dafbbf8.
+Sprint 3 Slice D2-C decoder registry authority: implemented, reviewed, committed and pushed at 5e5a617.
 Slice B inserted the adapter gate after payload/cycle/counter guards and counter reset fail-safe, before existing storage.persist_cycle().
 Slice B accepted-only path continues to existing storage.persist_cycle() plus existing read_done/ACK behavior.
 Slice B non-accepted decisions do not persist, do not project, do not write defect detail, and do not ACK.
@@ -231,16 +248,24 @@ Slice D2-A binds decoder registry identity, decoder id, decoder version, callabl
 Slice D2-A forbids fallback to latest/current runtime config, latest registry, current mapping file, environment defaults or ad hoc fixture fields.
 Slice D2-A fail-closed taxonomy includes RAW_PARSE_ERROR, RAW_NORMALIZED_MISMATCH, RAW_CONTENT_FORBIDDEN and RAW_EVIDENCE_MISSING.
 Slice D2-A keeps raw_not_provided as the only normalized-only authority and keeps raw_capable/raw_required missing raw fail-closed unless PM later approves a contract change.
-Slice D2-A keeps adapter non-owner of ACK/read_done and keeps D2-B/D2-C/D3 as separate future gates.
+Slice D2-A keeps adapter non-owner of ACK/read_done and kept D2-B/D2-C/D3 as separate later gates; D2-B and D2-C are now closed, while D3 remains a future PM-authorized gate.
 Slice D2-B is tests-only hardening; no production code changed.
 Slice D2-B introduced no docs/contracts/plan change in the implementation commit.
 Slice D2-B introduced no schema/config/mapping change, no decoder registry/schema implementation, no runtime raw wiring, no DB/API/Dashboard/V-PLC/Docker/deploy change, and no ACK/read_done ownership change.
 Slice D2-B coverage includes unknown decoder id current test-only expression, missing callable, callable exception via existing D1 coverage, decoded output mismatch, forbidden raw content, RAW_EVIDENCE_MISSING, raw-only / RAW_ONLY_UNSUPPORTED, raw_capable/raw_required missing raw, normalized-only under immutable raw_not_provided authority, no fallback to latest/current config snapshot, no fallback to latest callable / decoder binding, and non-accepted decisions no projection / no persist / no ACK.
+Slice D2-C adds narrow decoder registry authority in collector/app/services/decoder_registry.py.
+Slice D2-C adds immutable DecoderRegistrySnapshot / DecoderBinding authority.
+Slice D2-C binds decoder registry snapshot identity/content hash to the resolved config snapshot.
+Slice D2-C requires decoder id/version/callable binding from immutable registry snapshot.
+Slice D2-C fail-closes missing registry, hash mismatch, unknown decoder id, version mismatch, callable missing, callable exception and decoded output mismatch.
+Slice D2-C has no fallback to latest/current registry, latest/current config, current mapping file, env defaults or ad hoc fixture callable.
+Slice D2-C introduced no D3 runtime raw wiring and no mapping/config/runtime/deploy changes.
+Slice D2-C introduced no event_collector.py, station_event_runtime_source.py, storage.py, DB/API/Dashboard/V-PLC/Docker/deploy changes.
+Slice D2-C leaves ACK/read_done ownership unchanged.
 Docs/status sync completed at fd79e21.
 Docs/status baseline repair completed at 4f424c6.
 PM rules / baseline semantics repair pre-baseline: e284a06 Repair PM rules and Sprint 3 baseline status.
-Eligible for D2-B docs/status sync exact allowlist commit/push after this sync: yes.
-D2-C decoder registry/schema implementation remains HOLD until separately authorized.
+Eligible for D2-C docs/status sync exact allowlist commit/push after this sync: yes.
 D3 actual raw-capable/raw-required runtime wiring remains HOLD until separately authorized.
 DB/API/Dashboard/V-PLC/deploy/tag/rollback/real PLC pilot: not authorized.
 ```
@@ -353,6 +378,17 @@ git diff --check: PASS
 git diff --cached --check: PASS
 ```
 
+Last observed Slice D2-C validation results before exact allowlist commit:
+
+```text
+focused adapter tests: 43 passed
+collector adapter gate regression: 22 passed
+runtime source regression: 35 passed
+compileall collector/app/services: PASS
+git diff --check: PASS
+git diff --cached --check: PASS
+```
+
 For future hardening or next-slice work, rerun the relevant focused and regression tests before staging.
 
 ## 7. Exact commit allowlist history
@@ -445,6 +481,21 @@ Commit message used:
 Harden Sprint 3 Slice D2-B decoder authority tests
 ```
 
+The Slice D2-C decoder registry authority exact allowlist commit has also been
+completed. The only files committed in `5e5a617` were:
+
+```text
+collector/app/services/decoder_registry.py
+collector/app/services/resolved_config_registry.py
+tests/test_collector_station_event_adapter.py
+```
+
+Commit message used:
+
+```text
+Implement Sprint 3 Slice D2-C decoder registry authority
+```
+
 Slice C carry-forward recommendations:
 
 ```text
@@ -469,19 +520,29 @@ Slice D2-A carry-forward recommendations:
 
 ```text
 D2-B fixture/test-only decoder authority hardening is implemented, reviewed, committed and pushed at dafbbf8.
-D2-C should cover full decoder registry/schema lookup for unknown decoder id / version mismatch / callable binding.
+D2-C full decoder registry/schema lookup for unknown decoder id / version mismatch / callable binding is implemented, reviewed, committed and pushed at 5e5a617.
 D3 or a separate runtime-source gate is required before claiming runtime current mapping-file path no-fallback is fully closed.
 If diagnostic evidence later enters metrics/alerting, avoid production fact, NOK code, Quality/Pareto outcome naming.
-D2-C decoder registry/schema implementation remains HOLD until separately authorized.
 D3 actual raw-capable/raw-required runtime wiring remains HOLD until separately authorized.
 Adapter remains non-owner of ACK/read_done.
 No DB/API/Dashboard/V-PLC/deploy/tag/rollback/real PLC pilot is authorized.
+```
+
+Slice D2-C carry-forward recommendations:
+
+```text
+D3 runtime raw wiring remains a separate PM-authorized gate.
+Do not infer runtime raw support or runtime current mapping-file no-fallback closure from D2-C PASS.
+Keep rejected-decision normalized_event/canonical_bytes/fact_key diagnostic-only, not production fact or Quality/Pareto/API-visible state.
+Registry failures currently surface as RAW_PARSE_ERROR rather than dedicated decoder-authority public codes; this is non-blocking unless PM opens a future taxonomy gate.
+No runtime raw wiring, mapping/config/runtime/deploy, DB/API/Dashboard/V-PLC/deploy/tag/rollback or ACK/read_done ownership change is authorized by D2-C.
 ```
 
 Required exclusions for future tasks remain:
 
 ```text
 .gitignore
+docs/thread_handoff/pm_operating_rules.md
 docs/Edge MES Demo — ChatGPT PM Handoff - 20260623.md
 docs/reports/phase1_to_sprint2_management_keynote_10p.html
 docs/thread_handoff/chatgpt_pm_handoff_20260624.md

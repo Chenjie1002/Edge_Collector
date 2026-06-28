@@ -2,14 +2,16 @@
 
 Date: 2026-06-27
 
-Status: Docs-only contract drafting. Sprint 3 Collector Ingestion Adapter
-Contract Planning is `PASS`; implementation, tests, commit/push, DB/API/
-Dashboard/V-PLC/PLC pilot/deploy/tag/rollback are not authorized.
+Status: Sprint 3 Collector Ingestion Adapter planning/status reference. D2-C
+decoder registry authority is implemented, reviewed, committed and pushed at
+`5e5a617`. D3 runtime raw wiring, DB/API/Dashboard/V-PLC/PLC pilot/deploy/tag/
+rollback remain not authorized.
 
-Baseline expected by this draft:
+Live baseline at D2-C docs/status sync authoring time:
 
 - Branch: `main`.
-- HEAD / `origin/main`: `1a22cdc Clarify Sprint 2 closeout repository baseline`.
+- HEAD / `origin/main`: `5e5a61781d7651da3f629f2d770eaca954e861cd`.
+- Latest commit: `5e5a617 Implement Sprint 3 Slice D2-C decoder registry authority`.
 - Sprint 2 implementation commit: `17cf5d2 Implement Sprint 2 generic station event model`.
 - Sprint 2 docs-only closeout commit: `82b2127 Close out Sprint 2 documentation state`.
 - Phase-1 tag: `phase1-pass-20260619`.
@@ -169,15 +171,36 @@ D2 authority decisions now carried by the companion contract:
   contract change;
 - raw evidence is evidence, not an independent production fact.
 
-D2-B remains a future fixture/test-only hardening slice. It should cover decoder
-authority negative cases and raw_policy fixtures after separate PM approval.
+D2-B fixture/test-only hardening is implemented, reviewed, committed and pushed
+at `dafbbf8`. It covers decoder authority negative cases and raw_policy
+fixtures without production code changes.
 
-D2-C remains a future minimal registry/schema implementation slice. It is not
-authorized by D2-A and must not be inferred from this docs repair.
+D2-C minimal registry/schema implementation is implemented, reviewed, committed
+and pushed at `5e5a617`.
+
+D2-C committed files:
+
+```text
+collector/app/services/decoder_registry.py
+collector/app/services/resolved_config_registry.py
+tests/test_collector_station_event_adapter.py
+```
+
+D2-C validation evidence:
+
+```text
+PYTHONPATH=collector:. .venv/bin/python -m pytest tests/test_collector_station_event_adapter.py -> 43 passed
+PYTHONPATH=collector:. .venv/bin/python -m pytest collector/tests/test_event_collector_adapter_gate.py -> 22 passed
+PYTHONPATH=collector:. .venv/bin/python -m pytest tests/test_collector_station_event_runtime_source.py -> 35 passed
+.venv/bin/python -m compileall collector/app/services -> PASS
+git diff --check -> PASS
+git diff --cached --check before commit -> PASS
+```
 
 D3 actual raw-capable/raw-required runtime wiring remains HOLD until D2
 authority is reviewed and separately authorized. D3 owns runtime raw evidence
-wiring, not this D2-A contract repair.
+wiring, not the D2-A contract repair, D2-B tests-only hardening or D2-C offline
+registry/schema implementation.
 
 ### 4.4 Raw / normalized authority matrix
 
@@ -326,7 +349,9 @@ Explicitly excluded:
 
 ## 8. Current control conclusion
 
-Conclusion: `PASS` for docs-only closeout repair / status sync. Review status has been synchronized after the review gates.
+Conclusion: `PASS` for D2-C docs/status sync preparation. D2-C review status
+has been synchronized after implementation, focused reviews and exact allowlist
+commit/push.
 
 Reliability Review: `PASS WITH RECOMMENDATIONS`, no blocker.
 
@@ -338,10 +363,21 @@ Eligible for docs-only closeout decision: yes.
 
 D2-A decoder authority docs/contract-only repair: recorded. D2-A adds no code,
 tests, config, schema, mapping, runtime Collector integration or raw runtime
-wiring. D2-B fixture/test-only hardening, D2-C minimal registry/schema
-implementation and D3 runtime raw wiring remain future separate gates.
+wiring. D2-B fixture/test-only hardening is recorded at `dafbbf8`. D2-C minimal
+registry/schema implementation is recorded at `5e5a617`.
 
-Eligible for implementation: no. PM approval is required before implementation,
-tests, runtime Collector integration, DB/API/Dashboard/V-PLC/PLC pilot,
+D2-C carry-forward recommendations:
+
+```text
+D3 runtime raw wiring remains a separate PM-authorized gate.
+Do not infer runtime raw support or runtime current mapping-file no-fallback closure from D2-C PASS.
+Keep rejected-decision normalized_event/canonical_bytes/fact_key diagnostic-only, not production fact or Quality/Pareto/API-visible state.
+Registry failures currently surface as RAW_PARSE_ERROR rather than dedicated decoder-authority public codes; this is non-blocking unless PM opens a future taxonomy gate.
+```
+
+Eligible for D3 planning gate: yes, after PM approval.
+
+Eligible for implementation without PM approval: no. PM approval is required
+before runtime Collector raw wiring, DB/API/Dashboard/V-PLC/PLC pilot,
 commit/push, tag, deploy, rollback or any change outside the approved docs
 allowlist.

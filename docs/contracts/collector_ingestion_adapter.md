@@ -1,9 +1,10 @@
 # Collector Ingestion Adapter Contract
 
-Status: Sprint 3 docs-only contract draft. Architecture planning for Collector
-ingestion adapter offline fixtures is `PASS`; implementation, tests, runtime
-Collector connection, DB writes, API endpoints, Dashboard, V-PLC behavior
-changes, PLC pilot, deploy, tag and rollback are not authorized.
+Status: Sprint 3 Collector ingestion adapter contract. Offline adapter,
+runtime adapter gate, diagnostics, raw boundary tests and D2-C offline decoder
+registry authority are implemented/reviewed/committed. Runtime raw wiring, DB
+writes, API endpoints, Dashboard, V-PLC behavior changes, PLC pilot, deploy,
+tag and rollback are not authorized.
 
 Updated: 2026-06-27
 
@@ -224,9 +225,12 @@ The resolved snapshot fixture must contain:
 
 ### 4.3 Decoder registry authority
 
-D2 decoder authority is a contract authority repair only. It does not implement
-a decoder registry, decoder callable, schema change, runtime raw wiring or
-runtime Collector integration.
+D2-C decoder registry authority is implemented, reviewed, committed and pushed
+at `5e5a617` for the offline adapter authority path. It implements immutable
+decoder registry/schema authority and decoder callable binding for resolved
+config snapshots. It does not implement D3 runtime raw wiring, runtime Collector
+raw evidence connection, DB/API/Dashboard/V-PLC/deploy changes or ACK/read_done
+ownership changes.
 
 For any source that carries raw evidence or is declared `raw_capable` /
 `raw_required`, the resolved config snapshot must bind interpretation to an
@@ -273,11 +277,31 @@ Fail-closed decoder authority rules:
   metadata, defect detail, Quality/Pareto output, API-visible state or ACK.
 
 D2 owns decoder registry / decoder callable authority and immutable snapshot
-binding. D3 owns actual raw-capable/raw-required runtime wiring. D3 remains
-HOLD until D2 authority is reviewed and separately authorized. This D2-A update
-does not authorize D2-B fixture/test hardening, D2-C registry/schema
-implementation, D3 raw runtime wiring, DB/API/Dashboard/V-PLC/deploy changes or
-ACK/read_done ownership changes.
+binding. D2-C closes the offline registry/schema implementation gate with these
+committed files:
+
+```text
+collector/app/services/decoder_registry.py
+collector/app/services/resolved_config_registry.py
+tests/test_collector_station_event_adapter.py
+```
+
+D2-C validation evidence:
+
+```text
+PYTHONPATH=collector:. .venv/bin/python -m pytest tests/test_collector_station_event_adapter.py -> 43 passed
+PYTHONPATH=collector:. .venv/bin/python -m pytest collector/tests/test_event_collector_adapter_gate.py -> 22 passed
+PYTHONPATH=collector:. .venv/bin/python -m pytest tests/test_collector_station_event_runtime_source.py -> 35 passed
+.venv/bin/python -m compileall collector/app/services -> PASS
+git diff --check -> PASS
+git diff --cached --check before commit -> PASS
+```
+
+D3 owns actual raw-capable/raw-required runtime wiring. D3 remains HOLD until
+separately authorized. D2-C must not be read as runtime raw support or runtime
+current mapping-file no-fallback closure. D2-C does not authorize D3 raw
+runtime wiring, DB/API/Dashboard/V-PLC/deploy changes or ACK/read_done
+ownership changes.
 
 ### 4.4 Fail-closed cases
 
@@ -459,7 +483,7 @@ future authorized implementation thread.
 
 ## 11. Current control conclusion
 
-Architecture docs-only contract draft: `PASS`.
+Architecture contract/status sync: `PASS`.
 
 Reliability Review: `PASS WITH RECOMMENDATIONS`, no blocker.
 
@@ -469,12 +493,15 @@ Verification Review: `PASS WITH RECOMMENDATIONS`, no blocker.
 
 Eligible for docs-only closeout decision: yes.
 
-D2-A decoder authority docs/contract-only repair: recorded. This update only
-clarifies decoder registry / decoder callable authority and immutable snapshot
-binding; it does not implement decoder registry, decoder callable, schema,
-config, tests, runtime raw support or D3 runtime raw wiring.
+D2-A decoder authority docs/contract-only repair: recorded. D2-C decoder
+registry authority is implemented, reviewed, committed and pushed at
+`5e5a617`. D2-C implements offline immutable decoder registry/schema authority
+and decoder callable binding, but does not implement runtime raw support or D3
+runtime raw wiring.
 
-Eligible for implementation: no. PM approval is required before implementation,
-tests, runtime Collector integration, DB/API/Dashboard/V-PLC/PLC pilot,
+Eligible for D3 planning gate: yes, after PM approval.
+
+Eligible for implementation without PM approval: no. PM approval is required
+before runtime Collector raw wiring, DB/API/Dashboard/V-PLC/PLC pilot,
 commit/push, tag, deploy, rollback or any change outside the approved docs
 allowlist.
