@@ -219,6 +219,8 @@ For handoff between Threads, PM should include:
 - exact allowlist for the new task;
 - explicit surfaces not authorized, especially runtime wiring, schema/config changes, DB/API/Dashboard/V-PLC/deploy/tag/rollback and real PLC pilot work.
 
+PM handoff file names must be unique. New ChatGPT PM handoff files should use the timestamp suffix format `YYMMDD-hhmm`, for example `docs/thread_handoff/chatgpt_pm_handoff_260629-1944.md`. Use the user's/project local time when available, and never overwrite an existing PM handoff file.
+
 Governance documents such as this file, `README.md`, `docs/current_status.md` and gate status reports are durable project controls. They should be updated when PM rules, phase roadmap, Thread roles, baseline semantics or gate state materially change. Those updates require an explicit PM task and exact allowlist. They must not be bundled into code, runtime, schema, deployment or handoff artifact commits unless PM explicitly authorizes that bundle.
 
 `README.md` is a public orientation document. It may summarize the project phases, Thread model and development workflow, but it must not replace the live gate/status documents. When README, PM rules and status files disagree on current authorization, Threads must stop and ask PM for a status repair instead of guessing.
