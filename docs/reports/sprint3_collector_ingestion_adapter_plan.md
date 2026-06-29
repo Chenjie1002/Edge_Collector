@@ -256,7 +256,67 @@ E1 preserves exclusions: `config/mapping.yaml`, `raw_policy`, `storage.py`,
 DB/API/Dashboard/frontend, V-PLC behavior, Docker/deploy and ACK/read_done
 ownership remain unchanged.
 
-### 4.4 Raw / normalized authority matrix
+### 4.4 Slice F1 raw_policy authority docs/contracts edit
+
+Slice F1 is a Level 2 authority planning/edit for docs/contracts only. It
+freezes raw_policy authority semantics after D3 runtime raw wiring and E1
+runtime raw decoder repair. F1 does not authorize runtime implementation, tests,
+config/schema/mapping changes, `raw_policy` value changes, DB/API/Dashboard,
+V-PLC, Docker/deploy, `storage.py`, ACK/read_done ownership, tag, rollback or
+real PLC pilot work.
+
+The key F1 planning decision is that runtime code-path capability is not the
+same thing as a mapping/config authority upgrade. Current runtime code can carry
+raw bytes because `event_collector.py` passes `raw_bytes=data` and
+`station_event_runtime_source.py` can generate `raw_payload` / `raw_hex`.
+However, the current mapping/config authority declaration remains the immutable
+snapshot value from `config/mapping.yaml`, whose default is still
+`raw_policy: raw_not_provided`. Runtime raw capability must not automatically
+upgrade that declaration to `raw_capable` or `raw_required`.
+
+F1 freezes these raw_policy definitions:
+
+- `raw_not_provided`: normalized-only may enter shared validation only when the
+  immutable resolved snapshot, mapping or payload template explicitly declares
+  that the source does not produce raw. It is not a synonym for a missing
+  runtime raw path.
+- `raw_capable`: source/mapping authority declares that raw can be provided.
+  Missing raw must fail closed as `RAW_EVIDENCE_MISSING` or a future
+  PM-approved equivalent. It must not silently downgrade to `raw_not_provided`.
+  Raw parse errors and raw/normalized mismatches remain fail-closed.
+- `raw_required`: raw is required evidence. Missing raw must fail closed, with
+  no projection, persist or ACK. It must not enter implementation until PM has
+  explicitly accepted the production data-flow impact of missing raw at runtime.
+
+raw_policy remains tied to mapping/config authority, decoder registry authority,
+the immutable resolved snapshot, raw/normalized evidence comparison,
+`RAW_PARSE_ERROR`, `RAW_NORMALIZED_MISMATCH`, `RAW_EVIDENCE_MISSING`,
+accepted/rejected/diagnostic decisions, accepted-only persist/ACK side effects
+and future DB/API/Dashboard visibility. Rejected or diagnostic decisions must
+not project, persist, ACK or become visible production facts.
+
+Minimum future gate for `raw_capable`:
+
+- mapping/config immutable snapshot explicitly declares raw capability;
+- decoder registry authority is complete;
+- raw/normalized evidence gate is defined;
+- negative cases cover missing raw, parse error, mismatch and no fallback;
+- Reliability, Data Quality and Verification gates are explicit.
+
+Minimum future gate for `raw_required`:
+
+- PM separately authorizes the change;
+- runtime missing-raw fail-closed impact on production data flow is explicit;
+- Reliability, Data Quality and Verification gates are completed;
+- exact implementation allowlist is frozen;
+- the task does not default-touch `storage.py`, DB/API/Dashboard/V-PLC,
+  Docker/deploy, ACK/read_done or unrelated runtime surfaces.
+
+Future implementation candidate files remain candidates only. They do not
+authorize edits without a later PM-approved implementation prompt with an exact
+allowlist.
+
+### 4.5 Raw / normalized authority matrix
 
 The contract defines the matrix for:
 

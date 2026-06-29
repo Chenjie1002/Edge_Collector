@@ -333,7 +333,81 @@ raw/normalized mismatch as `RAW_NORMALIZED_MISMATCH` fail-closed, accepted-only
 persist/ACK behavior, diagnostic-only rejected paths and all DB/API/Dashboard,
 V-PLC, `storage.py`, deploy and ACK/read_done exclusions.
 
-### 4.4 Fail-closed cases
+### 4.4 F1 raw_policy authority freeze
+
+F1 is a docs/contracts authority edit only. It freezes raw_policy semantics in
+this contract and does not authorize runtime implementation, tests,
+`config/mapping.yaml`, raw_policy value changes, DB/API/Dashboard/V-PLC,
+`storage.py`, deploy, ACK/read_done ownership or any source/config/schema
+implementation change.
+
+Runtime code-path capability is not a mapping/config authority upgrade. The
+current runtime path can carry raw bytes: `event_collector.py` passes
+`raw_bytes=data`, and `station_event_runtime_source.py` can materialize
+`raw_payload` / `raw_hex`. That capability does not change the authority
+declared by the immutable mapping/config snapshot. The current
+`config/mapping.yaml` default still declares `raw_policy: raw_not_provided`,
+and that declaration remains the authority until PM separately authorizes a
+Level 2 mapping/config authority change.
+
+The raw_policy meanings are:
+
+- `raw_not_provided`: normalized-only may enter shared validation only when the
+  immutable resolved snapshot, mapping or payload template explicitly declares
+  that the source does not produce raw evidence. It is not a synonym for a
+  missing runtime raw path, and runtime support for carrying `raw_bytes` must
+  not automatically upgrade it.
+- `raw_capable`: the source/mapping authority declares that raw evidence can be
+  provided. Missing raw must not silently downgrade to `raw_not_provided`; it
+  must fail closed as `RAW_EVIDENCE_MISSING` or a future PM-approved equivalent.
+  Raw parse errors and raw/normalized mismatches remain fail-closed as
+  `RAW_PARSE_ERROR` and `RAW_NORMALIZED_MISMATCH`.
+- `raw_required`: raw evidence is required. Missing raw must fail closed, must
+  not project, persist or ACK, and must not enter implementation until PM has
+  explicitly accepted the production data-flow impact of fail-closed missing raw
+  at runtime.
+
+raw_policy relates to the rest of the adapter authority as follows:
+
+- mapping/config authority declares whether raw is not provided, capable or
+  required; runtime path capability alone is not authority;
+- decoder registry authority is needed to interpret raw evidence and must be
+  selected through the immutable resolved snapshot;
+- the immutable resolved snapshot binds raw_policy, decoder registry identity,
+  decoder id/version, payload template and mapping identity for the event
+  `config_hash`;
+- raw evidence and normalized evidence are compared only under that authority;
+- `RAW_PARSE_ERROR`, `RAW_NORMALIZED_MISMATCH` and `RAW_EVIDENCE_MISSING` are
+  fail-closed decisions, not degraded acceptance paths;
+- accepted/rejected/diagnostic decisions control side effects: only accepted
+  decisions may reach the existing persist/ACK path, while rejected or
+  diagnostic decisions must not persist, project, ACK or become DB/API/Dashboard
+  visible production facts.
+
+The minimum prerequisites for any future upgrade to `raw_capable` are:
+
+- immutable mapping/config snapshot declares raw capability;
+- decoder registry authority is complete for the selected mapping/template;
+- the raw/normalized evidence gate is defined;
+- negative cases cover missing raw, parse error, mismatch and no fallback to
+  latest/current/ad hoc authority;
+- Reliability, Data Quality and Verification gates are explicit.
+
+The minimum prerequisites for any future upgrade to `raw_required` are:
+
+- separate PM authorization;
+- explicit acceptance of runtime missing-raw fail-closed impact on production
+  data flow;
+- completed Reliability, Data Quality and Verification gates;
+- exact implementation allowlist frozen;
+- no default touch of `storage.py`, DB/API/Dashboard/V-PLC, deploy,
+  ACK/read_done or other out-of-scope surfaces.
+
+Any future implementation candidate allowlist in this or companion planning
+docs is only a candidate. It must not be treated as authorization to edit those
+files without a later PM-approved implementation task.
+
+### 4.5 Fail-closed cases
 
 | Case | Decision | Meaning |
 | --- | --- | --- |
