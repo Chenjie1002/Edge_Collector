@@ -289,6 +289,82 @@ def test_real_mapping_ws01_declares_raw_capable_without_line_wide_default_change
     assert snapshot.station_for("WS03").raw_policy == "raw_not_provided"
 
 
+def real_runtime_decoded_fields() -> dict[str, object]:
+    return {
+        "station_status": 1,
+        "cycle_counter": 42,
+        "cycle_valid": True,
+        "result": 1,
+        "unit_id": "UNIT-42",
+        "station_dmc": "DMC-42",
+        "plc_start_time": "2026-06-26T10:00:00+08:00",
+        "plc_end_time": "2026-06-26T10:00:30+08:00",
+        "nok_code_count": 0,
+    }
+
+
+def test_real_mapping_ws01_raw_capable_source_builder_emits_raw_hex_without_replacing_normalized_payload() -> None:
+    mapping = load_edge_mapping("config/mapping.yaml")
+    snapshot = build_resolved_config_snapshot_from_mapping(mapping.runtime_snapshot)
+    station = snapshot.station_for("WS01")
+
+    payload = build_runtime_source_payload(
+        decoded_fields=real_runtime_decoded_fields(),
+        raw_bytes=b"\x01\x02\xfe\xff",
+        station_snapshot=station,
+        resolved_config_hash=snapshot.config_hash,
+        plc_boot_id="BOOT-1",
+        observed_at="2026-06-26T02:00:31Z",
+        code_tables=mapping.code_tables,
+    )
+
+    assert station.raw_policy == "raw_capable"
+    assert payload["raw_payload"] == {"raw_hex": "0102feff"}
+    assert payload["payload"]["station_status"] == 1
+    assert payload["unit_id"] == "UNIT-42"
+    assert payload["config_hash"] == mapping.runtime_snapshot.config_hash
+
+
+def test_real_mapping_ws01_raw_capable_missing_raw_fails_closed_without_downgrade() -> None:
+    mapping = load_edge_mapping("config/mapping.yaml")
+    snapshot = build_resolved_config_snapshot_from_mapping(mapping.runtime_snapshot)
+    station = snapshot.station_for("WS01")
+
+    assert station.raw_policy == "raw_capable"
+    with pytest.raises(RuntimeSourcePayloadError, match="RAW_EVIDENCE_MISSING"):
+        build_runtime_source_payload(
+            decoded_fields=real_runtime_decoded_fields(),
+            raw_bytes=None,
+            station_snapshot=station,
+            resolved_config_hash=snapshot.config_hash,
+            plc_boot_id="BOOT-1",
+            observed_at="2026-06-26T02:00:31Z",
+            code_tables=mapping.code_tables,
+        )
+
+
+@pytest.mark.parametrize("station_id", ["WS02", "WS03"])
+def test_real_mapping_downstream_stations_remain_raw_not_provided_normalized_only(station_id: str) -> None:
+    mapping = load_edge_mapping("config/mapping.yaml")
+    snapshot = build_resolved_config_snapshot_from_mapping(mapping.runtime_snapshot)
+    station = snapshot.station_for(station_id)
+
+    payload = build_runtime_source_payload(
+        decoded_fields=real_runtime_decoded_fields(),
+        raw_bytes=None,
+        station_snapshot=station,
+        resolved_config_hash=snapshot.config_hash,
+        plc_boot_id="BOOT-1",
+        observed_at="2026-06-26T02:00:31Z",
+        code_tables=mapping.code_tables,
+    )
+
+    assert station.raw_policy == "raw_not_provided"
+    assert "raw_payload" not in payload
+    assert payload["payload"]["station_status"] == 1
+    assert payload["config_hash"] == mapping.runtime_snapshot.config_hash
+
+
 def test_registry_rejects_tampered_runtime_mapping_snapshot_hash_content() -> None:
     mapping = parse().runtime_snapshot
     tampered = replace(
