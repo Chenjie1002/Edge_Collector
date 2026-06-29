@@ -6,14 +6,14 @@
 
 ## 0. 当前 PM / Codex 协作状态
 
-当前主线：Phase-2 Sprint 3 Slice F2 raw_policy raw_capable authority docs/status sync closeout。
+当前主线：Phase-2 Sprint 3 Slice G WS01 raw_capable post-commit sanity tests-only hardening docs/status sync closeout。
 
 Last verified baseline before this docs sync:
 
 ```text
 live HEAD / origin/main at authoring time:
-829d5c71982b8d22556102b6e67ed9c1e981131d
-829d5c7 Implement Sprint 3 Slice F2 raw policy authority
+398f11cfb20717d628d03c0a486a31745fe3030d
+398f11c Harden Slice G raw policy sanity tests
 
 branch:
 main
@@ -56,6 +56,11 @@ Slice F2 Reliability focused implementation review: PASS, no blocker
 Slice F2 Data Quality focused implementation review: PASS, no blocker
 Slice F2 Verification exact allowlist audit: PASS WITH RECOMMENDATIONS, no blocker
 Slice F2 exact config/test commit/push: PASS, commit 829d5c7
+Slice G WS01 raw_capable post-commit sanity tests-only hardening: PASS
+Slice G Reliability focused review: PASS, no blocker
+Slice G Data Quality focused review: PASS WITH RECOMMENDATIONS, no blocker
+Slice G Verification exact allowlist audit: PASS WITH RECOMMENDATIONS, no blocker
+Slice G exact tests-only commit/push: PASS, commit 398f11c
 Slice D2-C decoder registry authority implementation: PASS WITH RECOMMENDATIONS
 Slice D2-C Reliability implementation review: PASS WITH RECOMMENDATIONS, no blocker
 Slice D2-C Data Quality implementation review: PASS WITH RECOMMENDATIONS, no blocker
@@ -97,7 +102,31 @@ D3 actual raw-capable/raw-required runtime wiring: CLOSED at c9e7c22
 E1 runtime raw decoder repair: CLOSED at 2c73410 / 2c73410281d1465db166b66ddc23e27d9337b90a
 F1 raw_policy authority docs/contracts freeze: CLOSED at ac1838c / ac1838cbc9378d72da66ace35a200a909f4d5b89
 F2 raw_policy raw_capable authority implementation: CLOSED at 829d5c7 / 829d5c71982b8d22556102b6e67ed9c1e981131d
+Slice G WS01 raw_capable post-commit sanity tests-only hardening: CLOSED at 398f11c / 398f11cfb20717d628d03c0a486a31745fe3030d
 DB/API/Dashboard/V-PLC/deploy/tag/rollback/real PLC pilot: not authorized
+```
+
+当前 Sprint 3 Slice G WS01 raw_capable post-commit sanity tests-only hardening files 已提交：
+
+```text
+tests/test_collector_station_event_runtime_source.py
+```
+
+Slice G WS01 raw_capable post-commit sanity tests-only hardening summary:
+
+```text
+Slice G added focused tests-only hardening after Slice F2 WS01 raw_capable authority.
+Commit message: Harden Slice G raw policy sanity tests.
+Commit: 398f11c / 398f11cfb20717d628d03c0a486a31745fe3030d.
+The new tests use real config/mapping.yaml authority, not synthetic replacement, for WS01/WS02/WS03 sanity coverage.
+WS01 raw_capable nominal source-builder path now asserts provided raw bytes produce raw_payload.raw_hex while normalized payload remains present.
+WS01 raw_capable missing raw now asserts RAW_EVIDENCE_MISSING fail-closed and no silent downgrade to raw_not_provided.
+WS02 and WS03 remain raw_not_provided and normalized-only under real mapping authority.
+Reliability focused review: PASS.
+Data Quality focused review: PASS WITH RECOMMENDATIONS, no blocker; optional future clarity assertion: snapshot.config_hash == mapping.runtime_snapshot.config_hash.
+Verification exact allowlist audit: PASS WITH RECOMMENDATIONS, no blocker.
+No config/mapping.yaml, runtime/source code, storage.py, DB/API/Dashboard/frontend, V-PLC behavior, Docker/deploy or ACK/read_done ownership change.
+No WS02/WS03 raw_capable rollout and no raw_required introduction.
 ```
 
 当前 Sprint 3 Slice F2 raw_policy raw_capable authority files 已提交：

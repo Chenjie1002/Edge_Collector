@@ -15,8 +15,8 @@ Read this file together with:
 
 ```text
 live HEAD / origin/main at authoring time:
-829d5c71982b8d22556102b6e67ed9c1e981131d
-829d5c7 Implement Sprint 3 Slice F2 raw policy authority
+398f11cfb20717d628d03c0a486a31745fe3030d
+398f11c Harden Slice G raw policy sanity tests
 
 Branch:
 main
@@ -38,6 +38,7 @@ Slice D3 runtime raw wiring implemented and committed
 Slice E1 runtime raw decoder repair implemented and committed
 Slice F1 raw_policy authority docs/contracts freeze implemented and committed
 Slice F2 raw_policy raw_capable authority implemented and committed
+Slice G WS01 raw_capable post-commit sanity tests-only hardening implemented and committed
 
 Deploy / rollback drill:
 not performed
@@ -64,6 +65,7 @@ Slice D3 runtime raw wiring is tracked in commit `c9e7c22`.
 Slice E1 runtime raw decoder repair is tracked in commit `2c73410`.
 Slice F1 raw_policy authority docs/contracts freeze is tracked in commit `ac1838c`.
 Slice F2 raw_policy raw_capable authority is tracked in commit `829d5c7`.
+Slice G WS01 raw_capable post-commit sanity tests-only hardening is tracked in commit `398f11c`.
 
 Sprint 3 implementation files committed:
 
@@ -151,6 +153,12 @@ Sprint 3 Slice F2 raw_policy raw_capable authority files committed:
 
 ```text
 config/mapping.yaml
+tests/test_collector_station_event_runtime_source.py
+```
+
+Sprint 3 Slice G WS01 raw_capable post-commit sanity tests-only hardening files committed:
+
+```text
 tests/test_collector_station_event_runtime_source.py
 ```
 
@@ -286,6 +294,11 @@ behavior, Docker/deploy/tag/rollback or ACK/read_done ownership.
 | Slice F2 Data Quality focused implementation review | PASS | none |
 | Slice F2 Verification exact allowlist audit | PASS WITH RECOMMENDATIONS | none |
 | Slice F2 exact config/test commit/push | PASS | none |
+| Slice G WS01 raw_capable post-commit sanity tests-only hardening | PASS | none |
+| Slice G Reliability focused review | PASS | none |
+| Slice G Data Quality focused review | PASS WITH RECOMMENDATIONS | none |
+| Slice G Verification exact allowlist audit | PASS WITH RECOMMENDATIONS | none |
+| Slice G exact tests-only commit/push | PASS | none |
 
 Current overall status:
 
@@ -302,6 +315,7 @@ Sprint 3 Slice D3 runtime raw wiring: implemented, reviewed, committed and pushe
 Sprint 3 Slice E1 runtime raw decoder repair: implemented, reviewed, committed and pushed at 2c73410.
 Sprint 3 Slice F1 raw_policy authority docs/contracts freeze: reviewed, committed and pushed at ac1838c.
 Sprint 3 Slice F2 raw_policy raw_capable authority: implemented, reviewed, committed and pushed at 829d5c7.
+Sprint 3 Slice G WS01 raw_capable post-commit sanity tests-only hardening: implemented, reviewed, committed and pushed at 398f11c.
 Slice B inserted the adapter gate after payload/cycle/counter guards and counter reset fail-safe, before existing storage.persist_cycle().
 Slice B accepted-only path continues to existing storage.persist_cycle() plus existing read_done/ACK behavior.
 Slice B non-accepted decisions do not persist, do not project, do not write defect detail, and do not ACK.
@@ -367,14 +381,22 @@ Slice F2 adds real mapping authority test coverage in tests/test_collector_stati
 Slice F2 does not introduce raw_required.
 Slice F2 keeps raw_capable missing raw as RAW_EVIDENCE_MISSING fail-closed and keeps RAW_PARSE_ERROR / RAW_NORMALIZED_MISMATCH fail-closed.
 Slice F2 introduced no runtime/source code, storage.py, DB/API/Dashboard/frontend, V-PLC behavior, Docker/deploy or ACK/read_done ownership change.
+Slice G adds tests-only post-commit sanity coverage after Slice F2.
+Slice G uses real config/mapping.yaml authority to cover WS01 raw_capable nominal source-builder raw_hex behavior, WS01 missing raw RAW_EVIDENCE_MISSING fail-closed, and WS02/WS03 raw_not_provided normalized-only regression.
+Slice G does not modify config/mapping.yaml, runtime/source code, storage.py, DB/API/Dashboard/frontend, V-PLC behavior, Docker/deploy or ACK/read_done ownership.
+Slice G does not roll out WS02/WS03 raw_capable and does not introduce raw_required.
+Slice G Reliability review: PASS.
+Slice G Data Quality review: PASS WITH RECOMMENDATIONS, no blocker.
+Slice G Verification exact allowlist audit: PASS WITH RECOMMENDATIONS, no blocker.
 Docs/status sync completed at fd79e21.
 Docs/status baseline repair completed at 4f424c6.
 PM rules / baseline semantics repair pre-baseline: e284a06 Repair PM rules and Sprint 3 baseline status.
-Eligible for PM handoff readiness or downstream next-slice planning after F2 docs/status sync: yes.
+Eligible for PM handoff readiness or downstream next-slice planning after Slice G docs/status sync: yes.
 D3 actual raw-capable/raw-required runtime wiring: CLOSED at c9e7c22.
 E1 runtime raw decoder repair: CLOSED at 2c73410 / 2c73410281d1465db166b66ddc23e27d9337b90a.
 F1 raw_policy authority docs/contracts freeze: CLOSED at ac1838c / ac1838cbc9378d72da66ace35a200a909f4d5b89.
 F2 raw_policy raw_capable authority implementation: CLOSED at 829d5c7 / 829d5c71982b8d22556102b6e67ed9c1e981131d.
+Slice G WS01 raw_capable post-commit sanity tests-only hardening: CLOSED at 398f11c / 398f11cfb20717d628d03c0a486a31745fe3030d.
 DB/API/Dashboard/V-PLC/deploy/tag/rollback/real PLC pilot: not authorized.
 ```
 
