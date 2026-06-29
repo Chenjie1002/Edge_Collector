@@ -1,9 +1,11 @@
 from __future__ import annotations
 
 from dataclasses import replace
+from pathlib import Path
 from uuid import UUID
 
 import pytest
+import yaml
 
 from collector.app.plc.mapping import (
     RuntimeMappingContractError,
@@ -278,15 +280,20 @@ def test_registry_builds_resolved_config_snapshot_from_runtime_mapping_snapshot(
     assert snapshot.route_graph.edges[0].from_station_id == "WS01"
 
 
-def test_real_mapping_ws01_declares_raw_capable_without_line_wide_default_change() -> None:
+def test_real_mapping_ws01_ws02_declare_raw_capable_without_line_wide_default_change() -> None:
     mapping = load_edge_mapping("config/mapping.yaml")
     snapshot = build_resolved_config_snapshot_from_mapping(mapping.runtime_snapshot)
+    raw_mapping = yaml.safe_load(Path("config/mapping.yaml").read_text())
 
     assert snapshot.station_for("WS01").mapping_id == "ws01_runtime_v1"
     assert snapshot.station_for("WS01").payload_template == "station_runtime_payload_v1"
     assert snapshot.station_for("WS01").raw_policy == "raw_capable"
-    assert snapshot.station_for("WS02").raw_policy == "raw_not_provided"
+    assert snapshot.station_for("WS02").mapping_id == "ws02_runtime_v1"
+    assert snapshot.station_for("WS02").payload_template == "station_runtime_payload_v1"
+    assert snapshot.station_for("WS02").raw_policy == "raw_capable"
     assert snapshot.station_for("WS03").raw_policy == "raw_not_provided"
+    assert snapshot.config_hash == mapping.runtime_snapshot.config_hash
+    assert raw_mapping["runtime_defaults"]["raw_policy"] == "raw_not_provided"
 
 
 def real_runtime_decoded_fields() -> dict[str, object]:
@@ -343,11 +350,50 @@ def test_real_mapping_ws01_raw_capable_missing_raw_fails_closed_without_downgrad
         )
 
 
-@pytest.mark.parametrize("station_id", ["WS02", "WS03"])
-def test_real_mapping_downstream_stations_remain_raw_not_provided_normalized_only(station_id: str) -> None:
+def test_real_mapping_ws02_raw_capable_source_builder_emits_raw_hex_without_replacing_normalized_payload() -> None:
     mapping = load_edge_mapping("config/mapping.yaml")
     snapshot = build_resolved_config_snapshot_from_mapping(mapping.runtime_snapshot)
-    station = snapshot.station_for(station_id)
+    station = snapshot.station_for("WS02")
+
+    payload = build_runtime_source_payload(
+        decoded_fields=real_runtime_decoded_fields(),
+        raw_bytes=b"\x10\x20\x30\x40",
+        station_snapshot=station,
+        resolved_config_hash=snapshot.config_hash,
+        plc_boot_id="BOOT-1",
+        observed_at="2026-06-26T02:00:31Z",
+        code_tables=mapping.code_tables,
+    )
+
+    assert station.raw_policy == "raw_capable"
+    assert payload["raw_payload"] == {"raw_hex": "10203040"}
+    assert payload["payload"]["station_status"] == 1
+    assert payload["unit_id"] == "UNIT-42"
+    assert payload["config_hash"] == mapping.runtime_snapshot.config_hash
+
+
+def test_real_mapping_ws02_raw_capable_missing_raw_fails_closed_without_downgrade() -> None:
+    mapping = load_edge_mapping("config/mapping.yaml")
+    snapshot = build_resolved_config_snapshot_from_mapping(mapping.runtime_snapshot)
+    station = snapshot.station_for("WS02")
+
+    assert station.raw_policy == "raw_capable"
+    with pytest.raises(RuntimeSourcePayloadError, match="RAW_EVIDENCE_MISSING"):
+        build_runtime_source_payload(
+            decoded_fields=real_runtime_decoded_fields(),
+            raw_bytes=None,
+            station_snapshot=station,
+            resolved_config_hash=snapshot.config_hash,
+            plc_boot_id="BOOT-1",
+            observed_at="2026-06-26T02:00:31Z",
+            code_tables=mapping.code_tables,
+        )
+
+
+def test_real_mapping_ws03_remains_raw_not_provided_normalized_only() -> None:
+    mapping = load_edge_mapping("config/mapping.yaml")
+    snapshot = build_resolved_config_snapshot_from_mapping(mapping.runtime_snapshot)
+    station = snapshot.station_for("WS03")
 
     payload = build_runtime_source_payload(
         decoded_fields=real_runtime_decoded_fields(),

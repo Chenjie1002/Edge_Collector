@@ -189,6 +189,7 @@ stations:
     mapping_id: ws02_runtime_v1
     station_type: eol_test
     cycle_profile: normal_eol
+    raw_policy: raw_capable
     upstream_station_id: WS01
     payload:
       avg_current_a:
