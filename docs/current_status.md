@@ -6,14 +6,14 @@
 
 ## 0. 当前 PM / Codex 协作状态
 
-当前主线：Phase-2 Sprint 3 Slice G WS01 raw_capable post-commit sanity tests-only hardening docs/status sync closeout。
+当前主线：Phase-2 Sprint 3 Slice H WS02 raw_policy raw_capable authority docs/status sync closeout。
 
 Last verified baseline before this docs sync:
 
 ```text
 live HEAD / origin/main at authoring time:
-398f11cfb20717d628d03c0a486a31745fe3030d
-398f11c Harden Slice G raw policy sanity tests
+c7e80e8e931b5f23d6ea42fee7b10b27191b5e20
+c7e80e8 Roll out Slice H WS02 raw policy authority
 
 branch:
 main
@@ -61,6 +61,12 @@ Slice G Reliability focused review: PASS, no blocker
 Slice G Data Quality focused review: PASS WITH RECOMMENDATIONS, no blocker
 Slice G Verification exact allowlist audit: PASS WITH RECOMMENDATIONS, no blocker
 Slice G exact tests-only commit/push: PASS, commit 398f11c
+Slice H WS02 raw_policy raw_capable rollout planning: PASS WITH RECOMMENDATIONS
+Slice H WS02 raw_policy raw_capable implementation: PASS
+Slice H Reliability focused implementation review: PASS WITH RECOMMENDATIONS, no blocker
+Slice H Data Quality focused implementation review: PASS WITH RECOMMENDATIONS, no blocker
+Slice H Verification exact allowlist audit: PASS WITH RECOMMENDATIONS, no blocker
+Slice H exact config/test commit/push: PASS, commit c7e80e8
 Slice D2-C decoder registry authority implementation: PASS WITH RECOMMENDATIONS
 Slice D2-C Reliability implementation review: PASS WITH RECOMMENDATIONS, no blocker
 Slice D2-C Data Quality implementation review: PASS WITH RECOMMENDATIONS, no blocker
@@ -103,7 +109,35 @@ E1 runtime raw decoder repair: CLOSED at 2c73410 / 2c73410281d1465db166b66ddc23e
 F1 raw_policy authority docs/contracts freeze: CLOSED at ac1838c / ac1838cbc9378d72da66ace35a200a909f4d5b89
 F2 raw_policy raw_capable authority implementation: CLOSED at 829d5c7 / 829d5c71982b8d22556102b6e67ed9c1e981131d
 Slice G WS01 raw_capable post-commit sanity tests-only hardening: CLOSED at 398f11c / 398f11cfb20717d628d03c0a486a31745fe3030d
+Slice H WS02 raw_policy raw_capable authority implementation: CLOSED at c7e80e8 / c7e80e8e931b5f23d6ea42fee7b10b27191b5e20
 DB/API/Dashboard/V-PLC/deploy/tag/rollback/real PLC pilot: not authorized
+```
+
+当前 Sprint 3 Slice H WS02 raw_policy raw_capable authority files 已提交：
+
+```text
+config/mapping.yaml
+tests/test_collector_station_event_runtime_source.py
+```
+
+Slice H WS02 raw_policy raw_capable authority summary:
+
+```text
+Slice H implemented a narrow Level 2 mapping/config authority rollout for WS02 only.
+Commit message: Roll out Slice H WS02 raw policy authority.
+Commit: c7e80e8 / c7e80e8e931b5f23d6ea42fee7b10b27191b5e20.
+WS01 remains raw_capable.
+WS02 / ws02_runtime_v1 / station_runtime_payload_v1 station-level raw_policy is now raw_capable.
+WS03 remains raw_not_provided.
+Line-wide runtime_defaults.raw_policy remains raw_not_provided.
+raw_required was not introduced.
+Runtime/source code was not changed.
+The focused tests cover real mapping WS02 nominal raw source-builder path, WS02 missing raw RAW_EVIDENCE_MISSING fail-closed, WS01 raw_capable regression, WS03 raw_not_provided normalized-only regression, line-wide default, and config_hash lineage.
+Reliability focused review: PASS WITH RECOMMENDATIONS, no blocker.
+Data Quality focused review: PASS WITH RECOMMENDATIONS, no blocker.
+Verification exact allowlist audit: PASS WITH RECOMMENDATIONS, no blocker.
+storage.py, DB/API/Dashboard/frontend, V-PLC behavior, Docker/deploy and ACK/read_done ownership unchanged.
+No WS03 raw_capable rollout and no raw_required introduction.
 ```
 
 当前 Sprint 3 Slice G WS01 raw_capable post-commit sanity tests-only hardening files 已提交：
