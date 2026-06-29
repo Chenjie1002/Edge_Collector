@@ -1,19 +1,19 @@
 # 当前状态 / Codex 恢复上下文
 
-更新时间：2026-06-28
+更新时间：2026-06-29
 工作目录：`/Users/chenjie/Documents/MES/edge-mes-demo`
 树莓派部署目录：`/opt/edge-mes-demo`
 
 ## 0. 当前 PM / Codex 协作状态
 
-当前主线：Phase-2 Sprint 3 Slice E1 runtime raw decoder repair docs/status sync closeout。
+当前主线：Phase-2 Sprint 3 Slice F1 raw_policy authority docs/status sync closeout。
 
 Last verified baseline before this docs sync:
 
 ```text
 live HEAD / origin/main at authoring time:
-2c73410281d1465db166b66ddc23e27d9337b90a
-2c73410 Repair Sprint 3 Slice E1 runtime raw decoder
+ac1838cbc9378d72da66ace35a200a909f4d5b89
+ac1838c Freeze Sprint 3 Slice F1 raw_policy authority
 
 branch:
 main
@@ -46,6 +46,11 @@ Slice E1 Reliability focused review: PASS, no blocker
 Slice E1 Data Quality focused review: PASS, no blocker
 Slice E1 Verification focused review / exact allowlist audit: PASS WITH RECOMMENDATIONS, no blocker
 Slice E1 exact allowlist commit/push: PASS, commit 2c73410
+Slice F1 raw_policy authority docs/contracts edit: PASS
+Slice F1 Reliability focused review: PASS, no blocker
+Slice F1 Data Quality focused review: PASS WITH RECOMMENDATIONS, no blocker
+Slice F1 Verification exact allowlist audit: PASS WITH RECOMMENDATIONS, no blocker
+Slice F1 exact docs/contracts commit/push: PASS, commit ac1838c
 Slice D2-C decoder registry authority implementation: PASS WITH RECOMMENDATIONS
 Slice D2-C Reliability implementation review: PASS WITH RECOMMENDATIONS, no blocker
 Slice D2-C Data Quality implementation review: PASS WITH RECOMMENDATIONS, no blocker
@@ -85,7 +90,35 @@ Eligible for PM handoff readiness or downstream next-slice planning: yes
 D3 docs/status sync exact allowlist: completed after implementation commit c9e7c22
 D3 actual raw-capable/raw-required runtime wiring: CLOSED at c9e7c22
 E1 runtime raw decoder repair: CLOSED at 2c73410 / 2c73410281d1465db166b66ddc23e27d9337b90a
+F1 raw_policy authority docs/contracts freeze: CLOSED at ac1838c / ac1838cbc9378d72da66ace35a200a909f4d5b89
 DB/API/Dashboard/V-PLC/deploy/tag/rollback/real PLC pilot: not authorized
+```
+
+当前 Sprint 3 Slice F1 raw_policy authority docs/contracts files 已提交：
+
+```text
+docs/contracts/collector_ingestion_adapter.md
+docs/reports/sprint3_collector_ingestion_adapter_plan.md
+```
+
+Slice F1 raw_policy authority docs/contracts summary:
+
+```text
+Slice F1 froze raw_policy authority semantics after D3 runtime raw wiring and E1 runtime raw decoder repair.
+Commit message: Freeze Sprint 3 Slice F1 raw_policy authority.
+Commit: ac1838c / ac1838cbc9378d72da66ace35a200a909f4d5b89.
+Runtime code-path capability is not a mapping/config authority upgrade.
+event_collector.py can pass raw_bytes=data and station_event_runtime_source.py can materialize raw_payload/raw_hex, but current mapping/config authority remains the immutable raw_policy declaration.
+Current config/mapping.yaml default raw_policy remains raw_not_provided.
+raw_not_provided is an authority declaration that a source does not produce raw evidence; it is not a synonym for missing runtime raw path.
+raw_capable/raw_required missing raw must fail closed as RAW_EVIDENCE_MISSING or future PM-approved equivalent and must not silently downgrade to raw_not_provided.
+RAW_PARSE_ERROR and RAW_NORMALIZED_MISMATCH remain fail-closed.
+Rejected/diagnostic decisions still do not project, persist, ACK or become DB/API/Dashboard-visible production facts.
+Future raw_policy move to raw_capable/raw_required remains a separate Level 2 mapping/config authority gate.
+Reliability focused review: PASS.
+Data Quality focused review: PASS WITH RECOMMENDATIONS.
+Verification exact allowlist audit: PASS WITH RECOMMENDATIONS.
+config/mapping.yaml, raw_policy actual value, storage.py, DB/API/Dashboard/frontend, V-PLC behavior, Docker/deploy and ACK/read_done ownership unchanged.
 ```
 
 当前 Sprint 3 Slice E1 runtime raw decoder repair files 已提交：
