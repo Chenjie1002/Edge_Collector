@@ -160,6 +160,7 @@ stations:
     mapping_id: ws01_runtime_v1
     station_type: screw
     cycle_profile: normal_screwdriving
+    raw_policy: raw_capable
     dmc_role: child_dmc
     payload:
       screw_1_torque_nm:

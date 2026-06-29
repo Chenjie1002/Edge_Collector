@@ -8,6 +8,7 @@ import pytest
 from collector.app.plc.mapping import (
     RuntimeMappingContractError,
     compute_runtime_mapping_hash,
+    load_edge_mapping,
     parse_edge_mapping,
 )
 from collector.app.services.decoder_registry import (
@@ -275,6 +276,17 @@ def test_registry_builds_resolved_config_snapshot_from_runtime_mapping_snapshot(
     assert snapshot.station_for("WS02").decoder_version == "1.0.0"
     assert snapshot.station_for("WS02").payload_template == "station_runtime_payload_v1"
     assert snapshot.route_graph.edges[0].from_station_id == "WS01"
+
+
+def test_real_mapping_ws01_declares_raw_capable_without_line_wide_default_change() -> None:
+    mapping = load_edge_mapping("config/mapping.yaml")
+    snapshot = build_resolved_config_snapshot_from_mapping(mapping.runtime_snapshot)
+
+    assert snapshot.station_for("WS01").mapping_id == "ws01_runtime_v1"
+    assert snapshot.station_for("WS01").payload_template == "station_runtime_payload_v1"
+    assert snapshot.station_for("WS01").raw_policy == "raw_capable"
+    assert snapshot.station_for("WS02").raw_policy == "raw_not_provided"
+    assert snapshot.station_for("WS03").raw_policy == "raw_not_provided"
 
 
 def test_registry_rejects_tampered_runtime_mapping_snapshot_hash_content() -> None:
