@@ -1,6 +1,6 @@
 # ChatGPT PM Operating Rules
 
-Updated: 2026-06-28
+Updated: 2026-06-29
 
 Applies to: Edge MES Demo ChatGPT PM / Codex Thread workflow.
 
@@ -219,7 +219,24 @@ For handoff between Threads, PM should include:
 - exact allowlist for the new task;
 - explicit surfaces not authorized, especially runtime wiring, schema/config changes, DB/API/Dashboard/V-PLC/deploy/tag/rollback and real PLC pilot work.
 
-PM handoff file names must be unique. New ChatGPT PM handoff files should use the timestamp suffix format `YYMMDD-hhmm`, for example `docs/thread_handoff/chatgpt_pm_handoff_260629-1944.md`. Use the user's/project local time when available, and never overwrite an existing PM handoff file.
+### ChatGPT PM handoff workflow
+
+A ChatGPT PM handoff should be created when the current ChatGPT PM window becomes long, after a Level 2 slice closes, before a new major planning branch, or whenever the user asks to start a new PM window.
+
+PM handoff file names must be unique. New ChatGPT PM handoff files must use the timestamp suffix format `YYMMDD-hhmm` in China Standard Time / UTC+8, for example `docs/thread_handoff/chatgpt_pm_handoff_260629-2354.md`. Do not use browser-local, server-local, Japan, Pacific or inferred project machine time for this filename. Use UTC+8 even if the user or runtime environment is elsewhere. Never overwrite an existing PM handoff file.
+
+Handoff flow:
+
+1. Run read-only recovery first: `git status -sb`, recent log, live `HEAD`, live `origin/main`, working-tree diff name-only and cached diff name-only.
+2. Confirm current gate state from durable status docs and live Git. If a review, commit or docs/status sync gate is still pending, finish or explicitly record it before handoff.
+3. Generate one new handoff file under `docs/thread_handoff/` with the UTC+8 timestamp suffix.
+4. The handoff must include project path, live baseline, latest commit, current closed gate, known external dirty artifacts, committed files, durable status references, non-authorized surfaces, carry-forward recommendations, and the recommended first read-only action for the next PM.
+5. Include a copyable prompt for the next ChatGPT PM window. That prompt must instruct the new PM to perform read-only recovery before continuing.
+6. Audit the generated handoff file path and internal references so the filename, title, suggested prompt path and commit note all match.
+7. Do not stage the handoff file automatically. Ask the user for explicit exact-path stage/commit/push authorization.
+8. If authorized, stage only the new handoff file and any explicitly authorized governance rule file. Verify `git diff --cached --name-only`, `git diff --cached --check` and `git diff --cached --stat` before commit.
+9. Do not stage `.gitignore`, old PM handoff files, Keynote/reporting artifacts, broad `docs/`, or unrelated files.
+10. After commit/push, report final `HEAD`, `origin/main`, staged files and remaining external dirty artifacts.
 
 Governance documents such as this file, `README.md`, `docs/current_status.md` and gate status reports are durable project controls. They should be updated when PM rules, phase roadmap, Thread roles, baseline semantics or gate state materially change. Those updates require an explicit PM task and exact allowlist. They must not be bundled into code, runtime, schema, deployment or handoff artifact commits unless PM explicitly authorizes that bundle.
 
