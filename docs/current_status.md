@@ -6,14 +6,14 @@
 
 ## 0. 当前 PM / Codex 协作状态
 
-当前主线：Phase-2 Sprint 3 Slice F1 raw_policy authority docs/status sync closeout。
+当前主线：Phase-2 Sprint 3 Slice F2 raw_policy raw_capable authority docs/status sync closeout。
 
 Last verified baseline before this docs sync:
 
 ```text
 live HEAD / origin/main at authoring time:
-ac1838cbc9378d72da66ace35a200a909f4d5b89
-ac1838c Freeze Sprint 3 Slice F1 raw_policy authority
+829d5c71982b8d22556102b6e67ed9c1e981131d
+829d5c7 Implement Sprint 3 Slice F2 raw policy authority
 
 branch:
 main
@@ -51,6 +51,11 @@ Slice F1 Reliability focused review: PASS, no blocker
 Slice F1 Data Quality focused review: PASS WITH RECOMMENDATIONS, no blocker
 Slice F1 Verification exact allowlist audit: PASS WITH RECOMMENDATIONS, no blocker
 Slice F1 exact docs/contracts commit/push: PASS, commit ac1838c
+Slice F2 raw_policy raw_capable implementation: PASS
+Slice F2 Reliability focused implementation review: PASS, no blocker
+Slice F2 Data Quality focused implementation review: PASS, no blocker
+Slice F2 Verification exact allowlist audit: PASS WITH RECOMMENDATIONS, no blocker
+Slice F2 exact config/test commit/push: PASS, commit 829d5c7
 Slice D2-C decoder registry authority implementation: PASS WITH RECOMMENDATIONS
 Slice D2-C Reliability implementation review: PASS WITH RECOMMENDATIONS, no blocker
 Slice D2-C Data Quality implementation review: PASS WITH RECOMMENDATIONS, no blocker
@@ -91,7 +96,35 @@ D3 docs/status sync exact allowlist: completed after implementation commit c9e7c
 D3 actual raw-capable/raw-required runtime wiring: CLOSED at c9e7c22
 E1 runtime raw decoder repair: CLOSED at 2c73410 / 2c73410281d1465db166b66ddc23e27d9337b90a
 F1 raw_policy authority docs/contracts freeze: CLOSED at ac1838c / ac1838cbc9378d72da66ace35a200a909f4d5b89
+F2 raw_policy raw_capable authority implementation: CLOSED at 829d5c7 / 829d5c71982b8d22556102b6e67ed9c1e981131d
 DB/API/Dashboard/V-PLC/deploy/tag/rollback/real PLC pilot: not authorized
+```
+
+当前 Sprint 3 Slice F2 raw_policy raw_capable authority files 已提交：
+
+```text
+config/mapping.yaml
+tests/test_collector_station_event_runtime_source.py
+```
+
+Slice F2 raw_policy raw_capable authority summary:
+
+```text
+Slice F2 implemented a narrow Level 2 mapping/config authority change for WS01 only.
+Commit message: Implement Sprint 3 Slice F2 raw policy authority.
+Commit: 829d5c7 / 829d5c71982b8d22556102b6e67ed9c1e981131d.
+WS01 / ws01_runtime_v1 / station_runtime_payload_v1 station-level raw_policy is now raw_capable.
+No line-wide default change was made; WS02 and WS03 remain raw_not_provided.
+raw_required was not introduced.
+Runtime/source code was not changed.
+Existing runtime path still carries raw_bytes and raw_payload/raw_hex under mapping/config authority.
+raw_capable missing raw remains RAW_EVIDENCE_MISSING fail-closed.
+RAW_PARSE_ERROR and RAW_NORMALIZED_MISMATCH remain fail-closed.
+Non-accepted decisions still do not persist, ACK, project or become DB/API/Dashboard-visible production facts.
+Reliability focused review: PASS.
+Data Quality focused review: PASS.
+Verification exact allowlist audit: PASS WITH RECOMMENDATIONS.
+storage.py, DB/API/Dashboard/frontend, V-PLC behavior, Docker/deploy and ACK/read_done ownership unchanged.
 ```
 
 当前 Sprint 3 Slice F1 raw_policy authority docs/contracts files 已提交：
