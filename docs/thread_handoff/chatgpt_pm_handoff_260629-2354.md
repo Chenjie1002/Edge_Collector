@@ -45,21 +45,31 @@ docs/contracts/collector_ingestion_adapter.md
 
 ## 3. 当前 Git baseline
 
-当前主线已同步：
+当前真正 live baseline：
 
 ```text
-HEAD == origin/main == 50c37c75cef4eba99e65238da64a6ecc4ae9d006
+HEAD == origin/main == 44f244617e935099ee9b6243e50b051f52ff4c43
 ```
 
 最新 commit：
 
 ```text
+44f2446 Add PM handoff and UTC+8 handoff workflow
+```
+
+Handoff authored-against baseline / Slice H docs/status sync baseline：
+
+```text
+50c37c75cef4eba99e65238da64a6ecc4ae9d006
 50c37c7 Sync Sprint 3 Slice H gate status
 ```
+
+说明：本 handoff 内容是在 Slice H docs/status sync 后生成的；随后 handoff 文件和 UTC+8 handoff workflow 被提交为 `44f2446`。因此新 PM 接手时应以 live `HEAD` / `origin/main` 为准，同时把 `50c37c7` 视为 handoff authoring baseline / Slice H status sync baseline。
 
 最近关键 commits：
 
 ```text
+44f2446 Add PM handoff and UTC+8 handoff workflow
 50c37c7 Sync Sprint 3 Slice H gate status
 c7e80e8 Roll out Slice H WS02 raw policy authority
 44ed02d Sync Sprint 3 Slice G gate status
@@ -71,10 +81,9 @@ e8650f1 Add PM handoff timestamp naming rule
 ac1838c Freeze Sprint 3 Slice F1 raw_policy authority
 d02b98d Sync Sprint 3 Slice E1 gate status
 2c73410 Repair Sprint 3 Slice E1 runtime raw decoder
-dac87c1 Add PM task risk tier rules
 ```
 
-Durable status sync is complete for Slice H at `50c37c7`.
+Durable status sync is complete for Slice H at `50c37c7`; handoff/workflow commit is complete at `44f2446`.
 
 ---
 
@@ -352,10 +361,11 @@ Recommended first action for the next PM window:
 
 ```text
 1. Perform read-only recovery.
-2. Confirm HEAD == origin/main == 50c37c75cef4eba99e65238da64a6ecc4ae9d006.
-3. Confirm working tree only has expected external artifacts plus this handoff file state, depending on whether the current PM commits it.
-4. Confirm there are no pending review/commit/status gates.
-5. Decide the next planning target.
+2. Confirm HEAD == origin/main == 44f244617e935099ee9b6243e50b051f52ff4c43.
+3. Treat 50c37c7 as the Slice H docs/status sync baseline, not the current live baseline.
+4. Confirm working tree only has expected external artifacts.
+5. Confirm there are no pending review/commit/status gates.
+6. Decide the next planning target.
 ```
 
 Reasonable next planning options:
@@ -393,9 +403,13 @@ Use this prompt when opening a new ChatGPT PM window:
 
 ## 1. 当前真正 baseline
 
-HEAD == origin/main == 50c37c75cef4eba99e65238da64a6ecc4ae9d006
+HEAD == origin/main == 44f244617e935099ee9b6243e50b051f52ff4c43
 
 latest commit:
+44f2446 Add PM handoff and UTC+8 handoff workflow
+
+Slice H docs/status sync baseline:
+50c37c75cef4eba99e65238da64a6ecc4ae9d006
 50c37c7 Sync Sprint 3 Slice H gate status
 
 下一位 PM 接手第一步必须执行 read-only recovery，不要直接继续任务。
@@ -429,17 +443,17 @@ M .gitignore
 
 ## 13. Handoff commit note
 
-This handoff file was generated after Slice H docs/status sync.
-If committing this file, use exact path only:
+This handoff file was generated after Slice H docs/status sync and committed with the UTC+8 handoff workflow at `44f2446`.
+If repairing or recommitting this file, use exact path only:
 
 ```text
 docs/thread_handoff/chatgpt_pm_handoff_260629-2354.md
 ```
 
-Suggested commit message:
+Suggested repair commit message:
 
 ```text
-Add PM handoff after Slice H status sync
+Repair PM handoff baseline semantics
 ```
 
 Do not stage `.gitignore` or old PM handoff / Keynote artifacts.
