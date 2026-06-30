@@ -228,6 +228,7 @@ stations:
     mapping_id: ws03_runtime_v1
     station_type: labeling
     cycle_profile: normal_labeling
+    raw_policy: raw_capable
     upstream_station_id: WS02
     dmc_role: label_code
     payload:
