@@ -1,6 +1,6 @@
 # Sprint 3 Collector Ingestion Adapter Gate Status
 
-Updated: 2026-06-29
+Updated: 2026-06-30
 
 Purpose: compact current gate/status source for Codex Threads working on Sprint 3 Collector Ingestion Adapter.
 
@@ -15,8 +15,8 @@ Read this file together with:
 
 ```text
 live HEAD / origin/main at authoring time:
-c7e80e8e931b5f23d6ea42fee7b10b27191b5e20
-c7e80e8 Roll out Slice H WS02 raw policy authority
+045d21c14436e8fe13a26bc32b7c2956df0cd99f
+045d21c Roll out Slice I WS03 raw policy authority
 
 Branch:
 main
@@ -40,6 +40,7 @@ Slice F1 raw_policy authority docs/contracts freeze implemented and committed
 Slice F2 raw_policy raw_capable authority implemented and committed
 Slice G WS01 raw_capable post-commit sanity tests-only hardening implemented and committed
 Slice H WS02 raw_policy raw_capable authority implemented and committed
+Slice I WS03 raw_policy raw_capable authority implemented and committed
 
 Deploy / rollback drill:
 not performed
@@ -68,6 +69,7 @@ Slice F1 raw_policy authority docs/contracts freeze is tracked in commit `ac1838
 Slice F2 raw_policy raw_capable authority is tracked in commit `829d5c7`.
 Slice G WS01 raw_capable post-commit sanity tests-only hardening is tracked in commit `398f11c`.
 Slice H WS02 raw_policy raw_capable authority is tracked in commit `c7e80e8`.
+Slice I WS03 raw_policy raw_capable authority is tracked in commit `045d21c`.
 
 Sprint 3 implementation files committed:
 
@@ -165,6 +167,13 @@ tests/test_collector_station_event_runtime_source.py
 ```
 
 Sprint 3 Slice H WS02 raw_policy raw_capable authority files committed:
+
+```text
+config/mapping.yaml
+tests/test_collector_station_event_runtime_source.py
+```
+
+Sprint 3 Slice I WS03 raw_policy raw_capable authority files committed:
 
 ```text
 config/mapping.yaml
@@ -314,6 +323,12 @@ behavior, Docker/deploy/tag/rollback or ACK/read_done ownership.
 | Slice H Data Quality focused implementation review | PASS WITH RECOMMENDATIONS | none |
 | Slice H Verification exact allowlist audit | PASS WITH RECOMMENDATIONS | none |
 | Slice H exact config/test commit/push | PASS | none |
+| Slice I WS03 raw_policy raw_capable rollout planning | PASS WITH RECOMMENDATIONS | none |
+| Slice I WS03 raw_policy raw_capable implementation | PASS | none |
+| Slice I Reliability focused implementation review | PASS | none |
+| Slice I Data Quality focused implementation review | PASS | none |
+| Slice I Verification exact allowlist audit | PASS | none |
+| Slice I exact config/test commit/push | PASS | none |
 
 Current overall status:
 
@@ -332,6 +347,7 @@ Sprint 3 Slice F1 raw_policy authority docs/contracts freeze: reviewed, committe
 Sprint 3 Slice F2 raw_policy raw_capable authority: implemented, reviewed, committed and pushed at 829d5c7.
 Sprint 3 Slice G WS01 raw_capable post-commit sanity tests-only hardening: implemented, reviewed, committed and pushed at 398f11c.
 Sprint 3 Slice H WS02 raw_policy raw_capable authority: implemented, reviewed, committed and pushed at c7e80e8.
+Sprint 3 Slice I WS03 raw_policy raw_capable authority: implemented, reviewed, committed and pushed at 045d21c.
 Slice B inserted the adapter gate after payload/cycle/counter guards and counter reset fail-safe, before existing storage.persist_cycle().
 Slice B accepted-only path continues to existing storage.persist_cycle() plus existing read_done/ACK behavior.
 Slice B non-accepted decisions do not persist, do not project, do not write defect detail, and do not ACK.
@@ -412,16 +428,25 @@ Slice H introduced no runtime/source code, storage.py, DB/API/Dashboard/frontend
 Slice H Reliability review: PASS WITH RECOMMENDATIONS, no blocker.
 Slice H Data Quality review: PASS WITH RECOMMENDATIONS, no blocker.
 Slice H Verification exact allowlist audit: PASS WITH RECOMMENDATIONS, no blocker.
+Slice I changes only WS03 station-level raw_policy to raw_capable in config/mapping.yaml.
+Slice I leaves line-wide runtime_defaults unchanged and keeps WS01/WS02/WS03 station-level raw_capable.
+Slice I adds real mapping authority test coverage in tests/test_collector_station_event_runtime_source.py for three-station station-level raw_capable authority, WS03 nominal raw path, WS03 RAW_EVIDENCE_MISSING fail-closed, WS01/WS02 regression, line-wide default and config_hash lineage.
+Slice I does not introduce raw_required.
+Slice I introduced no runtime/source code, storage.py, DB/API/Dashboard/frontend, V-PLC behavior, Docker/deploy or ACK/read_done ownership change.
+Slice I Reliability review: PASS, no blocker.
+Slice I Data Quality review: PASS, no blocker.
+Slice I Verification exact allowlist audit: PASS, no blocker.
 Docs/status sync completed at fd79e21.
 Docs/status baseline repair completed at 4f424c6.
 PM rules / baseline semantics repair pre-baseline: e284a06 Repair PM rules and Sprint 3 baseline status.
-Eligible for PM handoff readiness or downstream next-slice planning after Slice H docs/status sync: yes.
+Eligible for PM handoff readiness or downstream next-slice planning after Slice I docs/status sync: yes.
 D3 actual raw-capable/raw-required runtime wiring: CLOSED at c9e7c22.
 E1 runtime raw decoder repair: CLOSED at 2c73410 / 2c73410281d1465db166b66ddc23e27d9337b90a.
 F1 raw_policy authority docs/contracts freeze: CLOSED at ac1838c / ac1838cbc9378d72da66ace35a200a909f4d5b89.
 F2 raw_policy raw_capable authority implementation: CLOSED at 829d5c7 / 829d5c71982b8d22556102b6e67ed9c1e981131d.
 Slice G WS01 raw_capable post-commit sanity tests-only hardening: CLOSED at 398f11c / 398f11cfb20717d628d03c0a486a31745fe3030d.
 Slice H WS02 raw_policy raw_capable authority implementation: CLOSED at c7e80e8 / c7e80e8e931b5f23d6ea42fee7b10b27191b5e20.
+Slice I WS03 raw_policy raw_capable authority implementation: CLOSED at 045d21c / 045d21c14436e8fe13a26bc32b7c2956df0cd99f.
 DB/API/Dashboard/V-PLC/deploy/tag/rollback/real PLC pilot: not authorized.
 ```
 
@@ -569,6 +594,20 @@ tests/test_collector_station_event_runtime_source.py -> 45 passed
 tests/test_collector_station_event_adapter.py -> 43 passed
 compileall collector/app/plc collector/app/services -> PASS
 git diff --check: PASS
+```
+
+Last observed Slice I validation/review results before exact allowlist commit:
+
+```text
+Architecture / Integration implementation: PASS
+Reliability focused review: PASS
+Data Quality focused review: PASS
+Verification focused review / exact allowlist audit: PASS
+TDD red check before config change: 3 failed, 49 passed; failures showed WS03 still raw_not_provided
+focused runtime source tests: 52 passed
+adjacent adapter gate regression: 30 passed
+git diff --check: PASS
+git diff --cached --check before commit: PASS
 ```
 
 For future hardening or next-slice work, rerun the relevant focused and regression tests before staging.

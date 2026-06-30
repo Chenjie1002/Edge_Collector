@@ -1,19 +1,19 @@
 # 当前状态 / Codex 恢复上下文
 
-更新时间：2026-06-29
+更新时间：2026-06-30
 工作目录：`/Users/chenjie/Documents/MES/edge-mes-demo`
 树莓派部署目录：`/opt/edge-mes-demo`
 
 ## 0. 当前 PM / Codex 协作状态
 
-当前主线：Phase-2 Sprint 3 Slice H WS02 raw_policy raw_capable authority docs/status sync closeout。
+当前主线：Phase-2 Sprint 3 Slice I WS03 raw_policy raw_capable authority docs/status sync closeout。
 
 Last verified baseline before this docs sync:
 
 ```text
 live HEAD / origin/main at authoring time:
-c7e80e8e931b5f23d6ea42fee7b10b27191b5e20
-c7e80e8 Roll out Slice H WS02 raw policy authority
+045d21c14436e8fe13a26bc32b7c2956df0cd99f
+045d21c Roll out Slice I WS03 raw policy authority
 
 branch:
 main
@@ -67,6 +67,12 @@ Slice H Reliability focused implementation review: PASS WITH RECOMMENDATIONS, no
 Slice H Data Quality focused implementation review: PASS WITH RECOMMENDATIONS, no blocker
 Slice H Verification exact allowlist audit: PASS WITH RECOMMENDATIONS, no blocker
 Slice H exact config/test commit/push: PASS, commit c7e80e8
+Slice I WS03 raw_policy raw_capable rollout planning: PASS WITH RECOMMENDATIONS
+Slice I WS03 raw_policy raw_capable implementation: PASS
+Slice I Reliability focused implementation review: PASS, no blocker
+Slice I Data Quality focused implementation review: PASS, no blocker
+Slice I Verification exact allowlist audit: PASS, no blocker
+Slice I exact config/test commit/push: PASS, commit 045d21c
 Slice D2-C decoder registry authority implementation: PASS WITH RECOMMENDATIONS
 Slice D2-C Reliability implementation review: PASS WITH RECOMMENDATIONS, no blocker
 Slice D2-C Data Quality implementation review: PASS WITH RECOMMENDATIONS, no blocker
@@ -102,7 +108,7 @@ R-N1/R-N2 hardening commit/push: PASS, commit 577c1a1
 Docs/status sync: PASS, commit fd79e21
 Docs/status baseline repair: PASS, commit 4f424c6
 PM rules / baseline semantics repair: PASS, commit e284a06
-Eligible for PM handoff readiness or downstream next-slice planning: yes
+Eligible for PM handoff readiness or downstream next-slice planning after Slice I docs/status sync: yes
 D3 docs/status sync exact allowlist: completed after implementation commit c9e7c22
 D3 actual raw-capable/raw-required runtime wiring: CLOSED at c9e7c22
 E1 runtime raw decoder repair: CLOSED at 2c73410 / 2c73410281d1465db166b66ddc23e27d9337b90a
@@ -110,7 +116,35 @@ F1 raw_policy authority docs/contracts freeze: CLOSED at ac1838c / ac1838cbc9378
 F2 raw_policy raw_capable authority implementation: CLOSED at 829d5c7 / 829d5c71982b8d22556102b6e67ed9c1e981131d
 Slice G WS01 raw_capable post-commit sanity tests-only hardening: CLOSED at 398f11c / 398f11cfb20717d628d03c0a486a31745fe3030d
 Slice H WS02 raw_policy raw_capable authority implementation: CLOSED at c7e80e8 / c7e80e8e931b5f23d6ea42fee7b10b27191b5e20
+Slice I WS03 raw_policy raw_capable authority implementation: CLOSED at 045d21c / 045d21c14436e8fe13a26bc32b7c2956df0cd99f
 DB/API/Dashboard/V-PLC/deploy/tag/rollback/real PLC pilot: not authorized
+```
+
+当前 Sprint 3 Slice I WS03 raw_policy raw_capable authority files 已提交：
+
+```text
+config/mapping.yaml
+tests/test_collector_station_event_runtime_source.py
+```
+
+Slice I WS03 raw_policy raw_capable authority summary:
+
+```text
+Slice I implemented a narrow Level 2 mapping/config authority rollout for WS03 only.
+Commit message: Roll out Slice I WS03 raw policy authority.
+Commit: 045d21c / 045d21c14436e8fe13a26bc32b7c2956df0cd99f.
+WS01 remains raw_capable.
+WS02 remains raw_capable.
+WS03 / ws03_runtime_v1 / station_runtime_payload_v1 station-level raw_policy is now raw_capable.
+Line-wide runtime_defaults.raw_policy remains raw_not_provided.
+raw_required was not introduced.
+Runtime/source code was not changed.
+The focused tests cover real mapping three-station station-level raw_capable authority, WS03 nominal raw source-builder path, WS03 missing raw RAW_EVIDENCE_MISSING fail-closed, WS01/WS02 raw_capable regression, line-wide default, and config_hash lineage.
+Reliability focused review: PASS, no blocker.
+Data Quality focused review: PASS, no blocker.
+Verification exact allowlist audit: PASS, no blocker.
+storage.py, DB/API/Dashboard/frontend, V-PLC behavior, Docker/deploy and ACK/read_done ownership unchanged.
+No raw_required introduction and no line-wide raw_policy change.
 ```
 
 当前 Sprint 3 Slice H WS02 raw_policy raw_capable authority files 已提交：
