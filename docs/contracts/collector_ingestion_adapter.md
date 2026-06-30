@@ -2,11 +2,24 @@
 
 Status: Sprint 3 Collector ingestion adapter contract. Offline adapter,
 runtime adapter gate, diagnostics, raw boundary tests, D2-C offline decoder
-registry authority, D3 runtime raw wiring and E1 runtime raw decoder repair are
-implemented/reviewed/committed.
+registry authority, D3 runtime raw wiring, E1 runtime raw decoder repair and
+station-level raw_policy rollout through Slice I are implemented, reviewed and
+committed.
 DB writes, API endpoints, Dashboard, V-PLC behavior changes, PLC pilot,
 storage.py changes, ACK/read_done ownership changes, deploy, tag and rollback
 are not authorized.
+
+Current PM intake live baseline for post-raw_policy docs/status sync:
+
+- HEAD / `origin/main`: `1ed1e44112d5b2bd682623082f099a4b46dab925`.
+- Latest commit: `1ed1e44 Add PM handoff after Slice I status sync`.
+- Sprint 3 raw_policy station-level rollout checkpoint: CLOSED / PASS WITH
+  RECOMMENDATIONS.
+- WS01 / WS02 / WS03 station-level `raw_policy`: `raw_capable`.
+- Line-wide `runtime_defaults.raw_policy`: `raw_not_provided`.
+- `raw_required`: not introduced.
+- Runtime/source code, `storage.py`, DB/API/Dashboard/V-PLC/Docker/deploy and
+  ACK/read_done ownership: unchanged.
 
 Updated: 2026-06-28
 
@@ -407,6 +420,13 @@ Any future implementation candidate allowlist in this or companion planning
 docs is only a candidate. It must not be treated as authorization to edit those
 files without a later PM-approved implementation task.
 
+Post-Slice I current-control note: the F1 wording above is retained as the
+historical authority freeze. Subsequent PM-authorized station-level rollout gates
+closed WS01, WS02 and WS03 to `raw_capable` while keeping line-wide
+`runtime_defaults.raw_policy` as `raw_not_provided`. No `raw_required`,
+runtime/source code, `storage.py`, DB/API/Dashboard/V-PLC/Docker/deploy or
+ACK/read_done ownership change was introduced by those station-level gates.
+
 ### 4.5 Fail-closed cases
 
 | Case | Decision | Meaning |
@@ -589,6 +609,24 @@ future authorized implementation thread.
 
 Architecture contract/status sync: `PASS WITH RECOMMENDATIONS`.
 
+Current control status: Sprint 3 raw_policy station-level rollout checkpoint is
+CLOSED / PASS WITH RECOMMENDATIONS. WS01, WS02 and WS03 station-level
+`raw_policy` are all `raw_capable`; line-wide
+`runtime_defaults.raw_policy` remains `raw_not_provided`; `raw_required` was not
+introduced.
+
+Current PM intake live baseline:
+
+```text
+HEAD / origin/main:
+1ed1e44112d5b2bd682623082f099a4b46dab925
+Latest commit:
+1ed1e44 Add PM handoff after Slice I status sync
+```
+
+Earlier E1/F1/D3 baseline wording in this contract is historical audit context,
+not the live repository baseline for this post-Slice I status sync.
+
 Reliability Review: `PASS WITH RECOMMENDATIONS`, no blocker.
 
 Data Quality focused implementation review: `PASS WITH RECOMMENDATIONS`, no blocker.
@@ -602,7 +640,12 @@ registry authority is implemented, reviewed, committed and pushed at
 `5e5a617`. D2-C implements offline immutable decoder registry/schema authority
 and decoder callable binding. D3 runtime raw wiring is implemented, reviewed,
 committed and pushed at `c9e7c22`. E1 runtime raw decoder repair is implemented,
-reviewed, committed and pushed at `2c73410`.
+reviewed, committed and pushed at `2c73410`. F1 raw_policy authority
+docs/contracts freeze is recorded at `ac1838c`; F2 WS01 station-level
+raw_policy raw_capable authority is recorded at `829d5c7`; Slice G WS01
+post-commit sanity tests-only hardening is recorded at `398f11c`; Slice H WS02
+station-level raw_policy raw_capable authority is recorded at `c7e80e8`; Slice I
+WS03 station-level raw_policy raw_capable authority is recorded at `045d21c`.
 
 D3 carry-forward recommendation: current `config/mapping.yaml` runtime default
 still uses `raw_policy: raw_not_provided`; D3 runtime code path always passes
@@ -613,8 +656,11 @@ mapping/config authority change and review.
 E1 carry-forward recommendation: E1 is closed as a narrow runtime raw decoder
 repair after Slice E HOLD. It does not authorize `config/mapping.yaml`,
 `raw_policy`, `storage.py`, DB/API/Dashboard/frontend, V-PLC behavior,
-Docker/deploy or ACK/read_done ownership changes. Future raw_policy changes
-remain a separate Level 2 mapping/config authority gate.
+Docker/deploy or ACK/read_done ownership changes. Historical F1/F2/G/H/I gates
+have since moved WS01, WS02 and WS03 station-level raw_policy to `raw_capable`
+while keeping line-wide `runtime_defaults.raw_policy` as `raw_not_provided`.
+Future `raw_required` introduction or any line-wide raw_policy default change
+remains a separate Level 2 mapping/config authority gate.
 
 Eligible for next PM planning gate: yes.
 

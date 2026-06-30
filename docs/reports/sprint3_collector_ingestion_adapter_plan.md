@@ -2,10 +2,27 @@
 
 Date: 2026-06-28
 
-Status: Sprint 3 Collector Ingestion Adapter planning/status reference. E1
-runtime raw decoder repair is implemented, reviewed, committed and pushed at
-`2c73410`.
+Status: Sprint 3 Collector Ingestion Adapter planning/status reference. Sprint
+3 raw_policy station-level rollout checkpoint is CLOSED / PASS WITH
+RECOMMENDATIONS after Slice I. E1 runtime raw decoder repair remains historical
+implementation history at `2c73410`.
 DB/API/Dashboard/V-PLC/PLC pilot/deploy/tag/rollback remain not authorized.
+
+Current PM intake live baseline for post-raw_policy docs/status sync:
+
+- Branch: `main`.
+- HEAD / `origin/main`: `1ed1e44112d5b2bd682623082f099a4b46dab925`.
+- Latest commit: `1ed1e44 Add PM handoff after Slice I status sync`.
+- Sprint 3 raw_policy station-level rollout checkpoint: CLOSED / PASS WITH
+  RECOMMENDATIONS.
+- WS01 / WS02 / WS03 station-level `raw_policy`: `raw_capable`.
+- Line-wide `runtime_defaults.raw_policy`: `raw_not_provided`.
+- `raw_required`: not introduced.
+- Runtime/source code, `storage.py`, DB/API/Dashboard/V-PLC/Docker/deploy and
+  ACK/read_done ownership: unchanged.
+
+The E1 authoring baseline below is retained as a historical audit marker. It is
+not the live repository baseline for this post-Slice I status sync.
 
 Live baseline at E1 docs/status sync authoring time:
 
@@ -463,9 +480,28 @@ Explicitly excluded:
 
 ## 8. Current control conclusion
 
-Conclusion: `PASS WITH RECOMMENDATIONS` for E1 docs/status sync preparation.
-E1 review status has been synchronized after implementation, focused reviews
-and exact allowlist commit/push at `2c73410`.
+Conclusion: `PASS WITH RECOMMENDATIONS` for post-Slice I raw_policy
+station-level rollout checkpoint docs/status reference sync.
+
+Current control status: Sprint 3 raw_policy station-level rollout checkpoint is
+CLOSED / PASS WITH RECOMMENDATIONS. WS01, WS02 and WS03 station-level
+`raw_policy` are all `raw_capable`; line-wide
+`runtime_defaults.raw_policy` remains `raw_not_provided`; `raw_required` was not
+introduced.
+
+Current PM intake live baseline:
+
+```text
+HEAD / origin/main:
+1ed1e44112d5b2bd682623082f099a4b46dab925
+Latest commit:
+1ed1e44 Add PM handoff after Slice I status sync
+```
+
+Historical authoring baselines in this document, including the E1
+`2c73410281d1465db166b66ddc23e27d9337b90a` marker, remain audit markers only.
+They must not be read as the current live baseline after later Slice F1/F2/G/H/I
+and PM handoff/status-sync commits.
 
 Reliability Review: `PASS WITH RECOMMENDATIONS`, no blocker.
 
@@ -480,7 +516,13 @@ tests, config, schema, mapping, runtime Collector integration or raw runtime
 wiring. D2-B fixture/test-only hardening is recorded at `dafbbf8`. D2-C minimal
 registry/schema implementation is recorded at `5e5a617`. D3 runtime raw wiring
 is recorded at `c9e7c22`. E1 runtime raw decoder repair is recorded at
-`2c73410` / `2c73410281d1465db166b66ddc23e27d9337b90a`.
+`2c73410` / `2c73410281d1465db166b66ddc23e27d9337b90a`. F1 raw_policy
+authority docs/contracts freeze is recorded at `ac1838c`. F2 WS01
+station-level raw_policy raw_capable authority is recorded at `829d5c7`. Slice
+G WS01 post-commit sanity tests-only hardening is recorded at `398f11c`. Slice H
+WS02 station-level raw_policy raw_capable authority is recorded at `c7e80e8`.
+Slice I WS03 station-level raw_policy raw_capable authority is recorded at
+`045d21c`.
 
 D2-C carry-forward recommendations:
 
@@ -504,8 +546,9 @@ E1 carry-forward recommendations:
 ```text
 E1 is closed at 2c73410 as a narrow runtime raw decoder repair after Slice E HOLD.
 E1 does not authorize config/mapping.yaml, raw_policy, storage.py, DB/API/Dashboard/frontend, V-PLC behavior, Docker/deploy or ACK/read_done ownership changes.
-Future raw_policy change from raw_not_provided to raw_capable/raw_required requires a separate Level 2 mapping/config authority gate.
-Current eligible next step is PM handoff readiness or next slice planning, not immediate DB/API/Dashboard/V-PLC/deploy.
+Historical F1/F2/G/H/I gates have since moved WS01, WS02 and WS03 station-level raw_policy to raw_capable while keeping line-wide runtime_defaults.raw_policy as raw_not_provided.
+Future raw_required introduction or any line-wide raw_policy default change still requires a separate Level 2 mapping/config authority gate.
+Current eligible next step is downstream PM planning, not immediate DB/API/Dashboard/V-PLC/deploy.
 ```
 
 Eligible for next PM planning gate: yes.
