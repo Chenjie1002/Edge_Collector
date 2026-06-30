@@ -4,15 +4,19 @@ Status: Sprint 3 Collector ingestion adapter contract. Offline adapter,
 runtime adapter gate, diagnostics, raw boundary tests, D2-C offline decoder
 registry authority, D3 runtime raw wiring, E1 runtime raw decoder repair and
 station-level raw_policy rollout through Slice I are implemented, reviewed and
-committed.
+committed. Sprint 3 Slice J downstream adapter decision / diagnostic /
+projection boundary is frozen here as docs/contracts planning, not runtime
+implementation.
 DB writes, API endpoints, Dashboard, V-PLC behavior changes, PLC pilot,
 storage.py changes, ACK/read_done ownership changes, deploy, tag and rollback
 are not authorized.
 
-Current PM intake live baseline for post-raw_policy docs/status sync:
+Current PM intake live baseline for Slice J docs/contracts boundary freeze:
 
-- HEAD / `origin/main`: `1ed1e44112d5b2bd682623082f099a4b46dab925`.
-- Latest commit: `1ed1e44 Add PM handoff after Slice I status sync`.
+- HEAD / `origin/main`: `414c9a8566f655bd2021326cf147ef6f7221b849`.
+- Latest commit: `414c9a8 Sync Sprint 3 post-raw-policy status docs`.
+- Sprint 3 Slice J downstream planning-only gate: CLOSED / PASS WITH
+  RECOMMENDATIONS.
 - Sprint 3 raw_policy station-level rollout checkpoint: CLOSED / PASS WITH
   RECOMMENDATIONS.
 - WS01 / WS02 / WS03 station-level `raw_policy`: `raw_capable`.
@@ -444,6 +448,66 @@ In this MVP, decoder missing with raw may be fail-closed rejected as
 deferred/quarantine semantics, but this offline contract does not persist
 quarantine.
 
+### 4.6 Slice J downstream decision / diagnostic / projection boundary
+
+Slice J freezes the downstream Collector adapter decision boundary after
+station-level raw_policy rollout. This section is a docs/contracts boundary
+freeze only. It does not change runtime/source code, tests, `config/mapping.yaml`,
+`storage.py`, DB/API/Dashboard/V-PLC/Docker/deploy behavior or ACK/read_done
+ownership.
+
+Accepted-only persist/ACK boundary:
+
+- only an `accepted` adapter decision may enter the existing persist/ACK path;
+- accepted means the normalized candidate has passed immutable config authority,
+  decoder/raw authority, shared station-event validation, duplicate/conflict
+  checks and any required wrapper decision checks for the authorized path;
+- the adapter decision is the boundary before side effects, not a logging label
+  after persistence.
+
+Non-accepted disposition boundary:
+
+| Disposition | Persist | ACK/read_done | Projection | Defect detail | Production visibility |
+| --- | --- | --- | --- | --- | --- |
+| `rejected` | no | no | no | no | no DB/API/Dashboard production fact |
+| `deferred` | no | no | no | no | no DB/API/Dashboard production fact |
+| `quarantined` | no | no | no | no | no DB/API/Dashboard production fact |
+| `duplicate` | no new persist | no new ACK | no new projection | no new detail | no new DB/API/Dashboard production fact |
+| `conflict` | no | no | no | no | no DB/API/Dashboard production fact |
+| `raw_variant` | no new persist | no new ACK | no new projection | no new detail | no new DB/API/Dashboard production fact |
+
+Diagnostic observability boundary:
+
+- diagnostic observability may record reason codes, disposition, candidate
+  context and raw/normalized comparison context for review;
+- diagnostic observability is not an owner of ACK/read_done, persist, retry
+  commit, production projection or defect-detail creation;
+- adding or changing diagnostic visibility must not create production facts or
+  side effects unless PM opens a separate production-fact boundary gate.
+
+Evidence and candidate semantics:
+
+- `raw_payload` / `raw_hex` remains evidence for decoder and comparison
+  authority; it is not by itself a production fact, defect detail, Quality/Pareto
+  input, Dashboard state or ACK authority;
+- decoded raw output remains a normalized candidate payload until the adapter
+  decision is accepted;
+- source normalized payload remains a candidate until immutable config,
+  raw_policy, decoder/raw comparison and shared validation gates accept it;
+- rejected, deferred, quarantined, duplicate, conflict and raw_variant candidate
+  payloads may be diagnostic context only and must not be used as production
+  facts.
+
+DB/API/Dashboard visibility deferral:
+
+- DB/API/Dashboard production visibility remains deferred to a separate
+  production-fact boundary planning gate;
+- this contract does not authorize schema, storage, API, Dashboard, V-PLC,
+  deployment, tag, rollback or real PLC pilot work;
+- future production visibility planning must restate which accepted facts are
+  visible, which diagnostic artifacts remain hidden or review-only, and how
+  defect detail rows are guarded from non-accepted dispositions.
+
 ## 5. Raw / normalized authority matrix
 
 | Input shape | MVP decision | Production fact authority | Projection |
@@ -619,13 +683,14 @@ Current PM intake live baseline:
 
 ```text
 HEAD / origin/main:
-1ed1e44112d5b2bd682623082f099a4b46dab925
+414c9a8566f655bd2021326cf147ef6f7221b849
 Latest commit:
-1ed1e44 Add PM handoff after Slice I status sync
+414c9a8 Sync Sprint 3 post-raw-policy status docs
 ```
 
-Earlier E1/F1/D3 baseline wording in this contract is historical audit context,
-not the live repository baseline for this post-Slice I status sync.
+Earlier E1/F1/D3 and post-Slice I baseline wording in this contract is
+historical audit context, not the live repository baseline for this Slice J
+docs/contracts boundary freeze.
 
 Reliability Review: `PASS WITH RECOMMENDATIONS`, no blocker.
 
@@ -662,7 +727,10 @@ while keeping line-wide `runtime_defaults.raw_policy` as `raw_not_provided`.
 Future `raw_required` introduction or any line-wide raw_policy default change
 remains a separate Level 2 mapping/config authority gate.
 
-Eligible for next PM planning gate: yes.
+Slice J downstream planning-only gate: CLOSED / PASS WITH RECOMMENDATIONS.
+
+Eligible for next PM planning gate: yes. Next eligible review gate for Slice J
+is Reliability focused review of the docs/contracts boundary.
 
 Eligible for implementation without PM approval: no. PM approval is required
 before DB/API/Dashboard/V-PLC/PLC pilot/storage.py/ACK/deploy, commit/push,

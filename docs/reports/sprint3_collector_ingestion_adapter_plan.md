@@ -3,16 +3,20 @@
 Date: 2026-06-28
 
 Status: Sprint 3 Collector Ingestion Adapter planning/status reference. Sprint
-3 raw_policy station-level rollout checkpoint is CLOSED / PASS WITH
-RECOMMENDATIONS after Slice I. E1 runtime raw decoder repair remains historical
-implementation history at `2c73410`.
+3 Slice J downstream Collector adapter decision / diagnostic / projection
+boundary docs freeze is an Architecture / Integration docs/contracts planning
+freeze. Sprint 3 raw_policy station-level rollout checkpoint remains CLOSED /
+PASS WITH RECOMMENDATIONS after Slice I. E1 runtime raw decoder repair remains
+historical implementation history at `2c73410`.
 DB/API/Dashboard/V-PLC/PLC pilot/deploy/tag/rollback remain not authorized.
 
-Current PM intake live baseline for post-raw_policy docs/status sync:
+Current PM intake live baseline for Slice J docs/contracts boundary freeze:
 
 - Branch: `main`.
-- HEAD / `origin/main`: `1ed1e44112d5b2bd682623082f099a4b46dab925`.
-- Latest commit: `1ed1e44 Add PM handoff after Slice I status sync`.
+- HEAD / `origin/main`: `414c9a8566f655bd2021326cf147ef6f7221b849`.
+- Latest commit: `414c9a8 Sync Sprint 3 post-raw-policy status docs`.
+- Sprint 3 Slice J downstream planning-only gate: CLOSED / PASS WITH
+  RECOMMENDATIONS.
 - Sprint 3 raw_policy station-level rollout checkpoint: CLOSED / PASS WITH
   RECOMMENDATIONS.
 - WS01 / WS02 / WS03 station-level `raw_policy`: `raw_capable`.
@@ -392,7 +396,77 @@ Important constraints:
 - DB write allowed in this stage: no for all decisions;
 - API-visible production outcome: no for all decisions in this stage.
 
-### 4.6 Offline fixture inventory
+### 4.6 Slice J downstream adapter decision / diagnostic / projection boundary
+
+Slice J name: `Sprint 3 Slice J -- Downstream Collector Adapter Decision /
+Diagnostic / Projection Boundary`.
+
+Objective: freeze the downstream boundary after station-level `raw_policy`
+rollout so future implementation work cannot confuse adapter diagnostics,
+candidate payloads or raw evidence with production facts. Slice J makes the
+accepted adapter decision the only route into the existing persist/ACK path and
+keeps all non-accepted dispositions out of persistence, ACK, projection, defect
+detail and production visibility.
+
+Proposed tier: Level 2 for any later implementation because the boundary
+touches runtime safety, fact authority, ACK/read_done side-effect routing and
+future DB/API/Dashboard visibility. This docs/contracts freeze itself is a
+Level 1 docs/contracts planning edit with no runtime semantics change.
+
+Future candidate implementation allowlist category: Collector adapter decision
+gate, runtime source/adapter tests and diagnostic-only assertions. Candidate
+runtime files and tests must remain a future PM-approved exact allowlist; this
+section does not authorize edits. Future implementation must not default-include
+`storage.py`, DB/API/Dashboard/frontend, V-PLC, Docker/deploy,
+`config/mapping.yaml`, `raw_required` introduction, ACK/read_done ownership or
+line-wide `raw_policy` changes.
+
+Slice J boundary decisions:
+
+- only `accepted` adapter decisions may reach the existing persist/ACK path;
+- `rejected`, `deferred`, `quarantined`, `duplicate`, `conflict` and
+  `raw_variant` decisions must not persist, ACK, project, write defect detail or
+  become DB/API/Dashboard-visible production facts;
+- diagnostic observability may record reason codes and candidate context for
+  review, but remains non-owner of ACK/read_done and must not drive
+  persistence;
+- `raw_payload` / `raw_hex` is evidence only, not a production fact or defect
+  detail authority;
+- decoded or normalized payload remains a candidate until an accepted adapter
+  decision exists;
+- DB/API/Dashboard production visibility is deferred to a separate
+  production-fact boundary planning gate.
+
+Required review gates before later implementation:
+
+- Architecture / Integration: confirm ownership, side-effect path and exact
+  implementation allowlist.
+- Reliability: confirm non-accepted decisions are fail-closed and cannot ACK or
+  mutate read_done.
+- Data Quality: confirm candidate/raw/diagnostic data cannot leak into
+  production facts, defect detail, Quality/Pareto or Dashboard state.
+- Verification: confirm accepted-only and non-accepted no-side-effect cases are
+  testable with deterministic fixtures and runtime regression checks.
+- PM authorization: explicitly authorize implementation, tests, exact staging,
+  commit/push or any DB/API/Dashboard/V-PLC/deploy/tag/rollback expansion.
+
+Explicit non-goals for Slice J docs freeze:
+
+- no runtime/source code changes;
+- no tests run and no test files changed;
+- no `config/mapping.yaml` change;
+- no `raw_required` introduction;
+- no `storage.py` change;
+- no DB/API/Dashboard/frontend/V-PLC/Docker/deploy change;
+- no ACK/read_done ownership change;
+- no real PLC pilot, tag, rollback, stage, commit or push.
+
+Next eligible gate after docs freeze: Reliability focused review of the Slice J
+docs/contracts boundary. Implementation remains ineligible until Architecture,
+Reliability, Data Quality and Verification gates close and PM separately
+authorizes an exact implementation allowlist.
+
+### 4.7 Offline fixture inventory
 
 Required future fixture inventory:
 
@@ -493,9 +567,9 @@ Current PM intake live baseline:
 
 ```text
 HEAD / origin/main:
-1ed1e44112d5b2bd682623082f099a4b46dab925
+414c9a8566f655bd2021326cf147ef6f7221b849
 Latest commit:
-1ed1e44 Add PM handoff after Slice I status sync
+414c9a8 Sync Sprint 3 post-raw-policy status docs
 ```
 
 Historical authoring baselines in this document, including the E1
@@ -551,7 +625,10 @@ Future raw_required introduction or any line-wide raw_policy default change stil
 Current eligible next step is downstream PM planning, not immediate DB/API/Dashboard/V-PLC/deploy.
 ```
 
-Eligible for next PM planning gate: yes.
+Slice J downstream planning-only gate: CLOSED / PASS WITH RECOMMENDATIONS.
+
+Eligible for next PM planning gate: yes. Next eligible review gate for Slice J
+is Reliability focused review of the docs/contracts boundary.
 
 Eligible for implementation without PM approval: no. PM approval is required
 before DB/API/Dashboard/V-PLC/PLC pilot/storage.py/ACK/deploy, commit/push,
