@@ -114,6 +114,22 @@ def ready_payload(counter: int = 5, *, read_done: bool = False) -> dict[str, obj
     }
 
 
+def assert_no_ack_read_done_mutation_for_current_non_accepted_payload(
+    storage: FakeStorage,
+    client: FakeClient,
+    *,
+    prior_max_counter: int | None,
+    disposition: str,
+) -> None:
+    message = f"{disposition}: no ACK/read_done mutation for the current non-accepted payload"
+    assert storage.persist_calls == 0
+    assert storage.max_counter == prior_max_counter
+    assert storage.ack_ok_calls == 0, message
+    assert storage.ack_failed_calls == 0, message
+    assert client.writes == [], message
+    assert storage.events == []
+
+
 def make_worker(
     *,
     storage: FakeStorage | None = None,
@@ -222,20 +238,36 @@ def test_accepted_read_done_path_persists_before_ack_status_repair() -> None:
     "disposition",
     ["rejected", "deferred", "quarantined", "duplicate", "conflict", "raw_variant"],
 )
-def test_non_accepted_adapter_decisions_do_not_persist_or_ack(disposition: str) -> None:
-    worker, storage, client = make_worker(adapter_disposition=disposition)
+@pytest.mark.parametrize("read_done", [False, True], ids=["read_done_false", "read_done_true"])
+def test_non_accepted_adapter_decisions_do_not_persist_or_mutate_current_payload_ack_status(
+    disposition: str,
+    read_done: bool,
+) -> None:
+    prior_max_counter = 4
+    worker, storage, client = make_worker(
+        storage=FakeStorage(max_counter=prior_max_counter),
+        adapter_disposition=disposition,
+    )
 
-    worker._process_station(make_runtime(), bytearray(64), ready_payload(), BOOT_ID)
+    worker._process_station(
+        make_runtime(),
+        bytearray(64),
+        ready_payload(counter=5, read_done=read_done),
+        BOOT_ID,
+    )
 
-    assert storage.persist_calls == 0
-    assert storage.ack_ok_calls == 0
-    assert storage.ack_failed_calls == 0
-    assert client.writes == []
+    assert_no_ack_read_done_mutation_for_current_non_accepted_payload(
+        storage,
+        client,
+        prior_max_counter=prior_max_counter,
+        disposition=disposition,
+    )
     assert storage.errors[-1]["error_type"] == "ADAPTER_DECISION_NOT_ACCEPTED"
     context = storage.errors[-1]["raw_context"]
     assert context["adapter_phase"] == "adapter_decision"
     assert context["adapter_disposition"] == disposition
     assert context["adapter_error_code"] == disposition.upper()
+    assert context["read_done"] is read_done
     assert "adapter decision not accepted" in context["adapter_reason"]
     assert storage.runtime_updates[-1]["collector_state"] == "ADAPTER_REJECTED"
 

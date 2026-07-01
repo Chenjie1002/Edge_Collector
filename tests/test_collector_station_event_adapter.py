@@ -219,6 +219,11 @@ def assert_no_projection(decision) -> None:
     assert decision.lifecycle is None or decision.disposition in {"duplicate", "conflict"}
 
 
+def assert_no_projection_defect_detail_or_production_visibility(decision, label: str) -> None:
+    assert decision.disposition != "accepted", label
+    assert_no_projection(decision)
+
+
 def assert_diagnostic_only_rejection(decision, expected_code: str) -> None:
     assert (decision.disposition, decision.final_error_code) == ("rejected", expected_code)
     assert decision.normalized_event is None
@@ -838,11 +843,90 @@ def test_duplicate_conflict_and_raw_variant_do_not_create_new_projection() -> No
     assert conflict.projection_metadata is None
 
 
+def test_slice_j_non_accepted_dispositions_have_no_downstream_visibility() -> None:
+    def raw_variant_decoder(raw_payload, _event):
+        return {"torque": raw_payload["torque"]}
+
+    snap = snapshot(raw_policy="raw_required", raw_decoder=raw_variant_decoder)
+    reg = registry(snap)
+    accepted = adapt_source_payload(
+        source(
+            normalized_payload={"torque": 4.8},
+            raw_payload={"torque": 4.8},
+            config_hash=snap.config_hash,
+        ),
+        reg,
+    )
+    assert accepted.disposition == "accepted"
+    duplicate = adapt_source_payload(
+        source(
+            event_id=str(uuid4()),
+            normalized_payload={"torque": 4.8},
+            raw_payload={"torque": 4.8},
+            config_hash=snap.config_hash,
+        ),
+        reg,
+        accepted.state_index,
+    )
+    raw_variant = adapt_source_payload(
+        source(
+            event_id=str(uuid4()),
+            normalized_payload={"torque": 4.8},
+            raw_payload={"torque": 4.8, "note": "same normalized"},
+            config_hash=snap.config_hash,
+        ),
+        reg,
+        accepted.state_index,
+    )
+    conflict = adapt_source_payload(
+        source(
+            event_id=str(uuid4()),
+            result="nok",
+            normalized_payload={"torque": 4.8},
+            raw_payload={"torque": 4.8},
+            config_hash=snap.config_hash,
+        ),
+        reg,
+        accepted.state_index,
+    )
+    decisions = {
+        "rejected": adapt_source_payload(
+            source(
+                normalized_payload={"torque": 4.8},
+                raw_payload={"torque": 4.9},
+                config_hash=snap.config_hash,
+            ),
+            reg,
+        ),
+        "deferred": adapt_source_payload(
+            source(diagnostic_decision="deferred", config_hash=snap.config_hash),
+            reg,
+        ),
+        "quarantined": adapt_source_payload(
+            source(diagnostic_decision="quarantined", config_hash=snap.config_hash),
+            reg,
+        ),
+        "duplicate": duplicate,
+        "conflict": conflict,
+        "raw_variant": raw_variant,
+    }
+
+    assert decisions["rejected"].final_error_code == "RAW_NORMALIZED_MISMATCH"
+    assert decisions["deferred"].disposition == "deferred"
+    assert decisions["quarantined"].disposition == "quarantined"
+    assert decisions["duplicate"].disposition == "duplicate"
+    assert decisions["conflict"].disposition == "conflict"
+    assert decisions["raw_variant"].disposition == "duplicate"
+    assert decisions["raw_variant"].audit_subtype == AuditSubtype.RAW_VARIANT
+    for label, decision in decisions.items():
+        assert_no_projection_defect_detail_or_production_visibility(decision, label)
+
+
 def test_rejected_nok_detail_does_not_leak_defect_projection() -> None:
     decision = adapt_source_payload(source("station_nok", result=None, parent=SimpleNamespace(normalized_event={"event_id": str(uuid4())}, fact_key="sha256:" + "1" * 64)), registry(snapshot()))
 
     assert decision.disposition == "rejected"
-    assert decision.projection_metadata is None
+    assert_no_projection_defect_detail_or_production_visibility(decision, "rejected_nok_detail")
 
 
 def test_historical_config_uses_old_snapshot_and_never_falls_back_to_current() -> None:
