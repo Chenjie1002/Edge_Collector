@@ -79,6 +79,10 @@ Slice J Reliability focused implementation review: CLOSED / PASS WITH RECOMMENDA
 Slice J Data Quality focused implementation review: CLOSED / PASS WITH RECOMMENDATIONS, no blocker
 Slice J Verification focused review / exact allowlist audit: CLOSED / PASS WITH RECOMMENDATIONS, no blocker
 Slice J exact tests-only commit/push: PASS, commit ed9a61e
+Sprint 3 accepted production-fact visibility boundary docs/contracts freeze: CLOSED / PASS WITH RECOMMENDATIONS
+Sprint 3 accepted production-fact visibility boundary Reliability focused review: CLOSED / PASS WITH RECOMMENDATIONS, no blocker
+Sprint 3 accepted production-fact visibility boundary Data Quality focused review: CLOSED / PASS WITH RECOMMENDATIONS, no blocker
+Sprint 3 accepted production-fact visibility boundary Verification focused review / exact allowlist audit: CLOSED / PASS WITH RECOMMENDATIONS, no blocker
 Slice D2-C decoder registry authority implementation: PASS WITH RECOMMENDATIONS
 Slice D2-C Reliability implementation review: PASS WITH RECOMMENDATIONS, no blocker
 Slice D2-C Data Quality implementation review: PASS WITH RECOMMENDATIONS, no blocker
@@ -124,6 +128,7 @@ Slice G WS01 raw_capable post-commit sanity tests-only hardening: CLOSED at 398f
 Slice H WS02 raw_policy raw_capable authority implementation: CLOSED at c7e80e8 / c7e80e8e931b5f23d6ea42fee7b10b27191b5e20
 Slice I WS03 raw_policy raw_capable authority implementation: CLOSED at 045d21c / 045d21c14436e8fe13a26bc32b7c2956df0cd99f
 Slice J downstream adapter boundary tests-only hardening: CLOSED at ed9a61e / ed9a61ef2bd8e6be12ad786fd7846f2efcfb0cad
+Sprint 3 accepted production-fact visibility boundary docs/contracts freeze: CLOSED / PASS WITH RECOMMENDATIONS; Reliability, Data Quality and Verification focused reviews CLOSED / PASS WITH RECOMMENDATIONS, no blocker
 DB/API/Dashboard/V-PLC/deploy/tag/rollback/real PLC pilot: not authorized
 ```
 
@@ -151,6 +156,26 @@ Verification focused review / exact allowlist audit: PASS WITH RECOMMENDATIONS, 
 No production code changed.
 No storage.py / DB / API / Dashboard / V-PLC / config / Docker / deploy changed.
 ACK/read_done ownership unchanged.
+```
+
+Sprint 3 accepted production-fact visibility boundary summary:
+
+```text
+The accepted production-fact visibility boundary docs/contracts freeze is CLOSED / PASS WITH RECOMMENDATIONS.
+Changed docs/contracts files: docs/contracts/collector_ingestion_adapter.md and docs/reports/sprint3_collector_ingestion_adapter_plan.md.
+Reliability focused review: PASS WITH RECOMMENDATIONS, no blocker.
+Data Quality focused review: PASS WITH RECOMMENDATIONS, no blocker.
+Verification focused review / exact allowlist audit: PASS WITH RECOMMENDATIONS, no blocker.
+Future production visibility is limited to accepted station-event business facts after immutable config authority, raw_policy / decoder authority, shared validation, duplicate/conflict checks and adapter decision accepted.
+Adapter disposition, reason code, candidate context and raw/normalized comparison context remain diagnostic/review/debug only.
+raw_payload/raw_hex is evidence, not a production fact; it is only a future review-only/audit-only candidate.
+Decoded/source normalized payloads remain candidates until accepted; non-accepted candidates stay diagnostic-only.
+Non-accepted dispositions do not write defect detail; NOK/detail visibility must bind to accepted upstream business evidence.
+DB/API/Dashboard schema/API/UI/DB work remains deferred; future gates must restate exact allowlist, review gates and production-fact leakage negative tests.
+ACK/read_done ownership remains unchanged, and visibility/diagnostic/review-only logic cannot become the owner.
+Future hardening backlog: duplicate/conflict precedence, historical config replay, exact-byte canonical fixture vectors, raw error taxonomy and production-fact leakage negative tests.
+Carry-forward: before actual DB/API/Dashboard implementation, consider tightening any remaining "candidate visible facts" wording to "candidate future production-visible facts".
+No tests, implementation, storage.py, DB/API/Dashboard, V-PLC, Docker/deploy, ACK/read_done ownership, tag, rollback or real PLC pilot is authorized by this boundary freeze.
 ```
 
 当前 Sprint 3 Slice I WS03 raw_policy raw_capable authority files 已提交：

@@ -254,7 +254,7 @@ Before assigning a task, PM must record:
 
 Future Codex prompts should prefer this short pattern.
 
-When PM issues a task prompt for another Thread, the prompt should be returned as one complete copyable Markdown block. Do not split a prompt across multiple separate code fences in the ChatGPT answer. Inside the copyable prompt, nested command, file, and path examples may still use fenced blocks when useful.
+When PM issues a task prompt for another Thread, the Thread prompt body must be returned as one complete copyable Markdown block. Do not split the Thread prompt body across multiple separate code fences. PM may write intake, judgment or explanation before or after the prompt, but the Thread prompt itself must remain a single copyable Markdown block so the user can copy it directly into the target Thread. Inside the copyable prompt, nested command, file and path examples may still use indented blocks or fenced examples when useful, provided the prompt body remains one copyable block.
 
 Future Codex prompts should use this pattern:
 

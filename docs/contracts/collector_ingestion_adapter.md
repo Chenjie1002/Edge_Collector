@@ -6,15 +6,17 @@ registry authority, D3 runtime raw wiring, E1 runtime raw decoder repair and
 station-level raw_policy rollout through Slice I are implemented, reviewed and
 committed. Sprint 3 Slice J downstream adapter decision / diagnostic /
 projection boundary tests-only hardening is implemented, reviewed and committed
-at `ed9a61e`.
+at `ed9a61e`. Sprint 3 accepted production-fact visibility boundary
+docs/contracts freeze is recorded here as a planning boundary only.
 DB writes, API endpoints, Dashboard, V-PLC behavior changes, PLC pilot,
 storage.py changes, ACK/read_done ownership changes, deploy, tag and rollback
 are not authorized.
 
-Current PM intake live baseline for Slice J tests-only hardening closeout:
+Current PM intake live baseline for accepted production-fact visibility
+boundary docs/contracts freeze:
 
-- HEAD / `origin/main`: `ed9a61ef2bd8e6be12ad786fd7846f2efcfb0cad`.
-- Latest commit: `ed9a61e Harden Sprint 3 Slice J adapter boundary tests`.
+- HEAD / `origin/main`: `9135011f0695893ca801e7e962c65c6da3b77e84`.
+- Latest commit: `9135011 Add PM handoff after Slice J tests-only sync`.
 - Sprint 3 Slice J downstream planning-only gate: CLOSED / PASS WITH
   RECOMMENDATIONS.
 - Sprint 3 Slice J tests-only hardening: CLOSED / PASS WITH RECOMMENDATIONS.
@@ -508,6 +510,88 @@ DB/API/Dashboard visibility deferral:
 - future production visibility planning must restate which accepted facts are
   visible, which diagnostic artifacts remain hidden or review-only, and how
   defect detail rows are guarded from non-accepted dispositions.
+
+### 4.7 Accepted production-fact visibility boundary
+
+This section freezes future DB/API/Dashboard visibility rules only. It does not
+authorize schema, storage, API, Dashboard, Trace UI, V-PLC, Collector runtime,
+`storage.py`, `config/mapping.yaml`, Docker/deploy, ACK/read_done ownership,
+tests, staging, commit, push, tag, rollback or real PLC pilot work.
+
+Accepted production facts:
+
+- future DB/API/Dashboard gates may consider only accepted station-event facts
+  as production-visible facts;
+- the minimum prerequisites for an accepted production fact are immutable
+  config authority, `raw_policy` / decoder authority, shared station-event
+  validation, duplicate/conflict checks and an adapter decision of `accepted`;
+- candidate visible facts may include the accepted `station_event` business
+  facts whose field authority is already defined by this contract: line, PLC,
+  station, station type, profile, config lineage, event type/result, legal NOK
+  detail when bound to accepted upstream business evidence, unit/DMC, cycle
+  counter, source event identity and source event time;
+- raw evidence, diagnostic wrapper fields and rejected candidate payloads are
+  not accepted production facts.
+
+Diagnostic-only artifacts:
+
+- adapter disposition, reason code, candidate context and raw/normalized
+  comparison context are diagnostic, review and debug material only;
+- diagnostic artifacts must not become production facts, Quality/Pareto input,
+  defect detail authority or ACK/read_done authority;
+- diagnostic visibility must not imply persistence, projection, retry commit,
+  Dashboard state or production side effects.
+
+Raw evidence visibility:
+
+- `raw_payload` / `raw_hex` is evidence, not a production fact;
+- raw evidence may be a future review-only or audit-only material candidate,
+  but must not default into DB/API/Dashboard production visibility;
+- raw evidence does not by itself authorize defect detail, Quality/Pareto rows,
+  Dashboard state, ACK/read_done mutation or accepted production projection.
+
+Normalized candidate visibility:
+
+- decoded raw output and source normalized payload are normalized candidates
+  until the adapter decision is accepted;
+- non-accepted candidates remain diagnostic-only and must not enter production
+  facts, projection metadata, defect detail, Quality/Pareto input or Dashboard
+  state;
+- rejected, deferred, quarantined, duplicate, conflict and raw_variant payloads
+  must not become production-visible facts.
+
+Defect detail guard:
+
+- non-accepted dispositions do not write defect detail;
+- NOK/detail visibility must be bound to accepted upstream business evidence
+  and shared station-event validation;
+- rejected, deferred, quarantined, duplicate, conflict and raw_variant payloads
+  must not generate defect detail, Quality/Pareto input or Dashboard defect
+  state.
+
+DB/API/Dashboard visibility deferral:
+
+- this gate continues to defer DB/API/Dashboard implementation;
+- it freezes future visibility rules only and performs no schema, DB write path,
+  API, UI or runtime work;
+- any future DB/API/Dashboard gate must restate exact allowlist, review gates and
+  production-fact leakage negative tests before implementation.
+
+ACK/read_done ownership:
+
+- production-fact visibility planning does not change ACK/read_done ownership;
+- visibility, diagnostic and review-only logic must not become ACK/read_done
+  owner;
+- the existing boundary remains: no ACK/read_done mutation for the current
+  non-accepted payload.
+
+Future hardening backlog:
+
+- duplicate/conflict precedence;
+- historical config replay;
+- exact-byte canonical fixture vectors;
+- raw error taxonomy;
+- production-fact leakage negative tests.
 
 ## 5. Raw / normalized authority matrix
 
