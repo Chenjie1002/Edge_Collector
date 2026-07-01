@@ -1,19 +1,19 @@
 # 当前状态 / Codex 恢复上下文
 
-更新时间：2026-06-30
+更新时间：2026-07-01
 工作目录：`/Users/chenjie/Documents/MES/edge-mes-demo`
 树莓派部署目录：`/opt/edge-mes-demo`
 
 ## 0. 当前 PM / Codex 协作状态
 
-当前主线：Phase-2 Sprint 3 Slice I WS03 raw_policy raw_capable authority docs/status sync closeout。
+当前主线：Phase-2 Sprint 3 Slice J downstream adapter boundary tests-only hardening docs/status sync closeout。
 
 Last verified baseline before this docs sync:
 
 ```text
 live HEAD / origin/main at authoring time:
-045d21c14436e8fe13a26bc32b7c2956df0cd99f
-045d21c Roll out Slice I WS03 raw policy authority
+ed9a61ef2bd8e6be12ad786fd7846f2efcfb0cad
+ed9a61e Harden Sprint 3 Slice J adapter boundary tests
 
 branch:
 main
@@ -73,6 +73,12 @@ Slice I Reliability focused implementation review: PASS, no blocker
 Slice I Data Quality focused implementation review: PASS, no blocker
 Slice I Verification exact allowlist audit: PASS, no blocker
 Slice I exact config/test commit/push: PASS, commit 045d21c
+Slice J downstream adapter decision / diagnostic / projection boundary planning: CLOSED / PASS WITH RECOMMENDATIONS
+Slice J tests-only hardening implementation: CLOSED / PASS WITH RECOMMENDATIONS
+Slice J Reliability focused implementation review: CLOSED / PASS WITH RECOMMENDATIONS, no blocker
+Slice J Data Quality focused implementation review: CLOSED / PASS WITH RECOMMENDATIONS, no blocker
+Slice J Verification focused review / exact allowlist audit: CLOSED / PASS WITH RECOMMENDATIONS, no blocker
+Slice J exact tests-only commit/push: PASS, commit ed9a61e
 Slice D2-C decoder registry authority implementation: PASS WITH RECOMMENDATIONS
 Slice D2-C Reliability implementation review: PASS WITH RECOMMENDATIONS, no blocker
 Slice D2-C Data Quality implementation review: PASS WITH RECOMMENDATIONS, no blocker
@@ -108,7 +114,7 @@ R-N1/R-N2 hardening commit/push: PASS, commit 577c1a1
 Docs/status sync: PASS, commit fd79e21
 Docs/status baseline repair: PASS, commit 4f424c6
 PM rules / baseline semantics repair: PASS, commit e284a06
-Eligible for PM handoff readiness or downstream next-slice planning after Slice I docs/status sync: yes
+Eligible for PM handoff readiness or downstream next-slice planning after Slice J docs/status sync: yes
 D3 docs/status sync exact allowlist: completed after implementation commit c9e7c22
 D3 actual raw-capable/raw-required runtime wiring: CLOSED at c9e7c22
 E1 runtime raw decoder repair: CLOSED at 2c73410 / 2c73410281d1465db166b66ddc23e27d9337b90a
@@ -117,7 +123,34 @@ F2 raw_policy raw_capable authority implementation: CLOSED at 829d5c7 / 829d5c71
 Slice G WS01 raw_capable post-commit sanity tests-only hardening: CLOSED at 398f11c / 398f11cfb20717d628d03c0a486a31745fe3030d
 Slice H WS02 raw_policy raw_capable authority implementation: CLOSED at c7e80e8 / c7e80e8e931b5f23d6ea42fee7b10b27191b5e20
 Slice I WS03 raw_policy raw_capable authority implementation: CLOSED at 045d21c / 045d21c14436e8fe13a26bc32b7c2956df0cd99f
+Slice J downstream adapter boundary tests-only hardening: CLOSED at ed9a61e / ed9a61ef2bd8e6be12ad786fd7846f2efcfb0cad
 DB/API/Dashboard/V-PLC/deploy/tag/rollback/real PLC pilot: not authorized
+```
+
+当前 Sprint 3 Slice J downstream adapter boundary tests-only hardening files 已提交：
+
+```text
+collector/tests/test_event_collector_adapter_gate.py
+tests/test_collector_station_event_adapter.py
+```
+
+Slice J downstream adapter boundary tests-only hardening summary:
+
+```text
+Slice J hardened the frozen downstream adapter decision / diagnostic / projection boundary in tests only.
+Commit message: Harden Sprint 3 Slice J adapter boundary tests.
+Commit: ed9a61e / ed9a61ef2bd8e6be12ad786fd7846f2efcfb0cad.
+Accepted decisions remain the only path to existing persist/ACK behavior.
+Non-accepted dispositions rejected / deferred / quarantined / duplicate / conflict / raw_variant are covered under read_done=False and read_done=True and must not persist, mutate ACK/read_done status for the current non-accepted payload, project, write defect detail or become production-visible facts.
+duplicate/raw_variant wording is tightened to "no ACK/read_done mutation for the current non-accepted payload".
+raw_variant remains represented as disposition == "duplicate" plus AuditSubtype.RAW_VARIANT.
+Focused tests: 80 passed.
+Reliability focused review: PASS WITH RECOMMENDATIONS, no blocker.
+Data Quality focused review: PASS WITH RECOMMENDATIONS, no blocker.
+Verification focused review / exact allowlist audit: PASS WITH RECOMMENDATIONS, no blocker.
+No production code changed.
+No storage.py / DB / API / Dashboard / V-PLC / config / Docker / deploy changed.
+ACK/read_done ownership unchanged.
 ```
 
 当前 Sprint 3 Slice I WS03 raw_policy raw_capable authority files 已提交：

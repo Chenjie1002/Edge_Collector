@@ -5,18 +5,19 @@ runtime adapter gate, diagnostics, raw boundary tests, D2-C offline decoder
 registry authority, D3 runtime raw wiring, E1 runtime raw decoder repair and
 station-level raw_policy rollout through Slice I are implemented, reviewed and
 committed. Sprint 3 Slice J downstream adapter decision / diagnostic /
-projection boundary is frozen here as docs/contracts planning, not runtime
-implementation.
+projection boundary tests-only hardening is implemented, reviewed and committed
+at `ed9a61e`.
 DB writes, API endpoints, Dashboard, V-PLC behavior changes, PLC pilot,
 storage.py changes, ACK/read_done ownership changes, deploy, tag and rollback
 are not authorized.
 
-Current PM intake live baseline for Slice J docs/contracts boundary freeze:
+Current PM intake live baseline for Slice J tests-only hardening closeout:
 
-- HEAD / `origin/main`: `414c9a8566f655bd2021326cf147ef6f7221b849`.
-- Latest commit: `414c9a8 Sync Sprint 3 post-raw-policy status docs`.
+- HEAD / `origin/main`: `ed9a61ef2bd8e6be12ad786fd7846f2efcfb0cad`.
+- Latest commit: `ed9a61e Harden Sprint 3 Slice J adapter boundary tests`.
 - Sprint 3 Slice J downstream planning-only gate: CLOSED / PASS WITH
   RECOMMENDATIONS.
+- Sprint 3 Slice J tests-only hardening: CLOSED / PASS WITH RECOMMENDATIONS.
 - Sprint 3 raw_policy station-level rollout checkpoint: CLOSED / PASS WITH
   RECOMMENDATIONS.
 - WS01 / WS02 / WS03 station-level `raw_policy`: `raw_capable`.
@@ -472,9 +473,9 @@ Non-accepted disposition boundary:
 | `rejected` | no | no | no | no | no DB/API/Dashboard production fact |
 | `deferred` | no | no | no | no | no DB/API/Dashboard production fact |
 | `quarantined` | no | no | no | no | no DB/API/Dashboard production fact |
-| `duplicate` | no new persist | no new ACK | no new projection | no new detail | no new DB/API/Dashboard production fact |
+| `duplicate` | no new persist | no ACK/read_done mutation for the current non-accepted payload | no new projection | no new detail | no new DB/API/Dashboard production fact |
 | `conflict` | no | no | no | no | no DB/API/Dashboard production fact |
-| `raw_variant` | no new persist | no new ACK | no new projection | no new detail | no new DB/API/Dashboard production fact |
+| `raw_variant` | no new persist | no ACK/read_done mutation for the current non-accepted payload | no new projection | no new detail | no new DB/API/Dashboard production fact |
 
 Diagnostic observability boundary:
 
@@ -673,24 +674,27 @@ future authorized implementation thread.
 
 Architecture contract/status sync: `PASS WITH RECOMMENDATIONS`.
 
-Current control status: Sprint 3 raw_policy station-level rollout checkpoint is
-CLOSED / PASS WITH RECOMMENDATIONS. WS01, WS02 and WS03 station-level
-`raw_policy` are all `raw_capable`; line-wide
-`runtime_defaults.raw_policy` remains `raw_not_provided`; `raw_required` was not
-introduced.
+Current control status: Sprint 3 Slice J downstream adapter decision /
+diagnostic / projection boundary tests-only hardening is CLOSED / PASS WITH
+RECOMMENDATIONS at `ed9a61e`. Accepted decisions remain the only path to
+existing persist/ACK behavior. Non-accepted dispositions rejected / deferred /
+quarantined / duplicate / conflict / raw_variant are covered under
+`read_done=False` and `read_done=True` and must not persist, mutate
+ACK/read_done status for the current non-accepted payload, project, write defect
+detail or become production-visible facts.
 
 Current PM intake live baseline:
 
 ```text
 HEAD / origin/main:
-414c9a8566f655bd2021326cf147ef6f7221b849
+ed9a61ef2bd8e6be12ad786fd7846f2efcfb0cad
 Latest commit:
-414c9a8 Sync Sprint 3 post-raw-policy status docs
+ed9a61e Harden Sprint 3 Slice J adapter boundary tests
 ```
 
 Earlier E1/F1/D3 and post-Slice I baseline wording in this contract is
 historical audit context, not the live repository baseline for this Slice J
-docs/contracts boundary freeze.
+tests-only hardening closeout.
 
 Reliability Review: `PASS WITH RECOMMENDATIONS`, no blocker.
 
@@ -698,7 +702,7 @@ Data Quality focused implementation review: `PASS WITH RECOMMENDATIONS`, no bloc
 
 Verification focused implementation review / exact allowlist audit: `PASS WITH RECOMMENDATIONS`, no blocker.
 
-Eligible for docs-only closeout decision: yes.
+Eligible for docs-only closeout decision: closed by this status sync.
 
 D2-A decoder authority docs/contract-only repair: recorded. D2-C decoder
 registry authority is implemented, reviewed, committed and pushed at
@@ -710,7 +714,9 @@ docs/contracts freeze is recorded at `ac1838c`; F2 WS01 station-level
 raw_policy raw_capable authority is recorded at `829d5c7`; Slice G WS01
 post-commit sanity tests-only hardening is recorded at `398f11c`; Slice H WS02
 station-level raw_policy raw_capable authority is recorded at `c7e80e8`; Slice I
-WS03 station-level raw_policy raw_capable authority is recorded at `045d21c`.
+WS03 station-level raw_policy raw_capable authority is recorded at `045d21c`;
+Slice J downstream adapter boundary tests-only hardening is recorded at
+`ed9a61e` / `ed9a61ef2bd8e6be12ad786fd7846f2efcfb0cad`.
 
 D3 carry-forward recommendation: current `config/mapping.yaml` runtime default
 still uses `raw_policy: raw_not_provided`; D3 runtime code path always passes
@@ -728,9 +734,14 @@ Future `raw_required` introduction or any line-wide raw_policy default change
 remains a separate Level 2 mapping/config authority gate.
 
 Slice J downstream planning-only gate: CLOSED / PASS WITH RECOMMENDATIONS.
+Slice J tests-only hardening implementation: CLOSED / PASS WITH
+RECOMMENDATIONS. Reliability, Data Quality and Verification focused reviews:
+PASS WITH RECOMMENDATIONS, no blocker. Focused tests: 80 passed. No production
+code changed.
 
-Eligible for next PM planning gate: yes. Next eligible review gate for Slice J
-is Reliability focused review of the docs/contracts boundary.
+Eligible for next PM planning gate: yes, after this docs/status sync. Next
+eligible action is PM handoff readiness or a separately authorized downstream
+planning gate, not immediate DB/API/Dashboard/V-PLC/deploy/runtime expansion.
 
 Eligible for implementation without PM approval: no. PM approval is required
 before DB/API/Dashboard/V-PLC/PLC pilot/storage.py/ACK/deploy, commit/push,

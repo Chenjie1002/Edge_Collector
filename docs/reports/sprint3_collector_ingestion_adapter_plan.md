@@ -4,19 +4,20 @@ Date: 2026-06-28
 
 Status: Sprint 3 Collector Ingestion Adapter planning/status reference. Sprint
 3 Slice J downstream Collector adapter decision / diagnostic / projection
-boundary docs freeze is an Architecture / Integration docs/contracts planning
-freeze. Sprint 3 raw_policy station-level rollout checkpoint remains CLOSED /
-PASS WITH RECOMMENDATIONS after Slice I. E1 runtime raw decoder repair remains
+boundary tests-only hardening is CLOSED / PASS WITH RECOMMENDATIONS at
+`ed9a61e`. Sprint 3 raw_policy station-level rollout checkpoint remains CLOSED
+/ PASS WITH RECOMMENDATIONS after Slice I. E1 runtime raw decoder repair remains
 historical implementation history at `2c73410`.
 DB/API/Dashboard/V-PLC/PLC pilot/deploy/tag/rollback remain not authorized.
 
-Current PM intake live baseline for Slice J docs/contracts boundary freeze:
+Current PM intake live baseline for Slice J tests-only hardening closeout:
 
 - Branch: `main`.
-- HEAD / `origin/main`: `414c9a8566f655bd2021326cf147ef6f7221b849`.
-- Latest commit: `414c9a8 Sync Sprint 3 post-raw-policy status docs`.
+- HEAD / `origin/main`: `ed9a61ef2bd8e6be12ad786fd7846f2efcfb0cad`.
+- Latest commit: `ed9a61e Harden Sprint 3 Slice J adapter boundary tests`.
 - Sprint 3 Slice J downstream planning-only gate: CLOSED / PASS WITH
   RECOMMENDATIONS.
+- Sprint 3 Slice J tests-only hardening: CLOSED / PASS WITH RECOMMENDATIONS.
 - Sprint 3 raw_policy station-level rollout checkpoint: CLOSED / PASS WITH
   RECOMMENDATIONS.
 - WS01 / WS02 / WS03 station-level `raw_policy`: `raw_capable`.
@@ -466,6 +467,11 @@ docs/contracts boundary. Implementation remains ineligible until Architecture,
 Reliability, Data Quality and Verification gates close and PM separately
 authorizes an exact implementation allowlist.
 
+Post-hardening note: the later Slice J tests-only hardening gate has since
+closed at `ed9a61e` with Reliability, Data Quality and Verification focused
+reviews all PASS WITH RECOMMENDATIONS and no blocker. This does not authorize
+DB/API/Dashboard/V-PLC/deploy/runtime expansion.
+
 ### 4.7 Offline fixture inventory
 
 Required future fixture inventory:
@@ -554,28 +560,31 @@ Explicitly excluded:
 
 ## 8. Current control conclusion
 
-Conclusion: `PASS WITH RECOMMENDATIONS` for post-Slice I raw_policy
-station-level rollout checkpoint docs/status reference sync.
+Conclusion: `PASS WITH RECOMMENDATIONS` for Sprint 3 Slice J downstream adapter
+boundary tests-only hardening docs/status reference sync.
 
-Current control status: Sprint 3 raw_policy station-level rollout checkpoint is
-CLOSED / PASS WITH RECOMMENDATIONS. WS01, WS02 and WS03 station-level
-`raw_policy` are all `raw_capable`; line-wide
-`runtime_defaults.raw_policy` remains `raw_not_provided`; `raw_required` was not
-introduced.
+Current control status: Sprint 3 Slice J downstream adapter decision /
+diagnostic / projection boundary tests-only hardening is CLOSED / PASS WITH
+RECOMMENDATIONS at `ed9a61e`. Accepted decisions remain the only path to
+existing persist/ACK behavior. Non-accepted dispositions rejected / deferred /
+quarantined / duplicate / conflict / raw_variant are covered under
+`read_done=False` and `read_done=True` and must not persist, mutate
+ACK/read_done status for the current non-accepted payload, project, write defect
+detail or become production-visible facts.
 
 Current PM intake live baseline:
 
 ```text
 HEAD / origin/main:
-414c9a8566f655bd2021326cf147ef6f7221b849
+ed9a61ef2bd8e6be12ad786fd7846f2efcfb0cad
 Latest commit:
-414c9a8 Sync Sprint 3 post-raw-policy status docs
+ed9a61e Harden Sprint 3 Slice J adapter boundary tests
 ```
 
 Historical authoring baselines in this document, including the E1
 `2c73410281d1465db166b66ddc23e27d9337b90a` marker, remain audit markers only.
 They must not be read as the current live baseline after later Slice F1/F2/G/H/I
-and PM handoff/status-sync commits.
+and Slice J commits.
 
 Reliability Review: `PASS WITH RECOMMENDATIONS`, no blocker.
 
@@ -583,7 +592,7 @@ Data Quality focused implementation review: `PASS WITH RECOMMENDATIONS`, no bloc
 
 Verification focused implementation review / exact allowlist audit: `PASS WITH RECOMMENDATIONS`, no blocker.
 
-Eligible for docs-only closeout decision: yes.
+Eligible for docs-only closeout decision: closed by this status sync.
 
 D2-A decoder authority docs/contract-only repair: recorded. D2-A adds no code,
 tests, config, schema, mapping, runtime Collector integration or raw runtime
@@ -596,7 +605,8 @@ station-level raw_policy raw_capable authority is recorded at `829d5c7`. Slice
 G WS01 post-commit sanity tests-only hardening is recorded at `398f11c`. Slice H
 WS02 station-level raw_policy raw_capable authority is recorded at `c7e80e8`.
 Slice I WS03 station-level raw_policy raw_capable authority is recorded at
-`045d21c`.
+`045d21c`. Slice J downstream adapter boundary tests-only hardening is recorded
+at `ed9a61e` / `ed9a61ef2bd8e6be12ad786fd7846f2efcfb0cad`.
 
 D2-C carry-forward recommendations:
 
@@ -626,9 +636,14 @@ Current eligible next step is downstream PM planning, not immediate DB/API/Dashb
 ```
 
 Slice J downstream planning-only gate: CLOSED / PASS WITH RECOMMENDATIONS.
+Slice J tests-only hardening implementation: CLOSED / PASS WITH
+RECOMMENDATIONS. Reliability, Data Quality and Verification focused reviews:
+PASS WITH RECOMMENDATIONS, no blocker. Focused tests: 80 passed. No production
+code changed.
 
-Eligible for next PM planning gate: yes. Next eligible review gate for Slice J
-is Reliability focused review of the docs/contracts boundary.
+Eligible for next PM planning gate: yes, after this docs/status sync. Next
+eligible action is PM handoff readiness or a separately authorized downstream
+planning gate, not immediate DB/API/Dashboard/V-PLC/deploy/runtime expansion.
 
 Eligible for implementation without PM approval: no. PM approval is required
 before DB/API/Dashboard/V-PLC/PLC pilot/storage.py/ACK/deploy, commit/push,

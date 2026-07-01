@@ -1,6 +1,6 @@
 # Sprint 3 Collector Ingestion Adapter Gate Status
 
-Updated: 2026-06-30
+Updated: 2026-07-01
 
 Purpose: compact current gate/status source for Codex Threads working on Sprint 3 Collector Ingestion Adapter.
 
@@ -15,8 +15,8 @@ Read this file together with:
 
 ```text
 live HEAD / origin/main at authoring time:
-045d21c14436e8fe13a26bc32b7c2956df0cd99f
-045d21c Roll out Slice I WS03 raw policy authority
+ed9a61ef2bd8e6be12ad786fd7846f2efcfb0cad
+ed9a61e Harden Sprint 3 Slice J adapter boundary tests
 
 Branch:
 main
@@ -41,6 +41,7 @@ Slice F2 raw_policy raw_capable authority implemented and committed
 Slice G WS01 raw_capable post-commit sanity tests-only hardening implemented and committed
 Slice H WS02 raw_policy raw_capable authority implemented and committed
 Slice I WS03 raw_policy raw_capable authority implemented and committed
+Slice J downstream adapter boundary tests-only hardening implemented and committed
 
 Deploy / rollback drill:
 not performed
@@ -70,6 +71,7 @@ Slice F2 raw_policy raw_capable authority is tracked in commit `829d5c7`.
 Slice G WS01 raw_capable post-commit sanity tests-only hardening is tracked in commit `398f11c`.
 Slice H WS02 raw_policy raw_capable authority is tracked in commit `c7e80e8`.
 Slice I WS03 raw_policy raw_capable authority is tracked in commit `045d21c`.
+Slice J downstream adapter boundary tests-only hardening is tracked in commit `ed9a61e`.
 
 Sprint 3 implementation files committed:
 
@@ -178,6 +180,13 @@ Sprint 3 Slice I WS03 raw_policy raw_capable authority files committed:
 ```text
 config/mapping.yaml
 tests/test_collector_station_event_runtime_source.py
+```
+
+Sprint 3 Slice J downstream adapter boundary tests-only hardening files committed:
+
+```text
+collector/tests/test_event_collector_adapter_gate.py
+tests/test_collector_station_event_adapter.py
 ```
 
 External dirty artifacts currently expected and excluded unless PM explicitly says otherwise:
@@ -329,6 +338,12 @@ behavior, Docker/deploy/tag/rollback or ACK/read_done ownership.
 | Slice I Data Quality focused implementation review | PASS | none |
 | Slice I Verification exact allowlist audit | PASS | none |
 | Slice I exact config/test commit/push | PASS | none |
+| Slice J downstream adapter boundary planning | PASS WITH RECOMMENDATIONS | none |
+| Slice J tests-only hardening implementation | PASS WITH RECOMMENDATIONS | none |
+| Slice J Reliability focused implementation review | PASS WITH RECOMMENDATIONS | none |
+| Slice J Data Quality focused implementation review | PASS WITH RECOMMENDATIONS | none |
+| Slice J Verification focused review / exact allowlist audit | PASS WITH RECOMMENDATIONS | none |
+| Slice J exact tests-only commit/push | PASS | none |
 
 Current overall status:
 
@@ -348,6 +363,7 @@ Sprint 3 Slice F2 raw_policy raw_capable authority: implemented, reviewed, commi
 Sprint 3 Slice G WS01 raw_capable post-commit sanity tests-only hardening: implemented, reviewed, committed and pushed at 398f11c.
 Sprint 3 Slice H WS02 raw_policy raw_capable authority: implemented, reviewed, committed and pushed at c7e80e8.
 Sprint 3 Slice I WS03 raw_policy raw_capable authority: implemented, reviewed, committed and pushed at 045d21c.
+Sprint 3 Slice J downstream adapter boundary tests-only hardening: implemented, reviewed, committed and pushed at ed9a61e.
 Slice B inserted the adapter gate after payload/cycle/counter guards and counter reset fail-safe, before existing storage.persist_cycle().
 Slice B accepted-only path continues to existing storage.persist_cycle() plus existing read_done/ACK behavior.
 Slice B non-accepted decisions do not persist, do not project, do not write defect detail, and do not ACK.
@@ -436,10 +452,19 @@ Slice I introduced no runtime/source code, storage.py, DB/API/Dashboard/frontend
 Slice I Reliability review: PASS, no blocker.
 Slice I Data Quality review: PASS, no blocker.
 Slice I Verification exact allowlist audit: PASS, no blocker.
+Slice J is tests-only hardening for the frozen downstream adapter decision / diagnostic / projection boundary.
+Slice J confirms accepted decisions remain the only path to existing persist/ACK behavior.
+Slice J covers rejected / deferred / quarantined / duplicate / conflict / raw_variant under read_done=False and read_done=True.
+Slice J requires no persist, no ACK/read_done mutation for the current non-accepted payload, no projection, no defect detail and no production-visible fact for non-accepted payloads.
+Slice J keeps raw_variant represented as disposition == "duplicate" plus AuditSubtype.RAW_VARIANT.
+Slice J introduced no production code, storage.py, DB/API/Dashboard/frontend, V-PLC behavior, config/mapping.yaml, Docker/deploy or ACK/read_done ownership change.
+Slice J Reliability review: PASS WITH RECOMMENDATIONS, no blocker.
+Slice J Data Quality review: PASS WITH RECOMMENDATIONS, no blocker.
+Slice J Verification exact allowlist audit: PASS WITH RECOMMENDATIONS, no blocker.
 Docs/status sync completed at fd79e21.
 Docs/status baseline repair completed at 4f424c6.
 PM rules / baseline semantics repair pre-baseline: e284a06 Repair PM rules and Sprint 3 baseline status.
-Eligible for PM handoff readiness or downstream next-slice planning after Slice I docs/status sync: yes.
+Eligible for PM handoff readiness or downstream next-slice planning after Slice J docs/status sync: yes.
 D3 actual raw-capable/raw-required runtime wiring: CLOSED at c9e7c22.
 E1 runtime raw decoder repair: CLOSED at 2c73410 / 2c73410281d1465db166b66ddc23e27d9337b90a.
 F1 raw_policy authority docs/contracts freeze: CLOSED at ac1838c / ac1838cbc9378d72da66ace35a200a909f4d5b89.
@@ -447,6 +472,7 @@ F2 raw_policy raw_capable authority implementation: CLOSED at 829d5c7 / 829d5c71
 Slice G WS01 raw_capable post-commit sanity tests-only hardening: CLOSED at 398f11c / 398f11cfb20717d628d03c0a486a31745fe3030d.
 Slice H WS02 raw_policy raw_capable authority implementation: CLOSED at c7e80e8 / c7e80e8e931b5f23d6ea42fee7b10b27191b5e20.
 Slice I WS03 raw_policy raw_capable authority implementation: CLOSED at 045d21c / 045d21c14436e8fe13a26bc32b7c2956df0cd99f.
+Slice J downstream adapter boundary tests-only hardening: CLOSED at ed9a61e / ed9a61ef2bd8e6be12ad786fd7846f2efcfb0cad.
 DB/API/Dashboard/V-PLC/deploy/tag/rollback/real PLC pilot: not authorized.
 ```
 
