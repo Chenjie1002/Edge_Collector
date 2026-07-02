@@ -1,19 +1,19 @@
 # 当前状态 / Codex 恢复上下文
 
-更新时间：2026-07-01
+更新时间：2026-07-02
 工作目录：`/Users/chenjie/Documents/MES/edge-mes-demo`
 树莓派部署目录：`/opt/edge-mes-demo`
 
 ## 0. 当前 PM / Codex 协作状态
 
-当前主线：Phase-2 Sprint 3 adapter production-fact leakage negative tests docs/status sync closeout。
+当前主线：Phase-2 Sprint 3 DB schema field-name contract freeze docs/status sync closeout。
 
 Last verified baseline before this docs sync:
 
 ```text
 live HEAD / origin/main at authoring time:
-fd3a79901619c9afe664c709834b7e396187f8b2
-fd3a799 Harden adapter visibility tests
+af60328815821898165ffd5a45aafc9e9c1da705
+af60328 Freeze DB schema field-name contract
 
 branch:
 main
@@ -92,6 +92,17 @@ Tests-only adapter production-fact leakage Reliability focused review: CLOSED / 
 Tests-only adapter production-fact leakage Data Quality focused review: CLOSED / PASS WITH RECOMMENDATIONS, no blocker
 Tests-only adapter production-fact leakage Verification exact allowlist audit / review-sequence closeout: CLOSED / PASS WITH RECOMMENDATIONS, no blocker
 Tests-only adapter visibility exact-path commit/push: PASS, commit fd3a799
+DB/API/Dashboard production visibility contract gate: CLOSED / PASS WITH RECOMMENDATIONS, no blocker
+DB/API/Dashboard implementation planning gate: CLOSED / PASS WITH RECOMMENDATIONS, no blocker
+DB/API/Dashboard implementation planning Reliability focused review: CLOSED / PASS WITH RECOMMENDATIONS, no blocker
+DB/API/Dashboard implementation planning Data Quality focused review: CLOSED / PASS WITH RECOMMENDATIONS, no blocker
+DB/API/Dashboard implementation planning Verification focused review / exact planning allowlist audit: CLOSED / PASS WITH RECOMMENDATIONS, no blocker
+DB schema field-name contract freeze planning gate: CLOSED / PASS WITH RECOMMENDATIONS, no blocker
+DB schema field-name contract freeze docs/contracts edit: CLOSED / PASS WITH RECOMMENDATIONS, no blocker
+DB schema field-name contract freeze Reliability focused review: CLOSED / PASS WITH RECOMMENDATIONS, no blocker
+DB schema field-name contract freeze Data Quality focused review: CLOSED / PASS WITH RECOMMENDATIONS, no blocker
+DB schema field-name contract freeze Verification focused review / exact allowlist audit: CLOSED / PASS WITH RECOMMENDATIONS, no blocker
+DB schema field-name contract freeze exact docs/contracts commit/push: PASS, commit af60328
 Slice D2-C decoder registry authority implementation: PASS WITH RECOMMENDATIONS
 Slice D2-C Reliability implementation review: PASS WITH RECOMMENDATIONS, no blocker
 Slice D2-C Data Quality implementation review: PASS WITH RECOMMENDATIONS, no blocker
@@ -127,7 +138,7 @@ R-N1/R-N2 hardening commit/push: PASS, commit 577c1a1
 Docs/status sync: PASS, commit fd79e21
 Docs/status baseline repair: PASS, commit 4f424c6
 PM rules / baseline semantics repair: PASS, commit e284a06
-Eligible for DB/API/Dashboard production visibility contract gate or separately authorized downstream planning after adapter leakage tests docs/status sync: yes
+Eligible for DB/API/Dashboard Slice 1 schema-only planning/implementation gate or separately authorized downstream hardening planning after DB schema field-name contract freeze docs/status sync: yes
 D3 docs/status sync exact allowlist: completed after implementation commit c9e7c22
 D3 actual raw-capable/raw-required runtime wiring: CLOSED at c9e7c22
 E1 runtime raw decoder repair: CLOSED at 2c73410 / 2c73410281d1465db166b66ddc23e27d9337b90a
@@ -139,6 +150,8 @@ Slice I WS03 raw_policy raw_capable authority implementation: CLOSED at 045d21c 
 Slice J downstream adapter boundary tests-only hardening: CLOSED at ed9a61e / ed9a61ef2bd8e6be12ad786fd7846f2efcfb0cad
 Sprint 3 accepted production-fact visibility boundary docs/contracts freeze: CLOSED / PASS WITH RECOMMENDATIONS; Reliability, Data Quality and Verification focused reviews CLOSED / PASS WITH RECOMMENDATIONS, no blocker
 Tests-only adapter production-fact leakage negative implementation: CLOSED at fd3a799 / fd3a79901619c9afe664c709834b7e396187f8b2
+DB schema field-name contract freeze docs/contracts edit: CLOSED at af60328 / af60328815821898165ffd5a45aafc9e9c1da705 after Reliability, Data Quality and Verification focused reviews passed with recommendations and no blockers.
+DB/API/Dashboard implementation remains not authorized except future separately authorized exact-scope gates.
 DB/API/Dashboard/V-PLC/deploy/tag/rollback/real PLC pilot: not authorized
 ```
 

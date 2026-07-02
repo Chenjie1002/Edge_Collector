@@ -1,6 +1,6 @@
 # Sprint 3 Collector Ingestion Adapter Gate Status
 
-Updated: 2026-07-01
+Updated: 2026-07-02
 
 Purpose: compact current gate/status source for Codex Threads working on Sprint 3 Collector Ingestion Adapter.
 
@@ -15,8 +15,8 @@ Read this file together with:
 
 ```text
 live HEAD / origin/main at authoring time:
-fd3a79901619c9afe664c709834b7e396187f8b2
-fd3a799 Harden adapter visibility tests
+af60328815821898165ffd5a45aafc9e9c1da705
+af60328 Freeze DB schema field-name contract
 
 Branch:
 main
@@ -45,6 +45,7 @@ Slice J downstream adapter boundary tests-only hardening implemented and committ
 Sprint 3 production-fact visibility boundary docs/status/PM-rule commit/push completed at 11cf077
 PM handoff after production-fact visibility boundary committed at ffa9348
 Adapter production-fact leakage negative tests implemented, reviewed and committed at fd3a799
+DB schema field-name contract freeze docs/contracts edit reviewed, committed and pushed at af60328
 
 Deploy / rollback drill:
 not performed
@@ -78,6 +79,7 @@ Slice J downstream adapter boundary tests-only hardening is tracked in commit `e
 Sprint 3 production-fact visibility boundary docs/status/PM-rule commit/push is tracked in commit `11cf077`.
 PM handoff after production-fact visibility boundary is tracked in commit `ffa9348`.
 Tests-only adapter production-fact leakage negative implementation is tracked in commit `fd3a799` after Reliability, Data Quality and Verification reviews passed with recommendations and no blockers.
+DB schema field-name contract freeze docs/contracts edit is tracked in commit `af60328` after Reliability, Data Quality and Verification reviews passed with recommendations and no blockers.
 
 Sprint 3 implementation files committed:
 
@@ -200,6 +202,13 @@ Sprint 3 adapter production-fact leakage negative tests files committed:
 ```text
 collector/tests/test_event_collector_adapter_gate.py
 tests/test_collector_station_event_adapter.py
+```
+
+DB schema field-name contract freeze docs/contracts files committed:
+
+```text
+docs/contracts/collector_ingestion_adapter.md
+docs/reports/sprint3_collector_ingestion_adapter_plan.md
 ```
 
 External dirty artifacts currently expected and excluded unless PM explicitly says otherwise:
@@ -370,6 +379,17 @@ behavior, Docker/deploy/tag/rollback or ACK/read_done ownership.
 | Tests-only adapter production-fact leakage Data Quality focused review | PASS WITH RECOMMENDATIONS | none |
 | Tests-only adapter production-fact leakage Verification exact allowlist audit / review-sequence closeout | PASS WITH RECOMMENDATIONS | none |
 | Tests-only adapter visibility exact-path commit/push | PASS | none |
+| DB/API/Dashboard production visibility contract gate | PASS WITH RECOMMENDATIONS | none |
+| DB/API/Dashboard implementation planning gate | PASS WITH RECOMMENDATIONS | none |
+| DB/API/Dashboard implementation planning Reliability focused review | PASS WITH RECOMMENDATIONS | none |
+| DB/API/Dashboard implementation planning Data Quality focused review | PASS WITH RECOMMENDATIONS | none |
+| DB/API/Dashboard implementation planning Verification focused review / exact planning allowlist audit | PASS WITH RECOMMENDATIONS | none |
+| DB schema field-name contract freeze planning gate | PASS WITH RECOMMENDATIONS | none |
+| DB schema field-name contract freeze docs/contracts edit | PASS WITH RECOMMENDATIONS | none |
+| DB schema field-name contract freeze Reliability focused review | PASS WITH RECOMMENDATIONS | none |
+| DB schema field-name contract freeze Data Quality focused review | PASS WITH RECOMMENDATIONS | none |
+| DB schema field-name contract freeze Verification focused review / exact allowlist audit | PASS WITH RECOMMENDATIONS | none |
+| DB schema field-name contract freeze exact docs/contracts commit/push | PASS | none |
 
 Current overall status:
 
@@ -398,6 +418,10 @@ Tests-only adapter production-fact leakage negative implementation: CLOSED / PAS
 Tests-only leakage changed files: collector/tests/test_event_collector_adapter_gate.py and tests/test_collector_station_event_adapter.py.
 Tests-only leakage validation: collector/tests/test_event_collector_adapter_gate.py -> 36 passed; tests/test_collector_station_event_adapter.py -> 46 passed; git diff --check PASS.
 Tests-only leakage review closeout: Reliability, Data Quality and Verification exact allowlist audit all PASS WITH RECOMMENDATIONS and no blockers.
+DB schema field-name contract freeze docs/contracts edit: CLOSED / PASS WITH RECOMMENDATIONS; committed and pushed at af60328 / af60328815821898165ffd5a45aafc9e9c1da705.
+DB schema field-name contract freeze review closeout: Reliability, Data Quality and Verification exact allowlist audit all PASS WITH RECOMMENDATIONS and no blockers.
+DB schema field-name contract freeze reserves production, diagnostics, audit and review namespaces; diagnostic fields must not use result, defect, quality, pareto or dashboard_state production-like names.
+Future DB/API/Dashboard gates must replace synthetic adapter visibility summaries with real schema/API/UI assertions before implementation commit.
 Accepted production-fact visibility boundary limits future visibility to accepted station-event business facts after immutable config authority, raw_policy / decoder authority, shared validation, duplicate/conflict checks and adapter decision accepted.
 Diagnostic artifacts, raw evidence and non-accepted normalized candidates remain diagnostic/review/debug only, not production facts, Quality/Pareto input, defect detail authority or ACK/read_done authority.
 Adapter disposition, reason code, candidate context and raw/normalized comparison context remain diagnostic/review/debug only.
