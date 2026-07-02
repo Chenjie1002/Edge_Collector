@@ -593,6 +593,88 @@ Future hardening backlog:
 - raw error taxonomy;
 - production-fact leakage negative tests.
 
+### 4.8 DB schema field-name namespace contract
+
+This section freezes future DB schema/API/UI field-name contract wording only.
+It does not authorize schema, migration, storage, API, Dashboard, Trace UI,
+runtime Collector, tests, staging, commit, push or deploy work.
+
+Production namespace:
+
+- future production fact fields must use the `production.*` namespace;
+- allowed production fact identity and lineage names are:
+  `production.line_id`, `production.plc_id`, `production.station_id`,
+  `production.station_type`, `production.profile_id`,
+  `production.config_hash`, `production.config_version`,
+  `production.event_type`, `production.production_result`,
+  `production.unit_id`, `production.dmc`, `production.cycle_counter`,
+  `production.source_event_id`, `production.event_ts`,
+  `production.accepted_at`, `production.fact_key` and
+  `production.content_fingerprint`;
+- future NOK/detail production fields are limited to
+  `production.nok_code`, `production.nok_origin`,
+  `production.nok_detail_code`,
+  `production.nok_detail_source_event_id` and
+  `production.nok_detail_evidence_fact_key`;
+- NOK/detail production fields require accepted upstream business evidence and
+  shared station-event validation. They must not be written from diagnostic
+  reason codes, raw evidence, raw/normalized comparison material or
+  non-accepted dispositions.
+
+Diagnostics namespace:
+
+- diagnostic/review/debug fields must use the `diagnostics.*` namespace and
+  remain isolated from production facts;
+- allowed diagnostic names are `diagnostics.adapter_disposition`,
+  `diagnostics.adapter_reason_code`, `diagnostics.adapter_phase`,
+  `diagnostics.candidate_event_id`,
+  `diagnostics.candidate_context_ref`,
+  `diagnostics.raw_normalized_compare_status` and
+  `diagnostics.decoder_error_code`;
+- diagnostic payloads must not use ambiguous production-looking names:
+  `result`, `defect`, `quality`, `pareto` or `dashboard_state`;
+- `RAW_NORMALIZED_MISMATCH` may appear only as
+  `diagnostics.adapter_reason_code = RAW_NORMALIZED_MISMATCH` or
+  `diagnostics.raw_normalized_compare_status = mismatch`. It must not become
+  NOK/detail authority, defect origin, Quality/Pareto input or Dashboard defect
+  state.
+
+Audit and review namespaces:
+
+- raw and decoder evidence references must use the `audit.*` namespace:
+  `audit.raw_evidence_ref`, `audit.raw_evidence_fingerprint`,
+  `audit.raw_hex_ref`, `audit.decoder_registry_snapshot_id` and
+  `audit.decoder_registry_content_hash`;
+- candidate payloads, raw/normalized diffs and quarantine references must use
+  the `review.*` namespace: `review.candidate_payload_ref`,
+  `review.raw_normalized_diff_ref` and `review.quarantine_ref`;
+- `raw_payload` / `raw_hex` may appear only as review-only or audit-only
+  evidence references or fingerprints. They are not production facts, not
+  production fact table input and not KPI/OEE/Quality/Pareto/Grafana production
+  query input.
+
+Non-accepted disposition isolation:
+
+- `rejected`, `deferred`, `quarantined`, `duplicate`, `conflict` and
+  `raw_variant` may appear only as diagnostic/audit/review isolated material;
+- non-accepted dispositions must not write production facts, NOK/detail rows,
+  Quality/Pareto input, Dashboard state, Grafana production fields or
+  ACK/read_done authority;
+- preserve the exact side-effect boundary: no ACK/read_done mutation for the
+  current non-accepted payload.
+
+Future DB/API/Dashboard implementation gates:
+
+- must replace synthetic adapter leakage keys with real schema/API/UI
+  assertions;
+- must assert diagnostic payloads do not contain `result`, `defect`, `quality`,
+  `pareto` or `dashboard_state`;
+- must assert non-accepted dispositions have no production row, no NOK/detail
+  row, no Quality/Pareto/Grafana production fields and no raw evidence in a
+  production table;
+- must preserve the exact wording: no ACK/read_done mutation for the current
+  non-accepted payload.
+
 ## 5. Raw / normalized authority matrix
 
 | Input shape | MVP decision | Production fact authority | Projection |

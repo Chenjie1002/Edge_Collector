@@ -569,7 +569,86 @@ Future hardening backlog:
 - raw error taxonomy;
 - production-fact leakage negative tests.
 
-### 4.8 Tests-only adapter production-fact leakage negative closeout
+### 4.8 DB schema field-name namespace contract freeze
+
+Purpose: freeze field-name and namespace wording for future DB/API/Dashboard
+schema/API/UI gates. This is a docs/contracts planning boundary only. It does
+not authorize SQL, migration, storage, API, Dashboard, Trace UI, runtime
+Collector, `storage.py`, tests, staging, commit, push, deploy, rollback, tag or
+real PLC pilot work.
+
+Production namespace:
+
+- future production fact fields must use `production.*`;
+- the frozen accepted station-event production names are
+  `production.line_id`, `production.plc_id`, `production.station_id`,
+  `production.station_type`, `production.profile_id`,
+  `production.config_hash`, `production.config_version`,
+  `production.event_type`, `production.production_result`,
+  `production.unit_id`, `production.dmc`, `production.cycle_counter`,
+  `production.source_event_id`, `production.event_ts`,
+  `production.accepted_at`, `production.fact_key` and
+  `production.content_fingerprint`;
+- frozen NOK/detail production authority names are `production.nok_code`,
+  `production.nok_origin`, `production.nok_detail_code`,
+  `production.nok_detail_source_event_id` and
+  `production.nok_detail_evidence_fact_key`;
+- NOK/detail production visibility requires accepted upstream business evidence
+  and shared station-event validation.
+
+Diagnostics namespace:
+
+- diagnostic, review and debug material must use isolated `diagnostics.*`
+  names;
+- frozen diagnostic names are `diagnostics.adapter_disposition`,
+  `diagnostics.adapter_reason_code`, `diagnostics.adapter_phase`,
+  `diagnostics.candidate_event_id`,
+  `diagnostics.candidate_context_ref`,
+  `diagnostics.raw_normalized_compare_status` and
+  `diagnostics.decoder_error_code`;
+- diagnostic payloads must not contain ambiguous production-looking keys:
+  `result`, `defect`, `quality`, `pareto` or `dashboard_state`;
+- `RAW_NORMALIZED_MISMATCH` may appear only as
+  `diagnostics.adapter_reason_code = RAW_NORMALIZED_MISMATCH` or
+  `diagnostics.raw_normalized_compare_status = mismatch`; it is forbidden from
+  NOK/detail, defect origin, Quality/Pareto input and Dashboard defect state.
+
+Audit and review namespaces:
+
+- frozen audit names are `audit.raw_evidence_ref`,
+  `audit.raw_evidence_fingerprint`, `audit.raw_hex_ref`,
+  `audit.decoder_registry_snapshot_id` and
+  `audit.decoder_registry_content_hash`;
+- frozen review names are `review.candidate_payload_ref`,
+  `review.raw_normalized_diff_ref` and `review.quarantine_ref`;
+- `raw_payload` / `raw_hex` is only review-only or audit-only evidence
+  reference/fingerprint material. It is not a production fact, not production
+  fact table input and not KPI/OEE/Quality/Pareto/Grafana production query
+  input.
+
+Non-accepted disposition boundary:
+
+- `rejected`, `deferred`, `quarantined`, `duplicate`, `conflict` and
+  `raw_variant` may appear only as diagnostic/audit/review isolated material;
+- non-accepted dispositions must not write production facts, NOK/detail rows,
+  Quality/Pareto input, Dashboard state, Grafana production fields or
+  ACK/read_done authority;
+- preserve exact wording: no ACK/read_done mutation for the current
+  non-accepted payload.
+
+Future leakage assertions:
+
+- future DB/API/Dashboard implementation gates must replace synthetic adapter
+  leakage keys with real schema/API/UI assertions;
+- future gates must assert diagnostic payloads do not contain `result`,
+  `defect`, `quality`, `pareto` or `dashboard_state`;
+- future gates must assert non-accepted dispositions have no production row, no
+  NOK/detail row, no Quality/Pareto/Grafana production fields and no raw
+  evidence in a production table;
+- future gates must preserve exact wording: no ACK/read_done mutation for the
+  current non-accepted payload.
+
+### 4.9 Tests-only adapter production-fact leakage negative closeout
 
 Tests-only adapter production-fact leakage negative implementation is
 implemented, reviewed, committed and pushed at `fd3a799` /
@@ -643,7 +722,7 @@ separately authorized hardening planning gate for duplicate/conflict precedence,
 historical config replay, raw error taxonomy or exact-byte canonical fixture
 vectors. No implementation is authorized automatically.
 
-### 4.9 Offline fixture inventory
+### 4.10 Offline fixture inventory
 
 Required future fixture inventory:
 
