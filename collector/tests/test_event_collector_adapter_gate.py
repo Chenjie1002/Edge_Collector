@@ -269,6 +269,16 @@ def test_non_accepted_adapter_decisions_do_not_persist_or_mutate_current_payload
     assert context["adapter_error_code"] == disposition.upper()
     assert context["read_done"] is read_done
     assert "adapter decision not accepted" in context["adapter_reason"]
+    assert context["adapter_error_code"] not in {context.get("result"), context.get("nok_code")}
+    for production_key in (
+        "projection_metadata",
+        "production_outcome",
+        "production_result_key",
+        "defect_detail",
+        "quality_pareto_input",
+        "dashboard_state",
+    ):
+        assert production_key not in context
     assert storage.runtime_updates[-1]["collector_state"] == "ADAPTER_REJECTED"
 
 
