@@ -15,8 +15,8 @@ Read this file together with:
 
 ```text
 live HEAD / origin/main at authoring time:
-af60328815821898165ffd5a45aafc9e9c1da705
-af60328 Freeze DB schema field-name contract
+e75f6525f662702e4a6ccc8f8c43d48d001f33ff
+e75f652 Add accepted station event visibility schema
 
 Branch:
 main
@@ -46,6 +46,7 @@ Sprint 3 production-fact visibility boundary docs/status/PM-rule commit/push com
 PM handoff after production-fact visibility boundary committed at ffa9348
 Adapter production-fact leakage negative tests implemented, reviewed and committed at fd3a799
 DB schema field-name contract freeze docs/contracts edit reviewed, committed and pushed at af60328
+DB/API/Dashboard Slice 1 schema-only accepted station-event visibility migration committed and pushed at e75f652
 
 Deploy / rollback drill:
 not performed
@@ -80,6 +81,7 @@ Sprint 3 production-fact visibility boundary docs/status/PM-rule commit/push is 
 PM handoff after production-fact visibility boundary is tracked in commit `ffa9348`.
 Tests-only adapter production-fact leakage negative implementation is tracked in commit `fd3a799` after Reliability, Data Quality and Verification reviews passed with recommendations and no blockers.
 DB schema field-name contract freeze docs/contracts edit is tracked in commit `af60328` after Reliability, Data Quality and Verification reviews passed with recommendations and no blockers.
+DB/API/Dashboard Slice 1 schema-only accepted station-event visibility migration is tracked in commit `e75f652` after Reliability, Data Quality and Verification reviews passed with recommendations and no blockers.
 
 Sprint 3 implementation files committed:
 
@@ -209,6 +211,12 @@ DB schema field-name contract freeze docs/contracts files committed:
 ```text
 docs/contracts/collector_ingestion_adapter.md
 docs/reports/sprint3_collector_ingestion_adapter_plan.md
+```
+
+DB/API/Dashboard Slice 1 schema-only files committed:
+
+```text
+db/migrations/007_accepted_station_event_visibility.sql
 ```
 
 External dirty artifacts currently expected and excluded unless PM explicitly says otherwise:
@@ -390,6 +398,12 @@ behavior, Docker/deploy/tag/rollback or ACK/read_done ownership.
 | DB schema field-name contract freeze Data Quality focused review | PASS WITH RECOMMENDATIONS | none |
 | DB schema field-name contract freeze Verification focused review / exact allowlist audit | PASS WITH RECOMMENDATIONS | none |
 | DB schema field-name contract freeze exact docs/contracts commit/push | PASS | none |
+| DB/API/Dashboard Slice 1 schema-only planning gate | PASS WITH RECOMMENDATIONS | none |
+| DB/API/Dashboard Slice 1 schema-only implementation gate | PASS WITH RECOMMENDATIONS | none |
+| DB/API/Dashboard Slice 1 schema-only Reliability focused review | PASS WITH RECOMMENDATIONS | none |
+| DB/API/Dashboard Slice 1 schema-only Data Quality focused review | PASS WITH RECOMMENDATIONS | none |
+| DB/API/Dashboard Slice 1 schema-only Verification focused review / exact allowlist audit | PASS WITH RECOMMENDATIONS | none |
+| DB/API/Dashboard Slice 1 schema-only exact migration commit/push | PASS | none |
 
 Current overall status:
 
@@ -421,7 +435,10 @@ Tests-only leakage review closeout: Reliability, Data Quality and Verification e
 DB schema field-name contract freeze docs/contracts edit: CLOSED / PASS WITH RECOMMENDATIONS; committed and pushed at af60328 / af60328815821898165ffd5a45aafc9e9c1da705.
 DB schema field-name contract freeze review closeout: Reliability, Data Quality and Verification exact allowlist audit all PASS WITH RECOMMENDATIONS and no blockers.
 DB schema field-name contract freeze reserves production, diagnostics, audit and review namespaces; diagnostic fields must not use result, defect, quality, pareto or dashboard_state production-like names.
-Future DB/API/Dashboard gates must replace synthetic adapter visibility summaries with real schema/API/UI assertions before implementation commit.
+DB/API/Dashboard Slice 1 schema-only migration: CLOSED / PASS WITH RECOMMENDATIONS; committed and pushed at e75f652 / e75f6525f662702e4a6ccc8f8c43d48d001f33ff.
+DB/API/Dashboard Slice 1 created `production_accepted_station_event_fact` as a production-only landing surface for accepted station-event business facts.
+Slice 1 migration contains no raw payload/raw hex/raw JSON, adapter disposition/reason/candidate context, Quality/Pareto/Grafana/Dashboard state, DML/write path or ACK/read_done ownership.
+Future DB write-path/API/Dashboard gates must replace synthetic adapter visibility summaries with real schema/API/UI assertions before implementation commit.
 Accepted production-fact visibility boundary limits future visibility to accepted station-event business facts after immutable config authority, raw_policy / decoder authority, shared validation, duplicate/conflict checks and adapter decision accepted.
 Diagnostic artifacts, raw evidence and non-accepted normalized candidates remain diagnostic/review/debug only, not production facts, Quality/Pareto input, defect detail authority or ACK/read_done authority.
 Adapter disposition, reason code, candidate context and raw/normalized comparison context remain diagnostic/review/debug only.

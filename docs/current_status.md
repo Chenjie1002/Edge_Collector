@@ -6,14 +6,14 @@
 
 ## 0. 当前 PM / Codex 协作状态
 
-当前主线：Phase-2 Sprint 3 DB schema field-name contract freeze docs/status sync closeout。
+当前主线：Phase-2 Sprint 3 DB/API/Dashboard Slice 1 schema-only docs/status sync closeout。
 
 Last verified baseline before this docs sync:
 
 ```text
 live HEAD / origin/main at authoring time:
-af60328815821898165ffd5a45aafc9e9c1da705
-af60328 Freeze DB schema field-name contract
+e75f6525f662702e4a6ccc8f8c43d48d001f33ff
+e75f652 Add accepted station event visibility schema
 
 branch:
 main
@@ -103,6 +103,12 @@ DB schema field-name contract freeze Reliability focused review: CLOSED / PASS W
 DB schema field-name contract freeze Data Quality focused review: CLOSED / PASS WITH RECOMMENDATIONS, no blocker
 DB schema field-name contract freeze Verification focused review / exact allowlist audit: CLOSED / PASS WITH RECOMMENDATIONS, no blocker
 DB schema field-name contract freeze exact docs/contracts commit/push: PASS, commit af60328
+DB/API/Dashboard Slice 1 schema-only planning gate: CLOSED / PASS WITH RECOMMENDATIONS, no blocker
+DB/API/Dashboard Slice 1 schema-only implementation gate: CLOSED / PASS WITH RECOMMENDATIONS, no blocker
+DB/API/Dashboard Slice 1 schema-only Reliability focused review: CLOSED / PASS WITH RECOMMENDATIONS, no blocker
+DB/API/Dashboard Slice 1 schema-only Data Quality focused review: CLOSED / PASS WITH RECOMMENDATIONS, no blocker
+DB/API/Dashboard Slice 1 schema-only Verification focused review / exact allowlist audit: CLOSED / PASS WITH RECOMMENDATIONS, no blocker
+DB/API/Dashboard Slice 1 schema-only exact migration commit/push: PASS, commit e75f652
 Slice D2-C decoder registry authority implementation: PASS WITH RECOMMENDATIONS
 Slice D2-C Reliability implementation review: PASS WITH RECOMMENDATIONS, no blocker
 Slice D2-C Data Quality implementation review: PASS WITH RECOMMENDATIONS, no blocker
@@ -138,7 +144,7 @@ R-N1/R-N2 hardening commit/push: PASS, commit 577c1a1
 Docs/status sync: PASS, commit fd79e21
 Docs/status baseline repair: PASS, commit 4f424c6
 PM rules / baseline semantics repair: PASS, commit e284a06
-Eligible for DB/API/Dashboard Slice 1 schema-only planning/implementation gate or separately authorized downstream hardening planning after DB schema field-name contract freeze docs/status sync: yes
+Eligible for DB/API/Dashboard Slice 2 DB write path planning gate or separately authorized downstream hardening planning after Slice 1 schema-only docs/status sync: yes
 D3 docs/status sync exact allowlist: completed after implementation commit c9e7c22
 D3 actual raw-capable/raw-required runtime wiring: CLOSED at c9e7c22
 E1 runtime raw decoder repair: CLOSED at 2c73410 / 2c73410281d1465db166b66ddc23e27d9337b90a
@@ -151,7 +157,8 @@ Slice J downstream adapter boundary tests-only hardening: CLOSED at ed9a61e / ed
 Sprint 3 accepted production-fact visibility boundary docs/contracts freeze: CLOSED / PASS WITH RECOMMENDATIONS; Reliability, Data Quality and Verification focused reviews CLOSED / PASS WITH RECOMMENDATIONS, no blocker
 Tests-only adapter production-fact leakage negative implementation: CLOSED at fd3a799 / fd3a79901619c9afe664c709834b7e396187f8b2
 DB schema field-name contract freeze docs/contracts edit: CLOSED at af60328 / af60328815821898165ffd5a45aafc9e9c1da705 after Reliability, Data Quality and Verification focused reviews passed with recommendations and no blockers.
-DB/API/Dashboard implementation remains not authorized except future separately authorized exact-scope gates.
+DB/API/Dashboard Slice 1 schema-only accepted station-event visibility migration: CLOSED at e75f652 / e75f6525f662702e4a6ccc8f8c43d48d001f33ff after Reliability, Data Quality and Verification focused reviews passed with recommendations and no blockers.
+DB/API/Dashboard implementation beyond schema-only Slice 1 remains not authorized except future separately authorized exact-scope gates.
 DB/API/Dashboard/V-PLC/deploy/tag/rollback/real PLC pilot: not authorized
 ```
 
