@@ -6,14 +6,14 @@
 
 ## 0. 当前 PM / Codex 协作状态
 
-当前主线：Phase-2 Sprint 3 Slice J downstream adapter boundary tests-only hardening docs/status sync closeout。
+当前主线：Phase-2 Sprint 3 adapter production-fact leakage negative tests docs/status sync closeout。
 
 Last verified baseline before this docs sync:
 
 ```text
 live HEAD / origin/main at authoring time:
-ed9a61ef2bd8e6be12ad786fd7846f2efcfb0cad
-ed9a61e Harden Sprint 3 Slice J adapter boundary tests
+fd3a79901619c9afe664c709834b7e396187f8b2
+fd3a799 Harden adapter visibility tests
 
 branch:
 main
@@ -83,6 +83,15 @@ Sprint 3 accepted production-fact visibility boundary docs/contracts freeze: CLO
 Sprint 3 accepted production-fact visibility boundary Reliability focused review: CLOSED / PASS WITH RECOMMENDATIONS, no blocker
 Sprint 3 accepted production-fact visibility boundary Data Quality focused review: CLOSED / PASS WITH RECOMMENDATIONS, no blocker
 Sprint 3 accepted production-fact visibility boundary Verification focused review / exact allowlist audit: CLOSED / PASS WITH RECOMMENDATIONS, no blocker
+Sprint 3 production-fact visibility boundary exact docs/status/PM-rule commit/push: PASS, commit 11cf077
+PM handoff after production-fact visibility boundary: PASS, commit ffa9348
+DB/API/Dashboard production visibility planning gate: CLOSED / PASS WITH RECOMMENDATIONS, no blocker
+Production-fact leakage negative tests planning gate: CLOSED / PASS WITH RECOMMENDATIONS, no blocker
+Tests-only adapter production-fact leakage negative implementation: CLOSED / PASS WITH RECOMMENDATIONS
+Tests-only adapter production-fact leakage Reliability focused review: CLOSED / PASS WITH RECOMMENDATIONS, no blocker
+Tests-only adapter production-fact leakage Data Quality focused review: CLOSED / PASS WITH RECOMMENDATIONS, no blocker
+Tests-only adapter production-fact leakage Verification exact allowlist audit / review-sequence closeout: CLOSED / PASS WITH RECOMMENDATIONS, no blocker
+Tests-only adapter visibility exact-path commit/push: PASS, commit fd3a799
 Slice D2-C decoder registry authority implementation: PASS WITH RECOMMENDATIONS
 Slice D2-C Reliability implementation review: PASS WITH RECOMMENDATIONS, no blocker
 Slice D2-C Data Quality implementation review: PASS WITH RECOMMENDATIONS, no blocker
@@ -118,7 +127,7 @@ R-N1/R-N2 hardening commit/push: PASS, commit 577c1a1
 Docs/status sync: PASS, commit fd79e21
 Docs/status baseline repair: PASS, commit 4f424c6
 PM rules / baseline semantics repair: PASS, commit e284a06
-Eligible for PM handoff readiness or downstream next-slice planning after Slice J docs/status sync: yes
+Eligible for DB/API/Dashboard production visibility contract gate or separately authorized downstream planning after adapter leakage tests docs/status sync: yes
 D3 docs/status sync exact allowlist: completed after implementation commit c9e7c22
 D3 actual raw-capable/raw-required runtime wiring: CLOSED at c9e7c22
 E1 runtime raw decoder repair: CLOSED at 2c73410 / 2c73410281d1465db166b66ddc23e27d9337b90a
@@ -129,6 +138,7 @@ Slice H WS02 raw_policy raw_capable authority implementation: CLOSED at c7e80e8 
 Slice I WS03 raw_policy raw_capable authority implementation: CLOSED at 045d21c / 045d21c14436e8fe13a26bc32b7c2956df0cd99f
 Slice J downstream adapter boundary tests-only hardening: CLOSED at ed9a61e / ed9a61ef2bd8e6be12ad786fd7846f2efcfb0cad
 Sprint 3 accepted production-fact visibility boundary docs/contracts freeze: CLOSED / PASS WITH RECOMMENDATIONS; Reliability, Data Quality and Verification focused reviews CLOSED / PASS WITH RECOMMENDATIONS, no blocker
+Tests-only adapter production-fact leakage negative implementation: CLOSED at fd3a799 / fd3a79901619c9afe664c709834b7e396187f8b2
 DB/API/Dashboard/V-PLC/deploy/tag/rollback/real PLC pilot: not authorized
 ```
 
@@ -176,6 +186,43 @@ ACK/read_done ownership remains unchanged, and visibility/diagnostic/review-only
 Future hardening backlog: duplicate/conflict precedence, historical config replay, exact-byte canonical fixture vectors, raw error taxonomy and production-fact leakage negative tests.
 Carry-forward: before actual DB/API/Dashboard implementation, consider tightening any remaining "candidate visible facts" wording to "candidate future production-visible facts".
 No tests, implementation, storage.py, DB/API/Dashboard, V-PLC, Docker/deploy, ACK/read_done ownership, tag, rollback or real PLC pilot is authorized by this boundary freeze.
+```
+
+当前 Sprint 3 adapter production-fact leakage negative tests files 已提交：
+
+```text
+collector/tests/test_event_collector_adapter_gate.py
+tests/test_collector_station_event_adapter.py
+```
+
+Sprint 3 adapter production-fact leakage negative tests summary:
+
+```text
+Tests-only adapter production-fact leakage negative implementation is CLOSED / PASS WITH RECOMMENDATIONS.
+Commit message: Harden adapter visibility tests.
+Commit: fd3a799 / fd3a79901619c9afe664c709834b7e396187f8b2.
+Changed files: collector/tests/test_event_collector_adapter_gate.py and tests/test_collector_station_event_adapter.py.
+The implementation strengthened runtime non-accepted adapter decision coverage so diagnostic context does not expose production projection, production outcome, defect detail, Quality/Pareto or Dashboard keys.
+The implementation added offline production-fact leakage summary assertions and a negative matrix for rejected, deferred, quarantined, duplicate, raw_variant and conflict.
+The implementation added diagnostic reason-code coverage proving RAW_NORMALIZED_MISMATCH cannot become NOK/detail or Quality authority.
+Accepted positive control is preserved only to seed legal accepted state for duplicate/conflict/raw_variant checks.
+Focused tests: collector/tests/test_event_collector_adapter_gate.py -> 36 passed; tests/test_collector_station_event_adapter.py -> 46 passed.
+Reliability focused review: PASS WITH RECOMMENDATIONS, no blocker.
+Data Quality focused review: PASS WITH RECOMMENDATIONS, no blocker.
+Verification exact allowlist audit / review-sequence closeout: PASS WITH RECOMMENDATIONS, no blocker.
+No production code changed.
+No config/mapping.yaml / raw_required / line-wide runtime_defaults.raw_policy changed.
+No storage.py / DB / API / Dashboard / V-PLC / Docker / deploy changed.
+ACK/read_done ownership unchanged; preserve exact boundary: no ACK/read_done mutation for the current non-accepted payload.
+Future production visibility remains limited to accepted station-event business facts after immutable config authority, raw_policy / decoder authority, shared validation, duplicate/conflict checks and adapter decision accepted.
+Adapter disposition, reason code, candidate context and raw/normalized comparison context remain diagnostic/review/debug only.
+raw_payload/raw_hex is evidence, not a production fact.
+Decoded/source normalized payloads remain candidates until accepted; non-accepted dispositions do not write defect detail.
+NOK/detail visibility must bind to accepted upstream business evidence.
+DB/API/Dashboard remains not authorized by this tests-only gate.
+Carry-forward: future DB/API/Dashboard implementation gates should replace current synthetic visibility-summary keys with real schema/API/UI field assertions once those surfaces are explicitly authorized.
+Carry-forward: future DB/API/Dashboard gates must restate exact allowlist, review gates and production-fact leakage negative tests.
+Next eligible gate: DB/API/Dashboard production visibility contract gate, or a separately authorized hardening planning gate for duplicate/conflict precedence, historical config replay, raw error taxonomy or exact-byte canonical fixture vectors.
 ```
 
 当前 Sprint 3 Slice I WS03 raw_policy raw_capable authority files 已提交：

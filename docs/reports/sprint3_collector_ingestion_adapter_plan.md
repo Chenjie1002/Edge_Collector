@@ -6,23 +6,32 @@ Status: Sprint 3 Collector Ingestion Adapter planning/status reference. Sprint
 3 Slice J downstream Collector adapter decision / diagnostic / projection
 boundary tests-only hardening is CLOSED / PASS WITH RECOMMENDATIONS at
 `ed9a61e`. Sprint 3 accepted production-fact visibility boundary
-docs/contracts freeze is recorded as a planning boundary only. Sprint 3
-raw_policy station-level rollout checkpoint remains CLOSED / PASS WITH
-RECOMMENDATIONS after Slice I. E1 runtime raw decoder repair remains historical
-implementation history at `2c73410`.
-DB/API/Dashboard/V-PLC/PLC pilot/deploy/tag/rollback remain not authorized.
+docs/contracts freeze is CLOSED / PASS WITH RECOMMENDATIONS and committed in the
+production-fact visibility boundary closeout at `11cf077`. Tests-only adapter
+production-fact leakage negative implementation is CLOSED / PASS WITH
+RECOMMENDATIONS and committed at `fd3a799`. Sprint 3 raw_policy station-level
+rollout checkpoint remains CLOSED / PASS WITH RECOMMENDATIONS after Slice I. E1
+runtime raw decoder repair remains historical implementation history at
+`2c73410`. DB/API/Dashboard/V-PLC/PLC pilot/deploy/tag/rollback remain not
+authorized.
 
-Current PM intake live baseline for accepted production-fact visibility
-boundary docs/contracts freeze:
+Current PM intake live baseline for adapter production-fact leakage tests
+status sync:
 
 - Branch: `main`.
-- HEAD / `origin/main`: `9135011f0695893ca801e7e962c65c6da3b77e84`.
-- Latest commit: `9135011 Add PM handoff after Slice J tests-only sync`.
+- HEAD / `origin/main`: `fd3a79901619c9afe664c709834b7e396187f8b2`.
+- Latest commit: `fd3a799 Harden adapter visibility tests`.
 - Sprint 3 Slice J downstream planning-only gate: CLOSED / PASS WITH
   RECOMMENDATIONS.
 - Sprint 3 Slice J tests-only hardening: CLOSED / PASS WITH RECOMMENDATIONS.
-- Sprint 3 raw_policy station-level rollout checkpoint: CLOSED / PASS WITH
+- Sprint 3 accepted production-fact visibility boundary: CLOSED / PASS WITH
+  RECOMMENDATIONS; exact docs/status/PM-rule commit/push completed at `11cf077`.
+- DB/API/Dashboard production visibility planning gate: CLOSED / PASS WITH
   RECOMMENDATIONS.
+- Production-fact leakage negative tests planning gate: CLOSED / PASS WITH
+  RECOMMENDATIONS.
+- Tests-only adapter production-fact leakage negative implementation: CLOSED /
+  PASS WITH RECOMMENDATIONS; committed at `fd3a799`.
 - WS01 / WS02 / WS03 station-level `raw_policy`: `raw_capable`.
 - Line-wide `runtime_defaults.raw_policy`: `raw_not_provided`.
 - `raw_required`: not introduced.
@@ -560,7 +569,81 @@ Future hardening backlog:
 - raw error taxonomy;
 - production-fact leakage negative tests.
 
-### 4.8 Offline fixture inventory
+### 4.8 Tests-only adapter production-fact leakage negative closeout
+
+Tests-only adapter production-fact leakage negative implementation is
+implemented, reviewed, committed and pushed at `fd3a799` /
+`fd3a79901619c9afe664c709834b7e396187f8b2`.
+
+Changed test files:
+
+```text
+collector/tests/test_event_collector_adapter_gate.py
+tests/test_collector_station_event_adapter.py
+```
+
+Implementation summary:
+
+- strengthened runtime non-accepted adapter decision coverage so diagnostic
+  context does not expose production projection, production outcome, defect
+  detail, Quality/Pareto or Dashboard keys;
+- added offline production-fact leakage summary assertions;
+- added a negative matrix for `rejected`, `deferred`, `quarantined`,
+  `duplicate`, `raw_variant` and `conflict`;
+- added diagnostic reason-code coverage proving `RAW_NORMALIZED_MISMATCH` cannot
+  become NOK/detail or Quality authority;
+- preserved accepted positive control only to seed legal accepted state for
+  duplicate/conflict/raw_variant checks.
+
+Validation evidence:
+
+```text
+PYTHONPATH=collector:. .venv/bin/python -m pytest collector/tests/test_event_collector_adapter_gate.py -> 36 passed
+PYTHONPATH=collector:. .venv/bin/python -m pytest tests/test_collector_station_event_adapter.py -> 46 passed
+Verification closeout: collector/tests/test_event_collector_adapter_gate.py -> 36 passed in 0.12s
+Verification closeout: tests/test_collector_station_event_adapter.py -> 46 passed in 0.06s
+git diff --check -> PASS
+```
+
+Review sequence closeout:
+
+```text
+Reliability focused review: PASS WITH RECOMMENDATIONS, no blocker
+Data Quality focused review: PASS WITH RECOMMENDATIONS, no blocker
+Verification exact allowlist audit / review-sequence closeout: PASS WITH RECOMMENDATIONS, no blocker
+```
+
+Boundary preserved:
+
+- future production visibility is limited to accepted station-event business
+  facts after immutable config authority, `raw_policy` / decoder authority,
+  shared validation, duplicate/conflict checks and adapter decision `accepted`;
+- adapter disposition, reason code, candidate context and raw/normalized
+  comparison context remain diagnostic/review/debug only;
+- `raw_payload` / `raw_hex` is evidence, not a production fact;
+- decoded/source normalized payloads remain candidates until accepted;
+- non-accepted dispositions do not write defect detail;
+- NOK/detail visibility must bind to accepted upstream business evidence;
+- ACK/read_done ownership is unchanged; preserve exact wording: no ACK/read_done
+  mutation for the current non-accepted payload;
+- DB/API/Dashboard remains not authorized by this tests-only gate.
+
+Carry-forward recommendations:
+
+- future DB/API/Dashboard implementation gates should replace current synthetic
+  visibility-summary keys with real schema/API/UI field assertions once those
+  surfaces are explicitly authorized;
+- future DB/API/Dashboard gates must restate exact allowlist, review gates and
+  production-fact leakage negative tests;
+- this tests-only adapter coverage must not be treated as DB/API/Dashboard
+  implementation authorization.
+
+Next eligible gate: DB/API/Dashboard production visibility contract gate, or a
+separately authorized hardening planning gate for duplicate/conflict precedence,
+historical config replay, raw error taxonomy or exact-byte canonical fixture
+vectors. No implementation is authorized automatically.
+
+### 4.9 Offline fixture inventory
 
 Required future fixture inventory:
 
@@ -648,37 +731,41 @@ Explicitly excluded:
 
 ## 8. Current control conclusion
 
-Conclusion: `PASS WITH RECOMMENDATIONS` for Sprint 3 Slice J downstream adapter
-boundary tests-only hardening docs/status reference sync.
+Conclusion: `PASS WITH RECOMMENDATIONS` for Sprint 3 adapter production-fact
+leakage negative tests docs/status reference sync.
 
-Current control status: Sprint 3 Slice J downstream adapter decision /
-diagnostic / projection boundary tests-only hardening is CLOSED / PASS WITH
-RECOMMENDATIONS at `ed9a61e`. Accepted decisions remain the only path to
-existing persist/ACK behavior. Non-accepted dispositions rejected / deferred /
-quarantined / duplicate / conflict / raw_variant are covered under
-`read_done=False` and `read_done=True` and must not persist, mutate
-ACK/read_done status for the current non-accepted payload, project, write defect
-detail or become production-visible facts.
+Current control status: Sprint 3 adapter production-fact leakage negative tests
+are CLOSED / PASS WITH RECOMMENDATIONS at `fd3a799`. Accepted decisions remain
+the only path to existing persist/ACK behavior. Non-accepted dispositions
+rejected / deferred / quarantined / duplicate / conflict / raw_variant are
+covered and must not persist, mutate ACK/read_done status for the current
+non-accepted payload, project, write defect detail, become Quality/Pareto input
+or become production-visible facts.
 
 Current PM intake live baseline:
 
 ```text
 HEAD / origin/main:
-ed9a61ef2bd8e6be12ad786fd7846f2efcfb0cad
+fd3a79901619c9afe664c709834b7e396187f8b2
 Latest commit:
-ed9a61e Harden Sprint 3 Slice J adapter boundary tests
+fd3a799 Harden adapter visibility tests
 ```
 
 Historical authoring baselines in this document, including the E1
 `2c73410281d1465db166b66ddc23e27d9337b90a` marker, remain audit markers only.
-They must not be read as the current live baseline after later Slice F1/F2/G/H/I
-and Slice J commits.
+They must not be read as the current live baseline after later Slice F1/F2/G/H/I,
+Slice J, production-fact visibility boundary, PM handoff and adapter leakage
+tests commits.
 
 Reliability Review: `PASS WITH RECOMMENDATIONS`, no blocker.
 
 Data Quality focused implementation review: `PASS WITH RECOMMENDATIONS`, no blocker.
 
 Verification focused implementation review / exact allowlist audit: `PASS WITH RECOMMENDATIONS`, no blocker.
+
+Adapter production-fact leakage tests review sequence: Reliability, Data Quality
+and Verification exact allowlist audit all `PASS WITH RECOMMENDATIONS`, no
+blocker.
 
 Eligible for docs-only closeout decision: closed by this status sync.
 
@@ -729,9 +816,16 @@ RECOMMENDATIONS. Reliability, Data Quality and Verification focused reviews:
 PASS WITH RECOMMENDATIONS, no blocker. Focused tests: 80 passed. No production
 code changed.
 
-Eligible for next PM planning gate: yes, after this docs/status sync. Next
-eligible action is PM handoff readiness or a separately authorized downstream
-planning gate, not immediate DB/API/Dashboard/V-PLC/deploy/runtime expansion.
+Adapter production-fact leakage negative tests implementation: CLOSED / PASS
+WITH RECOMMENDATIONS at `fd3a799`. Reliability, Data Quality and Verification
+focused reviews: PASS WITH RECOMMENDATIONS, no blocker. Focused tests: 36 passed
+for `collector/tests/test_event_collector_adapter_gate.py` and 46 passed for
+`tests/test_collector_station_event_adapter.py`. No production code changed.
+
+Eligible for next PM planning gate: yes, after this docs/status sync. Recommended
+next eligible action is DB/API/Dashboard production visibility contract gate, or
+a separately authorized hardening planning gate, not immediate
+DB/API/Dashboard/V-PLC/deploy/runtime expansion.
 
 Eligible for implementation without PM approval: no. PM approval is required
 before DB/API/Dashboard/V-PLC/PLC pilot/storage.py/ACK/deploy, commit/push,

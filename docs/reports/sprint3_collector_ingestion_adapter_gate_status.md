@@ -15,8 +15,8 @@ Read this file together with:
 
 ```text
 live HEAD / origin/main at authoring time:
-ed9a61ef2bd8e6be12ad786fd7846f2efcfb0cad
-ed9a61e Harden Sprint 3 Slice J adapter boundary tests
+fd3a79901619c9afe664c709834b7e396187f8b2
+fd3a799 Harden adapter visibility tests
 
 Branch:
 main
@@ -42,6 +42,9 @@ Slice G WS01 raw_capable post-commit sanity tests-only hardening implemented and
 Slice H WS02 raw_policy raw_capable authority implemented and committed
 Slice I WS03 raw_policy raw_capable authority implemented and committed
 Slice J downstream adapter boundary tests-only hardening implemented and committed
+Sprint 3 production-fact visibility boundary docs/status/PM-rule commit/push completed at 11cf077
+PM handoff after production-fact visibility boundary committed at ffa9348
+Adapter production-fact leakage negative tests implemented, reviewed and committed at fd3a799
 
 Deploy / rollback drill:
 not performed
@@ -72,7 +75,9 @@ Slice G WS01 raw_capable post-commit sanity tests-only hardening is tracked in c
 Slice H WS02 raw_policy raw_capable authority is tracked in commit `c7e80e8`.
 Slice I WS03 raw_policy raw_capable authority is tracked in commit `045d21c`.
 Slice J downstream adapter boundary tests-only hardening is tracked in commit `ed9a61e`.
-Sprint 3 accepted production-fact visibility boundary docs/contracts freeze is currently uncommitted and under PM-authorized docs/status sync after Reliability, Data Quality and Verification reviews passed with recommendations and no blockers.
+Sprint 3 production-fact visibility boundary docs/status/PM-rule commit/push is tracked in commit `11cf077`.
+PM handoff after production-fact visibility boundary is tracked in commit `ffa9348`.
+Tests-only adapter production-fact leakage negative implementation is tracked in commit `fd3a799` after Reliability, Data Quality and Verification reviews passed with recommendations and no blockers.
 
 Sprint 3 implementation files committed:
 
@@ -184,6 +189,13 @@ tests/test_collector_station_event_runtime_source.py
 ```
 
 Sprint 3 Slice J downstream adapter boundary tests-only hardening files committed:
+
+```text
+collector/tests/test_event_collector_adapter_gate.py
+tests/test_collector_station_event_adapter.py
+```
+
+Sprint 3 adapter production-fact leakage negative tests files committed:
 
 ```text
 collector/tests/test_event_collector_adapter_gate.py
@@ -349,6 +361,15 @@ behavior, Docker/deploy/tag/rollback or ACK/read_done ownership.
 | Accepted production-fact visibility boundary Reliability focused review | PASS WITH RECOMMENDATIONS | none |
 | Accepted production-fact visibility boundary Data Quality focused review | PASS WITH RECOMMENDATIONS | none |
 | Accepted production-fact visibility boundary Verification focused review / exact allowlist audit | PASS WITH RECOMMENDATIONS | none |
+| Production-fact visibility boundary exact docs/status/PM-rule commit/push | PASS | none |
+| PM handoff after production-fact visibility boundary | PASS | none |
+| DB/API/Dashboard production visibility planning gate | PASS WITH RECOMMENDATIONS | none |
+| Production-fact leakage negative tests planning gate | PASS WITH RECOMMENDATIONS | none |
+| Tests-only adapter production-fact leakage negative implementation | PASS WITH RECOMMENDATIONS | none |
+| Tests-only adapter production-fact leakage Reliability focused review | PASS WITH RECOMMENDATIONS | none |
+| Tests-only adapter production-fact leakage Data Quality focused review | PASS WITH RECOMMENDATIONS | none |
+| Tests-only adapter production-fact leakage Verification exact allowlist audit / review-sequence closeout | PASS WITH RECOMMENDATIONS | none |
+| Tests-only adapter visibility exact-path commit/push | PASS | none |
 
 Current overall status:
 
@@ -369,11 +390,23 @@ Sprint 3 Slice G WS01 raw_capable post-commit sanity tests-only hardening: imple
 Sprint 3 Slice H WS02 raw_policy raw_capable authority: implemented, reviewed, committed and pushed at c7e80e8.
 Sprint 3 Slice I WS03 raw_policy raw_capable authority: implemented, reviewed, committed and pushed at 045d21c.
 Sprint 3 Slice J downstream adapter boundary tests-only hardening: implemented, reviewed, committed and pushed at ed9a61e.
-Sprint 3 accepted production-fact visibility boundary docs/contracts freeze: reviewed with Reliability, Data Quality and Verification PASS WITH RECOMMENDATIONS and no blockers; pending PM-authorized exact docs/status/contract commit gate.
+Sprint 3 accepted production-fact visibility boundary docs/contracts freeze: reviewed with Reliability, Data Quality and Verification PASS WITH RECOMMENDATIONS and no blockers; exact docs/status/PM-rule commit/push completed at 11cf077.
+PM handoff after production-fact visibility boundary: committed and pushed at ffa9348.
+DB/API/Dashboard production visibility planning gate: CLOSED / PASS WITH RECOMMENDATIONS, no blocker.
+Production-fact leakage negative tests planning gate: CLOSED / PASS WITH RECOMMENDATIONS, no blocker.
+Tests-only adapter production-fact leakage negative implementation: CLOSED / PASS WITH RECOMMENDATIONS; committed and pushed at fd3a799 / fd3a79901619c9afe664c709834b7e396187f8b2.
+Tests-only leakage changed files: collector/tests/test_event_collector_adapter_gate.py and tests/test_collector_station_event_adapter.py.
+Tests-only leakage validation: collector/tests/test_event_collector_adapter_gate.py -> 36 passed; tests/test_collector_station_event_adapter.py -> 46 passed; git diff --check PASS.
+Tests-only leakage review closeout: Reliability, Data Quality and Verification exact allowlist audit all PASS WITH RECOMMENDATIONS and no blockers.
 Accepted production-fact visibility boundary limits future visibility to accepted station-event business facts after immutable config authority, raw_policy / decoder authority, shared validation, duplicate/conflict checks and adapter decision accepted.
 Diagnostic artifacts, raw evidence and non-accepted normalized candidates remain diagnostic/review/debug only, not production facts, Quality/Pareto input, defect detail authority or ACK/read_done authority.
+Adapter disposition, reason code, candidate context and raw/normalized comparison context remain diagnostic/review/debug only.
+raw_payload/raw_hex is evidence, not a production fact.
+Decoded/source normalized payloads remain candidates until accepted.
+Non-accepted dispositions do not write defect detail; NOK/detail visibility must bind to accepted upstream business evidence.
 DB/API/Dashboard schema/API/UI/DB work remains deferred; future gate must restate exact allowlist, review gates and production-fact leakage negative tests.
 ACK/read_done ownership remains unchanged, including no ACK/read_done mutation for the current non-accepted payload.
+Future DB/API/Dashboard implementation gates should replace current synthetic visibility-summary keys with real schema/API/UI field assertions once those surfaces are explicitly authorized.
 Future hardening backlog includes duplicate/conflict precedence, historical config replay, exact-byte canonical fixture vectors, raw error taxonomy and production-fact leakage negative tests.
 Slice B inserted the adapter gate after payload/cycle/counter guards and counter reset fail-safe, before existing storage.persist_cycle().
 Slice B accepted-only path continues to existing storage.persist_cycle() plus existing read_done/ACK behavior.
