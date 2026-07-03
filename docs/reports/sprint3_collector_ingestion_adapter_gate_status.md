@@ -1,6 +1,6 @@
 # Sprint 3 Collector Ingestion Adapter Gate Status
 
-Updated: 2026-07-02
+Updated: 2026-07-03
 
 Purpose: compact current gate/status source for Codex Threads working on Sprint 3 Collector Ingestion Adapter.
 
@@ -15,8 +15,8 @@ Read this file together with:
 
 ```text
 live HEAD / origin/main at authoring time:
-e75f6525f662702e4a6ccc8f8c43d48d001f33ff
-e75f652 Add accepted station event visibility schema
+299d28aa5c91b8c3cf7115b6582ce26d45b64706
+299d28a Implement accepted station event fact write path
 
 Branch:
 main
@@ -47,6 +47,7 @@ PM handoff after production-fact visibility boundary committed at ffa9348
 Adapter production-fact leakage negative tests implemented, reviewed and committed at fd3a799
 DB schema field-name contract freeze docs/contracts edit reviewed, committed and pushed at af60328
 DB/API/Dashboard Slice 1 schema-only accepted station-event visibility migration committed and pushed at e75f652
+DB/API/Dashboard Slice 2 DB write path implemented, reviewed, committed and pushed at 299d28a
 
 Deploy / rollback drill:
 not performed
@@ -82,6 +83,7 @@ PM handoff after production-fact visibility boundary is tracked in commit `ffa93
 Tests-only adapter production-fact leakage negative implementation is tracked in commit `fd3a799` after Reliability, Data Quality and Verification reviews passed with recommendations and no blockers.
 DB schema field-name contract freeze docs/contracts edit is tracked in commit `af60328` after Reliability, Data Quality and Verification reviews passed with recommendations and no blockers.
 DB/API/Dashboard Slice 1 schema-only accepted station-event visibility migration is tracked in commit `e75f652` after Reliability, Data Quality and Verification reviews passed with recommendations and no blockers.
+DB/API/Dashboard Slice 2 DB write path is tracked in commit `299d28a` after Architecture, Reliability, Data Quality, Verification, exact commit and exact push gates closed.
 
 Sprint 3 implementation files committed:
 
@@ -217,6 +219,17 @@ DB/API/Dashboard Slice 1 schema-only files committed:
 
 ```text
 db/migrations/007_accepted_station_event_visibility.sql
+```
+
+DB/API/Dashboard Slice 2 DB write path files committed:
+
+```text
+collector/app/services/accepted_station_event_fact.py
+collector/app/services/event_collector.py
+collector/app/services/storage.py
+collector/tests/test_event_collector_accepted_fact_write_path.py
+collector/tests/test_event_collector_adapter_gate.py
+tests/test_collector_station_event_adapter.py
 ```
 
 External dirty artifacts currently expected and excluded unless PM explicitly says otherwise:
@@ -404,6 +417,18 @@ behavior, Docker/deploy/tag/rollback or ACK/read_done ownership.
 | DB/API/Dashboard Slice 1 schema-only Data Quality focused review | PASS WITH RECOMMENDATIONS | none |
 | DB/API/Dashboard Slice 1 schema-only Verification focused review / exact allowlist audit | PASS WITH RECOMMENDATIONS | none |
 | DB/API/Dashboard Slice 1 schema-only exact migration commit/push | PASS | none |
+| DB/API/Dashboard Slice 2 DB write path Architecture initial planning | PASS WITH RECOMMENDATIONS | none |
+| DB/API/Dashboard Slice 2 DB write path Reliability first planning review | HOLD | planning repair required and later closed |
+| DB/API/Dashboard Slice 2 DB write path Architecture planning repair | PASS WITH RECOMMENDATIONS | none |
+| DB/API/Dashboard Slice 2 DB write path Reliability planning re-review | PASS WITH RECOMMENDATIONS | none |
+| DB/API/Dashboard Slice 2 DB write path Data Quality planning review | PASS WITH RECOMMENDATIONS | none |
+| DB/API/Dashboard Slice 2 DB write path Verification planning review | PASS WITH RECOMMENDATIONS | none |
+| DB/API/Dashboard Slice 2 DB write path Architecture implementation + focused tests | PASS WITH RECOMMENDATIONS | none |
+| DB/API/Dashboard Slice 2 DB write path Reliability focused implementation review | PASS WITH RECOMMENDATIONS | none |
+| DB/API/Dashboard Slice 2 DB write path Data Quality focused implementation review | PASS WITH RECOMMENDATIONS | none |
+| DB/API/Dashboard Slice 2 DB write path Verification focused implementation review / exact allowlist audit | PASS WITH RECOMMENDATIONS | none |
+| DB/API/Dashboard Slice 2 DB write path exact commit gate | PASS | none |
+| DB/API/Dashboard Slice 2 DB write path exact push gate | PASS | none |
 
 Current overall status:
 
@@ -438,17 +463,34 @@ DB schema field-name contract freeze reserves production, diagnostics, audit and
 DB/API/Dashboard Slice 1 schema-only migration: CLOSED / PASS WITH RECOMMENDATIONS; committed and pushed at e75f652 / e75f6525f662702e4a6ccc8f8c43d48d001f33ff.
 DB/API/Dashboard Slice 1 created `production_accepted_station_event_fact` as a production-only landing surface for accepted station-event business facts.
 Slice 1 migration contains no raw payload/raw hex/raw JSON, adapter disposition/reason/candidate context, Quality/Pareto/Grafana/Dashboard state, DML/write path or ACK/read_done ownership.
-Future DB write-path/API/Dashboard gates must replace synthetic adapter visibility summaries with real schema/API/UI assertions before implementation commit.
+DB/API/Dashboard Slice 2 DB write path implementation: CLOSED / PASS WITH RECOMMENDATIONS; committed and pushed at 299d28a / 299d28aa5c91b8c3cf7115b6582ce26d45b64706.
+Slice 2 added accepted station-event fact write path for `production_accepted_station_event_fact`.
+Slice 2 added `accepted_station_event_fact.py` DTO/helper.
+Slice 2 added `Storage.transaction()` and no-internal-commit write variants.
+Slice 2 accepted path writes production fact + legacy/current persistence in one transaction.
+Slice 2 ACK/read_done mutation happens only after successful transaction commit.
+Slice 2 non-accepted dispositions create zero production rows and no ACK/read_done mutation for the current payload.
+Preserve exact wording: no ACK/read_done mutation for the current non-accepted payload.
+Slice 2 duplicate/conflict/raw_variant/idempotency behavior is implemented and tested with focused fake/spy coverage.
+Slice 2 introduced no DB migration, API, Dashboard, V-PLC, config, deploy, tag or rollback changes.
+Slice 2 Architecture implementation evidence: collector/tests/test_event_collector_adapter_gate.py -> 36 passed; tests/test_collector_station_event_adapter.py -> 46 passed; collector/tests/test_event_collector_accepted_fact_write_path.py -> 12 passed; compileall collector/app/services -> PASS; git diff --check -> PASS.
+Slice 2 Reliability reran focused commands: 36 passed; 46 passed; 12 passed; compileall PASS; git diff --check PASS.
+Slice 2 Data Quality ran combined focused tests: 94 passed.
+Slice 2 Verification final audit: 94 passed; compileall PASS; git diff --check PASS; cached empty; exact allowlist PASS.
+Future DB/API/Dashboard gates must use real production accepted fact table assertions, not synthetic visibility assumptions.
 Accepted production-fact visibility boundary limits future visibility to accepted station-event business facts after immutable config authority, raw_policy / decoder authority, shared validation, duplicate/conflict checks and adapter decision accepted.
 Diagnostic artifacts, raw evidence and non-accepted normalized candidates remain diagnostic/review/debug only, not production facts, Quality/Pareto input, defect detail authority or ACK/read_done authority.
 Adapter disposition, reason code, candidate context and raw/normalized comparison context remain diagnostic/review/debug only.
 raw_payload/raw_hex is evidence, not a production fact.
 Decoded/source normalized payloads remain candidates until accepted.
 Non-accepted dispositions do not write defect detail; NOK/detail visibility must bind to accepted upstream business evidence.
-DB/API/Dashboard schema/API/UI/DB work remains deferred; future gate must restate exact allowlist, review gates and production-fact leakage negative tests.
+API/Dashboard implementation, new migration, deploy, tag, rollback, broad tests and real PLC pilot remain deferred; future gate must restate exact allowlist, review gates and production-fact leakage negative tests.
 ACK/read_done ownership remains unchanged, including no ACK/read_done mutation for the current non-accepted payload.
-Future DB/API/Dashboard implementation gates should replace current synthetic visibility-summary keys with real schema/API/UI field assertions once those surfaces are explicitly authorized.
-Future hardening backlog includes duplicate/conflict precedence, historical config replay, exact-byte canonical fixture vectors, raw error taxonomy and production-fact leakage negative tests.
+Carry-forward: add DB-backed/live Postgres tests for `production_accepted_station_event_fact` unique constraints, rollback behavior, commit failure, connection failure and race/unique-violation-after-precheck.
+Carry-forward: add direct storage-level coverage for `insert_accepted_station_event_fact_no_commit()` against real DB constraints.
+Carry-forward: add DTO builder negative coverage for `station_result nok` missing accepted NOK evidence.
+Carry-forward: do not treat legacy/current `raw_plc_sample`, `cycle_event`, `station_event`, `production_unit` or `quality_event` as equivalent to production accepted fact surface.
+Next eligible gate: downstream DB/API/Dashboard planning gate, likely API read path or DB-backed hardening tests; alternatively DB-backed/local Postgres hardening test gate.
 Slice B inserted the adapter gate after payload/cycle/counter guards and counter reset fail-safe, before existing storage.persist_cycle().
 Slice B accepted-only path continues to existing storage.persist_cycle() plus existing read_done/ACK behavior.
 Slice B non-accepted decisions do not persist, do not project, do not write defect detail, and do not ACK.

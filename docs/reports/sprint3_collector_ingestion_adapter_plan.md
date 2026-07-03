@@ -2,25 +2,26 @@
 
 Date: 2026-06-28
 
-Status: Sprint 3 Collector Ingestion Adapter planning/status reference. Sprint
-3 Slice J downstream Collector adapter decision / diagnostic / projection
-boundary tests-only hardening is CLOSED / PASS WITH RECOMMENDATIONS at
-`ed9a61e`. Sprint 3 accepted production-fact visibility boundary
-docs/contracts freeze is CLOSED / PASS WITH RECOMMENDATIONS and committed in the
-production-fact visibility boundary closeout at `11cf077`. Tests-only adapter
-production-fact leakage negative implementation is CLOSED / PASS WITH
-RECOMMENDATIONS and committed at `fd3a799`. Sprint 3 raw_policy station-level
-rollout checkpoint remains CLOSED / PASS WITH RECOMMENDATIONS after Slice I. E1
-runtime raw decoder repair remains historical implementation history at
-`2c73410`. DB/API/Dashboard/V-PLC/PLC pilot/deploy/tag/rollback remain not
+Status: Sprint 3 Collector Ingestion Adapter planning/status reference. DB/API/
+Dashboard Slice 2 DB write path implementation is CLOSED / PASS WITH
+RECOMMENDATIONS and committed/pushed at `299d28a`. Sprint 3 Slice J downstream
+Collector adapter decision / diagnostic / projection boundary tests-only
+hardening is CLOSED / PASS WITH RECOMMENDATIONS at `ed9a61e`. Sprint 3 accepted
+production-fact visibility boundary docs/contracts freeze is CLOSED / PASS WITH
+RECOMMENDATIONS and committed in the production-fact visibility boundary
+closeout at `11cf077`. Tests-only adapter production-fact leakage negative
+implementation is CLOSED / PASS WITH RECOMMENDATIONS and committed at
+`fd3a799`. Sprint 3 raw_policy station-level rollout checkpoint remains CLOSED /
+PASS WITH RECOMMENDATIONS after Slice I. E1 runtime raw decoder repair remains
+historical implementation history at `2c73410`. API/Dashboard implementation,
+new migration, V-PLC/PLC pilot/deploy/tag/rollback and broad tests remain not
 authorized.
 
-Current PM intake live baseline for adapter production-fact leakage tests
-status sync:
+Current PM intake live baseline for Slice 2 DB write path post-push status sync:
 
 - Branch: `main`.
-- HEAD / `origin/main`: `fd3a79901619c9afe664c709834b7e396187f8b2`.
-- Latest commit: `fd3a799 Harden adapter visibility tests`.
+- HEAD / `origin/main`: `299d28aa5c91b8c3cf7115b6582ce26d45b64706`.
+- Latest commit: `299d28a Implement accepted station event fact write path`.
 - Sprint 3 Slice J downstream planning-only gate: CLOSED / PASS WITH
   RECOMMENDATIONS.
 - Sprint 3 Slice J tests-only hardening: CLOSED / PASS WITH RECOMMENDATIONS.
@@ -32,11 +33,17 @@ status sync:
   RECOMMENDATIONS.
 - Tests-only adapter production-fact leakage negative implementation: CLOSED /
   PASS WITH RECOMMENDATIONS; committed at `fd3a799`.
+- DB/API/Dashboard Slice 1 schema-only migration: CLOSED / PASS WITH
+  RECOMMENDATIONS; committed at `e75f652`.
+- DB/API/Dashboard Slice 2 DB write path: CLOSED / PASS WITH RECOMMENDATIONS;
+  committed/pushed at `299d28a`.
+- DB/API/Dashboard Slice 2 exact commit gate: PASS.
+- DB/API/Dashboard Slice 2 exact push gate: PASS.
 - WS01 / WS02 / WS03 station-level `raw_policy`: `raw_capable`.
 - Line-wide `runtime_defaults.raw_policy`: `raw_not_provided`.
 - `raw_required`: not introduced.
-- Runtime/source code, `storage.py`, DB/API/Dashboard/V-PLC/Docker/deploy and
-  ACK/read_done ownership: unchanged.
+- DB migration, API, Dashboard, V-PLC, config, Docker/deploy, tag, rollback and
+  real PLC pilot: not authorized by Slice 2 DB write path.
 
 The E1 authoring baseline below is retained as a historical audit marker. It is
 not the live repository baseline for this post-Slice I status sync.
@@ -810,41 +817,58 @@ Explicitly excluded:
 
 ## 8. Current control conclusion
 
-Conclusion: `PASS WITH RECOMMENDATIONS` for Sprint 3 adapter production-fact
-leakage negative tests docs/status reference sync.
+Conclusion: `PASS WITH RECOMMENDATIONS` for DB/API/Dashboard Slice 2 DB write
+path post-push docs/status reference sync.
 
-Current control status: Sprint 3 adapter production-fact leakage negative tests
-are CLOSED / PASS WITH RECOMMENDATIONS at `fd3a799`. Accepted decisions remain
-the only path to existing persist/ACK behavior. Non-accepted dispositions
-rejected / deferred / quarantined / duplicate / conflict / raw_variant are
-covered and must not persist, mutate ACK/read_done status for the current
-non-accepted payload, project, write defect detail, become Quality/Pareto input
-or become production-visible facts.
+Current control status: DB/API/Dashboard Slice 2 DB write path implementation is
+CLOSED / PASS WITH RECOMMENDATIONS and committed/pushed at `299d28a`. The slice
+adds the accepted station-event fact write path for
+`production_accepted_station_event_fact` while preserving the production-fact
+visibility boundary. Accepted decisions may write the production fact plus
+legacy/current persistence in one transaction. ACK/read_done mutation happens
+only after successful transaction commit. Non-accepted dispositions create zero
+production rows and no ACK/read_done mutation for the current payload. Preserve
+exact wording: no ACK/read_done mutation for the current non-accepted payload.
 
 Current PM intake live baseline:
 
 ```text
 HEAD / origin/main:
-fd3a79901619c9afe664c709834b7e396187f8b2
+299d28aa5c91b8c3cf7115b6582ce26d45b64706
 Latest commit:
-fd3a799 Harden adapter visibility tests
+299d28a Implement accepted station event fact write path
 ```
 
 Historical authoring baselines in this document, including the E1
 `2c73410281d1465db166b66ddc23e27d9337b90a` marker, remain audit markers only.
 They must not be read as the current live baseline after later Slice F1/F2/G/H/I,
-Slice J, production-fact visibility boundary, PM handoff and adapter leakage
-tests commits.
+Slice J, production-fact visibility boundary, PM handoff, adapter leakage tests,
+DB schema field-name contract, Slice 1 schema-only migration and Slice 2 DB write
+path commits.
 
-Reliability Review: `PASS WITH RECOMMENDATIONS`, no blocker.
+Architecture initial planning: `PASS WITH RECOMMENDATIONS`, no blocker.
+
+Reliability first planning review: `HOLD`, later closed by Architecture planning repair.
+
+Architecture planning repair: `PASS WITH RECOMMENDATIONS`, no blocker.
+
+Reliability planning re-review: `PASS WITH RECOMMENDATIONS`, no blocker.
+
+Data Quality planning review: `PASS WITH RECOMMENDATIONS`, no blocker.
+
+Verification planning review: `PASS WITH RECOMMENDATIONS`, no blocker.
+
+Architecture implementation + focused tests: `PASS WITH RECOMMENDATIONS`, no blocker.
+
+Reliability focused implementation review: `PASS WITH RECOMMENDATIONS`, no blocker.
 
 Data Quality focused implementation review: `PASS WITH RECOMMENDATIONS`, no blocker.
 
 Verification focused implementation review / exact allowlist audit: `PASS WITH RECOMMENDATIONS`, no blocker.
 
-Adapter production-fact leakage tests review sequence: Reliability, Data Quality
-and Verification exact allowlist audit all `PASS WITH RECOMMENDATIONS`, no
-blocker.
+Exact commit gate: `PASS`.
+
+Exact push gate: `PASS`.
 
 Eligible for docs-only closeout decision: closed by this status sync.
 
@@ -901,11 +925,57 @@ focused reviews: PASS WITH RECOMMENDATIONS, no blocker. Focused tests: 36 passed
 for `collector/tests/test_event_collector_adapter_gate.py` and 46 passed for
 `tests/test_collector_station_event_adapter.py`. No production code changed.
 
+DB/API/Dashboard Slice 2 DB write path implementation summary:
+
+```text
+Added accepted station-event fact write path for production_accepted_station_event_fact.
+Added accepted_station_event_fact.py DTO/helper.
+Added Storage.transaction() and no-internal-commit write variants.
+Accepted path writes production fact + legacy/current persistence in one transaction.
+ACK/read_done mutation happens only after successful transaction commit.
+Non-accepted dispositions create zero production rows and no ACK/read_done mutation for the current payload.
+Duplicate/conflict/raw_variant/idempotency behavior implemented and tested with focused fake/spy coverage.
+No DB migration/API/Dashboard/V-PLC/config/deploy/tag/rollback changes in this slice.
+```
+
+Slice 2 validation evidence:
+
+```text
+Architecture implementation: collector/tests/test_event_collector_adapter_gate.py -> 36 passed; tests/test_collector_station_event_adapter.py -> 46 passed; collector/tests/test_event_collector_accepted_fact_write_path.py -> 12 passed; compileall collector/app/services -> PASS; git diff --check -> PASS.
+Reliability reran focused commands: 36 passed; 46 passed; 12 passed; compileall PASS; git diff --check PASS.
+Data Quality combined focused tests: 94 passed.
+Verification final audit: 94 passed; compileall PASS; git diff --check PASS; cached empty; exact allowlist PASS.
+```
+
+Production-fact visibility boundary preserved:
+
+```text
+Future production visibility is limited to accepted station-event business facts after immutable config authority, raw_policy / decoder authority, shared validation, duplicate/conflict checks and adapter decision accepted.
+Adapter disposition, reason code, candidate context and raw/normalized comparison context remain diagnostic/review/debug only.
+raw_payload/raw_hex is evidence, not a production fact.
+Decoded/source normalized payloads remain candidates until accepted.
+Non-accepted dispositions do not write defect detail.
+NOK/detail visibility must bind to accepted upstream business evidence.
+Preserve exact wording: no ACK/read_done mutation for the current non-accepted payload.
+```
+
+Slice 2 carry-forward recommendations:
+
+```text
+Add DB-backed/live Postgres tests for production_accepted_station_event_fact unique constraints, rollback behavior, commit failure, connection failure and race/unique-violation-after-precheck.
+Add direct storage-level coverage for insert_accepted_station_event_fact_no_commit() against real DB constraints.
+Add DTO builder negative coverage for station_result nok missing accepted NOK evidence.
+Future DB/API/Dashboard gates must use real production accepted fact table assertions, not synthetic visibility assumptions.
+Do not treat legacy/current raw_plc_sample, cycle_event, station_event, production_unit or quality_event as equivalent to production accepted fact surface.
+DB/API/Dashboard expansion remains not authorized until separate PM gate.
+```
+
 Eligible for next PM planning gate: yes, after this docs/status sync. Recommended
-next eligible action is DB/API/Dashboard production visibility contract gate, or
-a separately authorized hardening planning gate, not immediate
-DB/API/Dashboard/V-PLC/deploy/runtime expansion.
+next eligible action is downstream DB/API/Dashboard planning gate, likely API
+read path or DB-backed hardening tests; alternatively DB-backed/local Postgres
+hardening test gate.
 
 Eligible for implementation without PM approval: no. PM approval is required
-before DB/API/Dashboard/V-PLC/PLC pilot/storage.py/ACK/deploy, commit/push,
-tag, rollback or any change outside the approved docs allowlist.
+before API/Dashboard implementation, new migration, V-PLC/PLC pilot,
+storage/API expansion, deploy, tag, rollback, broad tests, real PLC pilot,
+commit/push or any change outside the approved docs allowlist.
