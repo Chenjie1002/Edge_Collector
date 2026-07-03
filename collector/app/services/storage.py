@@ -2,6 +2,8 @@ from __future__ import annotations
 
 import json
 import uuid
+from collections.abc import Iterator
+from contextlib import contextmanager
 from datetime import datetime
 from typing import Any
 
@@ -10,11 +12,25 @@ from psycopg.types.json import Jsonb
 
 from app.models import MachineState
 from app.plc.mapping import StationMapping
+from app.services.accepted_station_event_fact import AcceptedStationEventFact
 
 
 class Storage:
     def __init__(self, dsn: str) -> None:
         self.conn = psycopg.connect(dsn, autocommit=False)
+
+    @contextmanager
+    def transaction(self) -> Iterator[None]:
+        try:
+            yield
+        except Exception:
+            self.conn.rollback()
+            raise
+        try:
+            self.conn.commit()
+        except Exception:
+            self.conn.rollback()
+            raise
 
     def ensure_machine(self, state: MachineState) -> None:
         with self.conn.cursor() as cur:
@@ -216,6 +232,7 @@ class Storage:
         read_size: int,
         raw_hex: str,
         decoded_json: dict[str, Any],
+        commit: bool = True,
     ) -> int:
         with self.conn.cursor() as cur:
             cur.execute(
@@ -230,10 +247,42 @@ class Storage:
                 (plc_id, line_id, station_id, db_number, read_start, read_size, raw_hex, Jsonb(decoded_json)),
             )
             raw_sample_id = int(cur.fetchone()[0])
-        self.conn.commit()
+        if commit:
+            self.conn.commit()
         return raw_sample_id
 
     def persist_cycle(
+        self,
+        *,
+        plc_id: str,
+        line_id: str,
+        station: StationMapping,
+        plc_boot_id: str,
+        cycle_counter: int,
+        decoded: dict[str, Any],
+        db_number: int,
+        read_start: int,
+        read_size: int,
+        raw_hex: str,
+        code_tables: dict[str, dict[Any, Any]],
+    ) -> int:
+        event_id = self.persist_cycle_no_commit(
+            plc_id=plc_id,
+            line_id=line_id,
+            station=station,
+            plc_boot_id=plc_boot_id,
+            cycle_counter=cycle_counter,
+            decoded=decoded,
+            db_number=db_number,
+            read_start=read_start,
+            read_size=read_size,
+            raw_hex=raw_hex,
+            code_tables=code_tables,
+        )
+        self.conn.commit()
+        return event_id
+
+    def persist_cycle_no_commit(
         self,
         *,
         plc_id: str,
@@ -257,8 +306,9 @@ class Storage:
             read_size=read_size,
             raw_hex=raw_hex,
             decoded_json=decoded,
+            commit=False,
         )
-        event_id = self.upsert_cycle_event(
+        event_id = self.upsert_cycle_event_no_commit(
             plc_id=plc_id,
             line_id=line_id,
             station=station,
@@ -268,8 +318,87 @@ class Storage:
             raw_sample_id=raw_sample_id,
             code_tables=code_tables,
         )
-        self.insert_quality_event_for_cycle(event_id)
+        self.insert_quality_event_for_cycle(event_id, commit=False)
         return event_id
+
+    def insert_accepted_station_event_fact_no_commit(self, fact: AcceptedStationEventFact) -> str:
+        with self.conn.cursor() as cur:
+            cur.execute(
+                """
+                SELECT content_fingerprint
+                FROM production_accepted_station_event_fact
+                WHERE fact_key = %s
+                """,
+                (fact.fact_key,),
+            )
+            row = cur.fetchone()
+            if row is not None:
+                if row[0] == fact.content_fingerprint:
+                    return "existing"
+                raise ValueError("accepted station-event fact conflict: fact_key content differs")
+
+            cur.execute(
+                """
+                SELECT content_fingerprint
+                FROM production_accepted_station_event_fact
+                WHERE line_id = %s
+                  AND plc_id = %s
+                  AND station_id = %s
+                  AND config_hash = %s
+                  AND source_event_id = %s
+                  AND event_type = %s
+                """,
+                fact.source_identity,
+            )
+            row = cur.fetchone()
+            if row is not None:
+                if row[0] == fact.content_fingerprint:
+                    return "existing"
+                raise ValueError("accepted station-event fact conflict: source identity content differs")
+
+            cur.execute(
+                """
+                INSERT INTO production_accepted_station_event_fact (
+                    line_id, plc_id, station_id, station_type, profile_id,
+                    config_hash, config_version, event_type, production_result,
+                    unit_id, dmc, cycle_counter, source_event_id, event_ts,
+                    fact_key, content_fingerprint, nok_code, nok_origin,
+                    nok_detail_code, nok_detail_source_event_id,
+                    nok_detail_evidence_fact_key
+                )
+                VALUES (
+                    %s, %s, %s, %s, %s,
+                    %s, %s, %s, %s,
+                    %s, %s, %s, %s, %s,
+                    %s, %s, %s, %s,
+                    %s, %s, %s
+                )
+                """,
+                (
+                    fact.line_id,
+                    fact.plc_id,
+                    fact.station_id,
+                    fact.station_type,
+                    fact.profile_id,
+                    fact.config_hash,
+                    fact.config_version,
+                    fact.event_type,
+                    fact.production_result,
+                    fact.unit_id,
+                    fact.dmc,
+                    fact.cycle_counter,
+                    fact.source_event_id,
+                    fact.event_ts,
+                    fact.fact_key,
+                    fact.content_fingerprint,
+                    fact.nok_code,
+                    fact.nok_origin,
+                    fact.nok_detail_code,
+                    fact.nok_detail_source_event_id,
+                    fact.nok_detail_evidence_fact_key,
+                ),
+            )
+        return "inserted"
 
     def rollback(self) -> None:
         self.conn.rollback()
@@ -296,6 +425,31 @@ class Storage:
         return int(row[0]) if row and row[0] is not None else None
 
     def upsert_cycle_event(
+        self,
+        *,
+        plc_id: str,
+        line_id: str,
+        station: StationMapping,
+        plc_boot_id: str,
+        cycle_counter: int,
+        decoded: dict[str, Any],
+        raw_sample_id: int,
+        code_tables: dict[str, dict[Any, Any]],
+    ) -> int:
+        event_id = self.upsert_cycle_event_no_commit(
+            plc_id=plc_id,
+            line_id=line_id,
+            station=station,
+            plc_boot_id=plc_boot_id,
+            cycle_counter=cycle_counter,
+            decoded=decoded,
+            raw_sample_id=raw_sample_id,
+            code_tables=code_tables,
+        )
+        self.conn.commit()
+        return event_id
+
+    def upsert_cycle_event_no_commit(
         self,
         *,
         plc_id: str,
@@ -484,7 +638,6 @@ class Storage:
         if unit_id:
             self.upsert_station_event_for_cycle(event_id)
             self.upsert_production_unit_for_event(event_id)
-        self.conn.commit()
         return event_id
 
     def upsert_station_event_for_cycle(self, cycle_event_id: int) -> int | None:
@@ -623,7 +776,7 @@ class Storage:
         except (TypeError, ValueError):
             return str(value or "UNKNOWN")
 
-    def insert_quality_event_for_cycle(self, cycle_event_id: int) -> None:
+    def insert_quality_event_for_cycle(self, cycle_event_id: int, *, commit: bool = True) -> None:
         with self.conn.cursor() as cur:
             cur.execute(
                 """
@@ -640,7 +793,8 @@ class Storage:
                 """,
                 (cycle_event_id, cycle_event_id),
             )
-        self.conn.commit()
+        if commit:
+            self.conn.commit()
 
     def mark_cycle_ack_ok(self, *, plc_id: str, station_id: str, plc_boot_id: str, cycle_counter: int) -> None:
         with self.conn.cursor() as cur:

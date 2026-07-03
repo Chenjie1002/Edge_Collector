@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+from contextlib import contextmanager
 from dataclasses import replace
 from types import SimpleNamespace
 from zoneinfo import ZoneInfo
@@ -49,6 +50,7 @@ class FakeStorage:
         self.persist_calls = 0
         self.ack_ok_calls = 0
         self.ack_failed_calls = 0
+        self.production_fact_calls = 0
         self.errors: list[dict] = []
         self.runtime_updates: list[dict] = []
         self.events: list[str] = []
@@ -60,6 +62,9 @@ class FakeStorage:
         return self.max_counter
 
     def persist_cycle(self, **kwargs) -> int:
+        raise AssertionError("internal-commit persist_cycle must not be called in Slice 2 atomic path")
+
+    def persist_cycle_no_commit(self, **kwargs) -> int:
         self.persist_calls += 1
         self.events.append("persist_cycle")
         if self.fail_persist:
@@ -67,8 +72,23 @@ class FakeStorage:
         self.max_counter = max(self.max_counter or 0, int(kwargs["cycle_counter"]))
         return 41
 
+    @contextmanager
+    def transaction(self):
+        self.events.append("begin")
+        try:
+            yield
+        except Exception:
+            self.rollback()
+            raise
+        self.events.append("commit")
+
+    def insert_accepted_station_event_fact_no_commit(self, _fact) -> str:
+        self.production_fact_calls += 1
+        self.events.append("production_fact")
+        return "inserted"
+
     def rollback(self) -> None:
-        return None
+        self.events.append("rollback")
 
     def mark_cycle_ack_ok(self, **kwargs) -> None:
         self.ack_ok_calls += 1
@@ -140,6 +160,8 @@ def make_worker(
 ) -> tuple[EventCollectorWorker, FakeStorage, FakeClient]:
     storage = storage or FakeStorage()
     client = client or FakeClient(events=storage.events)
+    if client.events is None:
+        client.events = storage.events
     worker = EventCollectorWorker.__new__(EventCollectorWorker)
     worker.storage = storage
     worker.client = client
@@ -151,6 +173,8 @@ def make_worker(
     def adapter(*args, **kwargs):
         if adapter_exception is not None:
             raise adapter_exception
+        if adapter_disposition == "accepted":
+            return accepted_adapter_decision()
         return SimpleNamespace(
             disposition=adapter_disposition,
             final_error_code=adapter_error_code
@@ -162,6 +186,35 @@ def make_worker(
 
     worker._adapt_station_runtime_payload = adapter
     return worker, storage, client
+
+
+def accepted_adapter_decision() -> SimpleNamespace:
+    return SimpleNamespace(
+        disposition="accepted",
+        final_error_code=None,
+        normalized_event={
+            "line_id": "LINE_001",
+            "plc_id": "PLC_001",
+            "station_id": "WS01",
+            "station_type": "screw",
+            "profile_id": "normal_screwdriving",
+            "config_hash": "a" * 64,
+            "config_version": "2026.06.20-1",
+            "event_type": "station_result",
+            "result": "ok",
+            "unit_id": "U-20260618-000005",
+            "dmc": "SUB-000005",
+            "cycle_counter": 5,
+            "event_ts": "2026-06-26T10:00:30Z",
+            "correlation": {
+                "source_event_id": "PLC_001:WS01:5:station_result",
+                "fact_key": "sha256:" + "1" * 64,
+            },
+        },
+        fact_key="sha256:" + "1" * 64,
+        content_fingerprint="sha256:" + "2" * 64,
+        projection_metadata=SimpleNamespace(production_outcome="ok", defect_detail=None),
+    )
 
 
 def make_real_runtime_worker() -> tuple[EventCollectorWorker, FakeStorage, FakeClient, StationRuntime, bytearray, dict]:
@@ -220,7 +273,7 @@ def test_accepted_adapter_decision_enters_existing_persist_and_ack_path() -> Non
     assert storage.persist_calls == 1
     assert storage.ack_ok_calls == 1
     assert len(client.writes) == 1
-    assert storage.events == ["persist_cycle", "ack_write", "ack_ok"]
+    assert storage.events == ["begin", "production_fact", "persist_cycle", "commit", "ack_write", "ack_ok"]
 
 
 def test_accepted_read_done_path_persists_before_ack_status_repair() -> None:
@@ -231,7 +284,7 @@ def test_accepted_read_done_path_persists_before_ack_status_repair() -> None:
     assert storage.persist_calls == 1
     assert client.writes == []
     assert storage.ack_ok_calls == 1
-    assert storage.events == ["persist_cycle", "ack_ok"]
+    assert storage.events == ["begin", "production_fact", "persist_cycle", "commit", "ack_ok"]
 
 
 @pytest.mark.parametrize(
@@ -372,6 +425,7 @@ def test_storage_failure_after_accepted_adapter_decision_still_does_not_ack() ->
     assert storage.persist_calls == 1
     assert storage.ack_ok_calls == 0
     assert client.writes == []
+    assert storage.events == ["begin", "production_fact", "persist_cycle", "rollback"]
     assert storage.errors[-1]["error_type"] == "STORAGE_WRITE_FAILED"
 
 
@@ -390,6 +444,19 @@ def test_ack_write_failure_after_accepted_adapter_decision_keeps_retry_semantics
     assert storage.ack_failed_calls == 1
     assert storage.ack_ok_calls == 1
     assert len(client.writes) == 1
+    assert storage.events == [
+        "begin",
+        "production_fact",
+        "persist_cycle",
+        "commit",
+        "ack_failed",
+        "begin",
+        "production_fact",
+        "persist_cycle",
+        "commit",
+        "ack_write",
+        "ack_ok",
+    ]
     assert storage.errors[-1]["error_type"] == "ACK_WRITE_FAILED"
 
 
@@ -431,6 +498,7 @@ def test_read_done_ack_status_repair_remains_after_accepted_adapter_decision() -
     assert storage.persist_calls == 1
     assert client.writes == []
     assert storage.ack_ok_calls == 1
+    assert storage.events == ["begin", "production_fact", "persist_cycle", "commit", "ack_ok"]
 
 
 def test_runtime_adapter_source_receives_station_read_plan_raw_bytes(monkeypatch) -> None:
@@ -499,7 +567,7 @@ def test_real_runtime_raw_decode_accepts_and_persists_then_acks() -> None:
     assert storage.ack_ok_calls == 1
     assert storage.ack_failed_calls == 0
     assert len(client.writes) == 1
-    assert storage.events == ["persist_cycle", "ack_write", "ack_ok"]
+    assert storage.events == ["begin", "production_fact", "persist_cycle", "commit", "ack_write", "ack_ok"]
     assert storage.errors == []
 
 

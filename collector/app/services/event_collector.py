@@ -11,6 +11,7 @@ import snap7
 from app.plc import EdgeMapping, ReadPlan, build_read_plans, decode_read_plan, load_edge_mapping
 from app.plc.mapping import StationMapping
 from app.services.reliability import CounterDecision, classify_counter, validate_plc_boot_id
+from app.services.accepted_station_event_fact import build_accepted_station_event_fact
 from app.services.resolved_config_registry import (
     InMemoryResolvedConfigRegistry,
     build_resolved_config_snapshot_from_mapping,
@@ -197,19 +198,22 @@ class EventCollectorWorker:
             return
 
         try:
-            event_id = self.storage.persist_cycle(
-                plc_id=self.plc_id,
-                line_id=self.line_id,
-                station=runtime.station,
-                plc_boot_id=plc_boot_id,
-                cycle_counter=cycle_counter,
-                decoded=decoded,
-                db_number=runtime.plan.db_number,
-                read_start=runtime.plan.read_start,
-                read_size=runtime.plan.read_size,
-                raw_hex=bytes(data).hex(),
-                code_tables=self.mapping.code_tables,
-            )
+            accepted_fact = build_accepted_station_event_fact(adapter_decision)
+            with self.storage.transaction():
+                self.storage.insert_accepted_station_event_fact_no_commit(accepted_fact)
+                event_id = self.storage.persist_cycle_no_commit(
+                    plc_id=self.plc_id,
+                    line_id=self.line_id,
+                    station=runtime.station,
+                    plc_boot_id=plc_boot_id,
+                    cycle_counter=cycle_counter,
+                    decoded=decoded,
+                    db_number=runtime.plan.db_number,
+                    read_start=runtime.plan.read_start,
+                    read_size=runtime.plan.read_size,
+                    raw_hex=bytes(data).hex(),
+                    code_tables=self.mapping.code_tables,
+                )
             logger.info(
                 "cycle event stored station=%s counter=%s id=%s decision=%s",
                 station_id,
@@ -218,10 +222,6 @@ class EventCollectorWorker:
                 counter_decision.value,
             )
         except Exception as exc:
-            try:
-                self.storage.rollback()
-            except Exception:
-                logger.debug("storage rollback failed", exc_info=True)
             self._record_station_error(
                 runtime,
                 "STORAGE_WRITE_FAILED",
