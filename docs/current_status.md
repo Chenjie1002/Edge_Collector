@@ -6,14 +6,14 @@
 
 ## 0. 当前 PM / Codex 协作状态
 
-当前主线：Phase-2 Sprint 3 DB/API/Dashboard DB-backed/local Postgres hardening tests post-push docs/status sync closeout。
+当前主线：Phase-2 Sprint 3 DB/API/Dashboard API read path contract freeze post-push docs/status sync closeout。
 
 Last verified baseline before this docs sync:
 
 ```text
 live HEAD / origin/main at authoring time:
-636ba375248987b26d4ae68bdbf952d47f398bc8
-636ba37 Add guarded DB-backed accepted fact tests
+2d0918adebe5cd29e59177bc2159c7f447cb5c38
+2d0918a Freeze accepted fact API read contract
 
 branch:
 main
@@ -132,6 +132,15 @@ DB/API/Dashboard guarded DB-backed accepted fact tests Reliability HOLD repair r
 DB/API/Dashboard guarded DB-backed accepted fact tests Data Quality focused implementation review: CLOSED / PASS WITH RECOMMENDATIONS, no blocker
 DB/API/Dashboard guarded DB-backed accepted fact tests Verification focused implementation review / exact allowlist audit: CLOSED / PASS WITH RECOMMENDATIONS, no blocker
 DB/API/Dashboard guarded DB-backed accepted fact tests exact commit/push: PASS, commit 636ba37
+DB/API/Dashboard API read path planning gate: CLOSED / PASS TO REVIEW WITH RECOMMENDATIONS, no blocker
+DB/API/Dashboard API read path planning Reliability focused review: CLOSED / PASS WITH RECOMMENDATIONS, no blocker
+DB/API/Dashboard API read path planning Data Quality focused review: CLOSED / PASS WITH RECOMMENDATIONS, no blocker
+DB/API/Dashboard API read path planning Verification focused review / exact allowlist audit: CLOSED / PASS WITH RECOMMENDATIONS, no blocker
+DB/API/Dashboard API read path contract freeze docs-only edit: CLOSED / PASS WITH RECOMMENDATIONS, no blocker
+DB/API/Dashboard API read path contract freeze Reliability focused review: CLOSED / PASS WITH RECOMMENDATIONS, no blocker
+DB/API/Dashboard API read path contract freeze Data Quality focused review: CLOSED / PASS WITH RECOMMENDATIONS, no blocker
+DB/API/Dashboard API read path contract freeze Verification focused review / exact allowlist audit: CLOSED / PASS WITH RECOMMENDATIONS, no blocker
+DB/API/Dashboard API read path contract freeze exact docs commit/push: PASS, commit 2d0918a
 Slice D2-C decoder registry authority implementation: PASS WITH RECOMMENDATIONS
 Slice D2-C Reliability implementation review: PASS WITH RECOMMENDATIONS, no blocker
 Slice D2-C Data Quality implementation review: PASS WITH RECOMMENDATIONS, no blocker
@@ -183,8 +192,9 @@ DB schema field-name contract freeze docs/contracts edit: CLOSED at af60328 / af
 DB/API/Dashboard Slice 1 schema-only accepted station-event visibility migration: CLOSED at e75f652 / e75f6525f662702e4a6ccc8f8c43d48d001f33ff after Reliability, Data Quality and Verification focused reviews passed with recommendations and no blockers.
 DB/API/Dashboard Slice 2 DB write path: CLOSED at 299d28a / 299d28aa5c91b8c3cf7115b6582ce26d45b64706 after Architecture, Reliability, Data Quality, Verification, exact commit and exact push gates closed.
 DB/API/Dashboard guarded DB-backed accepted fact tests: CLOSED at 636ba37 / 636ba375248987b26d4ae68bdbf952d47f398bc8 after planning, Reliability, Data Quality, Verification, HOLD repair, exact commit and exact push gates closed.
-DB/API/Dashboard expansion beyond the accepted station-event fact DB write path and guarded DB-backed accepted fact tests remains not authorized except future separately authorized exact-scope gates.
-API/Dashboard implementation, new migration, deploy, tag, rollback, broad tests, real PLC pilot: not authorized
+DB/API/Dashboard API read path contract freeze: CLOSED at 2d0918a / 2d0918adebe5cd29e59177bc2159c7f447cb5c38 after Architecture planning, Reliability, Data Quality, Verification planning reviews, docs-only contract freeze, Reliability/Data Quality/Verification contract reviews, exact docs commit and exact push gates closed.
+DB/API/Dashboard expansion beyond the accepted station-event fact DB write path, guarded DB-backed accepted fact tests and accepted fact API read contract docs freeze remains not authorized except future separately authorized exact-scope gates.
+API/Dashboard implementation, API read path implementation, new migration, deploy, tag, rollback, broad tests, real PLC pilot: not authorized
 ```
 
 当前 Sprint 3 Slice J downstream adapter boundary tests-only hardening files 已提交：
@@ -329,6 +339,22 @@ Verification focused implementation review / exact allowlist audit: PASS WITH RE
 No DB opt-in tests were run, no DB connection was made, and docker compose was not started.
 No storage.py, migration 007, API, Dashboard/frontend, V-PLC, config/mapping.yaml, docker-compose.yml, deploy/tag/rollback or docs/status/handoff files changed in the implementation commit.
 Carry-forward: worker-level DB-backed accepted rollback, commit failure before ACK, non-accepted DB-backed zero rows + no ACK/read_done mutation, race / unique-violation-after-precheck and post-unique-violation re-read semantics require a future PM-authorized local Postgres harness gate.
+```
+
+DB/API/Dashboard API read path contract freeze summary:
+
+```text
+DB/API/Dashboard API read path contract freeze is CLOSED / PASS WITH RECOMMENDATIONS and committed/pushed at 2d0918a / 2d0918adebe5cd29e59177bc2159c7f447cb5c38.
+Commit message: Freeze accepted fact API read contract.
+Changed file: docs/contracts/dashboard_api_contract.md.
+The contract freezes future GET /api/v2/production/accepted-station-events as a future API contract only, not a current implementation claim.
+The future endpoint may read only production_accepted_station_event_fact and must not treat raw_plc_sample, cycle_event, station_event, production_unit, quality_event, production_snapshot or production_events as equivalent production fact sources.
+Response DTO allowlist is limited to accepted station-event business fact fields from production_accepted_station_event_fact, including NOK/detail accepted evidence reference fields.
+Forbidden fields include raw_payload/raw_hex, adapter diagnostics, candidate/normalized/raw comparison context, decoder errors, diagnostic/review/audit payloads, legacy payload/raw_sample_id, ack_status, read_done, collector_state, dashboard_state, quality_pareto_input and ambiguous result/defect/quality/pareto keys.
+Query contract requires bounded start_time/end_time, line_id or explicit server default scope, limit max 500, strict cursor parsing and stable pagination order.
+Reliability/Data Quality/Verification contract freeze reviews: PASS WITH RECOMMENDATIONS, no blocker.
+Carry-forward: statement_timeout / idle timeout should become future implementation MUST; cursor tuple/sorting/tie-breaker and cursor scope/filter/time-window binding should be frozen before implementation; api/app/db.py remains conditional future allowlist only if centralized read-only DB helper support is needed.
+Future implementation allowlist planning should start from api/app/routes/accepted_station_events.py, api/app/main.py and api/tests/test_accepted_station_events_api.py; no API implementation, tests, DB opt-in run, migration, storage.py, collector, config, Dashboard/frontend/Grafana, V-PLC, Docker/deploy/tag/rollback is authorized by this docs/status sync.
 ```
 
 当前 Sprint 3 Slice I WS03 raw_policy raw_capable authority files 已提交：
