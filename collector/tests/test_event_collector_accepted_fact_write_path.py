@@ -194,6 +194,17 @@ def test_accepted_station_nok_requires_accepted_upstream_business_evidence() -> 
         build_accepted_station_event_fact(decision)
 
 
+def test_station_result_nok_requires_accepted_business_nok_evidence() -> None:
+    decision = accepted_decision()
+    decision.normalized_event["result"] = "nok"
+    decision.normalized_event.pop("nok_code", None)
+    decision.normalized_event.pop("nok_origin", None)
+    decision.projection_metadata = SimpleNamespace(production_outcome="nok", defect_detail=None)
+
+    with pytest.raises(ValueError, match="station_result NOK requires accepted business NOK evidence"):
+        build_accepted_station_event_fact(decision)
+
+
 def make_worker(storage: WritePathStorage) -> tuple[EventCollectorWorker, FakeClient]:
     client = FakeClient()
     worker = EventCollectorWorker.__new__(EventCollectorWorker)

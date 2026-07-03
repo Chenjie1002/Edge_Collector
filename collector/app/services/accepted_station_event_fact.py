@@ -64,6 +64,8 @@ def build_accepted_station_event_fact(decision: AdapterDecision) -> AcceptedStat
         if production_result == "nok":
             nok_code = _optional_int(event.get("nok_code"))
             nok_origin = _optional_str(event.get("nok_origin"))
+            if nok_code is None or not nok_origin:
+                raise ValueError("station_result NOK requires accepted business NOK evidence")
     elif event_type == "station_nok":
         nok_code = _optional_int(event.get("nok_code"))
         nok_origin = _optional_str(event.get("nok_origin"))
