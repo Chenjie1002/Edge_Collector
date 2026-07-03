@@ -15,8 +15,8 @@ Read this file together with:
 
 ```text
 live HEAD / origin/main at authoring time:
-299d28aa5c91b8c3cf7115b6582ce26d45b64706
-299d28a Implement accepted station event fact write path
+636ba375248987b26d4ae68bdbf952d47f398bc8
+636ba37 Add guarded DB-backed accepted fact tests
 
 Branch:
 main
@@ -48,6 +48,7 @@ Adapter production-fact leakage negative tests implemented, reviewed and committ
 DB schema field-name contract freeze docs/contracts edit reviewed, committed and pushed at af60328
 DB/API/Dashboard Slice 1 schema-only accepted station-event visibility migration committed and pushed at e75f652
 DB/API/Dashboard Slice 2 DB write path implemented, reviewed, committed and pushed at 299d28a
+DB/API/Dashboard guarded DB-backed accepted fact tests implemented, reviewed, committed and pushed at 636ba37
 
 Deploy / rollback drill:
 not performed
@@ -84,6 +85,7 @@ Tests-only adapter production-fact leakage negative implementation is tracked in
 DB schema field-name contract freeze docs/contracts edit is tracked in commit `af60328` after Reliability, Data Quality and Verification reviews passed with recommendations and no blockers.
 DB/API/Dashboard Slice 1 schema-only accepted station-event visibility migration is tracked in commit `e75f652` after Reliability, Data Quality and Verification reviews passed with recommendations and no blockers.
 DB/API/Dashboard Slice 2 DB write path is tracked in commit `299d28a` after Architecture, Reliability, Data Quality, Verification, exact commit and exact push gates closed.
+DB/API/Dashboard guarded DB-backed accepted fact tests are tracked in commit `636ba37` after planning, Reliability, Data Quality, Verification, HOLD repair, exact commit and exact push gates closed.
 
 Sprint 3 implementation files committed:
 
@@ -230,6 +232,17 @@ collector/app/services/storage.py
 collector/tests/test_event_collector_accepted_fact_write_path.py
 collector/tests/test_event_collector_adapter_gate.py
 tests/test_collector_station_event_adapter.py
+```
+
+DB/API/Dashboard guarded DB-backed accepted fact test files committed:
+
+```text
+pytest.ini
+collector/tests/conftest.py
+collector/tests/test_db_backed_safety.py
+collector/tests/test_event_collector_accepted_fact_db_backed.py
+collector/tests/test_event_collector_accepted_fact_write_path.py
+collector/app/services/accepted_station_event_fact.py
 ```
 
 External dirty artifacts currently expected and excluded unless PM explicitly says otherwise:
@@ -429,6 +442,17 @@ behavior, Docker/deploy/tag/rollback or ACK/read_done ownership.
 | DB/API/Dashboard Slice 2 DB write path Verification focused implementation review / exact allowlist audit | PASS WITH RECOMMENDATIONS | none |
 | DB/API/Dashboard Slice 2 DB write path exact commit gate | PASS | none |
 | DB/API/Dashboard Slice 2 DB write path exact push gate | PASS | none |
+| DB/API/Dashboard DB-backed/local Postgres hardening test planning gate | PASS TO REVIEW WITH RECOMMENDATIONS | none |
+| DB/API/Dashboard DB-backed/local Postgres hardening test planning Reliability focused review | PASS WITH RECOMMENDATIONS | none |
+| DB/API/Dashboard DB-backed/local Postgres hardening test planning Data Quality focused review | PASS WITH RECOMMENDATIONS | none |
+| DB/API/Dashboard DB-backed/local Postgres hardening test planning Verification focused review / exact allowlist audit | PASS WITH RECOMMENDATIONS | none |
+| DB/API/Dashboard guarded DB-backed accepted fact tests implementation | PASS WITH RECOMMENDATIONS | none |
+| DB/API/Dashboard guarded DB-backed accepted fact tests Reliability focused implementation review | HOLD | placeholder coverage overstated; later repaired and closed |
+| DB/API/Dashboard guarded DB-backed accepted fact tests HOLD repair | PASS WITH RECOMMENDATIONS | none |
+| DB/API/Dashboard guarded DB-backed accepted fact tests Reliability HOLD repair re-review | PASS WITH RECOMMENDATIONS | none |
+| DB/API/Dashboard guarded DB-backed accepted fact tests Data Quality focused implementation review | PASS WITH RECOMMENDATIONS | none |
+| DB/API/Dashboard guarded DB-backed accepted fact tests Verification focused implementation review / exact allowlist audit | PASS WITH RECOMMENDATIONS | none |
+| DB/API/Dashboard guarded DB-backed accepted fact tests exact commit/push | PASS | none |
 
 Current overall status:
 
@@ -486,11 +510,17 @@ Decoded/source normalized payloads remain candidates until accepted.
 Non-accepted dispositions do not write defect detail; NOK/detail visibility must bind to accepted upstream business evidence.
 API/Dashboard implementation, new migration, deploy, tag, rollback, broad tests and real PLC pilot remain deferred; future gate must restate exact allowlist, review gates and production-fact leakage negative tests.
 ACK/read_done ownership remains unchanged, including no ACK/read_done mutation for the current non-accepted payload.
-Carry-forward: add DB-backed/live Postgres tests for `production_accepted_station_event_fact` unique constraints, rollback behavior, commit failure, connection failure and race/unique-violation-after-precheck.
-Carry-forward: add direct storage-level coverage for `insert_accepted_station_event_fact_no_commit()` against real DB constraints.
-Carry-forward: add DTO builder negative coverage for `station_result nok` missing accepted NOK evidence.
+DB/API/Dashboard guarded DB-backed accepted fact tests: CLOSED / PASS WITH RECOMMENDATIONS; committed and pushed at 636ba37 / 636ba375248987b26d4ae68bdbf952d47f398bc8.
+Guarded DB-backed tests changed files: pytest.ini, collector/tests/conftest.py, collector/tests/test_db_backed_safety.py, collector/tests/test_event_collector_accepted_fact_db_backed.py, collector/tests/test_event_collector_accepted_fact_write_path.py and collector/app/services/accepted_station_event_fact.py.
+Guarded DB-backed tests register db_backed/postgres_local markers, default-skip DB-backed tests unless EDGE_MES_ENABLE_DB_BACKED_TESTS=1, validate test-target and maintenance DSNs before psycopg.connect, and add deterministic migration/schema verification helpers.
+Guarded DB-backed direct-storage opt-in tests are pytest-discovered but skipped by default; default focused command produced 33 passed, 7 skipped.
+station_result NOK missing accepted business NOK evidence now fails closed in the accepted fact DTO builder before DB insert.
+Reliability first implementation review found HOLD because placeholder worker/race/commit/non-accepted coverage overstated the DB-backed matrix; the repair removed placeholder pytest coverage and reclassified those scenarios as future DB-authorized carry-forward work; Reliability re-review, Data Quality review and Verification audit then passed with recommendations and no blockers.
+No DB opt-in tests were run, no DB connection was made, and docker compose was not started.
+No storage.py, migration 007, API, Dashboard/frontend, V-PLC, config/mapping.yaml, docker-compose.yml, deploy/tag/rollback or docs/status/handoff files changed in the implementation commit.
+Carry-forward: worker-level DB-backed accepted rollback, commit failure before ACK, non-accepted DB-backed zero rows + no ACK/read_done mutation, race / unique-violation-after-precheck and post-unique-violation re-read semantics require a future PM-authorized local Postgres harness gate.
 Carry-forward: do not treat legacy/current `raw_plc_sample`, `cycle_event`, `station_event`, `production_unit` or `quality_event` as equivalent to production accepted fact surface.
-Next eligible gate: downstream DB/API/Dashboard planning gate, likely API read path or DB-backed hardening tests; alternatively DB-backed/local Postgres hardening test gate.
+Next eligible gate: PM handoff after docs/status sync, or a separately authorized downstream DB/API/Dashboard planning gate such as API read path or future DB opt-in/local Postgres harness.
 Slice B inserted the adapter gate after payload/cycle/counter guards and counter reset fail-safe, before existing storage.persist_cycle().
 Slice B accepted-only path continues to existing storage.persist_cycle() plus existing read_done/ACK behavior.
 Slice B non-accepted decisions do not persist, do not project, do not write defect detail, and do not ACK.

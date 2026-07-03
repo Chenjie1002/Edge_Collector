@@ -6,14 +6,14 @@
 
 ## 0. 当前 PM / Codex 协作状态
 
-当前主线：Phase-2 Sprint 3 DB/API/Dashboard Slice 2 DB write path post-push docs/status sync closeout。
+当前主线：Phase-2 Sprint 3 DB/API/Dashboard DB-backed/local Postgres hardening tests post-push docs/status sync closeout。
 
 Last verified baseline before this docs sync:
 
 ```text
 live HEAD / origin/main at authoring time:
-299d28aa5c91b8c3cf7115b6582ce26d45b64706
-299d28a Implement accepted station event fact write path
+636ba375248987b26d4ae68bdbf952d47f398bc8
+636ba37 Add guarded DB-backed accepted fact tests
 
 branch:
 main
@@ -121,6 +121,17 @@ DB/API/Dashboard Slice 2 DB write path Data Quality focused implementation revie
 DB/API/Dashboard Slice 2 DB write path Verification focused implementation review / exact allowlist audit: CLOSED / PASS WITH RECOMMENDATIONS, no blocker
 DB/API/Dashboard Slice 2 DB write path exact commit gate: PASS, commit 299d28a
 DB/API/Dashboard Slice 2 DB write path exact push gate: PASS, commit 299d28a
+DB/API/Dashboard DB-backed/local Postgres hardening test planning gate: CLOSED / PASS TO REVIEW WITH RECOMMENDATIONS
+DB/API/Dashboard DB-backed/local Postgres hardening test planning Reliability focused review: CLOSED / PASS WITH RECOMMENDATIONS, no blocker
+DB/API/Dashboard DB-backed/local Postgres hardening test planning Data Quality focused review: CLOSED / PASS WITH RECOMMENDATIONS, no blocker
+DB/API/Dashboard DB-backed/local Postgres hardening test planning Verification focused review / exact allowlist audit: CLOSED / PASS WITH RECOMMENDATIONS, no blocker
+DB/API/Dashboard guarded DB-backed accepted fact tests implementation: CLOSED / PASS WITH RECOMMENDATIONS
+DB/API/Dashboard guarded DB-backed accepted fact tests Reliability focused implementation review: CLOSED / HOLD; blocker repaired and closed by re-review
+DB/API/Dashboard guarded DB-backed accepted fact tests HOLD repair: CLOSED / PASS WITH RECOMMENDATIONS, no blocker
+DB/API/Dashboard guarded DB-backed accepted fact tests Reliability HOLD repair re-review: CLOSED / PASS WITH RECOMMENDATIONS, no blocker
+DB/API/Dashboard guarded DB-backed accepted fact tests Data Quality focused implementation review: CLOSED / PASS WITH RECOMMENDATIONS, no blocker
+DB/API/Dashboard guarded DB-backed accepted fact tests Verification focused implementation review / exact allowlist audit: CLOSED / PASS WITH RECOMMENDATIONS, no blocker
+DB/API/Dashboard guarded DB-backed accepted fact tests exact commit/push: PASS, commit 636ba37
 Slice D2-C decoder registry authority implementation: PASS WITH RECOMMENDATIONS
 Slice D2-C Reliability implementation review: PASS WITH RECOMMENDATIONS, no blocker
 Slice D2-C Data Quality implementation review: PASS WITH RECOMMENDATIONS, no blocker
@@ -171,7 +182,8 @@ Tests-only adapter production-fact leakage negative implementation: CLOSED at fd
 DB schema field-name contract freeze docs/contracts edit: CLOSED at af60328 / af60328815821898165ffd5a45aafc9e9c1da705 after Reliability, Data Quality and Verification focused reviews passed with recommendations and no blockers.
 DB/API/Dashboard Slice 1 schema-only accepted station-event visibility migration: CLOSED at e75f652 / e75f6525f662702e4a6ccc8f8c43d48d001f33ff after Reliability, Data Quality and Verification focused reviews passed with recommendations and no blockers.
 DB/API/Dashboard Slice 2 DB write path: CLOSED at 299d28a / 299d28aa5c91b8c3cf7115b6582ce26d45b64706 after Architecture, Reliability, Data Quality, Verification, exact commit and exact push gates closed.
-DB/API/Dashboard expansion beyond the accepted station-event fact DB write path remains not authorized except future separately authorized exact-scope gates.
+DB/API/Dashboard guarded DB-backed accepted fact tests: CLOSED at 636ba37 / 636ba375248987b26d4ae68bdbf952d47f398bc8 after planning, Reliability, Data Quality, Verification, HOLD repair, exact commit and exact push gates closed.
+DB/API/Dashboard expansion beyond the accepted station-event fact DB write path and guarded DB-backed accepted fact tests remains not authorized except future separately authorized exact-scope gates.
 API/Dashboard implementation, new migration, deploy, tag, rollback, broad tests, real PLC pilot: not authorized
 ```
 
@@ -282,13 +294,41 @@ raw_payload/raw_hex is evidence, not a production fact.
 Decoded/source normalized payloads remain candidates until accepted.
 Non-accepted dispositions do not write defect detail.
 NOK/detail visibility must bind to accepted upstream business evidence.
-Carry-forward: add DB-backed/live Postgres tests for production_accepted_station_event_fact unique constraints, rollback behavior, commit failure, connection failure and race/unique-violation-after-precheck.
-Carry-forward: add direct storage-level coverage for insert_accepted_station_event_fact_no_commit() against real DB constraints.
-Carry-forward: add DTO builder negative coverage for station_result nok missing accepted NOK evidence.
+Carry-forward before 636ba37: add DB-backed/live Postgres tests for production_accepted_station_event_fact unique constraints, rollback behavior, commit failure, connection failure and race/unique-violation-after-precheck.
+Carry-forward before 636ba37: add direct storage-level coverage for insert_accepted_station_event_fact_no_commit() against real DB constraints.
+Carry-forward before 636ba37: add DTO builder negative coverage for station_result nok missing accepted NOK evidence.
+Carry-forward after 636ba37: default-skipped DB-backed direct-storage tests and pure DSN/fixture safety tests now exist; actual DB opt-in/local Postgres execution remains unauthorized.
+Carry-forward after 636ba37: worker-level DB-backed accepted rollback, commit failure before ACK, non-accepted DB-backed zero rows + no ACK/read_done mutation, race / unique-violation-after-precheck and post-unique-violation re-read semantics require a future PM-authorized local Postgres harness gate.
 Carry-forward: future DB/API/Dashboard gates must use real production accepted fact table assertions, not synthetic visibility assumptions.
 Carry-forward: do not treat legacy/current raw_plc_sample, cycle_event, station_event, production_unit or quality_event as equivalent to production accepted fact surface.
-Next eligible gate: downstream DB/API/Dashboard planning gate, likely API read path or DB-backed hardening tests; alternatively DB-backed/local Postgres hardening test gate.
-Not authorized yet: API/Dashboard implementation, new migration, deploy, tag, rollback, broad tests or real PLC pilot.
+Next eligible gate: PM handoff after docs/status sync, or a separately authorized downstream DB/API/Dashboard planning gate such as API read path or future DB opt-in/local Postgres harness.
+Not authorized yet: DB opt-in test run, local Postgres connection, docker compose, API/Dashboard implementation, new migration, deploy, tag, rollback, broad tests or real PLC pilot.
+```
+
+DB/API/Dashboard guarded DB-backed accepted fact tests summary:
+
+```text
+DB/API/Dashboard guarded DB-backed accepted fact tests are CLOSED / PASS WITH RECOMMENDATIONS and committed/pushed at 636ba37 / 636ba375248987b26d4ae68bdbf952d47f398bc8.
+Commit message: Add guarded DB-backed accepted fact tests.
+Changed files: pytest.ini, collector/tests/conftest.py, collector/tests/test_db_backed_safety.py, collector/tests/test_event_collector_accepted_fact_db_backed.py, collector/tests/test_event_collector_accepted_fact_write_path.py, collector/app/services/accepted_station_event_fact.py.
+The implementation registers db_backed and postgres_local pytest markers.
+DB-backed tests are skipped by default unless EDGE_MES_ENABLE_DB_BACKED_TESTS=1.
+DSN safety helpers validate test-target and maintenance/admin DSNs before any psycopg.connect path.
+Test-target DB names must match edge_mes_test_* and protected names such as edge_mes, postgres, prod and production are rejected.
+Maintenance/admin DSNs are separated from test-target DSNs and limited to local postgres/template1 maintenance targets.
+Temp DB helpers generate guarded create/drop plans and DROP DATABASE statements only for proven edge_mes_test_* names.
+Migration helper ordering is deterministic: db/init/*.sql as needed, then db/migrations/007_accepted_station_event_visibility.sql.
+Schema verification checks production_accepted_station_event_fact and expected unique/check constraints before db_backed_storage yields.
+DB-backed pytest-discovered tests are limited to seven direct-storage opt-in tests skipped by default.
+Non-executable worker/race/commit/non-accepted DB-backed scenarios were reclassified as future DB-authorized carry-forward items, not current coverage.
+station_result NOK missing accepted business NOK evidence now fails closed in the DTO builder before DB insert.
+Focused default tests: PYTHONPATH=collector:. .venv/bin/python -m pytest collector/tests/test_db_backed_safety.py collector/tests/test_event_collector_accepted_fact_write_path.py collector/tests/test_event_collector_accepted_fact_db_backed.py -q -> 33 passed, 7 skipped.
+Reliability first implementation review found HOLD for overstated placeholder matrix; Architecture repair removed placeholder pytest coverage; Reliability re-review closed the blocker with PASS WITH RECOMMENDATIONS.
+Data Quality focused implementation review: PASS WITH RECOMMENDATIONS, no blocker.
+Verification focused implementation review / exact allowlist audit: PASS WITH RECOMMENDATIONS, no blocker; git diff --check PASS; exact allowlist PASS.
+No DB opt-in tests were run, no DB connection was made, and docker compose was not started.
+No storage.py, migration 007, API, Dashboard/frontend, V-PLC, config/mapping.yaml, docker-compose.yml, deploy/tag/rollback or docs/status/handoff files changed in the implementation commit.
+Carry-forward: worker-level DB-backed accepted rollback, commit failure before ACK, non-accepted DB-backed zero rows + no ACK/read_done mutation, race / unique-violation-after-precheck and post-unique-violation re-read semantics require a future PM-authorized local Postgres harness gate.
 ```
 
 当前 Sprint 3 Slice I WS03 raw_policy raw_capable authority files 已提交：
