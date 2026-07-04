@@ -6,14 +6,14 @@
 
 ## 0. 当前 PM / Codex 协作状态
 
-当前主线：Phase-2 Sprint 3 DB/API/Dashboard explicit DB opt-in/live local Postgres API Read Validation Run Planning HOLD Repair post-push docs/status sync closeout。
+当前主线：Phase-2 Sprint 3 DB/API/Dashboard DB-backed API validation harness repair + remote live validation docs/status sync closeout。
 
 Last verified baseline before this docs/status sync:
 
 ```text
 live HEAD / origin/main at authoring time:
-99dfc265983d757de7c23f6a677cabbc05bc4f5a
-99dfc26 Add PM handoff after API DB-backed schema verification
+5543c877e85c2d77c0a7f67bec1d36d2a206ca76
+5543c87 Add PM handoff after DB-backed validation harness repair
 
 branch:
 main
@@ -172,6 +172,9 @@ DB/API/Dashboard explicit DB opt-in/live local Postgres API Read Validation Run 
 DB/API/Dashboard explicit DB opt-in/live local Postgres API Read Validation Run Planning HOLD Repair exact-path commit/push: PASS, commit 2cfad5d
 PM handoff after API DB-backed schema verification: PASS, commit 99dfc26
 DB/API/Dashboard explicit DB opt-in/live local Postgres API Read Validation Run Planning HOLD Repair post-push docs/status sync: PASS, local docs/status-only sync; not committed/pushed by this gate
+DB-backed API validation harness tests/harness-only repair: CLOSED / PASS, commit 8a8004c
+Remote existing PostgreSQL DB-backed API validation rerun with repaired RecordingConnection proxy: CLOSED / PASS, focused pytest 62 passed in 8.68s, test_db_cleanup_ok edge_mes_test_api_read
+PM handoff after DB-backed validation harness repair: PASS, commit 5543c87
 Slice D2-C decoder registry authority implementation: PASS WITH RECOMMENDATIONS
 Slice D2-C Reliability implementation review: PASS WITH RECOMMENDATIONS, no blocker
 Slice D2-C Data Quality implementation review: PASS WITH RECOMMENDATIONS, no blocker
@@ -231,11 +234,14 @@ DB/API/Dashboard explicit DB opt-in/live local Postgres API Read Validation Run 
 DB/API/Dashboard explicit DB opt-in/live local Postgres API Read Validation Run Planning Verification Review / Exact Future Run Allowlist Audit found blocker B1; B1 is now CLOSED after HOLD repair and Verification re-review.
 DB/API/Dashboard explicit DB opt-in/live local Postgres API Read Validation Run Planning HOLD repair is committed/pushed at 2cfad5d / 2cfad5d9d8d91ed824a59b1b6eb713e3e50b0a1e.
 The HOLD repair updated api/tests/test_accepted_station_events_api_db_backed.py with API-side pre-insert schema/constraint/column/nullability verification.
-The schema verification runs after migration apply and before fixture insert in the future DB-backed API run path.
+The schema verification runs after migration apply and before fixture insert in the DB-backed API run path.
 PM handoff after API DB-backed schema verification is committed/pushed at 99dfc26 / 99dfc265983d757de7c23f6a677cabbc05bc4f5a.
-Current live handoff baseline after the latest PM handoff commit: 99dfc26 / 99dfc265983d757de7c23f6a677cabbc05bc4f5a. The implementation commit synchronized by the earlier docs/status sync was b30db5c; the HOLD repair commit synchronized by this docs/status update is 2cfad5d.
-DB/API/Dashboard expansion beyond the accepted station-event fact DB write path, guarded DB-backed accepted fact tests, accepted fact API read contract docs freeze, accepted fact API read path implementation, default-skipped DB-backed API read validation test harness and API-side schema verification HOLD repair remains not authorized except future separately authorized exact-scope gates.
-Dashboard implementation, new migration, DB opt-in/local Postgres execution, EDGE_MES_ENABLE_DB_BACKED_TESTS=1, local Postgres connection, Docker / docker compose, deploy, tag, rollback, broad tests, live DB validation, actual timeout failure proof and real PLC pilot: not authorized
+DB-backed API validation harness repair is committed/pushed at 8a8004c / 8a8004c53f5bca871610807ae1ec99650e759127.
+Remote live DB-backed API validation rerun against the repaired harness is CLOSED / PASS: focused pytest 62 passed in 8.68s, migration apply/schema verification/fixture insert/API live DB read assertions completed, and isolated test DB cleanup returned test_db_cleanup_ok edge_mes_test_api_read.
+PM handoff after DB-backed validation harness repair is committed/pushed at 5543c87 / 5543c877e85c2d77c0a7f67bec1d36d2a206ca76.
+Current live handoff baseline after the latest PM handoff commit: 5543c87 / 5543c877e85c2d77c0a7f67bec1d36d2a206ca76. The implementation commit synchronized by the earlier docs/status sync was b30db5c; the schema HOLD repair commit was 2cfad5d; the harness repair commit synchronized by this docs/status update is 8a8004c.
+DB/API/Dashboard expansion beyond the accepted station-event fact DB write path, guarded DB-backed accepted fact tests, accepted fact API read contract docs freeze, accepted fact API read path implementation, DB-backed API validation harness repair and completed remote live validation remains not authorized except future separately authorized exact-scope gates.
+Dashboard implementation, new migration, future DB opt-in reruns, worker/runtime DB-backed gates, EDGE_MES_ENABLE_DB_BACKED_TESTS=1 outside an approved gate, local/remote Postgres connection outside an approved gate, Docker / docker compose lifecycle actions, deploy, tag, rollback, broad tests, actual timeout failure proof and real PLC pilot: not authorized
 ```
 
 当前 Sprint 3 Slice J downstream adapter boundary tests-only hardening files 已提交：
@@ -433,33 +439,36 @@ HOLD repair: CLOSED / PASS, no blocker.
 Verification re-review: CLOSED / PASS WITH RECOMMENDATIONS, blocker B1 CLOSED.
 HOLD repair exact-path commit/push: PASS, commit 2cfad5d / 2cfad5d9d8d91ed824a59b1b6eb713e3e50b0a1e.
 PM handoff after API DB-backed schema verification: PASS, commit 99dfc26 / 99dfc265983d757de7c23f6a677cabbc05bc4f5a.
+DB-backed API validation harness repair: PASS, commit 8a8004c / 8a8004c53f5bca871610807ae1ec99650e759127.
+Remote existing PostgreSQL DB-backed API validation rerun with repaired RecordingConnection proxy: PASS, focused pytest 62 passed in 8.68s; test DB cleanup: test_db_cleanup_ok edge_mes_test_api_read.
+PM handoff after DB-backed validation harness repair: PASS, commit 5543c87 / 5543c877e85c2d77c0a7f67bec1d36d2a206ca76.
 Commit message for implementation: Add DB-backed API read validation tests.
 Commit message for HOLD repair: Add API DB-backed schema verification.
+Commit message for harness repair: Fix DB-backed API validation harness.
 Changed file for implementation and repair: api/tests/test_accepted_station_events_api_db_backed.py.
 The implementation added only api/tests/test_accepted_station_events_api_db_backed.py.
 The HOLD repair added API-side pre-insert schema/constraint/column/nullability verification for production_accepted_station_event_fact.
 The schema verification checks table existence, DTO/accepted fact columns, nullability expectations, unique constraints and accepted-fact check constraints.
-The schema verification is called after migration apply and before fixture insert in the future live DB-backed execution path.
-DB-backed API tests are default skipped unless a future PM-authorized DB opt-in run sets EDGE_MES_ENABLE_DB_BACKED_TESTS=1.
+The schema verification is called after migration apply and before fixture insert in the live DB-backed execution path.
+The harness repair fixed duplicate cursor limit handling, QueryRecorder false positives and RecordingConnection proxy completeness including execute delegation.
+DB-backed API tests remain default skipped unless a PM-authorized DB opt-in run sets EDGE_MES_ENABLE_DB_BACKED_TESTS=1.
 Default non-DB focused run before HOLD repair: PYTHONPATH=api .venv/bin/python -m pytest api/tests/test_accepted_station_events_api.py api/tests/test_accepted_station_events_api_db_backed.py -q -> 27 passed, 32 skipped.
 HOLD repair focused GREEN run: 41 passed, 19 skipped.
 Collector DB safety run after HOLD repair: 20 passed.
+Harness repair default-safe focused tests: local 43 passed, 19 skipped; remote 43 passed, 19 skipped.
+Remote live DB-backed API validation rerun after harness repair: 62 passed in 8.68s.
+Remote live DB-backed API validation cleanup: test_db_cleanup_ok edge_mes_test_api_read.
 git diff --check -> PASS in implementation and HOLD repair gates.
 Reliability implementation review: CLOSED / PASS WITH RECOMMENDATIONS, no blocker.
 Data Quality implementation review: CLOSED / PASS WITH RECOMMENDATIONS, no blocker.
 Verification implementation review / exact allowlist audit: CLOSED / PASS WITH RECOMMENDATIONS, no blocker.
-EDGE_MES_ENABLE_DB_BACKED_TESTS=1 was not set.
-No DB opt-in run was executed.
-No local Postgres connection was made.
-No temp DB create/drop was executed.
-No migration was applied against live DB.
-No fixture insert into live DB was executed.
-Docker / docker compose was not started.
-Live DB validation has not completed.
+EDGE_MES_ENABLE_DB_BACKED_TESTS=1 was set only in the separately authorized remote live validation rerun gate.
+The authorized remote validation used loopback DSNs only, created/dropped isolated edge_mes_test_api_read, applied existing migrations, verified schema, inserted fixtures and completed API live DB read assertions.
+Docker / docker compose lifecycle actions were not performed.
+Live DB validation has completed for this focused DB-backed API validation harness lane.
 Actual timeout failure proof has not completed.
-Do not claim live DB validation completed.
 Do not claim actual timeout failure proof completed.
-Current tests prove timeout statements / read behavior and future-run schema verification are covered by planned/default-skipped harness, not that a real timeout failure path was induced or that live DB validation has completed.
+Current tests prove timeout statements / read behavior and schema verification in the focused DB-backed API validation lane; they do not prove actual timeout failure induction.
 API read path source boundary remains only production_accepted_station_event_fact.
 Do not treat raw_plc_sample, cycle_event, station_event, production_unit, quality_event, production_snapshot or production_events as equivalent production fact sources, fallback sources or join-derived field fillers.
 Future production visibility remains limited to accepted station-event business facts after immutable config authority, raw_policy / decoder authority, shared validation, duplicate/conflict checks and adapter decision accepted.
@@ -469,7 +478,7 @@ Decoded/source normalized payloads remain candidates until accepted.
 Non-accepted dispositions do not write defect detail.
 NOK/detail visibility must bind to accepted upstream business evidence.
 Preserve exact wording: no ACK/read_done mutation for the current non-accepted payload.
-Future gates remain separate: actual DB opt-in / live local Postgres API read validation run; actual timeout failure induction; Dashboard/API consumer planning; worker/runtime DB-backed gates for unique-violation race, commit-before-ACK, non-accepted DB-backed zero-row/no ACK/read_done mutation, post-conflict re-read semantics and DB rollback; deploy/tag/rollback/real PLC pilot only after separate PM authorization.
+Future gates remain separate: exact-path docs/status commit/push for this sync; actual timeout failure induction; Dashboard/API consumer planning; worker/runtime DB-backed gates for unique-violation race, commit-before-ACK, non-accepted DB-backed zero-row/no ACK/read_done mutation, post-conflict re-read semantics and DB rollback; future DB-backed reruns; deploy/tag/rollback/real PLC pilot only after separate PM authorization.
 ```
 
 当前 Sprint 3 Slice I WS03 raw_policy raw_capable authority files 已提交：
