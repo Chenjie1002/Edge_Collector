@@ -49,6 +49,12 @@ DTO_FIELDS = {
 }
 
 ACCEPTED_FACT_TABLE = "production_accepted_station_event_fact"
+MUTATION_SQL_RE = re.compile(r"\b(INSERT|UPDATE|DELETE)\b", re.IGNORECASE)
+ACK_READ_DONE_SQL_RE = re.compile(r"\b(ACK_STATUS|READ_DONE)\b", re.IGNORECASE)
+RUNTIME_TABLE_SQL_RE = re.compile(
+    r"\b(COLLECTOR_RUNTIME_STATUS|RAW_PLC_SAMPLE|PLC_RUNTIME_STATE|RUNTIME_STATE)\b",
+    re.IGNORECASE,
+)
 EXPECTED_UNIQUE_CONSTRAINTS = frozenset(
     {
         "uq_production_accepted_station_event_fact_key",
@@ -163,14 +169,14 @@ class QueryRecorder:
 
     def record(self, sql: str, params: tuple[Any, ...]) -> None:
         self.statements.append((sql, params))
-        upper_sql = sql.upper()
-        if any(token in upper_sql for token in ("INSERT", "UPDATE", "DELETE")):
+        mutation_seen = MUTATION_SQL_RE.search(sql) is not None
+        if mutation_seen:
             self.write_seen = True
-        if "ACK" in upper_sql or "READ_DONE" in upper_sql:
+        if mutation_seen and ACK_READ_DONE_SQL_RE.search(sql):
             self.ack_read_done_seen = True
-        if any(token in upper_sql for token in ("COLLECTOR", "PLC", "RUNTIME")):
+        if mutation_seen or RUNTIME_TABLE_SQL_RE.search(sql):
             self.runtime_side_effect_seen = True
-        if "FROM PRODUCTION_ACCEPTED_STATION_EVENT_FACT" in upper_sql:
+        if "FROM PRODUCTION_ACCEPTED_STATION_EVENT_FACT" in sql.upper():
             self.select_sql = sql
 
     @property
@@ -209,11 +215,32 @@ class RecordingConnection:
         self._conn = conn
         self._recorder = recorder
 
+    def __enter__(self) -> "RecordingConnection":
+        self._conn.__enter__()
+        return self
+
+    def __exit__(self, exc_type, exc, tb) -> Any:
+        return self._conn.__exit__(exc_type, exc, tb)
+
     def cursor(self, *args: Any, **kwargs: Any) -> RecordingCursor:
         return RecordingCursor(self._conn.cursor(*args, **kwargs), self._recorder)
 
+    def execute(
+        self,
+        sql: str,
+        params: tuple[Any, ...] | list[Any] | None = None,
+        *args: Any,
+        **kwargs: Any,
+    ) -> Any:
+        values = tuple(params or ())
+        self._recorder.record(sql, values)
+        return self._conn.execute(sql, values if params is not None else None, *args, **kwargs)
+
     def close(self) -> Any:
         return self._conn.close()
+
+    def __getattr__(self, name: str) -> Any:
+        return getattr(self._conn, name)
 
 
 def db_backed_tests_enabled(env: dict[str, str] | None = None) -> bool:
@@ -453,6 +480,63 @@ def assert_select_source_is_isolated(sql: str) -> None:
         re.search(rf"\b(from|join)\s+{re.escape(source)}\b", normalized)
         for source in FORBIDDEN_SOURCE_TABLES
     )
+
+
+def test_query_recorder_ignores_read_only_plc_fields_and_rollback() -> None:
+    recorder = QueryRecorder()
+
+    recorder.record(
+        """
+        SELECT line_id, plc_id, source_event_id
+        FROM production_accepted_station_event_fact
+        WHERE line_id = %s
+        """,
+        ("LINE_001",),
+    )
+    recorder.record("ROLLBACK", ())
+
+    assert recorder.select_sql
+    assert not recorder.write_seen
+    assert not recorder.ack_read_done_seen
+    assert not recorder.runtime_side_effect_seen
+
+
+def test_recording_connection_proxies_context_manager() -> None:
+    class ContextConnection:
+        def __init__(self) -> None:
+            self.entered = False
+            self.exited = False
+            self.executed: list[tuple[str, tuple[Any, ...] | None]] = []
+
+        def __enter__(self) -> "ContextConnection":
+            self.entered = True
+            return self
+
+        def __exit__(self, exc_type, exc, tb) -> None:
+            self.exited = True
+            return None
+
+        def cursor(self) -> Any:
+            raise AssertionError("cursor is not used by this proxy test")
+
+        def close(self) -> None:
+            return None
+
+        def execute(self, sql: str, params: tuple[Any, ...] | None = None) -> str:
+            self.executed.append((sql, params))
+            return "cursor-result"
+
+    wrapped = ContextConnection()
+    recorder = QueryRecorder()
+
+    with RecordingConnection(wrapped, recorder) as conn:
+        assert conn is not wrapped
+        assert wrapped.entered
+        assert conn.execute("DROP DATABASE IF EXISTS edge_mes_test_api_read") == "cursor-result"
+
+    assert wrapped.exited
+    assert wrapped.executed == [("DROP DATABASE IF EXISTS edge_mes_test_api_read", None)]
+    assert recorder.statements == [("DROP DATABASE IF EXISTS edge_mes_test_api_read", ())]
 
 
 @pytest.fixture
@@ -744,7 +828,9 @@ def test_live_api_rejects_tampered_or_cross_scope_cursor_before_query(
         payload.update(mutation)
         cursor = encode_unsigned_cursor(payload)
 
-    response = request_events(client, limit="2", cursor=cursor, **request_params)
+    replay_params = {"limit": "2", "cursor": cursor}
+    replay_params.update(request_params)
+    response = request_events(client, **replay_params)
 
     assert response.status_code == 422
 
