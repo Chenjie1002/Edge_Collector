@@ -1,6 +1,6 @@
 # Sprint 3 Collector Ingestion Adapter Gate Status
 
-Updated: 2026-07-03
+Updated: 2026-07-04
 
 Purpose: compact current gate/status source for Codex Threads working on Sprint 3 Collector Ingestion Adapter.
 
@@ -15,8 +15,8 @@ Read this file together with:
 
 ```text
 live HEAD / origin/main at authoring time:
-2d0918adebe5cd29e59177bc2159c7f447cb5c38
-2d0918a Freeze accepted fact API read contract
+763b248ca835f59096e73aa5e199a4bf903ac946
+763b248 Implement accepted station events read API
 
 Branch:
 main
@@ -50,6 +50,7 @@ DB/API/Dashboard Slice 1 schema-only accepted station-event visibility migration
 DB/API/Dashboard Slice 2 DB write path implemented, reviewed, committed and pushed at 299d28a
 DB/API/Dashboard guarded DB-backed accepted fact tests implemented, reviewed, committed and pushed at 636ba37
 DB/API/Dashboard API read path contract freeze reviewed, committed and pushed at 2d0918a
+DB/API/Dashboard API read path implementation reviewed, committed and pushed at 763b248
 
 Deploy / rollback drill:
 not performed
@@ -88,6 +89,7 @@ DB/API/Dashboard Slice 1 schema-only accepted station-event visibility migration
 DB/API/Dashboard Slice 2 DB write path is tracked in commit `299d28a` after Architecture, Reliability, Data Quality, Verification, exact commit and exact push gates closed.
 DB/API/Dashboard guarded DB-backed accepted fact tests are tracked in commit `636ba37` after planning, Reliability, Data Quality, Verification, HOLD repair, exact commit and exact push gates closed.
 DB/API/Dashboard API read path contract freeze is tracked in commit `2d0918a` after Architecture planning, Reliability, Data Quality, Verification planning reviews, docs-only contract freeze, Reliability/Data Quality/Verification contract reviews, exact docs commit and exact push gates closed.
+DB/API/Dashboard API read path implementation is tracked in commit `763b248` after Architecture implementation, Reliability, Data Quality, Verification exact allowlist audit, focused tests, exact commit and exact push gates closed.
 
 Sprint 3 implementation files committed:
 
@@ -470,6 +472,17 @@ behavior, Docker/deploy/tag/rollback or ACK/read_done ownership.
 | DB/API/Dashboard API read path contract freeze Data Quality focused review | PASS WITH RECOMMENDATIONS | none |
 | DB/API/Dashboard API read path contract freeze Verification focused review / exact allowlist audit | PASS WITH RECOMMENDATIONS | none |
 | DB/API/Dashboard API read path contract freeze exact docs commit/push | PASS | none |
+| DB/API/Dashboard API read path contract freeze post-push docs/status sync | PASS | none |
+| PM handoff after API read path contract status sync | PASS | none |
+| DB/API/Dashboard API read path implementation planning gate | PASS WITH RECOMMENDATIONS | none |
+| DB/API/Dashboard API read path implementation planning Reliability focused review | PASS WITH RECOMMENDATIONS | none |
+| DB/API/Dashboard API read path implementation planning Data Quality focused review | PASS WITH RECOMMENDATIONS | none |
+| DB/API/Dashboard API read path implementation planning Verification focused review / exact allowlist audit | PASS WITH RECOMMENDATIONS | none |
+| DB/API/Dashboard API read path implementation | PASS WITH RECOMMENDATIONS | none |
+| DB/API/Dashboard API read path implementation Reliability focused review | PASS WITH RECOMMENDATIONS | none |
+| DB/API/Dashboard API read path implementation Data Quality focused review | PASS WITH RECOMMENDATIONS | none |
+| DB/API/Dashboard API read path implementation Verification focused review / exact allowlist audit | PASS WITH RECOMMENDATIONS | none |
+| DB/API/Dashboard API read path implementation exact commit/push | PASS | none |
 
 Current overall status:
 
@@ -544,8 +557,15 @@ API read path future endpoint may read only production_accepted_station_event_fa
 API read path response DTO allowlist is limited to accepted station-event business fact fields from production_accepted_station_event_fact; forbidden fields include raw_payload/raw_hex, adapter diagnostics, candidate/normalized/raw comparison context, legacy payload/raw_sample_id, ack_status, read_done, collector_state, dashboard_state, quality_pareto_input and ambiguous result/defect/quality/pareto keys.
 API read path query contract requires bounded time window, line_id or explicit server default scope, limit max 500, strict cursor parsing and stable pagination order.
 API read path Reliability/Data Quality/Verification contract reviews passed with recommendations and no blockers.
-Carry-forward: statement_timeout / idle timeout should become future implementation MUST; cursor tuple/sorting/tie-breaker and cursor scope/filter/time-window binding should be frozen before implementation; api/app/db.py remains conditional future allowlist only if centralized read-only DB helper support is needed.
-Next eligible gate: PM handoff after docs/status sync, or a separately authorized downstream DB/API/Dashboard planning gate such as API read path implementation planning or future DB opt-in/local Postgres harness.
+Carry-forward from contract freeze: statement_timeout / idle timeout became implementation MUST; cursor tuple/sorting/tie-breaker and cursor scope/filter/time-window binding were frozen before implementation; api/app/db.py remained conditional and was not changed.
+DB/API/Dashboard API read path implementation: CLOSED / PASS WITH RECOMMENDATIONS; committed and pushed at 763b248 / 763b248ca835f59096e73aa5e199a4bf903ac946.
+API read path implementation changed files: api/app/main.py, api/app/routes/accepted_station_events.py and api/tests/test_accepted_station_events_api.py.
+API read path implementation endpoint: GET /api/v2/production/accepted-station-events.
+API read path implementation reads only production_accepted_station_event_fact, exposes only frozen DTO fields, enforces bounded line/time/limit validation, HMAC signed cursor binding, BEGIN READ ONLY, statement_timeout and idle_in_transaction_session_timeout, and keeps no ACK/read_done mutation for the current non-accepted payload.
+API read path implementation validation: PYTHONPATH=api .venv/bin/python -m pytest api/tests/test_accepted_station_events_api.py -> 27 passed; git diff --check PASS.
+API read path Reliability/Data Quality/Verification implementation reviews passed with recommendations and no blockers.
+Carry-forward: before production deploy, ACCEPTED_STATION_EVENTS_CURSOR_SECRET must be managed as a real deployment secret rather than relying on the development fallback.
+Next eligible gate: PM handoff after docs/status sync, or a separately authorized downstream DB/API/Dashboard gate such as DB-backed/live Postgres API read validation or Dashboard/API consumer planning.
 Slice B inserted the adapter gate after payload/cycle/counter guards and counter reset fail-safe, before existing storage.persist_cycle().
 Slice B accepted-only path continues to existing storage.persist_cycle() plus existing read_done/ACK behavior.
 Slice B non-accepted decisions do not persist, do not project, do not write defect detail, and do not ACK.
