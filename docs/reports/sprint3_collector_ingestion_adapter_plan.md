@@ -3,13 +3,16 @@
 Date: 2026-06-28
 
 Status: Sprint 3 Collector Ingestion Adapter planning/status reference. DB/API/
-Dashboard DB-backed/live Postgres API Read Validation tests-only implementation
-is CLOSED / PASS WITH RECOMMENDATIONS and committed/pushed at `b30db5c` after
-Architecture implementation, Reliability, Data Quality and Verification
-implementation reviews, focused default-skipped harness tests, exact commit and
-exact push gates. The latest live handoff baseline is `b817a9d`; the
-implementation commit synchronized here is `b30db5c`. DB/API/Dashboard API read
-path implementation remains CLOSED / PASS WITH RECOMMENDATIONS and
+Dashboard explicit DB opt-in/live local Postgres API Read Validation Run Planning
+HOLD Repair post-push docs/status sync is CLOSED / PASS as a local docs/status-only
+sync and is not committed/pushed by this gate. The HOLD repair is committed and
+pushed at `2cfad5d` after Verification B1 was closed by re-review. The latest
+PM handoff after API DB-backed schema verification is committed/pushed at
+`99dfc26`. DB/API/Dashboard DB-backed/live Postgres API Read Validation
+tests-only implementation remains CLOSED / PASS WITH RECOMMENDATIONS and
+committed/pushed at `b30db5c`; the prior DB-backed API read validation
+post-push docs/status sync is committed/pushed at `64d0e12`. DB/API/Dashboard
+API read path implementation remains CLOSED / PASS WITH RECOMMENDATIONS and
 committed/pushed at `763b248`. DB/API/Dashboard API read path contract freeze is
 CLOSED / PASS WITH RECOMMENDATIONS and committed/pushed at `2d0918a`.
 DB/API/Dashboard guarded DB-backed accepted fact tests are CLOSED / PASS WITH
@@ -27,13 +30,14 @@ Sprint 3 raw_policy station-level rollout checkpoint remains CLOSED / PASS WITH
 RECOMMENDATIONS after Slice I. E1 runtime raw decoder repair remains historical
 implementation history at `2c73410`. Dashboard implementation, new migration,
 V-PLC/PLC pilot/deploy/tag/rollback, DB opt-in local Postgres execution, Docker /
-docker compose, live DB validation and broad tests remain not authorized.
+docker compose, live DB validation, actual timeout failure proof and broad tests
+remain not authorized.
 
-Current PM intake live baseline for DB-backed API read validation post-push docs/status sync:
+Current PM intake live baseline for DB-backed API read validation HOLD repair post-push docs/status sync:
 
 - Branch: `main`.
-- HEAD / `origin/main`: `b817a9df21d08b2110f142394b940837a904eadc`.
-- Latest commit: `b817a9d Add PM handoff after DB-backed API read validation tests`.
+- HEAD / `origin/main`: `99dfc265983d757de7c23f6a677cabbc05bc4f5a`.
+- Latest commit: `99dfc26 Add PM handoff after API DB-backed schema verification`.
 - Sprint 3 Slice J downstream planning-only gate: CLOSED / PASS WITH
   RECOMMENDATIONS.
 - Sprint 3 Slice J tests-only hardening: CLOSED / PASS WITH RECOMMENDATIONS.
@@ -65,16 +69,44 @@ Current PM intake live baseline for DB-backed API read validation post-push docs
   RECOMMENDATIONS, no blocker.
 - PM handoff after DB-backed API read validation tests: PASS; committed/pushed
   at `b817a9d`.
+- DB/API/Dashboard DB-backed/live Postgres API Read Validation post-push
+  docs/status sync: PASS; committed/pushed at `64d0e12`.
+- DB/API/Dashboard explicit DB opt-in/live local Postgres API Read Validation
+  Run Planning Gate: CLOSED / PASS WITH RECOMMENDATIONS, no blocker.
+- DB/API/Dashboard explicit DB opt-in/live local Postgres API Read Validation
+  Run Planning Reliability Review: CLOSED / PASS WITH RECOMMENDATIONS, no blocker.
+- DB/API/Dashboard explicit DB opt-in/live local Postgres API Read Validation
+  Run Planning Data Quality Review: CLOSED / PASS WITH RECOMMENDATIONS, no blocker.
+- DB/API/Dashboard explicit DB opt-in/live local Postgres API Read Validation
+  Run Planning Verification Review / Exact Future Run Allowlist Audit: CLOSED /
+  HOLD, blocker B1.
+- DB/API/Dashboard explicit DB opt-in/live local Postgres API Read Validation
+  Run Planning HOLD Repair: CLOSED / PASS, no blocker.
+- DB/API/Dashboard explicit DB opt-in/live local Postgres API Read Validation
+  Run Planning HOLD Repair Verification Re-review: CLOSED / PASS WITH
+  RECOMMENDATIONS, blocker B1 CLOSED.
+- DB/API/Dashboard explicit DB opt-in/live local Postgres API Read Validation
+  Run Planning HOLD Repair exact-path commit/push: PASS; committed/pushed at
+  `2cfad5d`.
+- PM handoff after API DB-backed schema verification: PASS; committed/pushed at
+  `99dfc26`.
+- DB/API/Dashboard explicit DB opt-in/live local Postgres API Read Validation
+  Run Planning HOLD Repair post-push docs/status sync: PASS as local
+  docs/status-only sync; not committed/pushed by this gate.
 - DB/API/Dashboard Slice 2 exact commit gate: PASS.
 - DB/API/Dashboard Slice 2 exact push gate: PASS.
 - Guarded DB-backed accepted fact tests exact commit/push gate: PASS.
 - WS01 / WS02 / WS03 station-level `raw_policy`: `raw_capable`.
 - Line-wide `runtime_defaults.raw_policy`: `raw_not_provided`.
 - `raw_required`: not introduced.
-- DB opt-in local Postgres execution, live DB validation, new DB migration,
-  Dashboard, V-PLC, config, Docker / docker compose, deploy, tag, rollback and
-  real PLC pilot: not authorized by the DB-backed API read validation tests-only
-  closeout.
+- `api/tests/test_accepted_station_events_api_db_backed.py` now includes
+  API-side pre-insert schema/constraint/column/nullability verification for the
+  future DB-backed API run path.
+- Schema verification runs after migration apply and before fixture insert.
+- DB opt-in local Postgres execution, `EDGE_MES_ENABLE_DB_BACKED_TESTS=1`, live
+  DB validation, actual timeout failure proof, new DB migration, Dashboard,
+  V-PLC, config, Docker / docker compose, deploy, tag, rollback and real PLC
+  pilot: not authorized by this docs/status sync closeout.
 
 The E1 authoring baseline below is retained as a historical audit marker. It is
 not the live repository baseline for this post-Slice I status sync.
@@ -848,39 +880,46 @@ Explicitly excluded:
 
 ## 8. Current control conclusion
 
-Conclusion: `PASS WITH RECOMMENDATIONS` for DB/API/Dashboard DB-backed/live
-Postgres API Read Validation tests-only implementation post-push docs/status
+Conclusion: `PASS` for DB/API/Dashboard explicit DB opt-in/live local
+Postgres API Read Validation Run Planning HOLD Repair post-push docs/status
 reference sync.
 
-Current control status: DB/API/Dashboard DB-backed/live Postgres API Read
-Validation tests-only implementation is CLOSED / PASS WITH RECOMMENDATIONS and
-committed/pushed at `b30db5c`. The latest live handoff baseline is `b817a9d`;
-the implementation commit synchronized by this docs/status update is `b30db5c`.
-The implementation added only
-`api/tests/test_accepted_station_events_api_db_backed.py`. DB-backed API tests
-are default skipped unless a future PM-authorized DB opt-in run sets
-`EDGE_MES_ENABLE_DB_BACKED_TESTS=1`. It does not claim live DB validation,
-actual timeout failure proof, Dashboard/UI, migration, Collector runtime changes,
-Docker / docker compose execution, deploy/tag/rollback or real PLC pilot work.
-The API read path source boundary remains only
-`production_accepted_station_event_fact` while preserving the production-fact
-visibility boundary. The prior API read path implementation remains CLOSED /
-PASS WITH RECOMMENDATIONS at `763b248`; the prior guarded DB-backed accepted
-fact tests remain CLOSED / PASS WITH RECOMMENDATIONS at `636ba37`; and the prior
-Slice 2 DB write path remains CLOSED / PASS WITH RECOMMENDATIONS at `299d28a`:
-accepted decisions may write the production fact plus legacy/current persistence
-in one transaction, ACK/read_done mutation happens only after successful
-transaction commit, and non-accepted dispositions create zero production rows
-and no ACK/read_done mutation for the current payload. Preserve exact wording:
-no ACK/read_done mutation for the current non-accepted payload.
+Current control status: DB/API/Dashboard explicit DB opt-in/live local Postgres
+API Read Validation Run Planning HOLD Repair is CLOSED / PASS and
+committed/pushed at `2cfad5d` after Verification B1 was closed by re-review.
+The latest PM handoff after API DB-backed schema verification is committed/pushed
+at `99dfc26`. DB/API/Dashboard DB-backed/live Postgres API Read Validation
+tests-only implementation remains CLOSED / PASS WITH RECOMMENDATIONS and
+committed/pushed at `b30db5c`; the prior post-push docs/status sync is committed
+at `64d0e12`. The HOLD repair updated
+`api/tests/test_accepted_station_events_api_db_backed.py` with API-side
+pre-insert schema/constraint/column/nullability verification. The schema
+verification runs after migration apply and before fixture insert in the future
+DB-backed API run path. DB-backed API tests are still default skipped unless a
+future PM-authorized DB opt-in run sets `EDGE_MES_ENABLE_DB_BACKED_TESTS=1`.
+This docs/status sync does not claim DB opt-in execution, local Postgres
+connection, live DB validation, actual timeout failure proof, Dashboard/UI,
+migration, Collector runtime changes, Docker / docker compose execution,
+deploy/tag/rollback or real PLC pilot work. The API read path source boundary
+remains only `production_accepted_station_event_fact` while preserving the
+production-fact visibility boundary. The prior API read path implementation
+remains CLOSED / PASS WITH RECOMMENDATIONS at `763b248`; the prior guarded
+DB-backed accepted fact tests remain CLOSED / PASS WITH RECOMMENDATIONS at
+`636ba37`; and the prior Slice 2 DB write path remains CLOSED / PASS WITH
+RECOMMENDATIONS at `299d28a`: accepted decisions may write the production fact
+plus legacy/current persistence in one transaction, ACK/read_done mutation
+happens only after successful transaction commit, and non-accepted dispositions
+create zero production rows and no ACK/read_done mutation for the current
+payload. Preserve exact wording: no ACK/read_done mutation for the current
+non-accepted payload.
 
 Current PM intake live baseline:
 
 ```text
 HEAD / origin/main:
-b817a9df21d08b2110f142394b940837a904eadc
+99dfc265983d757de7c23f6a677cabbc05bc4f5a
 Latest commit:
-b817a9d Add PM handoff after DB-backed API read validation tests
+99dfc26 Add PM handoff after API DB-backed schema verification
 ```
 
 Historical authoring baselines in this document, including the E1
@@ -890,7 +929,9 @@ Slice J, production-fact visibility boundary, PM handoff, adapter leakage tests,
 DB schema field-name contract, Slice 1 schema-only migration, Slice 2 DB write
 path, guarded DB-backed accepted fact test commits, API read path contract freeze
 commit `2d0918a`, API read path implementation commit `763b248`, DB-backed API
-read validation tests commit `b30db5c` or handoff commit `b817a9d`.
+read validation tests commit `b30db5c`, handoff commit `b817a9d`, post-push
+status sync commit `64d0e12`, API DB-backed schema verification HOLD repair
+commit `2cfad5d`, or PM handoff commit `99dfc26`.
 
 Architecture initial planning: `PASS WITH RECOMMENDATIONS`, no blocker.
 
@@ -1109,21 +1150,34 @@ Future DB-backed/live Postgres API read validation remains separate PM-authorize
 work_order/product remain excluded until a later schema/contract gate.
 ```
 
-DB-backed/live Postgres API Read Validation tests-only implementation summary:
+DB-backed/live Postgres API Read Validation tests-only implementation and explicit DB opt-in/live local Postgres run planning HOLD repair summary:
 
 ```text
-Commit: b30db5c / b30db5cd2bd1d109d83c8da1a222d5ad37517448.
-Latest live handoff baseline: b817a9d / b817a9df21d08b2110f142394b940837a904eadc.
-Commit message: Add DB-backed API read validation tests.
+Implementation commit: b30db5c / b30db5cd2bd1d109d83c8da1a222d5ad37517448.
+Implementation post-push docs/status sync commit: 64d0e12 / 64d0e12dc76898a2da3ce09c2c0e94dbbf33ac80.
+HOLD repair commit: 2cfad5d / 2cfad5d9d8d91ed824a59b1b6eb713e3e50b0a1e.
+Latest PM handoff commit: 99dfc26 / 99dfc265983d757de7c23f6a677cabbc05bc4f5a.
+Commit message for implementation: Add DB-backed API read validation tests.
+Commit message for HOLD repair: Add API DB-backed schema verification.
 Changed file: api/tests/test_accepted_station_events_api_db_backed.py.
 The implementation added only api/tests/test_accepted_station_events_api_db_backed.py.
+The HOLD repair added API-side pre-insert schema/constraint/column/nullability verification for production_accepted_station_event_fact.
+The schema verification checks table existence, DTO/accepted fact columns, nullable / NOT NULL expectations, unique constraints and accepted-fact check constraints.
+The schema verification runs after migration apply and before fixture insert in the future live DB-backed execution path.
 DB-backed API tests are default skipped unless a future PM-authorized DB opt-in run sets EDGE_MES_ENABLE_DB_BACKED_TESTS=1.
-Default non-DB focused run: PYTHONPATH=api .venv/bin/python -m pytest api/tests/test_accepted_station_events_api.py api/tests/test_accepted_station_events_api_db_backed.py -q -> 27 passed, 32 skipped.
-Collector DB safety focused run: PYTHONPATH=collector:. .venv/bin/python -m pytest collector/tests/test_db_backed_safety.py -q -> 20 passed.
-git diff --check -> PASS.
+Default non-DB focused run before HOLD repair: PYTHONPATH=api .venv/bin/python -m pytest api/tests/test_accepted_station_events_api.py api/tests/test_accepted_station_events_api_db_backed.py -q -> 27 passed, 32 skipped.
+HOLD repair focused GREEN run: 41 passed, 19 skipped.
+Collector DB safety focused run after HOLD repair: 20 passed.
+git diff --check -> PASS in implementation and HOLD repair gates.
 Reliability implementation review: CLOSED / PASS WITH RECOMMENDATIONS, no blocker.
 Data Quality implementation review: CLOSED / PASS WITH RECOMMENDATIONS, no blocker.
 Verification implementation review / exact allowlist audit: CLOSED / PASS WITH RECOMMENDATIONS, no blocker.
+Explicit DB opt-in/live local Postgres API Read Validation Run Planning Gate: CLOSED / PASS WITH RECOMMENDATIONS, no blocker.
+Planning Reliability Review: CLOSED / PASS WITH RECOMMENDATIONS, no blocker.
+Planning Data Quality Review: CLOSED / PASS WITH RECOMMENDATIONS, no blocker.
+Planning Verification Review / Exact Future Run Allowlist Audit: CLOSED / HOLD, blocker B1.
+HOLD repair: CLOSED / PASS, no blocker.
+HOLD repair Verification re-review: CLOSED / PASS WITH RECOMMENDATIONS, B1 CLOSED.
 EDGE_MES_ENABLE_DB_BACKED_TESTS=1 was not set.
 No DB opt-in run was executed.
 No local Postgres connection was made.
@@ -1131,16 +1185,19 @@ No temp DB create/drop was executed.
 No migration was applied against live DB.
 No fixture insert into live DB was executed.
 Docker / docker compose was not started.
+Live DB validation has not completed.
+Actual timeout failure proof has not completed.
 Do not claim live DB validation completed.
 Do not claim actual timeout failure proof completed.
-Current tests prove timeout statements / read behavior are covered by planned/default-skipped harness, not that a real timeout failure path was induced.
+Current tests prove timeout statements / read behavior and future-run schema verification are covered by planned/default-skipped harness, not that a real timeout failure path was induced or that live DB validation has completed.
 ```
 
 DB-backed/live Postgres API Read Validation carry-forward recommendations:
 
 ```text
-Future explicit DB opt-in / live local Postgres API read validation run planning gate remains required before executing EDGE_MES_ENABLE_DB_BACKED_TESTS=1, connecting to local Postgres, creating/dropping a temp DB, applying migrations against live DB, inserting fixtures into live DB or claiming live DB validation.
-Future Dashboard/API consumer planning gate remains separate and must not be folded into this tests-only docs/status sync.
+Future actual DB opt-in / live local Postgres API read validation run remains separately PM-authorized work before executing EDGE_MES_ENABLE_DB_BACKED_TESTS=1, connecting to local Postgres, creating/dropping a temp DB, applying migrations against live DB, inserting fixtures into live DB or claiming live DB validation.
+Future actual timeout failure induction remains a separate PM-authorized gate; timeout setting verification alone is not actual timeout failure proof.
+Future Dashboard/API consumer planning gate remains separate and must not be folded into this docs/status sync.
 Worker/runtime DB-backed gates for unique-violation race, commit-before-ACK, non-accepted DB-backed zero-row/no ACK/read_done mutation, post-conflict re-read semantics and DB rollback remain future authorized work.
 API read path source boundary remains only production_accepted_station_event_fact; raw_plc_sample, cycle_event, station_event, production_unit, quality_event, production_snapshot and production_events must not be described as equivalent production fact sources, fallback sources or join-derived field fillers.
 Future production visibility remains limited to accepted station-event business facts after immutable config authority, raw_policy / decoder authority, shared validation, duplicate/conflict checks and adapter decision accepted.
@@ -1154,9 +1211,9 @@ Deploy/tag/rollback/real PLC pilot require separate PM authorization.
 ```
 
 Eligible for next PM planning gate: yes, after this docs/status sync. Recommended
-next eligible action is a separately authorized explicit DB opt-in / live local
-Postgres API read validation run planning gate, or Dashboard/API consumer
-planning.
+next eligible action is a separately authorized actual DB opt-in / live local
+Postgres API read validation run gate, or Dashboard/API consumer planning.
+Actual timeout failure induction remains a separate future PM-authorized gate.
 
 Eligible for implementation without PM approval: no. PM approval is required
 before Dashboard implementation, DB opt-in/local Postgres execution,
