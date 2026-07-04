@@ -48,6 +48,47 @@ DTO_FIELDS = {
     "nok_detail_evidence_fact_key",
 }
 
+ACCEPTED_FACT_TABLE = "production_accepted_station_event_fact"
+EXPECTED_UNIQUE_CONSTRAINTS = frozenset(
+    {
+        "uq_production_accepted_station_event_fact_key",
+        "uq_production_accepted_station_event_source",
+    }
+)
+EXPECTED_CHECK_CONSTRAINTS = frozenset(
+    {
+        "ck_production_accepted_station_event_type",
+        "ck_production_accepted_station_event_result",
+        "ck_production_accepted_station_result_authority",
+        "ck_production_accepted_station_result_nok_authority",
+        "ck_production_accepted_station_nok_detail_authority",
+    }
+)
+EXPECTED_ACCEPTED_FACT_COLUMNS = {
+    "line_id": False,
+    "plc_id": False,
+    "station_id": False,
+    "station_type": False,
+    "profile_id": False,
+    "config_hash": False,
+    "config_version": False,
+    "event_type": False,
+    "production_result": True,
+    "unit_id": True,
+    "dmc": True,
+    "cycle_counter": False,
+    "source_event_id": False,
+    "event_ts": False,
+    "accepted_at": False,
+    "fact_key": False,
+    "content_fingerprint": False,
+    "nok_code": True,
+    "nok_origin": True,
+    "nok_detail_code": True,
+    "nok_detail_source_event_id": True,
+    "nok_detail_evidence_fact_key": True,
+}
+
 FORBIDDEN_SOURCE_TABLES = {
     "raw_plc_sample",
     "cycle_event",
@@ -89,10 +130,6 @@ FORBIDDEN_SURFACE_TOKENS = {
 pytestmark = [
     pytest.mark.db_backed,
     pytest.mark.postgres_local,
-    pytest.mark.skipif(
-        os.environ.get(DB_BACKED_ENABLE_ENV) != "1",
-        reason=f"DB-backed API read validation requires {DB_BACKED_ENABLE_ENV}=1",
-    ),
 ]
 
 
@@ -262,6 +299,88 @@ def plan_from_env(env: dict[str, str] | None = None) -> TempDbPlan:
     return build_temp_db_plan(target_dsn, maintenance_dsn)
 
 
+def _sql_string_literals(values: set[str] | frozenset[str]) -> str:
+    return ", ".join(f"'{value}'" for value in sorted(values))
+
+
+def accepted_fact_schema_verification_queries() -> tuple[str, ...]:
+    expected_column_names = _sql_string_literals(set(EXPECTED_ACCEPTED_FACT_COLUMNS))
+    expected_constraint_names = _sql_string_literals(EXPECTED_UNIQUE_CONSTRAINTS | EXPECTED_CHECK_CONSTRAINTS)
+    return (
+        f"SELECT to_regclass('public.{ACCEPTED_FACT_TABLE}')",
+        f"""
+        SELECT column_name, is_nullable
+        FROM information_schema.columns
+        WHERE table_schema = 'public'
+          AND table_name = '{ACCEPTED_FACT_TABLE}'
+          AND column_name IN ({expected_column_names})
+        """,
+        f"""
+        SELECT conname, contype
+        FROM pg_constraint
+        WHERE conrelid = 'public.{ACCEPTED_FACT_TABLE}'::regclass
+          AND conname IN ({expected_constraint_names})
+        """,
+    )
+
+
+def _schema_verification_failure(message: str) -> AssertionError:
+    return AssertionError(
+        f"schema/constraint verification failure for {ACCEPTED_FACT_TABLE}: {message}"
+    )
+
+
+def verify_accepted_fact_schema(conn: Any) -> None:
+    table_query, columns_query, constraints_query = accepted_fact_schema_verification_queries()
+    with conn.cursor() as cur:
+        cur.execute(table_query)
+        table_row = cur.fetchone()
+        if table_row is None or table_row[0] is None:
+            raise _schema_verification_failure("expected table is missing")
+
+        cur.execute(columns_query)
+        observed_columns = {
+            str(column_name): str(is_nullable).upper() == "YES"
+            for column_name, is_nullable in cur.fetchall()
+        }
+        missing_columns = sorted(set(EXPECTED_ACCEPTED_FACT_COLUMNS) - set(observed_columns))
+        if missing_columns:
+            raise _schema_verification_failure(
+                f"expected columns are missing: {', '.join(missing_columns)}"
+            )
+        nullability_mismatches = sorted(
+            column_name
+            for column_name, expected_nullable in EXPECTED_ACCEPTED_FACT_COLUMNS.items()
+            if observed_columns[column_name] != expected_nullable
+        )
+        if nullability_mismatches:
+            raise _schema_verification_failure(
+                "column nullability mismatch: " + ", ".join(nullability_mismatches)
+            )
+
+        cur.execute(constraints_query)
+        observed_unique_constraints = set()
+        observed_check_constraints = set()
+        for constraint_name, constraint_type in cur.fetchall():
+            if constraint_type == "u":
+                observed_unique_constraints.add(str(constraint_name))
+            elif constraint_type == "c":
+                observed_check_constraints.add(str(constraint_name))
+
+        missing_unique_constraints = sorted(EXPECTED_UNIQUE_CONSTRAINTS - observed_unique_constraints)
+        if missing_unique_constraints:
+            raise _schema_verification_failure(
+                "expected unique constraints are missing: "
+                + ", ".join(missing_unique_constraints)
+            )
+        missing_check_constraints = sorted(EXPECTED_CHECK_CONSTRAINTS - observed_check_constraints)
+        if missing_check_constraints:
+            raise _schema_verification_failure(
+                "expected check constraints are missing: "
+                + ", ".join(missing_check_constraints)
+            )
+
+
 def accepted_fact_row(**overrides: Any) -> dict[str, Any]:
     row = {
         "line_id": "LINE_001",
@@ -353,6 +472,7 @@ def db_backed_api_database(db_backed_temp_db_plan: TempDbPlan, monkeypatch: pyte
         with psycopg.connect(plan.target.raw, autocommit=True) as conn:
             for migration_file in plan.migration_files:
                 conn.execute(migration_file.read_text(encoding="utf-8"))
+            verify_accepted_fact_schema(conn)
         monkeypatch.setenv("DATABASE_URL", plan.target.raw)
         yield plan
     finally:
@@ -519,6 +639,35 @@ def test_safety_guard_requires_distinct_maintenance_dsn_and_revalidates_drop_sta
             "postgresql://edge_mes:pw@localhost:5432/edge_mes_test_api_read",
             "postgresql://edge_mes:pw@localhost:5432/edge_mes_test_api_read",
         )
+
+
+def test_schema_verification_matrix_is_default_safe_and_complete(monkeypatch: pytest.MonkeyPatch) -> None:
+    monkeypatch.delenv(DB_BACKED_ENABLE_ENV, raising=False)
+    queries = accepted_fact_schema_verification_queries()
+    joined = "\n".join(queries)
+
+    assert db_backed_tests_enabled() is False
+    assert "information_schema.columns" in joined
+    assert "pg_constraint" in joined
+    assert "to_regclass" in joined
+    assert ACCEPTED_FACT_TABLE in joined
+    assert EXPECTED_UNIQUE_CONSTRAINTS == {
+        "uq_production_accepted_station_event_fact_key",
+        "uq_production_accepted_station_event_source",
+    }
+    assert EXPECTED_CHECK_CONSTRAINTS == {
+        "ck_production_accepted_station_event_type",
+        "ck_production_accepted_station_event_result",
+        "ck_production_accepted_station_result_authority",
+        "ck_production_accepted_station_result_nok_authority",
+        "ck_production_accepted_station_nok_detail_authority",
+    }
+    assert set(EXPECTED_ACCEPTED_FACT_COLUMNS) == DTO_FIELDS
+    assert EXPECTED_ACCEPTED_FACT_COLUMNS["line_id"] is False
+    assert EXPECTED_ACCEPTED_FACT_COLUMNS["event_ts"] is False
+    assert EXPECTED_ACCEPTED_FACT_COLUMNS["production_result"] is True
+    assert EXPECTED_ACCEPTED_FACT_COLUMNS["nok_detail_evidence_fact_key"] is True
+    assert not any(token in joined.upper() for token in ("INSERT", "UPDATE", "DELETE"))
 
 
 def test_live_api_returns_only_accepted_fact_dto_allowlist_and_no_forbidden_surfaces(
