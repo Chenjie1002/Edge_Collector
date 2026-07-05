@@ -1,6 +1,6 @@
 # Sprint 3 Collector Ingestion Adapter Gate Status
 
-Updated: 2026-07-04
+Updated: 2026-07-05
 
 Purpose: compact current gate/status source for Codex Threads working on Sprint 3 Collector Ingestion Adapter.
 
@@ -15,8 +15,8 @@ Read this file together with:
 
 ```text
 live HEAD / origin/main at authoring time:
-5543c877e85c2d77c0a7f67bec1d36d2a206ca76
-5543c87 Add PM handoff after DB-backed validation harness repair
+cd6dff82c752c3c43e5a62223a5b03d28987c146
+cd6dff8 Add PM handoff after consumer planning
 
 Branch:
 main
@@ -59,6 +59,8 @@ PM handoff after API DB-backed schema verification committed and pushed at 99dfc
 DB-backed API validation harness repair committed and pushed at 8a8004c
 Remote live DB-backed API validation rerun passed with focused pytest 62 passed in 8.68s and test_db_cleanup_ok edge_mes_test_api_read
 PM handoff after DB-backed validation harness repair committed and pushed at 5543c87
+DB/API/Dashboard consumer planning gate closed with PASS WITH RECOMMENDATIONS and committed/pushed at f4de1c3
+PM handoff after consumer planning committed and pushed at cd6dff8
 
 Deploy / rollback drill:
 not performed
@@ -106,6 +108,9 @@ PM handoff after API DB-backed schema verification is tracked in commit `99dfc26
 DB-backed API validation harness repair is tracked in commit `8a8004c`.
 Remote live DB-backed API validation rerun is CLOSED / PASS with focused pytest `62 passed in 8.68s` and isolated test DB cleanup `test_db_cleanup_ok edge_mes_test_api_read`.
 PM handoff after DB-backed validation harness repair is tracked in commit `5543c87`.
+DB/API/Dashboard consumer planning gate is CLOSED / PASS WITH RECOMMENDATIONS with no blockers, and the planning doc is tracked in commit `f4de1c3`.
+DB/API/Dashboard consumer planning Reliability, Data Quality and Verification focused reviews are CLOSED / PASS WITH RECOMMENDATIONS with no blockers; recommendations are carry-forward items.
+PM handoff after consumer planning is tracked in commit `cd6dff8`.
 
 Sprint 3 implementation files committed:
 
@@ -275,6 +280,12 @@ DB/API/Dashboard DB-backed/live Postgres API Read Validation tests-only file com
 
 ```text
 api/tests/test_accepted_station_events_api_db_backed.py
+```
+
+DB/API/Dashboard consumer planning doc committed:
+
+```text
+docs/reports/sprint3_db_api_dashboard_consumer_plan.md
 ```
 
 External dirty artifacts currently expected and excluded unless PM explicitly says otherwise:
@@ -528,6 +539,12 @@ behavior, Docker/deploy/tag/rollback or ACK/read_done ownership.
 | DB-backed API validation harness repair exact-path commit/push | PASS | commit 8a8004c |
 | Remote existing PostgreSQL DB-backed API validation rerun with repaired RecordingConnection proxy | PASS | focused pytest 62 passed in 8.68s; test_db_cleanup_ok edge_mes_test_api_read |
 | PM handoff after DB-backed validation harness repair | PASS | commit 5543c87 |
+| DB/API/Dashboard consumer planning gate | PASS WITH RECOMMENDATIONS | none |
+| DB/API/Dashboard consumer planning Reliability focused review | PASS WITH RECOMMENDATIONS | none |
+| DB/API/Dashboard consumer planning Data Quality focused review | PASS WITH RECOMMENDATIONS | none |
+| DB/API/Dashboard consumer planning Verification focused review / exact planning allowlist audit | PASS WITH RECOMMENDATIONS | none |
+| DB/API/Dashboard consumer planning exact planning doc commit/push | PASS | commit f4de1c3 |
+| PM handoff after consumer planning | PASS | commit cd6dff8 |
 
 Current overall status:
 
@@ -620,7 +637,16 @@ PM handoff after API DB-backed schema verification: PASS at 99dfc26 / 99dfc26598
 DB-backed API validation harness repair: PASS at 8a8004c / 8a8004c53f5bca871610807ae1ec99650e759127.
 Remote existing PostgreSQL DB-backed API validation rerun with repaired RecordingConnection proxy: PASS, focused pytest 62 passed in 8.68s, test DB cleanup test_db_cleanup_ok edge_mes_test_api_read.
 PM handoff after DB-backed validation harness repair: PASS at 5543c87 / 5543c877e85c2d77c0a7f67bec1d36d2a206ca76.
-Current live handoff baseline after the latest PM handoff commit: 5543c87 / 5543c877e85c2d77c0a7f67bec1d36d2a206ca76. The implementation commit synchronized by the earlier docs/status update is b30db5c; the schema HOLD repair commit was 2cfad5d; the harness repair commit synchronized by this docs/status update is 8a8004c.
+DB/API/Dashboard consumer planning gate: CLOSED / PASS WITH RECOMMENDATIONS; committed and pushed at f4de1c3 / f4de1c345f503c9556bceece99ef22be091c025e.
+DB/API/Dashboard consumer planning Reliability, Data Quality and Verification focused reviews: CLOSED / PASS WITH RECOMMENDATIONS, no blockers; recommendations are carry-forward only.
+PM handoff after consumer planning: PASS at cd6dff8 / cd6dff82c752c3c43e5a62223a5b03d28987c146.
+Current live handoff baseline after the latest PM handoff commit: cd6dff8 / cd6dff82c752c3c43e5a62223a5b03d28987c146. The consumer planning doc commit synchronized by this docs/status update is f4de1c3; the implementation commit synchronized by the earlier DB-backed docs/status update is b30db5c; the schema HOLD repair commit was 2cfad5d; the harness repair commit synchronized by the prior docs/status update is 8a8004c.
+Only production fact source for DB/API/Dashboard consumers: production_accepted_station_event_fact.
+raw_plc_sample, cycle_event, station_event, production_unit, quality_event, production_snapshot and production_events must not be described as equivalent production fact sources, fallback sources, legacy compatibility sources or join-derived field fillers.
+raw payload/raw_hex, decoded/source normalized payload, adapter disposition/reason, candidate context, raw/normalized comparison, diagnostic/review/audit payloads, quality_pareto_input, dashboard_state and bare result/defect/quality/pareto keys must not enter OEE or traceability main production facts.
+work_order and product remain excluded until a later schema/contract authority gate.
+accepted_at is an accepted fact timestamp, not collector freshness, ACK time or station freshness.
+Optional debug/review diagnostics view must be a separate Level 2 gate with leakage-negative review before implementation.
 DB-backed API read validation changed only api/tests/test_accepted_station_events_api_db_backed.py.
 The HOLD repair added API-side pre-insert schema/constraint/column/nullability verification for production_accepted_station_event_fact in api/tests/test_accepted_station_events_api_db_backed.py.
 The schema verification checks table existence, DTO/accepted fact columns, nullable / NOT NULL expectations, unique constraints and accepted-fact check constraints.
@@ -649,7 +675,7 @@ raw_payload/raw_hex is evidence, not a production fact.
 Decoded/source normalized payloads remain candidates until accepted.
 Non-accepted dispositions do not write defect detail; NOK/detail visibility must bind to accepted upstream business evidence.
 Preserve exact wording: no ACK/read_done mutation for the current non-accepted payload.
-Next eligible gate: exact-path docs/status commit/push for this sync. Dashboard/API consumer planning, future DB-backed reruns, actual timeout failure induction, worker/runtime DB-backed gates for unique-violation race, commit-before-ACK, non-accepted DB-backed zero-row/no ACK/read_done mutation, post-conflict re-read semantics and DB rollback remain future authorized work. Deploy/tag/rollback/real PLC pilot require separate PM authorization.
+Next eligible gate: exact-path docs/status commit/push for this sync, then API consumer contract freeze as a separate Level 2 planning/contract branch after explicit PM authorization. DB/API/Dashboard consumer planning is closed. API implementation, Dashboard implementation, optional debug/review diagnostics view, future DB-backed reruns, actual timeout failure induction, worker/runtime DB-backed gates for unique-violation race, commit-before-ACK, non-accepted DB-backed zero-row/no ACK/read_done mutation, post-conflict re-read semantics and DB rollback remain future authorized work. Deploy/tag/rollback/real PLC pilot require separate PM authorization.
 Slice B inserted the adapter gate after payload/cycle/counter guards and counter reset fail-safe, before existing storage.persist_cycle().
 Slice B accepted-only path continues to existing storage.persist_cycle() plus existing read_done/ACK behavior.
 Slice B non-accepted decisions do not persist, do not project, do not write defect detail, and do not ACK.

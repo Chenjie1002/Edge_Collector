@@ -2,7 +2,12 @@
 
 Date: 2026-06-28
 
-Status: Sprint 3 Collector Ingestion Adapter planning/status reference. DB-backed
+Status: Sprint 3 Collector Ingestion Adapter planning/status reference.
+DB/API/Dashboard consumer planning gate is CLOSED / PASS WITH RECOMMENDATIONS
+and committed/pushed at `f4de1c3`; its Reliability, Data Quality and
+Verification focused reviews are CLOSED / PASS WITH RECOMMENDATIONS with no
+blockers, and the PM handoff after consumer planning is committed/pushed at
+`cd6dff8`. DB-backed
 API validation harness repair is CLOSED / PASS and committed/pushed at
 `8a8004c`; the repaired remote live DB-backed API validation rerun is CLOSED /
 PASS with focused pytest `62 passed in 8.68s` and isolated test DB cleanup
@@ -37,11 +42,11 @@ V-PLC/PLC pilot/deploy/tag/rollback, future DB-backed reruns, Docker / docker
 compose lifecycle actions, actual timeout failure proof, worker/runtime
 DB-backed gates and broad tests remain not authorized.
 
-Current PM intake live baseline for DB-backed API validation harness repair + remote live validation docs/status sync:
+Current PM intake live baseline for DB/API/Dashboard consumer planning post-push docs/status sync:
 
 - Branch: `main`.
-- HEAD / `origin/main`: `5543c877e85c2d77c0a7f67bec1d36d2a206ca76`.
-- Latest commit: `5543c87 Add PM handoff after DB-backed validation harness repair`.
+- HEAD / `origin/main`: `cd6dff82c752c3c43e5a62223a5b03d28987c146`.
+- Latest commit: `cd6dff8 Add PM handoff after consumer planning`.
 - Sprint 3 Slice J downstream planning-only gate: CLOSED / PASS WITH
   RECOMMENDATIONS.
 - Sprint 3 Slice J tests-only hardening: CLOSED / PASS WITH RECOMMENDATIONS.
@@ -103,6 +108,12 @@ Current PM intake live baseline for DB-backed API validation harness repair + re
   cleanup `test_db_cleanup_ok edge_mes_test_api_read`.
 - PM handoff after DB-backed validation harness repair: PASS; committed/pushed
   at `5543c87`.
+- DB/API/Dashboard consumer planning gate: CLOSED / PASS WITH RECOMMENDATIONS,
+  no blocker; planning doc committed/pushed at `f4de1c3`.
+- DB/API/Dashboard consumer planning Reliability / Data Quality / Verification
+  focused reviews: CLOSED / PASS WITH RECOMMENDATIONS, no blocker;
+  recommendations are carry-forward only.
+- PM handoff after consumer planning: PASS; committed/pushed at `cd6dff8`.
 - DB/API/Dashboard Slice 2 exact commit gate: PASS.
 - DB/API/Dashboard Slice 2 exact push gate: PASS.
 - Guarded DB-backed accepted fact tests exact commit/push gate: PASS.
@@ -119,6 +130,28 @@ Current PM intake live baseline for DB-backed API validation harness repair + re
   Dashboard, V-PLC, config, Docker / docker compose lifecycle actions, deploy,
   tag, rollback and real PLC pilot remain not authorized by this docs/status
   sync closeout.
+- Only production fact source for DB/API/Dashboard consumers:
+  `production_accepted_station_event_fact`.
+- `raw_plc_sample`, `cycle_event`, `station_event`, `production_unit`,
+  `quality_event`, `production_snapshot` and `production_events` must not be
+  treated as equivalent production fact sources, fallback sources, legacy
+  compatibility sources or join-derived field fillers.
+- raw payload/raw_hex, decoded/source normalized payload, adapter
+  disposition/reason, candidate context, raw/normalized comparison and
+  diagnostic/review/audit payloads are diagnostic/review/debug only and must not
+  enter OEE or traceability main production facts.
+- `quality_pareto_input`, `dashboard_state` and bare `result`, `defect`,
+  `quality` or `pareto` keys are forbidden as production consumer sources.
+- `work_order` and `product` remain excluded until a later schema/contract
+  authority gate.
+- `accepted_at` is an accepted fact timestamp, not collector freshness, ACK time
+  or station freshness.
+- Optional debug/review diagnostics view must be a separate Level 2 gate and
+  pass leakage-negative review before implementation.
+- DB/API/Dashboard consumer planning is closed. The next eligible consumer
+  branch is API consumer contract freeze, which is a Level 2 planning/contract
+  branch and cannot be auto-authorized as a simple docs edit, API implementation
+  or Dashboard implementation.
 
 The E1 authoring baseline below is retained as a historical audit marker. It is
 not the live repository baseline for this post-Slice I status sync.
@@ -1218,7 +1251,7 @@ DB-backed/live Postgres API Read Validation carry-forward recommendations:
 ```text
 This focused remote live DB-backed API validation lane is CLOSED / PASS; future DB-backed reruns still require separate PM authorization before executing EDGE_MES_ENABLE_DB_BACKED_TESTS=1, connecting to Postgres, creating/dropping a temp DB, applying migrations against live DB or inserting fixtures into live DB.
 Future actual timeout failure induction remains a separate PM-authorized gate; timeout setting verification alone is not actual timeout failure proof.
-Future Dashboard/API consumer planning gate remains separate and must not be folded into this docs/status sync.
+DB/API/Dashboard consumer planning gate is now CLOSED / PASS WITH RECOMMENDATIONS at f4de1c3; the next eligible consumer branch is API consumer contract freeze, a separate Level 2 planning/contract branch requiring explicit PM authorization.
 Worker/runtime DB-backed gates for unique-violation race, commit-before-ACK, non-accepted DB-backed zero-row/no ACK/read_done mutation, post-conflict re-read semantics and DB rollback remain future authorized work.
 API read path source boundary remains only production_accepted_station_event_fact; raw_plc_sample, cycle_event, station_event, production_unit, quality_event, production_snapshot and production_events must not be described as equivalent production fact sources, fallback sources or join-derived field fillers.
 Future production visibility remains limited to accepted station-event business facts after immutable config authority, raw_policy / decoder authority, shared validation, duplicate/conflict checks and adapter decision accepted.
@@ -1232,12 +1265,15 @@ Deploy/tag/rollback/real PLC pilot require separate PM authorization.
 ```
 
 Eligible for next PM gate: exact-path docs/status commit/push for this sync,
-after PM explicitly authorizes staging. Dashboard/API consumer planning and
-future DB-backed reruns remain separate future PM-authorized gates. Actual
-timeout failure induction remains a separate future PM-authorized gate.
+after PM explicitly authorizes staging. API consumer contract freeze is the next
+eligible consumer branch and remains a separate Level 2 PM-authorized
+planning/contract gate; future DB-backed reruns remain separate future
+PM-authorized gates. Actual timeout failure induction remains a separate future
+PM-authorized gate.
 
 Eligible for implementation without PM approval: no. PM approval is required
-before Dashboard implementation, future DB-backed reruns,
+before API consumer contract freeze, API implementation, Dashboard
+implementation, optional debug/review diagnostics view, future DB-backed reruns,
 EDGE_MES_ENABLE_DB_BACKED_TESTS=1 outside an approved gate, Docker / docker
 compose lifecycle actions, tests beyond the authorized gate scope, new migration,
 V-PLC/PLC pilot, storage/API expansion, deploy, tag, rollback, broad tests, real
