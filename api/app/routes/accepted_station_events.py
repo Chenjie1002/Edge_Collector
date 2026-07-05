@@ -8,7 +8,7 @@ import os
 from datetime import datetime, timedelta, timezone
 from typing import Any
 
-from fastapi import APIRouter, HTTPException, Query
+from fastapi import APIRouter, HTTPException, Query, Request
 
 from app import db
 
@@ -47,10 +47,17 @@ DEFAULT_LIMIT = 50
 MAX_WINDOW = timedelta(days=31)
 STATEMENT_TIMEOUT = "3s"
 IDLE_TRANSACTION_TIMEOUT = "3s"
+ALLOWED_QUERY_PARAMS = {"line_id", "start_time", "end_time", "limit", "cursor"}
 
 
 def _fail_closed(detail: str) -> None:
     raise HTTPException(status_code=422, detail=detail)
+
+
+def _validate_query_params(request: Request) -> None:
+    unsupported = set(request.query_params) - ALLOWED_QUERY_PARAMS
+    if unsupported:
+        _fail_closed("unsupported query parameter")
 
 
 def _parse_limit(value: str | None) -> int:
@@ -259,12 +266,14 @@ def _read_rows(
 
 @router.get("/accepted-station-events")
 def list_accepted_station_events(
+    request: Request,
     line_id: str = Query(..., min_length=1),
     start_time: str = Query(..., min_length=1),
     end_time: str = Query(..., min_length=1),
     limit: str | None = Query(default=None),
     cursor: str | None = Query(default=None),
 ) -> dict[str, Any]:
+    _validate_query_params(request)
     parsed_limit = _parse_limit(limit)
     start = _parse_iso_utc(start_time, "start_time")
     end = _parse_iso_utc(end_time, "end_time")
@@ -278,13 +287,19 @@ def list_accepted_station_events(
         limit=parsed_limit,
     )
 
-    rows = _read_rows(
-        line_id=line_id,
-        start=start,
-        end=end,
-        limit=parsed_limit,
-        cursor_tuple=cursor_tuple,
-    )
+    try:
+        rows = _read_rows(
+            line_id=line_id,
+            start=start,
+            end=end,
+            limit=parsed_limit,
+            cursor_tuple=cursor_tuple,
+        )
+    except Exception as exc:
+        raise HTTPException(
+            status_code=503,
+            detail="accepted fact source unavailable",
+        ) from exc
     page_rows = rows[:parsed_limit]
     next_cursor = None
     if len(rows) > parsed_limit:

@@ -141,6 +141,8 @@ class FakeCursor:
 
         self.database.select_sql = sql
         self.database.select_params = values
+        if self.database.fail_on_select is not None:
+            raise self.database.fail_on_select
         line_id = values[0]
         start_time = values[1]
         end_time = values[2]
@@ -177,8 +179,14 @@ class FakeConnection:
 
 
 class FakeDatabase:
-    def __init__(self, rows: list[dict[str, object]] | None = None) -> None:
+    def __init__(
+        self,
+        rows: list[dict[str, object]] | None = None,
+        *,
+        fail_on_select: Exception | None = None,
+    ) -> None:
         self.rows = rows or [accepted_fact()]
+        self.fail_on_select = fail_on_select
         self.queries: list[tuple[str, tuple]] = []
         self.select_sql = ""
         self.select_params: tuple = ()
@@ -253,6 +261,46 @@ def test_query_uses_only_accepted_fact_source_and_no_legacy_fallback(client: Tes
     assert "fact_key asc" in sql
 
 
+@pytest.mark.parametrize(
+    "unsupported_param",
+    [
+        "station_id",
+        "station_type",
+        "event_type",
+        "production_result",
+        "config_hash",
+        "unit_id",
+        "dmc",
+        "cycle_counter",
+        "source_event_id",
+        "fact_key",
+        "content_fingerprint",
+        "nok_code",
+        "nok_origin",
+        "nok_detail_code",
+        "nok_detail_source_event_id",
+        "nok_detail_evidence_fact_key",
+        "work_order",
+        "product",
+        "raw_hex",
+        "raw_payload",
+        "diagnostic_reason",
+        "candidate_state",
+        "unexpected",
+    ],
+)
+def test_unsupported_or_unknown_query_parameters_fail_closed_without_db_query(
+    client: TestClient,
+    unsupported_param: str,
+) -> None:
+    database = FakeDatabase()
+
+    response = request_events(client, database, **{unsupported_param: "blocked"})
+
+    assert response.status_code == 422
+    assert database.queries == []
+
+
 @pytest.mark.parametrize("missing", ["line_id", "start_time", "end_time"])
 def test_requires_line_id_and_bounded_time_window(
     client: TestClient,
@@ -289,9 +337,12 @@ def test_limit_validation_fail_closed(
     limit: str,
     expected_status: int,
 ) -> None:
-    response = request_events(client, FakeDatabase(), limit=limit)
+    database = FakeDatabase()
+    response = request_events(client, database, limit=limit)
 
     assert response.status_code == expected_status
+    if expected_status == 422:
+        assert database.queries == []
 
 
 @pytest.mark.parametrize(
@@ -308,14 +359,32 @@ def test_time_validation_fail_closed(
     start_time: str,
     end_time: str,
 ) -> None:
+    database = FakeDatabase()
     response = request_events(
         client,
-        FakeDatabase(),
+        database,
         start_time=start_time,
         end_time=end_time,
     )
 
     assert response.status_code == 422
+    assert database.queries == []
+
+
+def test_overlarge_time_window_fails_closed_without_db_query(
+    client: TestClient,
+) -> None:
+    database = FakeDatabase()
+
+    response = request_events(
+        client,
+        database,
+        start_time="2026-07-03T09:00:00Z",
+        end_time="2026-08-04T09:00:01Z",
+    )
+
+    assert response.status_code == 422
+    assert database.queries == []
 
 
 @pytest.mark.parametrize(
@@ -357,6 +426,41 @@ def test_tampered_cursor_fails_closed(client: TestClient) -> None:
     response = request_events(client, FakeDatabase(), cursor=encode_unsigned_cursor(payload))
 
     assert response.status_code == 422
+
+
+def test_cursor_payload_binds_scope_order_and_contains_no_forbidden_surfaces(
+    client: TestClient,
+) -> None:
+    database = FakeDatabase(
+        [
+            accepted_fact(fact_key="sha256:fact-001"),
+            accepted_fact(
+                fact_key="sha256:fact-002",
+                event_ts=datetime(2026, 7, 3, 10, 1, tzinfo=timezone.utc),
+                accepted_at=datetime(2026, 7, 3, 10, 1, 1, tzinfo=timezone.utc),
+            ),
+        ]
+    )
+
+    response = request_events(client, database, limit="1")
+
+    assert response.status_code == 200
+    cursor = response.json()["page"]["next_cursor"]
+    payload = decode_unsigned_cursor(cursor)
+    assert payload == {
+        "v": 1,
+        "line_id": "LINE_001",
+        "start_time": "2026-07-03T09:00:00Z",
+        "end_time": "2026-07-03T11:00:00Z",
+        "limit": 1,
+        "direction": "asc",
+        "order": [
+            "2026-07-03T10:00:00Z",
+            "2026-07-03T10:00:01Z",
+            "sha256:fact-001",
+        ],
+    }
+    assert not (set(json.dumps(payload).split('"')) & FORBIDDEN_SURFACES)
 
 
 @pytest.mark.parametrize(
@@ -442,6 +546,14 @@ def test_cursor_stable_ordering_uses_event_ts_accepted_at_fact_key_tiebreaker(
     assert [item["fact_key"] for item in second.json()["data"]["items"]] == [
         "sha256:fact-003",
     ]
+    page_one_keys = {item["fact_key"] for item in first.json()["data"]["items"]}
+    page_two_keys = {item["fact_key"] for item in second.json()["data"]["items"]}
+    assert page_one_keys.isdisjoint(page_two_keys)
+    assert page_one_keys | page_two_keys == {
+        "sha256:fact-001",
+        "sha256:fact-002",
+        "sha256:fact-003",
+    }
     assert second.json()["page"]["next_cursor"] is None
 
 
@@ -488,3 +600,21 @@ def test_read_only_transaction_timeout_and_no_ack_read_done_side_effect_guard(
     assert "IDLE_IN_TRANSACTION_SESSION_TIMEOUT" in statements
     assert not database.write_seen
     assert not database.ack_read_done_seen
+
+
+def test_db_read_failure_returns_explicit_error_without_fallback(
+    client: TestClient,
+) -> None:
+    database = FakeDatabase(fail_on_select=RuntimeError("missing relation"))
+    client_without_raise = TestClient(app, raise_server_exceptions=False)
+
+    response = request_events(client_without_raise, database)
+
+    assert response.status_code == 503
+    assert response.json() == {"detail": "accepted fact source unavailable"}
+    sql = database.select_sql.lower()
+    assert "from production_accepted_station_event_fact" in sql
+    assert not any(
+        re.search(rf"\b(from|join)\s+{re.escape(source)}\b", sql)
+        for source in FORBIDDEN_SOURCES
+    )
