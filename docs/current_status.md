@@ -6,14 +6,14 @@
 
 ## 0. 当前 PM / Codex 协作状态
 
-当前主线：Phase-2 Sprint 3 DB/API/Dashboard consumer planning post-push docs/status sync closeout。
+当前主线：Phase-2 Sprint 3 DB/API/Dashboard API consumer contract freeze post-push docs/status sync closeout。
 
 Last verified baseline before this docs/status sync:
 
 ```text
 live HEAD / origin/main at authoring time:
-cd6dff82c752c3c43e5a62223a5b03d28987c146
-cd6dff8 Add PM handoff after consumer planning
+f65a120545efcdb7ca39f20dbf703a804f82763f
+f65a120 Freeze API consumer contract
 
 branch:
 main
@@ -181,6 +181,11 @@ DB/API/Dashboard consumer planning Data Quality focused review: CLOSED / PASS WI
 DB/API/Dashboard consumer planning Verification focused review / exact planning allowlist audit: CLOSED / PASS WITH RECOMMENDATIONS, no blocker
 DB/API/Dashboard consumer planning exact planning doc commit/push: PASS, commit f4de1c3
 PM handoff after consumer planning: PASS, commit cd6dff8
+DB/API/Dashboard API consumer contract freeze gate: CLOSED / PASS WITH RECOMMENDATIONS, no blocker
+DB/API/Dashboard API consumer contract freeze Reliability focused review: CLOSED / PASS WITH RECOMMENDATIONS, no blocker
+DB/API/Dashboard API consumer contract freeze Data Quality focused review: CLOSED / PASS WITH RECOMMENDATIONS, no blocker
+DB/API/Dashboard API consumer contract freeze Verification focused review / exact contract allowlist audit: CLOSED / PASS WITH RECOMMENDATIONS, no blocker
+DB/API/Dashboard API consumer contract freeze exact contract commit/push: PASS, commit f65a120
 Slice D2-C decoder registry authority implementation: PASS WITH RECOMMENDATIONS
 Slice D2-C Reliability implementation review: PASS WITH RECOMMENDATIONS, no blocker
 Slice D2-C Data Quality implementation review: PASS WITH RECOMMENDATIONS, no blocker
@@ -248,15 +253,21 @@ PM handoff after DB-backed validation harness repair is committed/pushed at 5543
 DB/API/Dashboard consumer planning gate is CLOSED / PASS WITH RECOMMENDATIONS and committed/pushed at f4de1c3 / f4de1c345f503c9556bceece99ef22be091c025e.
 DB/API/Dashboard consumer planning Reliability, Data Quality and Verification focused reviews are CLOSED / PASS WITH RECOMMENDATIONS with no blockers; recommendations are carry-forward items and do not block the current docs/status sync.
 PM handoff after consumer planning is committed/pushed at cd6dff8 / cd6dff82c752c3c43e5a62223a5b03d28987c146.
-Current live handoff baseline after the latest PM handoff commit: cd6dff8 / cd6dff82c752c3c43e5a62223a5b03d28987c146. The consumer planning doc commit synchronized by this docs/status update is f4de1c3; the implementation commit synchronized by the earlier DB-backed docs/status sync was b30db5c; the schema HOLD repair commit was 2cfad5d; the harness repair commit synchronized by the prior docs/status update was 8a8004c.
+DB/API/Dashboard API consumer contract freeze gate is CLOSED / PASS WITH RECOMMENDATIONS and committed/pushed at f65a120 / f65a120545efcdb7ca39f20dbf703a804f82763f.
+API consumer contract freeze changed file: docs/contracts/dashboard_api_contract.md.
+API consumer contract freeze Reliability, Data Quality and Verification focused reviews are CLOSED / PASS WITH RECOMMENDATIONS with no blockers; recommendations are carry-forward items and do not block the current docs/status sync.
+Current live baseline after API consumer contract freeze: f65a120 / f65a120545efcdb7ca39f20dbf703a804f82763f. The API consumer contract freeze commit synchronized by this docs/status update is f65a120; the consumer planning doc commit synchronized by the prior docs/status update was f4de1c3; the implementation commit synchronized by the earlier DB-backed docs/status sync was b30db5c; the schema HOLD repair commit was 2cfad5d; the harness repair commit synchronized by the prior docs/status update was 8a8004c.
 Only production fact source for DB/API/Dashboard consumers: production_accepted_station_event_fact. raw_plc_sample, cycle_event, station_event, production_unit, quality_event, production_snapshot and production_events must not be used as equivalent production fact sources, fallback sources, legacy compatibility sources or join-derived field fillers.
-raw payload/raw_hex, decoded or source normalized payload, adapter disposition/reason, candidate context, raw/normalized comparison context and diagnostic/review/audit payloads are diagnostic/review/debug only and must not enter OEE or traceability main production facts.
-quality_pareto_input, dashboard_state and bare result/defect/quality/pareto production-looking keys are forbidden as production consumer sources.
-work_order and product remain excluded until a later schema/contract authority gate. accepted_at is an accepted fact timestamp, not collector freshness, ACK time or station freshness.
-An optional debug/review diagnostics view must be a separate Level 2 gate and must pass leakage-negative review before implementation.
-DB/API/Dashboard consumer planning is closed. The next eligible branch is API consumer contract freeze, which is a Level 2 planning/contract branch and must not be treated as a simple docs edit, API implementation or Dashboard implementation without separate PM authorization.
+Response DTO fields must come field-by-field from production_accepted_station_event_fact row fields; fallback is forbidden.
+raw payload/raw_hex/raw bytes/raw_sample_id, decoded/source normalized candidate payload, adapter disposition/reason/phase, candidate context, raw/normalized comparison context, decoder errors and diagnostic/review/audit payloads are diagnostic/review/debug only and must not enter production DTOs, production Dashboard, OEE or traceability main production facts.
+ack_status, read_done, collector_state, quality_pareto_input, dashboard_state and bare result/defect/quality/pareto production-looking keys are forbidden in production consumer payloads.
+NOK/detail fields may come only from accepted fact rows and must bind accepted upstream business evidence and shared station-event validation.
+work_order and product remain excluded until a later schema/contract authority gate. accepted_at is an accepted fact timestamp, not collector freshness, ACK time, station freshness or read_done time.
+An optional debug/review diagnostics view remains deferred and must be a separate Level 2 gate with separate diagnostic/audit/review namespaces and leakage-negative review before implementation.
+Carry-forward recommendations for future implementation planning: freeze concrete timeout values, HTTP/error envelope, cursor signature/secret/version tuple, DB unavailable / missing table / missing schema / missing authority / unknown-state behavior, and convert the contract into an executable acceptance matrix covering DTO allowlist, forbidden DTO/source leakage, invalid query/filter/cursor/time/window, Dashboard empty/error/unknown states and no-side-effect assertions.
+DB/API/Dashboard consumer planning and API consumer contract freeze are closed. The next eligible branch is API implementation planning gate or Dashboard/API implementation planning gate, only after separate PM authorization.
 DB/API/Dashboard expansion beyond the accepted station-event fact DB write path, guarded DB-backed accepted fact tests, accepted fact API read contract docs freeze, accepted fact API read path implementation, DB-backed API validation harness repair, completed remote live validation and closed consumer planning remains not authorized except future separately authorized exact-scope gates.
-API consumer contract freeze, API implementation, Dashboard/frontend implementation, optional debug/review diagnostics view, new migration, future DB opt-in reruns, worker/runtime DB-backed gates, EDGE_MES_ENABLE_DB_BACKED_TESTS=1 outside an approved gate, local/remote Postgres connection outside an approved gate, Docker / docker compose lifecycle actions, deploy, tag, rollback, broad tests, actual timeout failure proof and real PLC pilot: not authorized
+API implementation, Dashboard/frontend implementation, optional debug/review diagnostics view, new migration, future DB opt-in reruns, worker/runtime DB-backed gates, EDGE_MES_ENABLE_DB_BACKED_TESTS=1 outside an approved gate, local/remote Postgres connection outside an approved gate, Docker / docker compose lifecycle actions, deploy, tag, rollback, broad tests, actual timeout failure proof and real PLC pilot: not authorized
 ```
 
 当前 Sprint 3 Slice J downstream adapter boundary tests-only hardening files 已提交：
