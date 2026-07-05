@@ -3,54 +3,44 @@
 Date: 2026-06-28
 
 Status: Sprint 3 Collector Ingestion Adapter planning/status reference.
-DB/API/Dashboard API consumer contract freeze gate is CLOSED / PASS WITH
-RECOMMENDATIONS and committed/pushed at `f65a120`; its Reliability, Data Quality
-and Verification focused reviews are CLOSED / PASS WITH RECOMMENDATIONS with no
-blockers. The changed file is `docs/contracts/dashboard_api_contract.md`.
-DB/API/Dashboard consumer planning gate remains CLOSED / PASS WITH
-RECOMMENDATIONS and committed/pushed at `f4de1c3`; its Reliability, Data Quality
-and Verification focused reviews are CLOSED / PASS WITH RECOMMENDATIONS with no
-blockers, and the PM handoff after consumer planning is committed/pushed at
-`cd6dff8`. DB-backed
-API validation harness repair is CLOSED / PASS and committed/pushed at
+DB/API/Dashboard accepted station events API implementation is CLOSED / PASS
+WITH RECOMMENDATIONS and committed/pushed at `97dc4d5`; its Reliability, Data
+Quality and Verification focused reviews are CLOSED / PASS WITH RECOMMENDATIONS
+with no blockers. The changed files are `api/app/routes/accepted_station_events.py`
+and `api/tests/test_accepted_station_events_api.py`. DB/API/Dashboard API
+implementation planning is CLOSED / PASS WITH RECOMMENDATIONS and
+committed/pushed at `2dc4b4d`; the planning file is
+`docs/reports/sprint3_api_consumer_implementation_plan.md`. DB/API/Dashboard API
+consumer contract freeze gate remains CLOSED / PASS WITH RECOMMENDATIONS and
+committed/pushed at `f65a120`; its Reliability, Data Quality and Verification
+focused reviews are CLOSED / PASS WITH RECOMMENDATIONS with no blockers. The
+changed file is `docs/contracts/dashboard_api_contract.md`. DB/API/Dashboard
+consumer planning gate remains CLOSED / PASS WITH RECOMMENDATIONS and
+committed/pushed at `f4de1c3`; its Reliability, Data Quality and Verification
+focused reviews are CLOSED / PASS WITH RECOMMENDATIONS with no blockers, and the
+PM handoff after consumer planning is committed/pushed at `cd6dff8`.
+DB-backed API validation harness repair is CLOSED / PASS and committed/pushed at
 `8a8004c`; the repaired remote live DB-backed API validation rerun is CLOSED /
 PASS with focused pytest `62 passed in 8.68s` and isolated test DB cleanup
 `test_db_cleanup_ok edge_mes_test_api_read`; the latest PM handoff after
 DB-backed validation harness repair is committed/pushed at `5543c87`. The prior
 DB/API/Dashboard explicit DB opt-in/live local Postgres API Read Validation Run
 Planning HOLD repair is committed/pushed at `2cfad5d` after Verification B1 was
-closed by re-review. The previous PM handoff after API DB-backed schema
-verification is committed/pushed at `99dfc26`. DB/API/Dashboard DB-backed/live
-Postgres API Read Validation tests-only implementation remains CLOSED / PASS
-WITH RECOMMENDATIONS and committed/pushed at `b30db5c`; the prior DB-backed API
-read validation post-push docs/status sync is committed/pushed at `64d0e12`.
-DB/API/Dashboard
-API read path implementation remains CLOSED / PASS WITH RECOMMENDATIONS and
-committed/pushed at `763b248`. DB/API/Dashboard API read path contract freeze is
-CLOSED / PASS WITH RECOMMENDATIONS and committed/pushed at `2d0918a`.
-DB/API/Dashboard guarded DB-backed accepted fact tests are CLOSED / PASS WITH
-RECOMMENDATIONS and committed/pushed at `636ba37` after Reliability, Data Quality
-and Verification reviews, including a Reliability HOLD repair and re-review.
-DB/API/Dashboard Slice 2 DB write path implementation is CLOSED / PASS WITH
-RECOMMENDATIONS and committed/pushed at `299d28a`. Sprint 3 Slice J downstream
-Collector adapter decision / diagnostic / projection boundary tests-only
-hardening is CLOSED / PASS WITH RECOMMENDATIONS at `ed9a61e`. Sprint 3 accepted
-production-fact visibility boundary docs/contracts freeze is CLOSED / PASS WITH
-RECOMMENDATIONS and committed in the production-fact visibility boundary
-closeout at `11cf077`. Tests-only adapter production-fact leakage negative
-implementation is CLOSED / PASS WITH RECOMMENDATIONS and committed at `fd3a799`.
-Sprint 3 raw_policy station-level rollout checkpoint remains CLOSED / PASS WITH
-RECOMMENDATIONS after Slice I. E1 runtime raw decoder repair remains historical
-implementation history at `2c73410`. Dashboard implementation, new migration,
+closed by re-review. DB/API/Dashboard DB-backed/live Postgres API Read Validation
+tests-only implementation remains CLOSED / PASS WITH RECOMMENDATIONS and
+committed/pushed at `b30db5c`; the prior DB-backed API read validation post-push
+docs/status sync is committed/pushed at `64d0e12`. DB/API/Dashboard API read
+path implementation remains CLOSED / PASS WITH RECOMMENDATIONS and
+committed/pushed at `763b248`. Dashboard implementation, new migration,
 V-PLC/PLC pilot/deploy/tag/rollback, future DB-backed reruns, Docker / docker
 compose lifecycle actions, actual timeout failure proof, worker/runtime
 DB-backed gates and broad tests remain not authorized.
 
-Current PM intake live baseline for DB/API/Dashboard API consumer contract freeze post-push docs/status sync:
+Current PM intake live baseline for DB/API/Dashboard accepted station events API implementation post-push docs/status sync:
 
 - Branch: `main`.
-- HEAD / `origin/main`: `f65a120545efcdb7ca39f20dbf703a804f82763f`.
-- Latest commit: `f65a120 Freeze API consumer contract`.
+- HEAD / `origin/main`: `97dc4d520ef8edc9b7620e5ce9e8a61d0e1aee7f`.
+- Latest commit: `97dc4d5 Harden accepted station events API contract`.
 - Sprint 3 Slice J downstream planning-only gate: CLOSED / PASS WITH
   RECOMMENDATIONS.
 - Sprint 3 Slice J tests-only hardening: CLOSED / PASS WITH RECOMMENDATIONS.
@@ -124,6 +114,26 @@ Current PM intake live baseline for DB/API/Dashboard API consumer contract freez
 - DB/API/Dashboard API consumer contract freeze Reliability / Data Quality /
   Verification focused reviews: CLOSED / PASS WITH RECOMMENDATIONS, no blocker;
   recommendations are carry-forward only.
+- DB/API/Dashboard API implementation planning gate: CLOSED / PASS WITH
+  RECOMMENDATIONS, no blocker; planning doc
+  `docs/reports/sprint3_api_consumer_implementation_plan.md`; committed/pushed
+  at `2dc4b4d`.
+- DB/API/Dashboard API implementation planning Reliability / Data Quality /
+  Verification focused reviews: CLOSED / PASS WITH RECOMMENDATIONS, no blocker;
+  recommendations are carry-forward only.
+- DB/API/Dashboard accepted station events API implementation: CLOSED / PASS
+  WITH RECOMMENDATIONS, no blocker; changed files
+  `api/app/routes/accepted_station_events.py` and
+  `api/tests/test_accepted_station_events_api.py`; committed/pushed at
+  `97dc4d5`.
+- DB/API/Dashboard accepted station events API implementation Reliability /
+  Data Quality / Verification focused reviews: CLOSED / PASS WITH
+  RECOMMENDATIONS, no blocker; recommendations are carry-forward only.
+- Focused non-DB validation for the API implementation: `PYTHONPATH=api
+  .venv/bin/python -m pytest api/tests/test_accepted_station_events_api.py -q`
+  -> 53 passed; `PYTHONPATH=api .venv/bin/python -m compileall api/app` ->
+  PASS; `git diff --check -- api/app/routes/accepted_station_events.py
+  api/tests/test_accepted_station_events_api.py` -> PASS.
 - DB/API/Dashboard Slice 2 exact commit gate: PASS.
 - DB/API/Dashboard Slice 2 exact push gate: PASS.
 - Guarded DB-backed accepted fact tests exact commit/push gate: PASS.
@@ -158,16 +168,17 @@ Current PM intake live baseline for DB/API/Dashboard API consumer contract freez
   or station freshness.
 - Optional debug/review diagnostics view must be a separate Level 2 gate and
   pass leakage-negative review before implementation.
-- API consumer contract freeze is closed. The next eligible consumer branch is
-  API implementation planning gate or Dashboard/API implementation planning
-  gate. This remains Level 2 implementation planning and cannot be
-  auto-authorized as API implementation, Dashboard implementation, tests, DB
-  execution, Docker, stage, commit or push.
-- Future API/Dashboard implementation planning must freeze concrete timeout
-  values, HTTP/error envelope, cursor signature/secret/version tuple, DB
-  unavailable / missing table / missing schema / missing authority /
-  unknown-state behavior, and convert the contract into an executable acceptance
-  matrix covering DTO allowlist, forbidden DTO/source leakage, invalid
+- API consumer contract freeze, API implementation planning and accepted station
+  events API implementation are closed. The next eligible consumer branch is
+  DB-backed API validation planning gate or Dashboard/API implementation planning
+  gate after separate PM authorization. This remains Level 2 planning and cannot
+  be auto-authorized as DB-backed tests, DB execution, Dashboard implementation,
+  Docker, stage, commit or push.
+- Future DB-backed API validation planning must freeze exact DB opt-in scope,
+  DSN/test DB safety, schema/migration verification, allowed tests, cleanup,
+  `EDGE_MES_ENABLE_DB_BACKED_TESTS=1` usage and review gates before execution.
+  Future Dashboard/API implementation planning must preserve the accepted fact
+  source boundary, DTO allowlist, forbidden leakage, invalid
   query/filter/cursor/time/window, Dashboard empty/error/unknown states and
   no-side-effect assertions.
 
@@ -1271,9 +1282,11 @@ This focused remote live DB-backed API validation lane is CLOSED / PASS; future 
 Future actual timeout failure induction remains a separate PM-authorized gate; timeout setting verification alone is not actual timeout failure proof.
 DB/API/Dashboard consumer planning gate is CLOSED / PASS WITH RECOMMENDATIONS at f4de1c3.
 DB/API/Dashboard API consumer contract freeze gate is CLOSED / PASS WITH RECOMMENDATIONS at f65a120; changed file: docs/contracts/dashboard_api_contract.md.
-API consumer contract freeze Reliability, Data Quality and Verification focused reviews are CLOSED / PASS WITH RECOMMENDATIONS with no blockers.
-The next eligible consumer branch is API implementation planning gate or Dashboard/API implementation planning gate, a separate Level 2 implementation planning branch requiring explicit PM authorization.
-Future API/Dashboard implementation planning must freeze concrete timeout values, HTTP/error envelope, cursor signature/secret/version tuple, DB unavailable / missing table / missing schema / missing authority / unknown-state behavior, and convert the contract into an executable acceptance matrix covering DTO allowlist, forbidden DTO/source leakage, invalid query/filter/cursor/time/window, Dashboard empty/error/unknown states and no-side-effect assertions.
+DB/API/Dashboard API implementation planning gate is CLOSED / PASS WITH RECOMMENDATIONS at 2dc4b4d; changed file: docs/reports/sprint3_api_consumer_implementation_plan.md.
+DB/API/Dashboard accepted station events API implementation is CLOSED / PASS WITH RECOMMENDATIONS at 97dc4d5; changed files: api/app/routes/accepted_station_events.py and api/tests/test_accepted_station_events_api.py.
+API consumer contract freeze, API implementation planning and API implementation Reliability, Data Quality and Verification focused reviews are CLOSED / PASS WITH RECOMMENDATIONS with no blockers.
+The next eligible consumer branch is DB-backed API validation planning gate or Dashboard/API implementation planning gate, a separate Level 2 planning branch requiring explicit PM authorization.
+Future DB-backed API validation planning must freeze exact DB opt-in scope, DSN/test DB safety, schema/migration verification, allowed tests, cleanup and EDGE_MES_ENABLE_DB_BACKED_TESTS=1 usage before execution.
 Worker/runtime DB-backed gates for unique-violation race, commit-before-ACK, non-accepted DB-backed zero-row/no ACK/read_done mutation, post-conflict re-read semantics and DB rollback remain future authorized work.
 API read path source boundary remains only production_accepted_station_event_fact; raw_plc_sample, cycle_event, station_event, production_unit, quality_event, production_snapshot and production_events must not be described as equivalent production fact sources, fallback sources or join-derived field fillers.
 Future production visibility remains limited to accepted station-event business facts after immutable config authority, raw_policy / decoder authority, shared validation, duplicate/conflict checks and adapter decision accepted.
@@ -1287,15 +1300,15 @@ Deploy/tag/rollback/real PLC pilot require separate PM authorization.
 ```
 
 Eligible for next PM gate: exact-path docs/status commit/push for this sync
-after PM explicitly authorizes staging, or API implementation planning gate /
-Dashboard/API implementation planning gate as a separate Level 2
-PM-authorized planning branch. Future DB-backed reruns remain separate future
-PM-authorized gates. Actual timeout failure induction remains a separate future
-PM-authorized gate.
+after PM explicitly authorizes staging, or DB-backed API validation planning gate /
+Dashboard/API implementation planning gate as a separate Level 2 PM-authorized
+planning branch. Future DB-backed reruns remain separate future PM-authorized
+gates. Actual timeout failure induction remains a separate future PM-authorized
+gate.
 
 Eligible for implementation without PM approval: no. PM approval is required
-before API implementation planning, Dashboard/API implementation planning, API
-implementation, Dashboard implementation, optional debug/review diagnostics view,
+before DB-backed API validation planning/execution, Dashboard/API implementation
+planning, Dashboard implementation, optional debug/review diagnostics view,
 future DB-backed reruns, EDGE_MES_ENABLE_DB_BACKED_TESTS=1 outside an approved
 gate, Docker / docker compose lifecycle actions, tests beyond the authorized gate
 scope, new migration, V-PLC/PLC pilot, storage/API expansion, deploy, tag,

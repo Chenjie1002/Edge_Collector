@@ -15,8 +15,8 @@ Read this file together with:
 
 ```text
 live HEAD / origin/main at authoring time:
-f65a120545efcdb7ca39f20dbf703a804f82763f
-f65a120 Freeze API consumer contract
+97dc4d520ef8edc9b7620e5ce9e8a61d0e1aee7f
+97dc4d5 Harden accepted station events API contract
 
 Branch:
 main
@@ -62,6 +62,8 @@ PM handoff after DB-backed validation harness repair committed and pushed at 554
 DB/API/Dashboard consumer planning gate closed with PASS WITH RECOMMENDATIONS and committed/pushed at f4de1c3
 PM handoff after consumer planning committed and pushed at cd6dff8
 API consumer contract freeze reviewed, committed and pushed at f65a120
+API implementation planning reviewed, committed and pushed at 2dc4b4d
+Accepted station events API contract hardening implemented, reviewed, committed and pushed at 97dc4d5
 
 Deploy / rollback drill:
 not performed
@@ -114,6 +116,11 @@ DB/API/Dashboard consumer planning Reliability, Data Quality and Verification fo
 PM handoff after consumer planning is tracked in commit `cd6dff8`.
 DB/API/Dashboard API consumer contract freeze gate is CLOSED / PASS WITH RECOMMENDATIONS with no blockers, and the contract doc is tracked in commit `f65a120`.
 DB/API/Dashboard API consumer contract freeze Reliability, Data Quality and Verification focused reviews are CLOSED / PASS WITH RECOMMENDATIONS with no blockers; recommendations are carry-forward items.
+DB/API/Dashboard API implementation planning gate is CLOSED / PASS WITH RECOMMENDATIONS with no blockers, and the planning doc is tracked in commit `2dc4b4d`.
+DB/API/Dashboard API implementation planning Reliability, Data Quality and Verification focused reviews are CLOSED / PASS WITH RECOMMENDATIONS with no blockers; recommendations are carry-forward items.
+DB/API/Dashboard accepted station events API implementation is CLOSED / PASS WITH RECOMMENDATIONS with no blockers, and the implementation is tracked in commit `97dc4d5`.
+DB/API/Dashboard accepted station events API implementation Reliability, Data Quality and Verification focused reviews are CLOSED / PASS WITH RECOMMENDATIONS with no blockers; recommendations are carry-forward items.
+Accepted station events API implementation changed files: `api/app/routes/accepted_station_events.py` and `api/tests/test_accepted_station_events_api.py`.
 
 Sprint 3 implementation files committed:
 
@@ -559,6 +566,16 @@ behavior, Docker/deploy/tag/rollback or ACK/read_done ownership.
 | DB/API/Dashboard API consumer contract freeze Data Quality focused review | PASS WITH RECOMMENDATIONS | none |
 | DB/API/Dashboard API consumer contract freeze Verification focused review / exact contract allowlist audit | PASS WITH RECOMMENDATIONS | none |
 | DB/API/Dashboard API consumer contract freeze exact contract commit/push | PASS | commit f65a120 |
+| DB/API/Dashboard API implementation planning gate | PASS WITH RECOMMENDATIONS | none |
+| DB/API/Dashboard API implementation planning Reliability focused review | PASS WITH RECOMMENDATIONS | none |
+| DB/API/Dashboard API implementation planning Data Quality focused review | PASS WITH RECOMMENDATIONS | none |
+| DB/API/Dashboard API implementation planning Verification focused review / exact future implementation allowlist audit | PASS WITH RECOMMENDATIONS | none |
+| DB/API/Dashboard API implementation planning exact-path commit/push | PASS | commit 2dc4b4d |
+| DB/API/Dashboard accepted station events API implementation gate | PASS WITH RECOMMENDATIONS | none |
+| DB/API/Dashboard accepted station events API implementation Reliability focused review | PASS WITH RECOMMENDATIONS | none |
+| DB/API/Dashboard accepted station events API implementation Data Quality focused review | PASS WITH RECOMMENDATIONS | none |
+| DB/API/Dashboard accepted station events API implementation Verification focused review / exact allowlist audit | PASS WITH RECOMMENDATIONS | none |
+| DB/API/Dashboard accepted station events API implementation exact-path commit/push | PASS | commit 97dc4d5 |
 
 Current overall status:
 
@@ -657,7 +674,14 @@ PM handoff after consumer planning: PASS at cd6dff8 / cd6dff82c752c3c43e5a62223a
 DB/API/Dashboard API consumer contract freeze gate: CLOSED / PASS WITH RECOMMENDATIONS; committed and pushed at f65a120 / f65a120545efcdb7ca39f20dbf703a804f82763f.
 API consumer contract freeze changed file: docs/contracts/dashboard_api_contract.md.
 API consumer contract freeze Reliability, Data Quality and Verification focused reviews: CLOSED / PASS WITH RECOMMENDATIONS, no blockers; recommendations are carry-forward only.
-Current live baseline after API consumer contract freeze: f65a120 / f65a120545efcdb7ca39f20dbf703a804f82763f. The API consumer contract freeze commit synchronized by this docs/status update is f65a120; the consumer planning doc commit synchronized by the prior docs/status update was f4de1c3; the implementation commit synchronized by the earlier DB-backed docs/status update is b30db5c; the schema HOLD repair commit was 2cfad5d; the harness repair commit synchronized by the prior docs/status update is 8a8004c.
+DB/API/Dashboard API implementation planning gate: CLOSED / PASS WITH RECOMMENDATIONS; committed and pushed at 2dc4b4d / 2dc4b4d7eb3a3e16a24acdfeeec2d980d7b58084.
+API implementation planning changed file: docs/reports/sprint3_api_consumer_implementation_plan.md.
+API implementation planning Reliability, Data Quality and Verification focused reviews: CLOSED / PASS WITH RECOMMENDATIONS, no blockers; recommendations are carry-forward only.
+DB/API/Dashboard accepted station events API implementation: CLOSED / PASS WITH RECOMMENDATIONS; committed and pushed at 97dc4d5 / 97dc4d520ef8edc9b7620e5ce9e8a61d0e1aee7f.
+API implementation changed files: api/app/routes/accepted_station_events.py and api/tests/test_accepted_station_events_api.py.
+API implementation Reliability, Data Quality and Verification focused reviews: CLOSED / PASS WITH RECOMMENDATIONS, no blockers; recommendations are carry-forward only.
+Focused non-DB validation for the implementation: PYTHONPATH=api .venv/bin/python -m pytest api/tests/test_accepted_station_events_api.py -q -> 53 passed; PYTHONPATH=api .venv/bin/python -m compileall api/app -> PASS; git diff --check -- api/app/routes/accepted_station_events.py api/tests/test_accepted_station_events_api.py -> PASS.
+Current live baseline after accepted station events API implementation: 97dc4d5 / 97dc4d520ef8edc9b7620e5ce9e8a61d0e1aee7f. The API implementation commit synchronized by this docs/status update is 97dc4d5; the API implementation planning doc commit was 2dc4b4d; the API consumer contract freeze commit was f65a120; the consumer planning doc commit was f4de1c3; the DB-backed harness repair commit was 8a8004c.
 Only production fact source for DB/API/Dashboard consumers: production_accepted_station_event_fact.
 raw_plc_sample, cycle_event, station_event, production_unit, quality_event, production_snapshot and production_events must not be described as equivalent production fact sources, fallback sources, legacy compatibility sources or join-derived field fillers.
 Response DTO fields must come field-by-field from production_accepted_station_event_fact row fields; fallback is forbidden.
@@ -696,7 +720,7 @@ raw_payload/raw_hex is evidence, not a production fact.
 Decoded/source normalized payloads remain candidates until accepted.
 Non-accepted dispositions do not write defect detail; NOK/detail visibility must bind to accepted upstream business evidence.
 Preserve exact wording: no ACK/read_done mutation for the current non-accepted payload.
-Next eligible gate: API implementation planning gate or Dashboard/API implementation planning gate as a separate Level 2 branch after explicit PM authorization. DB/API/Dashboard consumer planning and API consumer contract freeze are closed. API implementation, Dashboard implementation, optional debug/review diagnostics view, future DB-backed reruns, actual timeout failure induction, worker/runtime DB-backed gates for unique-violation race, commit-before-ACK, non-accepted DB-backed zero-row/no ACK/read_done mutation, post-conflict re-read semantics and DB rollback remain future authorized work. Deploy/tag/rollback/real PLC pilot require separate PM authorization.
+Next eligible gate: DB-backed API validation planning gate or Dashboard/API implementation planning gate as a separate Level 2 branch after explicit PM authorization. DB/API/Dashboard consumer planning, API consumer contract freeze, API implementation planning and accepted station events API implementation are closed. Dashboard implementation, optional debug/review diagnostics view, future DB-backed reruns, actual timeout failure induction, worker/runtime DB-backed gates for unique-violation race, commit-before-ACK, non-accepted DB-backed zero-row/no ACK/read_done mutation, post-conflict re-read semantics and DB rollback remain future authorized work. Deploy/tag/rollback/real PLC pilot require separate PM authorization.
 Slice B inserted the adapter gate after payload/cycle/counter guards and counter reset fail-safe, before existing storage.persist_cycle().
 Slice B accepted-only path continues to existing storage.persist_cycle() plus existing read_done/ACK behavior.
 Slice B non-accepted decisions do not persist, do not project, do not write defect detail, and do not ACK.
