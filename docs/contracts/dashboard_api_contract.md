@@ -1,7 +1,7 @@
 # Dashboard API Contract
 
-更新时间：2026-07-03
-状态：Phase-2 公共 API 合同，尚未实施
+更新时间：2026-07-05
+状态：Phase-2 公共 API 合同；API consumer contract freeze planning
 消费者：Next.js Dashboard、报告导出、受控第三方客户端
 
 ## 1. 原则
@@ -97,15 +97,17 @@
 
 ## 5. Production Accepted Fact Read API
 
-本节冻结 future API contract，不声明当前 implementation 已完成。当前
-FastAPI/API、Dashboard/frontend、DB read path、migration、Collector、V-PLC、
-Docker/deploy 均未因此获得实施授权。
+本节冻结 API consumer contract，作为后续 Reliability、Data Quality 和
+Verification review 的合同基础。它不声明新的 implementation 已完成，也不授权
+FastAPI/API implementation、Dashboard/frontend implementation、tests、DB
+execution、migration/schema、Collector/runtime/storage.py、V-PLC、Docker/deploy、
+stage、commit、push、tag、rollback 或 real PLC pilot。
 
 ### `GET /api/v2/production/accepted-station-events`
 
-用途：返回 accepted station-event facts / production accepted fact list/read。
-该 endpoint 不是 Dashboard summary、Quality summary、Pareto input 或 legacy
-trace/event 等价接口。
+用途：返回 accepted station-event business facts / production accepted fact
+list/read。该 endpoint 不是 Dashboard summary、Quality summary、Pareto input、
+debug/review diagnostics view 或 legacy trace/event 等价接口。
 
 必须保留的 production-fact visibility boundary：
 
@@ -125,14 +127,14 @@ NOK/detail visibility must bind to accepted upstream business evidence.
 Preserve exact wording: no ACK/read_done mutation for the current non-accepted payload.
 ```
 
-#### Source table
+#### Source boundary
 
-唯一 production fact source：
+唯一 consumer-facing production fact source：
 
 - `production_accepted_station_event_fact`
 
-禁止把以下表作为等价 production fact source、fallback source、join-derived
-replacement 或 legacy compatibility source：
+禁止把以下表或 surface 作为 equivalent production fact source、fallback source、
+legacy compatibility source 或 join-derived field filler：
 
 - `raw_plc_sample`
 - `cycle_event`
@@ -142,32 +144,41 @@ replacement 或 legacy compatibility source：
 - `production_snapshot`
 - `production_events`
 
+API consumers must not join diagnostic/raw/candidate tables to synthesize
+`production_result`, NOK/detail, Quality/Pareto or Dashboard facts. Missing
+accepted fact fields must remain missing, unknown or error according to the
+response/error contract; they must not be filled from legacy/current/raw or
+diagnostic sources.
+
 #### Response DTO allowlist
 
-`data.items[]` 只允许返回以下字段：
+`data.items[]` 只允许返回下表字段。每个字段必须直接绑定到
+`production_accepted_station_event_fact` row field，fallback 均为 forbidden。
 
-- `line_id`
-- `plc_id`
-- `station_id`
-- `station_type`
-- `profile_id`
-- `config_hash`
-- `config_version`
-- `event_type`
-- `production_result`
-- `unit_id`
-- `dmc`
-- `cycle_counter`
-- `source_event_id`
-- `event_ts`
-- `accepted_at`
-- `fact_key`
-- `content_fingerprint`
-- `nok_code`
-- `nok_origin`
-- `nok_detail_code`
-- `nok_detail_source_event_id`
-- `nok_detail_evidence_fact_key`
+| Field | Source | Consumer meaning | Fallback |
+| --- | --- | --- | --- |
+| `line_id` | `production_accepted_station_event_fact.line_id` | line scope | forbidden |
+| `plc_id` | `production_accepted_station_event_fact.plc_id` | PLC scope | forbidden |
+| `station_id` | `production_accepted_station_event_fact.station_id` | station scope | forbidden |
+| `station_type` | `production_accepted_station_event_fact.station_type` | station class | forbidden |
+| `profile_id` | `production_accepted_station_event_fact.profile_id` | profile scope | forbidden |
+| `config_hash` | `production_accepted_station_event_fact.config_hash` | historical config authority | forbidden |
+| `config_version` | `production_accepted_station_event_fact.config_version` | config lineage label | forbidden |
+| `event_type` | `production_accepted_station_event_fact.event_type` | accepted station-event kind | forbidden |
+| `production_result` | `production_accepted_station_event_fact.production_result` | accepted result for `station_result` only | forbidden |
+| `unit_id` | `production_accepted_station_event_fact.unit_id` | unit trace key when present on accepted fact row | forbidden |
+| `dmc` | `production_accepted_station_event_fact.dmc` | DMC trace key when present on accepted fact row | forbidden |
+| `cycle_counter` | `production_accepted_station_event_fact.cycle_counter` | source cycle counter | forbidden |
+| `source_event_id` | `production_accepted_station_event_fact.source_event_id` | stable source event identity | forbidden |
+| `event_ts` | `production_accepted_station_event_fact.event_ts` | source event time | forbidden |
+| `accepted_at` | `production_accepted_station_event_fact.accepted_at` | accepted fact timestamp only; not collector freshness, ACK time, station freshness or read_done time | forbidden |
+| `fact_key` | `production_accepted_station_event_fact.fact_key` | immutable production fact identity/reference | forbidden |
+| `content_fingerprint` | `production_accepted_station_event_fact.content_fingerprint` | immutable content identity/reference | forbidden |
+| `nok_code` | `production_accepted_station_event_fact.nok_code` | accepted NOK code only | forbidden |
+| `nok_origin` | `production_accepted_station_event_fact.nok_origin` | accepted NOK origin only | forbidden |
+| `nok_detail_code` | `production_accepted_station_event_fact.nok_detail_code` | accepted detail code only | forbidden |
+| `nok_detail_source_event_id` | `production_accepted_station_event_fact.nok_detail_source_event_id` | detail source evidence identity | forbidden |
+| `nok_detail_evidence_fact_key` | `production_accepted_station_event_fact.nok_detail_evidence_fact_key` | accepted upstream evidence fact reference | forbidden |
 
 示例 envelope：
 
@@ -181,15 +192,15 @@ replacement 或 legacy compatibility source：
       "station_type": "ASSEMBLY",
       "profile_id": "normal",
       "config_hash": "sha256:...",
-      "config_version": "2026.07.03.1",
+      "config_version": "2026.07.05.1",
       "event_type": "station_result",
       "production_result": "ok",
       "unit_id": "U-001",
       "dmc": "DMC-001",
       "cycle_counter": 301,
       "source_event_id": "PLC_001:WS01:301",
-      "event_ts": "2026-07-03T10:00:00Z",
-      "accepted_at": "2026-07-03T10:00:01Z",
+      "event_ts": "2026-07-05T10:00:00Z",
+      "accepted_at": "2026-07-05T10:00:01Z",
       "fact_key": "sha256:...",
       "content_fingerprint": "sha256:...",
       "nok_code": null,
@@ -206,66 +217,126 @@ replacement 或 legacy compatibility source：
 }
 ```
 
-#### Forbidden fields and surfaces
+#### Forbidden DTO / source leakage
 
-Response DTO、cursor payload、meta/debug payload 和 implementation helper output
-均不得暴露或派生以下字段/语义：
+Response DTO、cursor payload、meta/debug payload、Dashboard production consumer
+payload 和 implementation helper output 均不得暴露、派生或使用以下字段/语义：
 
-- `raw_payload`
-- `raw_hex`
-- adapter disposition/reason/phase
-- candidate context
-- normalized candidate payload
-- raw/normalized comparison context
-- decoder errors
-- diagnostic/review/audit payloads
-- `quality_pareto_input`
-- `dashboard_state`
-- legacy payload
-- `raw_sample_id`
-- `ack_status`
-- `read_done`
-- `collector_state`
-- ambiguous result / defect / quality / pareto keys
+- raw payload, `raw_payload`, `raw_hex`, `raw_sample_id` or raw bytes;
+- decoded/source normalized candidate payloads before accepted decision;
+- adapter disposition, reason, phase or candidate context;
+- raw/normalized comparison context;
+- decoder errors;
+- diagnostic/review/audit payloads;
+- `ack_status`, `read_done`, `collector_state`;
+- `quality_pareto_input`, `dashboard_state`;
+- ambiguous production-looking keys: bare `result`, `defect`, `quality`,
+  `pareto`;
+- any legacy/current table join that fills missing accepted fact fields;
+- any synthetic field that makes non-accepted dispositions visible as
+  production facts.
 
-#### Query requirements
+#### Query / filter / sort / page contract
 
-- `start_time` / `end_time` 必须有界，且必须通过严格 ISO-8601 解析。
-- 请求必须包含 `line_id`，或由服务端注入明确的单线默认 scope；不得隐式跨线读取。
-- `limit` 默认 50，最大 500；无效、负数、非整数或超过上限必须 fail closed。
-- `cursor` 必须严格解析、签名/结构校验或等价防篡改校验；无效 cursor 必须 fail closed。
-- 分页顺序必须稳定，使用 `event_ts` / `accepted_at` 加稳定 identity，例如 `fact_key`。
-- 无效时间边界、时间窗、scope、cursor 或 limit 必须返回错误，不得 fallback 到宽查询。
-- `work_order` / `product` 过滤和响应字段暂不属于本合同，必须等待后续 schema/contract gate。
+- Required scope: request must include `line_id`, or the service must inject an
+  explicit single-line default. Implicit cross-line reads are forbidden.
+- Required time range: `start_time` and `end_time` must be present, bounded and
+  parsed as strict timezone-aware ISO-8601.
+- Maximum time window: 31 days unless a later contract changes the limit.
+- Pagination: `limit` default 50, max 500.
+- Invalid `limit`, invalid filter, invalid time, missing/unbounded window or
+  over-large window must fail closed with 4xx, not fallback to a wider query.
+- Cursor must be tamper-resistant, schema/version checked and bound to line,
+  time range, accepted-fact filters, limit, direction and ordering tuple.
+- Invalid, mismatched, stale-version or cross-scope cursor must fail closed with
+  4xx.
+- Stable order: `event_ts ASC`, `accepted_at ASC`, `fact_key ASC`.
+- Eligible future filters must be sourced only from accepted fact table fields:
+  `station_id`, `station_type`, `event_type`, `production_result`,
+  `config_hash`, `unit_id`, `dmc`, `cycle_counter`, `source_event_id`,
+  `fact_key`, `content_fingerprint`, `nok_code`, `nok_origin`,
+  `nok_detail_code`, `nok_detail_source_event_id` and
+  `nok_detail_evidence_fact_key`.
+- Excluded until a later schema/contract authority gate: `work_order`,
+  `product`, raw evidence filters, diagnostic reason filters,
+  candidate-state filters and legacy/current table fields.
 
-#### Reliability carry-forward
+#### Reliability contract requirements
 
-- endpoint implementation 必须使用 read-only transaction。
-- 建议配置 `statement_timeout` 和 idle timeout。
-- read path 不得执行 `INSERT` / `UPDATE` / `DELETE`。
-- read path 不得发生 ACK/read_done mutation。
-- read path 不得产生 Collector/PLC/runtime side effect。
-- `fact_key`、`content_fingerprint`、`source_event_id` 只能作为 reference/identity，
-  不是 mutation authority。
+Future implementation must satisfy these requirements before review:
 
-#### Data Quality carry-forward
+- use read-only DB transaction or equivalent read-only query semantics;
+- set and document statement timeout plus idle/read timeout expectation;
+- protect bounded queries and large-query behavior through required scope, time
+  range, limit, cursor binding and max window checks;
+- define DB unavailable, missing table, missing schema or missing authority
+  behavior as explicit error, empty or unknown response;
+- explicitly prohibit fallback to legacy/raw/current/diagnostic sources for DB
+  unavailable, missing table, missing schema or missing authority cases;
+- never execute `INSERT`, `UPDATE`, `DELETE` or write-side helper calls;
+- perform no ACK/read_done mutation;
+- perform no Collector, PLC, V-PLC, runtime, storage or Dashboard side effect;
+- treat `fact_key`, `content_fingerprint` and `source_event_id` as
+  reference/identity only, not mutation authority.
 
-- 所有 response fields 必须来自 `production_accepted_station_event_fact`。
-- `accepted_at` 只表示 accepted fact timestamp，不表示 dashboard freshness、
-  ACK time 或 collector state。
-- NOK/detail fields 必须 bind to accepted upstream business evidence。
-- adapter reason code、raw mismatch、decoder error 或 `quality_event` 不得派生
-  NOK/detail。
+#### Dashboard consumer field matrix
 
-#### Future verification matrix
+Dashboard production surfaces must consume accepted fact API fields only unless
+a future debug/review gate explicitly authorizes a separate diagnostic surface.
 
-- positive DTO allowlist assertions。
-- negative forbidden field assertions。
-- source non-equivalence / no legacy fallback assertions。
-- bounded query and cursor validation。
-- NOK/detail evidence response assertions。
-- read-only / no ACK/read_done side-effect assertions。
-- forbidden surface guard for migration/storage/collector/config/dashboard/V-PLC/docker/deploy。
+| Page / component | Allowed accepted fact fields | Forbidden fields/sources | Empty/error/unknown state |
+| --- | --- | --- | --- |
+| Line overview | aggregated `event_type`, `production_result`, `event_ts`, `accepted_at`, `line_id`, `plc_id`, `station_id`, `station_type`, `profile_id`, `config_hash`, counts from accepted facts | raw/diagnostic/candidate fields, legacy/current summaries, `quality_pareto_input`, `dashboard_state`, OEE denominator synthesis | OEE, schedule or runtime denominator gaps must display incomplete/unknown/null with reason; must not fabricate missing denominator values or fill zero as truth |
+| Station status | `station_id`, `station_type`, latest accepted `event_ts`, latest accepted `production_result`, `config_hash`, `config_version`, `profile_id`, `accepted_at` as accepted fact timestamp | `accepted_at` as collector freshness/ACK/station freshness/read_done time, `collector_state`, `ack_status`, `read_done`, raw/debug fields | No accepted fact means unknown/no accepted event; DB/schema/source errors show error or unknown, not stale collector health |
+| Accepted result trend | `event_ts`, `accepted_at`, `station_id`, `station_type`, `profile_id`, `config_hash`, `event_type`, `production_result`, accepted fact counts | fallback to `quality_event`, `production_snapshot`, `production_events`, `station_event`, raw/candidate/diagnostic sources | Empty bucket means no accepted facts in bounded scope; incomplete data is partial/unknown, not fabricated trend |
+| NOK/detail visibility | `production_result`, `nok_code`, `nok_origin`, `nok_detail_code`, `nok_detail_source_event_id`, `nok_detail_evidence_fact_key`, `fact_key`, `source_event_id` | adapter reason code, raw mismatch, decoder error, non-accepted disposition, `quality_pareto_input`, bare `defect`/`quality`/`pareto` keys | Missing NOK/detail accepted evidence means absent/unknown detail; must not synthesize detail from diagnostics |
+| Traceability drilldown | `unit_id`, `dmc`, `cycle_counter`, `source_event_id`, `event_ts`, `accepted_at`, `fact_key`, `content_fingerprint`, line/PLC/station/profile/config fields | raw bytes, raw hex, candidate payload, diagnostic context, legacy event filler, `work_order`, `product` until later authority gate | Missing unit/DMC fields remain missing; trace gaps show unknown/partial with reason, not legacy-fill |
+
+`accepted_at` must not be displayed as collector freshness, ACK time, station
+freshness or read_done time on any Dashboard component.
+
+#### Optional debug/review diagnostics view
+
+Debug/review diagnostics view is explicitly deferred. It must be:
+
+- a separate Level 2 gate;
+- separate from production Dashboard surfaces;
+- scoped to diagnostic/audit/review namespaces;
+- reviewed with leakage-negative assertions before implementation;
+- unable to become OEE, traceability main fact, NOK/detail authority,
+  Quality/Pareto input, Dashboard production state or ACK/read_done authority.
+
+This contract freeze does not authorize debug/review diagnostics
+implementation.
+
+#### Future review checklist
+
+Reliability review must cover:
+
+- read-only transaction or read-only query semantics;
+- statement timeout and idle/read timeout;
+- bounded queries and large-query protection;
+- no ACK/read_done mutation and no Collector/PLC/V-PLC/runtime side effect;
+- DB unavailable, missing table, missing schema and missing authority behavior.
+
+Data Quality review must cover:
+
+- field authority for every DTO field;
+- NOK/detail evidence binding to accepted upstream business evidence;
+- forbidden fallback from legacy/raw/current/diagnostic sources;
+- diagnostic/raw/candidate leakage into production facts, OEE, traceability,
+  Quality/Pareto and Dashboard surfaces.
+
+Verification review must cover:
+
+- DTO allowlist and forbidden field/source negative matrix;
+- invalid filter, invalid cursor, invalid limit, invalid time and unbounded
+  window cases;
+- stable ordering and cursor binding to line/time/filter/limit/direction/order;
+- Dashboard component field matrix and empty/error/unknown state matrix;
+- no side-effect and excluded-surface audit for API implementation, Dashboard,
+  Collector/runtime/storage.py, migration/schema, config, Docker/deploy, DB
+  execution, stage, commit and push.
 
 ## 6. Dashboard Summary API
 
