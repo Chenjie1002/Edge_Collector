@@ -904,10 +904,12 @@ def test_live_api_rolls_back_on_controlled_query_failure_only(
 ) -> None:
     response = request_events(error_client)
 
-    assert response.status_code == 500
+    assert response.status_code == 503
+    assert response.json() == {"detail": "accepted fact source unavailable"}
     statements = failing_recorder.joined_sql.upper()
     assert "BEGIN READ ONLY" in statements
     assert "ROLLBACK" in statements
     assert "COMMIT" not in statements
     assert not failing_recorder.write_seen
     assert not failing_recorder.ack_read_done_seen
+    assert not failing_recorder.runtime_side_effect_seen
