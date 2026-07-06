@@ -1,6 +1,6 @@
 # Sprint 3 Collector Ingestion Adapter Gate Status
 
-Updated: 2026-07-05
+Updated: 2026-07-06
 
 Purpose: compact current gate/status source for Codex Threads working on Sprint 3 Collector Ingestion Adapter.
 
@@ -15,8 +15,8 @@ Read this file together with:
 
 ```text
 live HEAD / origin/main at authoring time:
-a0042fb8f21b38aa4a74e35b2c0cddbce80a7994
-a0042fb Add PM handoff after DB-backed repair
+4fcdd6623247aaf9d3d3df23fd7cadf49f5d662a
+4fcdd66 Plan Dashboard API implementation
 
 Branch:
 main
@@ -68,6 +68,8 @@ DB-backed API validation planning committed and pushed at 78ce29b
 DB-backed API validation focused repair committed and pushed at 1d040a6
 PM handoff after DB-backed repair committed and pushed at a0042fb
 DB-backed API validation execution rerun with SSH tunnel DSNs passed with focused pytest 88 passed in 12.94s
+DB-backed API validation post-execution docs/status sync committed and pushed at ba02249
+Dashboard/API implementation planning reviewed, committed and pushed at 4fcdd66
 
 Deploy / rollback drill:
 not performed
@@ -131,6 +133,11 @@ PM handoff after DB-backed repair is tracked in commit `a0042fb`.
 DB-backed API validation execution rerun with SSH tunnel DSNs is CLOSED / PASS WITH RECOMMENDATIONS with focused pytest `88 passed in 12.94s`; exact files were `api/tests/test_accepted_station_events_api.py` and `api/tests/test_accepted_station_events_api_db_backed.py`.
 The rerun used masked loopback DSN facts: target host `localhost`, target port `5433`, target database `edge_mes_test_api_read`, maintenance database `postgres`, SSH tunnel Mac `localhost:5433` -> Pi `localhost:5432`.
 Terse `-q` output did not print an explicit cleanup line; no pytest teardown/cleanup error was reported.
+DB-backed API validation post-execution docs/status sync is tracked in commit `ba02249`.
+Dashboard/API implementation planning gate is CLOSED / PASS WITH RECOMMENDATIONS with no blockers, and the planning report is tracked in commit `4fcdd66`.
+Dashboard/API implementation planning Architecture / Integration, Reliability, Data Quality and Verification focused planning reviews are CLOSED / PASS WITH RECOMMENDATIONS with no blockers; recommendations are carry-forward items.
+Dashboard/API implementation planning changed file: `docs/reports/sprint3_dashboard_api_implementation_plan.md`.
+Dashboard/API implementation planning carry-forward recommendations: convert category-level future Dashboard implementation allowlist into exact file paths before implementation authorization; add invalid / expired / cross-scope cursor UI negative tests; keep page-level summary labelled as current page only; ensure stale prior data cannot render as fresh production truth; keep future implementation Dashboard-only/read-only unless PM opens a separate API/contract gate.
 
 Sprint 3 implementation files committed:
 
@@ -570,6 +577,12 @@ behavior, Docker/deploy/tag/rollback or ACK/read_done ownership.
 | DB-backed API validation focused repair exact-path commit/push | PASS | commit 1d040a6 |
 | PM handoff after DB-backed repair | PASS | commit a0042fb |
 | DB-backed API validation execution rerun with SSH tunnel DSNs | PASS WITH RECOMMENDATIONS | focused pytest 88 passed in 12.94s; no explicit cleanup line in terse -q output; no teardown/cleanup error reported |
+| DB-backed API validation post-execution docs/status sync | PASS | commit ba02249 |
+| Dashboard/API implementation planning gate | PASS WITH RECOMMENDATIONS | none |
+| Dashboard/API implementation planning Reliability focused review | PASS WITH RECOMMENDATIONS | none |
+| Dashboard/API implementation planning Data Quality focused review | PASS WITH RECOMMENDATIONS | none |
+| Dashboard/API implementation planning Verification focused review / exact future implementation allowlist audit | PASS WITH RECOMMENDATIONS | none |
+| Dashboard/API implementation planning exact-path commit/push | PASS | commit 4fcdd66 |
 | DB/API/Dashboard consumer planning gate | PASS WITH RECOMMENDATIONS | none |
 | DB/API/Dashboard consumer planning Reliability focused review | PASS WITH RECOMMENDATIONS | none |
 | DB/API/Dashboard consumer planning Data Quality focused review | PASS WITH RECOMMENDATIONS | none |
@@ -689,6 +702,11 @@ PM handoff after DB-backed repair: PASS, committed/pushed at a0042fb / a0042fb8f
 DB-backed API validation execution rerun with SSH tunnel DSNs: CLOSED / PASS WITH RECOMMENDATIONS, focused pytest 88 passed in 12.94s using only `api/tests/test_accepted_station_events_api.py` and `api/tests/test_accepted_station_events_api_db_backed.py`.
 DB-backed API validation rerun masked DSN facts: target host localhost, target port 5433, target database edge_mes_test_api_read, maintenance database postgres, SSH tunnel Mac localhost:5433 -> Pi localhost:5432.
 DB-backed API validation rerun cleanup evidence: terse -q output did not print an explicit cleanup line; no pytest teardown/cleanup error was reported.
+DB-backed API validation post-execution docs/status sync: PASS, committed/pushed at ba02249 / ba0224972f18e097307310039c27f29259b3a0cc.
+Dashboard/API implementation planning gate: CLOSED / PASS WITH RECOMMENDATIONS, committed/pushed at 4fcdd66 / 4fcdd6623247aaf9d3d3df23fd7cadf49f5d662a.
+Dashboard/API implementation planning changed file: docs/reports/sprint3_dashboard_api_implementation_plan.md.
+Dashboard/API implementation planning Architecture / Integration, Reliability, Data Quality and Verification focused planning reviews: CLOSED / PASS WITH RECOMMENDATIONS with no blockers.
+Dashboard/API implementation planning carry-forward recommendations: convert category-level future Dashboard implementation allowlist into exact file paths before implementation authorization; add invalid / expired / cross-scope cursor UI negative tests; keep page-level summary labelled as current page only; ensure stale prior data cannot render as fresh production truth; keep future implementation Dashboard-only/read-only unless PM opens a separate API/contract gate.
 PM handoff after DB-backed validation harness repair: PASS at 5543c87 / 5543c877e85c2d77c0a7f67bec1d36d2a206ca76.
 DB/API/Dashboard consumer planning gate: CLOSED / PASS WITH RECOMMENDATIONS; committed and pushed at f4de1c3 / f4de1c345f503c9556bceece99ef22be091c025e.
 DB/API/Dashboard consumer planning Reliability, Data Quality and Verification focused reviews: CLOSED / PASS WITH RECOMMENDATIONS, no blockers; recommendations are carry-forward only.
@@ -744,7 +762,7 @@ raw_payload/raw_hex is evidence, not a production fact.
 Decoded/source normalized payloads remain candidates until accepted.
 Non-accepted dispositions do not write defect detail; NOK/detail visibility must bind to accepted upstream business evidence.
 Preserve exact wording: no ACK/read_done mutation for the current non-accepted payload.
-Next eligible gate: post-execution docs/status exact-path commit/push for this sync, or Dashboard/API implementation planning gate as a separate Level 2 branch after explicit PM authorization. DB/API/Dashboard consumer planning, API consumer contract freeze, API implementation planning, accepted station events API implementation, DB-backed API validation planning/repair and DB-backed API validation execution rerun are closed. Dashboard implementation, optional debug/review diagnostics view, future DB-backed reruns, actual timeout failure induction, worker/runtime DB-backed gates for unique-violation race, commit-before-ACK, non-accepted DB-backed zero-row/no ACK/read_done mutation, post-conflict re-read semantics and DB rollback remain future authorized work. Deploy/tag/rollback/real PLC pilot require separate PM authorization.
+Next eligible gate: Dashboard implementation exact-file allowlist discovery / implementation preparation as a separate PM-authorized planning branch, or PM handoff after this docs/status sync. DB/API/Dashboard consumer planning, API consumer contract freeze, API implementation planning, accepted station events API implementation, DB-backed API validation planning/repair, DB-backed API validation execution rerun and Dashboard/API implementation planning are closed. Dashboard implementation, optional debug/review diagnostics view, future DB-backed reruns, actual timeout failure induction, worker/runtime DB-backed gates for unique-violation race, commit-before-ACK, non-accepted DB-backed zero-row/no ACK/read_done mutation, post-conflict re-read semantics and DB rollback remain future authorized work. Deploy/tag/rollback/real PLC pilot require separate PM authorization.
 Slice B inserted the adapter gate after payload/cycle/counter guards and counter reset fail-safe, before existing storage.persist_cycle().
 Slice B accepted-only path continues to existing storage.persist_cycle() plus existing read_done/ACK behavior.
 Slice B non-accepted decisions do not persist, do not project, do not write defect detail, and do not ACK.

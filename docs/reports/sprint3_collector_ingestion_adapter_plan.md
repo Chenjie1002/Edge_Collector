@@ -38,16 +38,20 @@ Postgres API Read Validation tests-only implementation remains CLOSED / PASS
 WITH RECOMMENDATIONS and committed/pushed at `b30db5c`; the prior DB-backed API
 read validation post-push docs/status sync is committed/pushed at `64d0e12`.
 DB/API/Dashboard API read path implementation remains CLOSED / PASS WITH
-RECOMMENDATIONS and committed/pushed at `763b248`. Dashboard implementation, new
-migration, V-PLC/PLC pilot/deploy/tag/rollback, future DB-backed reruns, Docker /
-docker compose lifecycle actions, actual timeout failure proof, worker/runtime
-DB-backed gates and broad tests remain not authorized.
+RECOMMENDATIONS and committed/pushed at `763b248`. Dashboard/API implementation
+planning is CLOSED / PASS WITH RECOMMENDATIONS and committed/pushed at `4fcdd66`;
+Architecture / Integration, Reliability, Data Quality and Verification focused
+planning reviews are CLOSED / PASS WITH RECOMMENDATIONS with no blockers.
+Dashboard implementation, new migration, V-PLC/PLC pilot/deploy/tag/rollback,
+future DB-backed reruns, Docker / docker compose lifecycle actions, actual
+timeout failure proof, worker/runtime DB-backed gates and broad tests remain not
+authorized.
 
-Current PM intake live baseline for DB/API/Dashboard accepted station events API implementation post-push docs/status sync:
+Current PM intake live baseline for Dashboard/API implementation planning post-push docs/status sync:
 
 - Branch: `main`.
-- HEAD / `origin/main`: `a0042fb8f21b38aa4a74e35b2c0cddbce80a7994`.
-- Latest commit: `a0042fb Add PM handoff after DB-backed repair`.
+- HEAD / `origin/main`: `4fcdd6623247aaf9d3d3df23fd7cadf49f5d662a`.
+- Latest commit: `4fcdd66 Plan Dashboard API implementation`.
 - Sprint 3 Slice J downstream planning-only gate: CLOSED / PASS WITH
   RECOMMENDATIONS.
 - Sprint 3 Slice J tests-only hardening: CLOSED / PASS WITH RECOMMENDATIONS.
@@ -125,6 +129,21 @@ Current PM intake live baseline for DB/API/Dashboard accepted station events API
   database `postgres`, SSH tunnel Mac `localhost:5433` -> Pi `localhost:5432`.
 - DB-backed API validation rerun cleanup: terse `-q` output did not print an
   explicit cleanup line; no pytest teardown/cleanup error was reported.
+- DB-backed API validation post-execution docs/status sync: PASS;
+  committed/pushed at `ba02249`.
+- Dashboard/API implementation planning gate: CLOSED / PASS WITH
+  RECOMMENDATIONS; committed/pushed at `4fcdd66`; changed file
+  `docs/reports/sprint3_dashboard_api_implementation_plan.md`.
+- Dashboard/API implementation planning Reliability / Data Quality /
+  Verification focused reviews: CLOSED / PASS WITH RECOMMENDATIONS, no blocker;
+  recommendations are carry-forward only.
+- Dashboard/API implementation planning carry-forward recommendations: convert
+  category-level future Dashboard implementation allowlist into exact file paths
+  before implementation authorization; add invalid / expired / cross-scope cursor
+  UI negative tests; keep page-level summary labelled as current page only;
+  ensure stale prior data cannot render as fresh production truth; keep future
+  implementation Dashboard-only/read-only unless PM opens a separate
+  API/contract gate.
 - DB/API/Dashboard consumer planning gate: CLOSED / PASS WITH RECOMMENDATIONS,
   no blocker; planning doc committed/pushed at `f4de1c3`.
 - DB/API/Dashboard consumer planning Reliability / Data Quality / Verification
@@ -193,13 +212,13 @@ Current PM intake live baseline for DB/API/Dashboard accepted station events API
 - Optional debug/review diagnostics view must be a separate Level 2 gate and
   pass leakage-negative review before implementation.
 - API consumer contract freeze, API implementation planning, accepted station
-  events API implementation, DB-backed API validation planning/repair and
-  DB-backed API validation execution rerun are closed. The next eligible branch
-  is post-execution docs/status exact-path commit/push for this sync, or
-  Dashboard/API implementation planning gate after separate PM authorization.
-  Dashboard work remains Level 2 planning and cannot be auto-authorized as
-  DB-backed tests, DB execution, Dashboard implementation, Docker, stage, commit
-  or push.
+  events API implementation, DB-backed API validation planning/repair,
+  DB-backed API validation execution rerun and Dashboard/API implementation
+  planning are closed. The next eligible branch is Dashboard implementation
+  exact-file allowlist discovery / implementation preparation as a separate
+  PM-authorized planning branch, or PM handoff after this docs/status sync.
+  Dashboard work remains Level 2 and cannot be auto-authorized as DB-backed
+  tests, DB execution, Dashboard implementation, Docker, stage, commit or push.
 - Future DB-backed API validation planning must freeze exact DB opt-in scope,
   DSN/test DB safety, schema/migration verification, allowed tests, cleanup,
   `EDGE_MES_ENABLE_DB_BACKED_TESTS=1` usage and review gates before execution.
@@ -1285,6 +1304,11 @@ Remote live DB-backed API validation rerun after harness repair: 62 passed in 8.
 Remote live DB-backed API validation cleanup: test_db_cleanup_ok edge_mes_test_api_read.
 DB-backed API validation execution rerun after focused repair: 88 passed in 12.94s.
 DB-backed API validation rerun cleanup: no explicit cleanup line printed in terse `-q` output; no pytest teardown/cleanup error reported.
+DB-backed API validation post-execution docs/status sync: PASS at ba02249 / ba0224972f18e097307310039c27f29259b3a0cc.
+Dashboard/API implementation planning gate: CLOSED / PASS WITH RECOMMENDATIONS at 4fcdd66 / 4fcdd6623247aaf9d3d3df23fd7cadf49f5d662a.
+Dashboard/API implementation planning report changed file: docs/reports/sprint3_dashboard_api_implementation_plan.md.
+Dashboard/API implementation planning Architecture / Integration, Reliability, Data Quality and Verification focused planning reviews: CLOSED / PASS WITH RECOMMENDATIONS with no blockers.
+Dashboard/API implementation planning carry-forward recommendations: convert category-level future Dashboard implementation allowlist into exact file paths before implementation authorization; add invalid / expired / cross-scope cursor UI negative tests; keep page-level summary labelled as current page only; ensure stale prior data cannot render as fresh production truth; keep future implementation Dashboard-only/read-only unless PM opens a separate API/contract gate.
 Reliability implementation review: CLOSED / PASS WITH RECOMMENDATIONS, no blocker.
 Data Quality implementation review: CLOSED / PASS WITH RECOMMENDATIONS, no blocker.
 Verification implementation review / exact allowlist audit: CLOSED / PASS WITH RECOMMENDATIONS, no blocker.
@@ -1312,8 +1336,9 @@ DB/API/Dashboard consumer planning gate is CLOSED / PASS WITH RECOMMENDATIONS at
 DB/API/Dashboard API consumer contract freeze gate is CLOSED / PASS WITH RECOMMENDATIONS at f65a120; changed file: docs/contracts/dashboard_api_contract.md.
 DB/API/Dashboard API implementation planning gate is CLOSED / PASS WITH RECOMMENDATIONS at 2dc4b4d; changed file: docs/reports/sprint3_api_consumer_implementation_plan.md.
 DB/API/Dashboard accepted station events API implementation is CLOSED / PASS WITH RECOMMENDATIONS at 97dc4d5; changed files: api/app/routes/accepted_station_events.py and api/tests/test_accepted_station_events_api.py.
-API consumer contract freeze, API implementation planning and API implementation Reliability, Data Quality and Verification focused reviews are CLOSED / PASS WITH RECOMMENDATIONS with no blockers.
-The next eligible branch is post-execution docs/status exact-path commit/push for this sync, or Dashboard/API implementation planning gate as a separate Level 2 planning branch requiring explicit PM authorization.
+Dashboard/API implementation planning gate is CLOSED / PASS WITH RECOMMENDATIONS at 4fcdd66; changed file: docs/reports/sprint3_dashboard_api_implementation_plan.md.
+API consumer contract freeze, API implementation planning, API implementation, DB-backed API validation rerun and Dashboard/API implementation planning Reliability, Data Quality and Verification focused reviews are CLOSED / PASS WITH RECOMMENDATIONS with no blockers.
+The next eligible branch is Dashboard implementation exact-file allowlist discovery / implementation preparation as a separate Level 2 planning branch requiring explicit PM authorization, or PM handoff after this docs/status sync.
 Future DB-backed API validation rerun planning must freeze exact DB opt-in scope, DSN/test DB safety, schema/migration verification, allowed tests, cleanup and EDGE_MES_ENABLE_DB_BACKED_TESTS=1 usage before execution.
 Worker/runtime DB-backed gates for unique-violation race, commit-before-ACK, non-accepted DB-backed zero-row/no ACK/read_done mutation, post-conflict re-read semantics and DB rollback remain future authorized work.
 API read path source boundary remains only production_accepted_station_event_fact; raw_plc_sample, cycle_event, station_event, production_unit, quality_event, production_snapshot and production_events must not be described as equivalent production fact sources, fallback sources or join-derived field fillers.
@@ -1328,15 +1353,15 @@ Deploy/tag/rollback/real PLC pilot require separate PM authorization.
 ```
 
 Eligible for next PM gate: exact-path docs/status commit/push for this sync
-after PM explicitly authorizes staging, or DB-backed API validation planning gate /
-Dashboard/API implementation planning gate as a separate Level 2 PM-authorized
-planning branch. Future DB-backed reruns remain separate future PM-authorized
-gates. Actual timeout failure induction remains a separate future PM-authorized
-gate.
+after PM explicitly authorizes staging, then PM handoff; or Dashboard implementation
+exact-file allowlist discovery / implementation preparation as a separate Level 2
+PM-authorized planning branch. Future DB-backed reruns remain separate future
+PM-authorized gates. Actual timeout failure induction remains a separate future
+PM-authorized gate.
 
 Eligible for implementation without PM approval: no. PM approval is required
-before DB-backed API validation planning/execution, Dashboard/API implementation
-planning, Dashboard implementation, optional debug/review diagnostics view,
+before DB-backed API validation planning/execution, Dashboard implementation
+exact-file allowlist discovery, Dashboard implementation, optional debug/review diagnostics view,
 future DB-backed reruns, EDGE_MES_ENABLE_DB_BACKED_TESTS=1 outside an approved
 gate, Docker / docker compose lifecycle actions, tests beyond the authorized gate
 scope, new migration, V-PLC/PLC pilot, storage/API expansion, deploy, tag,
