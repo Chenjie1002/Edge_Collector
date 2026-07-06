@@ -15,8 +15,8 @@ Read this file together with:
 
 ```text
 live HEAD / origin/main at authoring time:
-97dc4d520ef8edc9b7620e5ce9e8a61d0e1aee7f
-97dc4d5 Harden accepted station events API contract
+a0042fb8f21b38aa4a74e35b2c0cddbce80a7994
+a0042fb Add PM handoff after DB-backed repair
 
 Branch:
 main
@@ -64,6 +64,10 @@ PM handoff after consumer planning committed and pushed at cd6dff8
 API consumer contract freeze reviewed, committed and pushed at f65a120
 API implementation planning reviewed, committed and pushed at 2dc4b4d
 Accepted station events API contract hardening implemented, reviewed, committed and pushed at 97dc4d5
+DB-backed API validation planning committed and pushed at 78ce29b
+DB-backed API validation focused repair committed and pushed at 1d040a6
+PM handoff after DB-backed repair committed and pushed at a0042fb
+DB-backed API validation execution rerun with SSH tunnel DSNs passed with focused pytest 88 passed in 12.94s
 
 Deploy / rollback drill:
 not performed
@@ -121,6 +125,12 @@ DB/API/Dashboard API implementation planning Reliability, Data Quality and Verif
 DB/API/Dashboard accepted station events API implementation is CLOSED / PASS WITH RECOMMENDATIONS with no blockers, and the implementation is tracked in commit `97dc4d5`.
 DB/API/Dashboard accepted station events API implementation Reliability, Data Quality and Verification focused reviews are CLOSED / PASS WITH RECOMMENDATIONS with no blockers; recommendations are carry-forward items.
 Accepted station events API implementation changed files: `api/app/routes/accepted_station_events.py` and `api/tests/test_accepted_station_events_api.py`.
+DB-backed API validation planning is tracked in commit `78ce29b`.
+DB-backed API validation focused repair is tracked in commit `1d040a6` after the first SSH-tunnel run returned HOLD at `assert 503 == 500`.
+PM handoff after DB-backed repair is tracked in commit `a0042fb`.
+DB-backed API validation execution rerun with SSH tunnel DSNs is CLOSED / PASS WITH RECOMMENDATIONS with focused pytest `88 passed in 12.94s`; exact files were `api/tests/test_accepted_station_events_api.py` and `api/tests/test_accepted_station_events_api_db_backed.py`.
+The rerun used masked loopback DSN facts: target host `localhost`, target port `5433`, target database `edge_mes_test_api_read`, maintenance database `postgres`, SSH tunnel Mac `localhost:5433` -> Pi `localhost:5432`.
+Terse `-q` output did not print an explicit cleanup line; no pytest teardown/cleanup error was reported.
 
 Sprint 3 implementation files committed:
 
@@ -555,6 +565,11 @@ behavior, Docker/deploy/tag/rollback or ACK/read_done ownership.
 | DB-backed API validation harness repair exact-path commit/push | PASS | commit 8a8004c |
 | Remote existing PostgreSQL DB-backed API validation rerun with repaired RecordingConnection proxy | PASS | focused pytest 62 passed in 8.68s; test_db_cleanup_ok edge_mes_test_api_read |
 | PM handoff after DB-backed validation harness repair | PASS | commit 5543c87 |
+| DB-backed API validation planning exact-path commit/push | PASS | commit 78ce29b |
+| DB-backed API validation first SSH-tunnel execution | HOLD | focused pytest 1 failed / 87 passed; controlled failure assertion expected 500 but route returned 503 |
+| DB-backed API validation focused repair exact-path commit/push | PASS | commit 1d040a6 |
+| PM handoff after DB-backed repair | PASS | commit a0042fb |
+| DB-backed API validation execution rerun with SSH tunnel DSNs | PASS WITH RECOMMENDATIONS | focused pytest 88 passed in 12.94s; no explicit cleanup line in terse -q output; no teardown/cleanup error reported |
 | DB/API/Dashboard consumer planning gate | PASS WITH RECOMMENDATIONS | none |
 | DB/API/Dashboard consumer planning Reliability focused review | PASS WITH RECOMMENDATIONS | none |
 | DB/API/Dashboard consumer planning Data Quality focused review | PASS WITH RECOMMENDATIONS | none |
@@ -667,6 +682,13 @@ HOLD repair exact-path commit/push: PASS at 2cfad5d / 2cfad5d9d8d91ed824a59b1b6e
 PM handoff after API DB-backed schema verification: PASS at 99dfc26 / 99dfc265983d757de7c23f6a677cabbc05bc4f5a.
 DB-backed API validation harness repair: PASS at 8a8004c / 8a8004c53f5bca871610807ae1ec99650e759127.
 Remote existing PostgreSQL DB-backed API validation rerun with repaired RecordingConnection proxy: PASS, focused pytest 62 passed in 8.68s, test DB cleanup test_db_cleanup_ok edge_mes_test_api_read.
+DB-backed API validation planning: PASS, committed/pushed at 78ce29b / 78ce29bd4229912a9164f9e35c911f0037e14a83.
+DB-backed API validation first SSH-tunnel execution: HOLD, focused pytest 1 failed / 87 passed due to controlled failure assertion `assert 503 == 500`.
+DB-backed API validation focused repair: PASS, committed/pushed at 1d040a6 / 1d040a6d90085adee7e95914d9696c0ed6834c44; the repair aligned the expected failure status/detail to 503 `{"detail": "accepted fact source unavailable"}` and preserved rollback/no-side-effect assertions.
+PM handoff after DB-backed repair: PASS, committed/pushed at a0042fb / a0042fb8f21b38aa4a74e35b2c0cddbce80a7994.
+DB-backed API validation execution rerun with SSH tunnel DSNs: CLOSED / PASS WITH RECOMMENDATIONS, focused pytest 88 passed in 12.94s using only `api/tests/test_accepted_station_events_api.py` and `api/tests/test_accepted_station_events_api_db_backed.py`.
+DB-backed API validation rerun masked DSN facts: target host localhost, target port 5433, target database edge_mes_test_api_read, maintenance database postgres, SSH tunnel Mac localhost:5433 -> Pi localhost:5432.
+DB-backed API validation rerun cleanup evidence: terse -q output did not print an explicit cleanup line; no pytest teardown/cleanup error was reported.
 PM handoff after DB-backed validation harness repair: PASS at 5543c87 / 5543c877e85c2d77c0a7f67bec1d36d2a206ca76.
 DB/API/Dashboard consumer planning gate: CLOSED / PASS WITH RECOMMENDATIONS; committed and pushed at f4de1c3 / f4de1c345f503c9556bceece99ef22be091c025e.
 DB/API/Dashboard consumer planning Reliability, Data Quality and Verification focused reviews: CLOSED / PASS WITH RECOMMENDATIONS, no blockers; recommendations are carry-forward only.
@@ -704,12 +726,14 @@ Collector DB safety focused run after HOLD repair: 20 passed.
 Harness repair default-safe focused tests: local 43 passed, 19 skipped; remote 43 passed, 19 skipped.
 Remote live DB-backed API validation rerun after harness repair: 62 passed in 8.68s.
 Remote live DB-backed API validation cleanup: test_db_cleanup_ok edge_mes_test_api_read.
+DB-backed API validation execution rerun after focused repair: 88 passed in 12.94s.
+DB-backed API validation rerun cleanup: no explicit cleanup line printed in terse `-q` output; no pytest teardown/cleanup error reported.
 DB-backed API read validation and HOLD repair git diff --check -> PASS.
 DB-backed API read validation Reliability, Data Quality and Verification implementation reviews are CLOSED / PASS WITH RECOMMENDATIONS with no blockers.
-EDGE_MES_ENABLE_DB_BACKED_TESTS=1 was set only in the separately authorized remote live validation rerun gate.
-The authorized remote validation used loopback DSNs only, created/dropped isolated edge_mes_test_api_read, applied existing migrations, verified schema, inserted fixtures and completed API live DB read assertions.
+EDGE_MES_ENABLE_DB_BACKED_TESTS=1 was set only in separately authorized DB-backed execution gates.
+The authorized remote validation used loopback DSNs only, created/dropped isolated edge_mes_test_api_read, applied existing migrations, verified schema, inserted fixtures and completed API live DB read assertions. The later SSH-tunnel rerun used masked loopback DSNs with Mac `localhost:5433` tunneling to Pi `localhost:5432` and target database `edge_mes_test_api_read`.
 Docker / docker compose lifecycle actions were not performed.
-Live DB validation has completed for this focused DB-backed API validation harness lane.
+Live DB validation has completed for this focused DB-backed API validation harness lane and the later focused DB-backed API rerun lane.
 Actual timeout failure proof has not completed.
 Do not claim actual timeout failure proof completed.
 Current tests prove timeout statements / read behavior and schema verification in the focused DB-backed API validation lane; they do not prove actual timeout failure induction.
@@ -720,7 +744,7 @@ raw_payload/raw_hex is evidence, not a production fact.
 Decoded/source normalized payloads remain candidates until accepted.
 Non-accepted dispositions do not write defect detail; NOK/detail visibility must bind to accepted upstream business evidence.
 Preserve exact wording: no ACK/read_done mutation for the current non-accepted payload.
-Next eligible gate: DB-backed API validation planning gate or Dashboard/API implementation planning gate as a separate Level 2 branch after explicit PM authorization. DB/API/Dashboard consumer planning, API consumer contract freeze, API implementation planning and accepted station events API implementation are closed. Dashboard implementation, optional debug/review diagnostics view, future DB-backed reruns, actual timeout failure induction, worker/runtime DB-backed gates for unique-violation race, commit-before-ACK, non-accepted DB-backed zero-row/no ACK/read_done mutation, post-conflict re-read semantics and DB rollback remain future authorized work. Deploy/tag/rollback/real PLC pilot require separate PM authorization.
+Next eligible gate: post-execution docs/status exact-path commit/push for this sync, or Dashboard/API implementation planning gate as a separate Level 2 branch after explicit PM authorization. DB/API/Dashboard consumer planning, API consumer contract freeze, API implementation planning, accepted station events API implementation, DB-backed API validation planning/repair and DB-backed API validation execution rerun are closed. Dashboard implementation, optional debug/review diagnostics view, future DB-backed reruns, actual timeout failure induction, worker/runtime DB-backed gates for unique-violation race, commit-before-ACK, non-accepted DB-backed zero-row/no ACK/read_done mutation, post-conflict re-read semantics and DB rollback remain future authorized work. Deploy/tag/rollback/real PLC pilot require separate PM authorization.
 Slice B inserted the adapter gate after payload/cycle/counter guards and counter reset fail-safe, before existing storage.persist_cycle().
 Slice B accepted-only path continues to existing storage.persist_cycle() plus existing read_done/ACK behavior.
 Slice B non-accepted decisions do not persist, do not project, do not write defect detail, and do not ACK.
