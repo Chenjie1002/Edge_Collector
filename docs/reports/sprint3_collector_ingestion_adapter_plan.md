@@ -3,6 +3,19 @@
 Date: 2026-06-28
 
 Status: Sprint 3 Collector Ingestion Adapter planning/status reference.
+Dashboard accepted-events frontend implementation is CLOSED / PASS WITH
+RECOMMENDATIONS and committed/pushed at `896c2d1`; its Reliability review chain
+had an initial HOLD for B1 missing query fallback and B2 package-local
+validation reproducibility, both repaired and closed by re-review. Its Data
+Quality review is CLOSED / PASS WITH RECOMMENDATIONS with no blockers. Its
+Verification review chain had an initial HOLD for V-B1 `npm run build` mutating
+`frontend/tsconfig.json` by adding `"incremental": true`; the repair and
+re-review closed V-B1. The exact-path commit changed 28 `frontend/` allowlist
+files only. The current live baseline for this docs/status sync is `HEAD ==
+origin/main == 896c2d159ce9c934c53f62607d93475d5fffd681`, latest commit
+`896c2d1 Add accepted-events Dashboard frontend`. The next eligible gate is
+exact-path docs/status sync stage/commit/push after PM approval, then PM handoff
+may be considered if thread/context is long.
 DB/API/Dashboard accepted station events API implementation is CLOSED / PASS
 WITH RECOMMENDATIONS and committed/pushed at `97dc4d5`; its Reliability, Data
 Quality and Verification focused reviews are CLOSED / PASS WITH RECOMMENDATIONS
@@ -47,11 +60,19 @@ future DB-backed reruns, Docker / docker compose lifecycle actions, actual
 timeout failure proof, worker/runtime DB-backed gates and broad tests remain not
 authorized.
 
-Current PM intake live baseline for Dashboard/API implementation planning post-push docs/status sync:
+Current PM intake live baseline for Dashboard accepted-events frontend post-push docs/status sync:
 
 - Branch: `main`.
-- HEAD / `origin/main`: `4fcdd6623247aaf9d3d3df23fd7cadf49f5d662a`.
-- Latest commit: `4fcdd66 Plan Dashboard API implementation`.
+- HEAD / `origin/main`: `896c2d159ce9c934c53f62607d93475d5fffd681`.
+- Latest commit: `896c2d1 Add accepted-events Dashboard frontend`.
+- Current remaining dirty artifacts to exclude unless PM explicitly authorizes:
+  `.gitignore`, `docs/Edge MES Demo — ChatGPT PM Handoff - 20260623.md`,
+  `docs/reports/phase1_to_sprint2_management_keynote_10p.html`,
+  `docs/reports/sprint3_db_backed_api_validation_reliability_review.md`,
+  `docs/thread_handoff/chatgpt_pm_handoff_20260624.md`,
+  `docs/thread_handoff/chatgpt_pm_handoff_20260625.md`,
+  `docs/thread_handoff/chatgpt_pm_handoff_20260625_final.md`,
+  `docs/thread_handoff/chatgpt_pm_handoff_20260626_slice_a_commit.md`.
 - Sprint 3 Slice J downstream planning-only gate: CLOSED / PASS WITH
   RECOMMENDATIONS.
 - Sprint 3 Slice J tests-only hardening: CLOSED / PASS WITH RECOMMENDATIONS.
@@ -137,6 +158,32 @@ Current PM intake live baseline for Dashboard/API implementation planning post-p
 - Dashboard/API implementation planning Reliability / Data Quality /
   Verification focused reviews: CLOSED / PASS WITH RECOMMENDATIONS, no blocker;
   recommendations are carry-forward only.
+- Dashboard implementation preparation / allowlist gate: CLOSED / PASS WITH
+  RECOMMENDATIONS; committed/pushed at `4ad0e91`.
+- Dashboard accepted-events frontend implementation: CLOSED / PASS WITH
+  RECOMMENDATIONS; committed/pushed at `896c2d1`.
+- Dashboard accepted-events frontend Reliability review: initial HOLD for B1
+  missing query fallback and B2 package-local validation reproducibility;
+  Architecture / Integration HOLD repair and re-review CLOSED / PASS WITH
+  RECOMMENDATIONS, B1/B2 CLOSED.
+- Dashboard accepted-events frontend Data Quality review: CLOSED / PASS WITH
+  RECOMMENDATIONS, no blocker.
+- Dashboard accepted-events frontend Verification review: initial HOLD for V-B1
+  `npm run build` mutating `frontend/tsconfig.json` by adding `"incremental":
+  true`; Architecture / Integration HOLD repair and re-review CLOSED / PASS
+  WITH RECOMMENDATIONS, V-B1 CLOSED.
+- Dashboard accepted-events frontend validation evidence: `npm ci` PASS; `npm
+  test` PASS, 9 files / 24 tests; `npm run typecheck` PASS; `npm run build`
+  PASS; generated artifacts cleaned; `git diff --check -- frontend` PASS. npm
+  `allow-scripts` warning for `fsevents` / `sharp` is a CI/reproducibility
+  note, not a blocker.
+- Dashboard accepted-events frontend boundary: Dashboard/frontend only;
+  read-only consumer; only `GET /api/v2/production/accepted-station-events`;
+  query params only `line_id`, `start_time`, `end_time`, `limit`, `cursor`; DTO
+  allowlist only accepted fact fields; no raw/debug/diagnostic/candidate/legacy
+  fallback; no `work_order` / `product`; `accepted_at` means accepted fact
+  timestamp only; page summaries are current-page-only.
+- Dashboard accepted-events frontend committed files in `896c2d1`: `frontend/next.config.ts`, `frontend/package-lock.json`, `frontend/package.json`, `frontend/src/app/accepted-events/__tests__/page.test.tsx`, `frontend/src/app/accepted-events/error.tsx`, `frontend/src/app/accepted-events/loading.tsx`, `frontend/src/app/accepted-events/page.tsx`, `frontend/src/app/layout.tsx`, `frontend/src/components/accepted-events/AcceptedEventsQueryControls.tsx`, `frontend/src/components/accepted-events/AcceptedEventsStates.tsx`, `frontend/src/components/accepted-events/AcceptedEventsTable.tsx`, `frontend/src/components/accepted-events/NokDetailEvidencePanel.tsx`, `frontend/src/components/accepted-events/PageSummaryStrip.tsx`, `frontend/src/components/accepted-events/TraceReferencePanel.tsx`, `frontend/src/components/accepted-events/__tests__/AcceptedEventsQueryControls.test.tsx`, `frontend/src/components/accepted-events/__tests__/AcceptedEventsTable.test.tsx`, `frontend/src/components/accepted-events/__tests__/NokDetailEvidencePanel.test.tsx`, `frontend/src/components/accepted-events/__tests__/PageSummaryStrip.test.tsx`, `frontend/src/components/accepted-events/__tests__/TraceReferencePanel.test.tsx`, `frontend/src/lib/acceptedStationEvents/__tests__/query.test.ts`, `frontend/src/lib/acceptedStationEvents/__tests__/schema.test.ts`, `frontend/src/lib/acceptedStationEvents/__tests__/viewModel.test.ts`, `frontend/src/lib/acceptedStationEvents/apiClient.ts`, `frontend/src/lib/acceptedStationEvents/query.ts`, `frontend/src/lib/acceptedStationEvents/schema.ts`, `frontend/src/lib/acceptedStationEvents/viewModel.ts`, `frontend/src/styles/globals.css`, `frontend/tsconfig.json`.
 - Dashboard/API implementation planning carry-forward recommendations: convert
   category-level future Dashboard implementation allowlist into exact file paths
   before implementation authorization; add invalid / expired / cross-scope cursor
@@ -213,12 +260,13 @@ Current PM intake live baseline for Dashboard/API implementation planning post-p
   pass leakage-negative review before implementation.
 - API consumer contract freeze, API implementation planning, accepted station
   events API implementation, DB-backed API validation planning/repair,
-  DB-backed API validation execution rerun and Dashboard/API implementation
-  planning are closed. The next eligible branch is Dashboard implementation
-  exact-file allowlist discovery / implementation preparation as a separate
-  PM-authorized planning branch, or PM handoff after this docs/status sync.
-  Dashboard work remains Level 2 and cannot be auto-authorized as DB-backed
-  tests, DB execution, Dashboard implementation, Docker, stage, commit or push.
+  DB-backed API validation execution rerun, Dashboard/API implementation
+  planning, Dashboard implementation preparation / allowlist and Dashboard
+  accepted-events frontend implementation are closed. The next eligible branch
+  is exact-path docs/status sync stage/commit/push after PM approval, then PM
+  handoff may be considered if thread/context is long. Future Dashboard/API/DB
+  expansion remains Level 2 and cannot be auto-authorized as DB-backed tests,
+  DB execution, API/contract changes, Docker, stage, commit or push.
 - Future DB-backed API validation planning must freeze exact DB opt-in scope,
   DSN/test DB safety, schema/migration verification, allowed tests, cleanup,
   `EDGE_MES_ENABLE_DB_BACKED_TESTS=1` usage and review gates before execution.
@@ -1309,6 +1357,12 @@ Dashboard/API implementation planning gate: CLOSED / PASS WITH RECOMMENDATIONS a
 Dashboard/API implementation planning report changed file: docs/reports/sprint3_dashboard_api_implementation_plan.md.
 Dashboard/API implementation planning Architecture / Integration, Reliability, Data Quality and Verification focused planning reviews: CLOSED / PASS WITH RECOMMENDATIONS with no blockers.
 Dashboard/API implementation planning carry-forward recommendations: convert category-level future Dashboard implementation allowlist into exact file paths before implementation authorization; add invalid / expired / cross-scope cursor UI negative tests; keep page-level summary labelled as current page only; ensure stale prior data cannot render as fresh production truth; keep future implementation Dashboard-only/read-only unless PM opens a separate API/contract gate.
+Dashboard implementation preparation / allowlist gate: CLOSED / PASS WITH RECOMMENDATIONS at 4ad0e91 / 4ad0e91b41c4595295140d32b6bc96aa41f81b35.
+Dashboard accepted-events frontend implementation: CLOSED / PASS WITH RECOMMENDATIONS at 896c2d1 / 896c2d159ce9c934c53f62607d93475d5fffd681.
+Dashboard accepted-events frontend Reliability review chain: initial HOLD B1/B2 repaired and CLOSED by re-review / PASS WITH RECOMMENDATIONS.
+Dashboard accepted-events frontend Data Quality review: CLOSED / PASS WITH RECOMMENDATIONS, no blocker.
+Dashboard accepted-events frontend Verification review chain: initial HOLD V-B1 repaired and CLOSED by re-review / PASS WITH RECOMMENDATIONS.
+Dashboard accepted-events frontend validation evidence: npm ci PASS; npm test PASS, 9 files / 24 tests; npm run typecheck PASS; npm run build PASS; generated artifacts cleaned; git diff --check -- frontend PASS.
 Reliability implementation review: CLOSED / PASS WITH RECOMMENDATIONS, no blocker.
 Data Quality implementation review: CLOSED / PASS WITH RECOMMENDATIONS, no blocker.
 Verification implementation review / exact allowlist audit: CLOSED / PASS WITH RECOMMENDATIONS, no blocker.
@@ -1337,8 +1391,10 @@ DB/API/Dashboard API consumer contract freeze gate is CLOSED / PASS WITH RECOMME
 DB/API/Dashboard API implementation planning gate is CLOSED / PASS WITH RECOMMENDATIONS at 2dc4b4d; changed file: docs/reports/sprint3_api_consumer_implementation_plan.md.
 DB/API/Dashboard accepted station events API implementation is CLOSED / PASS WITH RECOMMENDATIONS at 97dc4d5; changed files: api/app/routes/accepted_station_events.py and api/tests/test_accepted_station_events_api.py.
 Dashboard/API implementation planning gate is CLOSED / PASS WITH RECOMMENDATIONS at 4fcdd66; changed file: docs/reports/sprint3_dashboard_api_implementation_plan.md.
-API consumer contract freeze, API implementation planning, API implementation, DB-backed API validation rerun and Dashboard/API implementation planning Reliability, Data Quality and Verification focused reviews are CLOSED / PASS WITH RECOMMENDATIONS with no blockers.
-The next eligible branch is Dashboard implementation exact-file allowlist discovery / implementation preparation as a separate Level 2 planning branch requiring explicit PM authorization, or PM handoff after this docs/status sync.
+Dashboard implementation preparation / allowlist gate is CLOSED / PASS WITH RECOMMENDATIONS at 4ad0e91.
+Dashboard accepted-events frontend implementation is CLOSED / PASS WITH RECOMMENDATIONS at 896c2d1.
+API consumer contract freeze, API implementation planning, API implementation, DB-backed API validation rerun, Dashboard/API implementation planning, Dashboard implementation preparation / allowlist and Dashboard accepted-events frontend Reliability, Data Quality and Verification focused reviews are CLOSED / PASS WITH RECOMMENDATIONS with no blockers after the documented HOLD repairs.
+The next eligible branch is exact-path docs/status sync stage/commit/push for this local sync after PM approval, then PM handoff may be considered if thread/context is long.
 Future DB-backed API validation rerun planning must freeze exact DB opt-in scope, DSN/test DB safety, schema/migration verification, allowed tests, cleanup and EDGE_MES_ENABLE_DB_BACKED_TESTS=1 usage before execution.
 Worker/runtime DB-backed gates for unique-violation race, commit-before-ACK, non-accepted DB-backed zero-row/no ACK/read_done mutation, post-conflict re-read semantics and DB rollback remain future authorized work.
 API read path source boundary remains only production_accepted_station_event_fact; raw_plc_sample, cycle_event, station_event, production_unit, quality_event, production_snapshot and production_events must not be described as equivalent production fact sources, fallback sources or join-derived field fillers.
@@ -1352,18 +1408,17 @@ Preserve exact wording: no ACK/read_done mutation for the current non-accepted p
 Deploy/tag/rollback/real PLC pilot require separate PM authorization.
 ```
 
-Eligible for next PM gate: exact-path docs/status commit/push for this sync
-after PM explicitly authorizes staging, then PM handoff; or Dashboard implementation
-exact-file allowlist discovery / implementation preparation as a separate Level 2
-PM-authorized planning branch. Future DB-backed reruns remain separate future
+Eligible for next PM gate: exact-path docs/status sync stage/commit/push for this
+sync after PM explicitly authorizes staging, then PM handoff may be considered if
+thread/context is long. Future DB-backed reruns remain separate future
 PM-authorized gates. Actual timeout failure induction remains a separate future
 PM-authorized gate.
 
 Eligible for implementation without PM approval: no. PM approval is required
 before DB-backed API validation planning/execution, Dashboard implementation
-exact-file allowlist discovery, Dashboard implementation, optional debug/review diagnostics view,
+expansion, optional debug/review diagnostics view,
 future DB-backed reruns, EDGE_MES_ENABLE_DB_BACKED_TESTS=1 outside an approved
 gate, Docker / docker compose lifecycle actions, tests beyond the authorized gate
-scope, new migration, V-PLC/PLC pilot, storage/API expansion, deploy, tag,
+scope, new migration, V-PLC/PLC pilot, storage/API/contract/DB/runtime expansion, deploy, tag,
 rollback, broad tests, real PLC pilot, commit/push or any change outside the
 approved docs allowlist.
