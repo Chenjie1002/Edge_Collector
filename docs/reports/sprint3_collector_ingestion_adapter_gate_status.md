@@ -15,8 +15,8 @@ Read this file together with:
 
 ```text
 live HEAD / origin/main at authoring time:
-896c2d159ce9c934c53f62607d93475d5fffd681
-896c2d1 Add accepted-events Dashboard frontend
+dd6dc53627c6e27b5ff206096a91d77dd76d4d23
+dd6dc53 Plan Dashboard accepted-events vertical validation
 
 Branch:
 main
@@ -72,6 +72,9 @@ DB-backed API validation post-execution docs/status sync committed and pushed at
 Dashboard/API implementation planning reviewed, committed and pushed at 4fcdd66
 Dashboard implementation preparation / allowlist reviewed, committed and pushed at 4ad0e91
 Dashboard accepted-events frontend implemented, reviewed, committed and pushed at 896c2d1
+Dashboard accepted-events frontend post-push docs/status sync committed and pushed at 42ccd32
+PM handoff after Dashboard frontend closeout committed and pushed at f433c92
+Dashboard accepted-events vertical validation planning reviewed, repaired, committed and pushed at dd6dc53
 
 Deploy / rollback drill:
 not performed
@@ -145,6 +148,7 @@ Dashboard accepted-events frontend implementation is CLOSED / PASS WITH RECOMMEN
 Dashboard accepted-events frontend implementation changed exactly 28 `frontend/` allowlist files. It is Dashboard/frontend only, read-only consumer only, backed only by `GET /api/v2/production/accepted-station-events`, and query params are limited to `line_id`, `start_time`, `end_time`, `limit`, `cursor`.
 Dashboard accepted-events frontend preserves DTO allowlist only accepted fact fields, no raw/debug/diagnostic/candidate/legacy fallback, no `work_order` / `product`, `accepted_at` as accepted fact timestamp only, and page summaries current-page-only.
 Dashboard accepted-events frontend validation evidence from the closed review chain: `npm ci` PASS; `npm test` PASS, 9 files / 24 tests; `npm run typecheck` PASS; `npm run build` PASS; generated artifacts cleaned; `git diff --check -- frontend` PASS. npm `allow-scripts` warning for `fsevents` / `sharp` is carried as a CI/reproducibility note, not a blocker.
+Dashboard accepted-events vertical validation planning is CLOSED / PASS WITH RECOMMENDATIONS and tracked in commit `dd6dc53` / `dd6dc53627c6e27b5ff206096a91d77dd76d4d23`. The planning report is `docs/reports/sprint3_dashboard_accepted_events_vertical_validation_plan.md`. Reliability and Data Quality planning reviews are CLOSED / PASS WITH RECOMMENDATIONS with no blockers. Verification planning review initially returned HOLD for B1 forbidden surface matrix precision, B2 future allowlist exactness and B3 expired cursor fail-closed coverage; Architecture / Integration repaired the report, and Verification re-review CLOSED B1/B2/B3 with PASS WITH RECOMMENDATIONS. The planning report keeps the first future execution lane no-DB by default and separates DB-backed validation, browser/manual smoke, Docker/runtime/server, docs/status sync and stage/commit/push behind separate PM authorization.
 
 Sprint 3 implementation files committed:
 
@@ -631,7 +635,15 @@ behavior, Docker/deploy/tag/rollback or ACK/read_done ownership.
 | Dashboard accepted-events frontend Data Quality focused review | PASS WITH RECOMMENDATIONS | none |
 | Dashboard accepted-events frontend Verification focused review | PASS WITH RECOMMENDATIONS | initial HOLD V-B1 repaired and closed |
 | Dashboard accepted-events frontend exact-path commit/push | PASS | commit 896c2d1 |
-| Dashboard accepted-events frontend post-push docs/status sync | PASS | local docs/status-only sync; not committed/pushed by this gate |
+| Dashboard accepted-events frontend post-push docs/status sync | PASS | commit 42ccd32 |
+| PM handoff after Dashboard frontend closeout | PASS | commit f433c92 |
+| Dashboard accepted-events vertical validation planning gate | PASS WITH RECOMMENDATIONS | none |
+| Dashboard accepted-events vertical validation Reliability planning review | PASS WITH RECOMMENDATIONS | none |
+| Dashboard accepted-events vertical validation Data Quality planning review | PASS WITH RECOMMENDATIONS | none |
+| Dashboard accepted-events vertical validation Verification planning review / exact future run allowlist audit | HOLD | B1/B2/B3; later repaired and closed |
+| Dashboard accepted-events vertical validation planning HOLD repair | PASS WITH RECOMMENDATIONS | none |
+| Dashboard accepted-events vertical validation Verification planning HOLD repair re-review | PASS WITH RECOMMENDATIONS | B1/B2/B3 CLOSED |
+| Dashboard accepted-events vertical validation planning exact-path commit/push | PASS | commit dd6dc53 |
 | DB/API/Dashboard consumer planning gate | PASS WITH RECOMMENDATIONS | none |
 | DB/API/Dashboard consumer planning Reliability focused review | PASS WITH RECOMMENDATIONS | none |
 | DB/API/Dashboard consumer planning Data Quality focused review | PASS WITH RECOMMENDATIONS | none |
@@ -775,7 +787,7 @@ DB/API/Dashboard accepted station events API implementation: CLOSED / PASS WITH 
 API implementation changed files: api/app/routes/accepted_station_events.py and api/tests/test_accepted_station_events_api.py.
 API implementation Reliability, Data Quality and Verification focused reviews: CLOSED / PASS WITH RECOMMENDATIONS, no blockers; recommendations are carry-forward only.
 Focused non-DB validation for the implementation: PYTHONPATH=api .venv/bin/python -m pytest api/tests/test_accepted_station_events_api.py -q -> 53 passed; PYTHONPATH=api .venv/bin/python -m compileall api/app -> PASS; git diff --check -- api/app/routes/accepted_station_events.py api/tests/test_accepted_station_events_api.py -> PASS.
-Current live baseline for this Dashboard accepted-events frontend docs/status sync: 896c2d1 / 896c2d159ce9c934c53f62607d93475d5fffd681. Earlier synchronized milestones remain: API implementation commit 97dc4d5; API implementation planning doc commit 2dc4b4d; API consumer contract freeze commit f65a120; consumer planning doc commit f4de1c3; DB-backed harness repair commit 8a8004c; DB-backed rerun docs/status commit ba02249; Dashboard/API implementation planning commit 4fcdd66; Dashboard implementation preparation / allowlist commit 4ad0e91; Dashboard accepted-events frontend implementation commit 896c2d1.
+Current live baseline for this Dashboard accepted-events vertical validation planning docs/status sync: dd6dc53 / dd6dc53627c6e27b5ff206096a91d77dd76d4d23. Earlier synchronized milestones remain: API implementation commit 97dc4d5; API implementation planning doc commit 2dc4b4d; API consumer contract freeze commit f65a120; consumer planning doc commit f4de1c3; DB-backed harness repair commit 8a8004c; DB-backed rerun docs/status commit ba02249; Dashboard/API implementation planning commit 4fcdd66; Dashboard implementation preparation / allowlist commit 4ad0e91; Dashboard accepted-events frontend implementation commit 896c2d1; Dashboard frontend docs/status sync commit 42ccd32; PM handoff after Dashboard frontend closeout commit f433c92; Dashboard accepted-events vertical validation planning commit dd6dc53.
 Only production fact source for DB/API/Dashboard consumers: production_accepted_station_event_fact.
 raw_plc_sample, cycle_event, station_event, production_unit, quality_event, production_snapshot and production_events must not be described as equivalent production fact sources, fallback sources, legacy compatibility sources or join-derived field fillers.
 Response DTO fields must come field-by-field from production_accepted_station_event_fact row fields; fallback is forbidden.

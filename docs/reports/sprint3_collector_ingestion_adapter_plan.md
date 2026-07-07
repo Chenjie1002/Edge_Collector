@@ -3,19 +3,24 @@
 Date: 2026-06-28
 
 Status: Sprint 3 Collector Ingestion Adapter planning/status reference.
-Dashboard accepted-events frontend implementation is CLOSED / PASS WITH
-RECOMMENDATIONS and committed/pushed at `896c2d1`; its Reliability review chain
-had an initial HOLD for B1 missing query fallback and B2 package-local
-validation reproducibility, both repaired and closed by re-review. Its Data
-Quality review is CLOSED / PASS WITH RECOMMENDATIONS with no blockers. Its
-Verification review chain had an initial HOLD for V-B1 `npm run build` mutating
-`frontend/tsconfig.json` by adding `"incremental": true`; the repair and
-re-review closed V-B1. The exact-path commit changed 28 `frontend/` allowlist
-files only. The current live baseline for this docs/status sync is `HEAD ==
-origin/main == 896c2d159ce9c934c53f62607d93475d5fffd681`, latest commit
-`896c2d1 Add accepted-events Dashboard frontend`. The next eligible gate is
-exact-path docs/status sync stage/commit/push after PM approval, then PM handoff
-may be considered if thread/context is long.
+Dashboard accepted-events vertical validation planning is CLOSED / PASS WITH
+RECOMMENDATIONS and committed/pushed at `dd6dc53`; the planning report is
+`docs/reports/sprint3_dashboard_accepted_events_vertical_validation_plan.md`.
+Reliability and Data Quality planning reviews are CLOSED / PASS WITH
+RECOMMENDATIONS with no blockers. Verification planning review initially returned
+HOLD for B1 forbidden surface matrix precision, B2 future allowlist exactness and
+B3 expired cursor fail-closed coverage; Architecture / Integration repaired the
+planning report and Verification re-review CLOSED B1/B2/B3 with PASS WITH
+RECOMMENDATIONS. The current live baseline for this docs/status sync is `HEAD ==
+origin/main == dd6dc53627c6e27b5ff206096a91d77dd76d4d23`, latest commit
+`dd6dc53 Plan Dashboard accepted-events vertical validation`. The next eligible
+branch is a separately authorized no-DB vertical validation execution gate,
+likely frontend mocked/API-client plus component/viewModel focused evidence
+first, or PM handoff if thread/context is long. Dashboard accepted-events
+frontend implementation remains CLOSED / PASS WITH RECOMMENDATIONS and
+committed/pushed at `896c2d1`; its post-push docs/status sync is committed at
+`42ccd32`, and the PM handoff after Dashboard frontend closeout is committed at
+`f433c92`.
 DB/API/Dashboard accepted station events API implementation is CLOSED / PASS
 WITH RECOMMENDATIONS and committed/pushed at `97dc4d5`; its Reliability, Data
 Quality and Verification focused reviews are CLOSED / PASS WITH RECOMMENDATIONS
@@ -60,11 +65,11 @@ future DB-backed reruns, Docker / docker compose lifecycle actions, actual
 timeout failure proof, worker/runtime DB-backed gates and broad tests remain not
 authorized.
 
-Current PM intake live baseline for Dashboard accepted-events frontend post-push docs/status sync:
+Current PM intake live baseline for Dashboard accepted-events vertical validation planning docs/status sync:
 
 - Branch: `main`.
-- HEAD / `origin/main`: `896c2d159ce9c934c53f62607d93475d5fffd681`.
-- Latest commit: `896c2d1 Add accepted-events Dashboard frontend`.
+- HEAD / `origin/main`: `dd6dc53627c6e27b5ff206096a91d77dd76d4d23`.
+- Latest commit: `dd6dc53 Plan Dashboard accepted-events vertical validation`.
 - Current remaining dirty artifacts to exclude unless PM explicitly authorizes:
   `.gitignore`, `docs/Edge MES Demo — ChatGPT PM Handoff - 20260623.md`,
   `docs/reports/phase1_to_sprint2_management_keynote_10p.html`,
@@ -183,6 +188,19 @@ Current PM intake live baseline for Dashboard accepted-events frontend post-push
   allowlist only accepted fact fields; no raw/debug/diagnostic/candidate/legacy
   fallback; no `work_order` / `product`; `accepted_at` means accepted fact
   timestamp only; page summaries are current-page-only.
+- Dashboard accepted-events vertical validation planning gate: CLOSED / PASS WITH
+  RECOMMENDATIONS; committed/pushed at `dd6dc53`; report
+  `docs/reports/sprint3_dashboard_accepted_events_vertical_validation_plan.md`.
+- Dashboard accepted-events vertical validation planning review chain: Reliability
+  PASS WITH RECOMMENDATIONS; Data Quality PASS WITH RECOMMENDATIONS;
+  Verification initial HOLD for B1/B2/B3; Architecture / Integration HOLD repair
+  PASS WITH RECOMMENDATIONS; Verification re-review PASS WITH RECOMMENDATIONS,
+  B1/B2/B3 CLOSED.
+- Dashboard accepted-events vertical validation planning boundaries: no
+  validation execution; no tests; no DB-backed run; no browser/manual smoke; no
+  Docker/runtime/server; no frontend/API/contract/package/DB edits; no
+  docs/status sync execution. First future execution lane remains no-DB by
+  default and exact-command scoped.
 - Dashboard accepted-events frontend committed files in `896c2d1`: `frontend/next.config.ts`, `frontend/package-lock.json`, `frontend/package.json`, `frontend/src/app/accepted-events/__tests__/page.test.tsx`, `frontend/src/app/accepted-events/error.tsx`, `frontend/src/app/accepted-events/loading.tsx`, `frontend/src/app/accepted-events/page.tsx`, `frontend/src/app/layout.tsx`, `frontend/src/components/accepted-events/AcceptedEventsQueryControls.tsx`, `frontend/src/components/accepted-events/AcceptedEventsStates.tsx`, `frontend/src/components/accepted-events/AcceptedEventsTable.tsx`, `frontend/src/components/accepted-events/NokDetailEvidencePanel.tsx`, `frontend/src/components/accepted-events/PageSummaryStrip.tsx`, `frontend/src/components/accepted-events/TraceReferencePanel.tsx`, `frontend/src/components/accepted-events/__tests__/AcceptedEventsQueryControls.test.tsx`, `frontend/src/components/accepted-events/__tests__/AcceptedEventsTable.test.tsx`, `frontend/src/components/accepted-events/__tests__/NokDetailEvidencePanel.test.tsx`, `frontend/src/components/accepted-events/__tests__/PageSummaryStrip.test.tsx`, `frontend/src/components/accepted-events/__tests__/TraceReferencePanel.test.tsx`, `frontend/src/lib/acceptedStationEvents/__tests__/query.test.ts`, `frontend/src/lib/acceptedStationEvents/__tests__/schema.test.ts`, `frontend/src/lib/acceptedStationEvents/__tests__/viewModel.test.ts`, `frontend/src/lib/acceptedStationEvents/apiClient.ts`, `frontend/src/lib/acceptedStationEvents/query.ts`, `frontend/src/lib/acceptedStationEvents/schema.ts`, `frontend/src/lib/acceptedStationEvents/viewModel.ts`, `frontend/src/styles/globals.css`, `frontend/tsconfig.json`.
 - Dashboard/API implementation planning carry-forward recommendations: convert
   category-level future Dashboard implementation allowlist into exact file paths
@@ -191,6 +209,11 @@ Current PM intake live baseline for Dashboard accepted-events frontend post-push
   ensure stale prior data cannot render as fresh production truth; keep future
   implementation Dashboard-only/read-only unless PM opens a separate
   API/contract gate.
+- Dashboard accepted-events vertical validation planning carry-forward
+  recommendations: keep first execution lane frontend mocked/API-client plus
+  component/viewModel focused and no-DB by default; API non-DB focused command
+  requires separate PM authorization; DB-backed validation and browser/manual
+  smoke remain separate Level 2 PM-authorized gates only.
 - DB/API/Dashboard consumer planning gate: CLOSED / PASS WITH RECOMMENDATIONS,
   no blocker; planning doc committed/pushed at `f4de1c3`.
 - DB/API/Dashboard consumer planning Reliability / Data Quality / Verification
@@ -1362,6 +1385,8 @@ Dashboard accepted-events frontend implementation: CLOSED / PASS WITH RECOMMENDA
 Dashboard accepted-events frontend Reliability review chain: initial HOLD B1/B2 repaired and CLOSED by re-review / PASS WITH RECOMMENDATIONS.
 Dashboard accepted-events frontend Data Quality review: CLOSED / PASS WITH RECOMMENDATIONS, no blocker.
 Dashboard accepted-events frontend Verification review chain: initial HOLD V-B1 repaired and CLOSED by re-review / PASS WITH RECOMMENDATIONS.
+Dashboard accepted-events vertical validation planning: CLOSED / PASS WITH RECOMMENDATIONS at dd6dc53 / dd6dc53627c6e27b5ff206096a91d77dd76d4d23.
+Dashboard accepted-events vertical validation planning review chain: Reliability PASS WITH RECOMMENDATIONS; Data Quality PASS WITH RECOMMENDATIONS; Verification initial HOLD B1/B2/B3; Architecture HOLD repair PASS WITH RECOMMENDATIONS; Verification re-review PASS WITH RECOMMENDATIONS, B1/B2/B3 CLOSED.
 Dashboard accepted-events frontend validation evidence: npm ci PASS; npm test PASS, 9 files / 24 tests; npm run typecheck PASS; npm run build PASS; generated artifacts cleaned; git diff --check -- frontend PASS.
 Reliability implementation review: CLOSED / PASS WITH RECOMMENDATIONS, no blocker.
 Data Quality implementation review: CLOSED / PASS WITH RECOMMENDATIONS, no blocker.
@@ -1393,8 +1418,9 @@ DB/API/Dashboard accepted station events API implementation is CLOSED / PASS WIT
 Dashboard/API implementation planning gate is CLOSED / PASS WITH RECOMMENDATIONS at 4fcdd66; changed file: docs/reports/sprint3_dashboard_api_implementation_plan.md.
 Dashboard implementation preparation / allowlist gate is CLOSED / PASS WITH RECOMMENDATIONS at 4ad0e91.
 Dashboard accepted-events frontend implementation is CLOSED / PASS WITH RECOMMENDATIONS at 896c2d1.
-API consumer contract freeze, API implementation planning, API implementation, DB-backed API validation rerun, Dashboard/API implementation planning, Dashboard implementation preparation / allowlist and Dashboard accepted-events frontend Reliability, Data Quality and Verification focused reviews are CLOSED / PASS WITH RECOMMENDATIONS with no blockers after the documented HOLD repairs.
-The next eligible branch is exact-path docs/status sync stage/commit/push for this local sync after PM approval, then PM handoff may be considered if thread/context is long.
+Dashboard accepted-events vertical validation planning is CLOSED / PASS WITH RECOMMENDATIONS at dd6dc53.
+API consumer contract freeze, API implementation planning, API implementation, DB-backed API validation rerun, Dashboard/API implementation planning, Dashboard implementation preparation / allowlist, Dashboard accepted-events frontend Reliability/Data Quality/Verification focused reviews and Dashboard accepted-events vertical validation planning Reliability/Data Quality/Verification reviews are CLOSED / PASS WITH RECOMMENDATIONS with no blockers after the documented HOLD repairs.
+The next eligible branch is a separately authorized no-DB validation execution gate for frontend mocked/API-client plus component/viewModel focused evidence, or PM handoff if thread/context is long.
 Future DB-backed API validation rerun planning must freeze exact DB opt-in scope, DSN/test DB safety, schema/migration verification, allowed tests, cleanup and EDGE_MES_ENABLE_DB_BACKED_TESTS=1 usage before execution.
 Worker/runtime DB-backed gates for unique-violation race, commit-before-ACK, non-accepted DB-backed zero-row/no ACK/read_done mutation, post-conflict re-read semantics and DB rollback remain future authorized work.
 API read path source boundary remains only production_accepted_station_event_fact; raw_plc_sample, cycle_event, station_event, production_unit, quality_event, production_snapshot and production_events must not be described as equivalent production fact sources, fallback sources or join-derived field fillers.
