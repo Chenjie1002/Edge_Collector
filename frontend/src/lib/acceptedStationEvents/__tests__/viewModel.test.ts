@@ -47,4 +47,31 @@ describe("accepted station events view model", () => {
     expect(JSON.stringify(viewModel)).not.toMatch(/freshness|ACK time|station freshness|read_done/i);
     expect(viewModel.rows[0].acceptedAt.label).toBe("Accepted fact timestamp");
   });
+
+  it("does not carry bypassed forbidden keys into rows, summary, or selected evidence", () => {
+    const bypassItem = {
+      ...item,
+      production_result: "nok",
+      nok_code: "NOK_A",
+      raw_payload: { value: "raw" },
+      raw_hex: "deadbeef",
+      adapter_reason: "diagnostic",
+      candidate_context: { production_result: "ok" },
+      read_done: true,
+      ack_status: "ACKED",
+      work_order: "WO-1",
+      product: "SKU-1"
+    } as any;
+
+    const viewModel = toAcceptedEventsViewModel({ items: [bypassItem], page: { next_cursor: null, limit: 50 } });
+    const rendered = JSON.stringify({
+      rows: viewModel.rows,
+      summary: viewModel.summary,
+      selectedEvidence: viewModel.selectedEvidence
+    });
+
+    expect(rendered).not.toMatch(/raw_payload|raw_hex|adapter_reason|candidate_context|read_done|ack_status|work_order|\bproduct\b|WO-1|SKU-1/i);
+    expect(viewModel.selectedEvidence?.productionResult).toBe("nok");
+    expect(viewModel.selectedEvidence?.nokCode).toBe("NOK_A");
+  });
 });

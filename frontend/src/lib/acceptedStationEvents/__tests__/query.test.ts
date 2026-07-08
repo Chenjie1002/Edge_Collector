@@ -33,9 +33,14 @@ describe("accepted station events query", () => {
     ["missing end", { ...baseQuery, endTime: "" }],
     ["invalid start", { ...baseQuery, startTime: "not-a-time" }],
     ["inverted window", { ...baseQuery, startTime: baseQuery.endTime, endTime: baseQuery.startTime }],
-    ["too large", { ...baseQuery, endTime: "2026-08-06T00:00:01Z" }]
+    ["too large", { ...baseQuery, endTime: "2026-08-06T00:00:01Z" }],
+    ["zero limit", { ...baseQuery, limit: 0 }],
+    ["over max limit", { ...baseQuery, limit: 501 }],
+    ["non-integer limit", { ...baseQuery, limit: 50.5 }],
+    ["NaN limit", { ...baseQuery, limit: Number.NaN }]
   ])("fails closed before request for %s", (_name, query) => {
     expect(validateAcceptedStationEventsQuery(query).ok).toBe(false);
+    expect(() => buildAcceptedStationEventsQuery(query)).toThrow();
   });
 
   it("keeps cursor opaque and clears it when scope, time, or limit changes", () => {

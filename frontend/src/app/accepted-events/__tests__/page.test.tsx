@@ -53,6 +53,29 @@ describe("accepted events page", () => {
     expect(fetchMock).not.toHaveBeenCalled();
   });
 
+  it("fails closed for invalid URL limit without fetching, stale rows, or cursor decoding", async () => {
+    const fetchMock = vi.mocked(fetchAcceptedStationEvents);
+    fetchMock.mockClear();
+
+    render(
+      await AcceptedEventsPage({
+        searchParams: {
+          line_id: "LINE_001",
+          start_time: "2026-07-05T00:00:00Z",
+          end_time: "2026-07-05T08:00:00Z",
+          limit: "NaN",
+          cursor: "opaque.api.owned.cursor"
+        }
+      })
+    );
+
+    expect(screen.getByText("invalid-query")).toBeTruthy();
+    expect(screen.getByText(/limit must be between 1 and 500/i)).toBeTruthy();
+    expect(fetchMock).not.toHaveBeenCalled();
+    expect(screen.queryByRole("table")).toBeNull();
+    expect(screen.queryByText(/opaque\.api\.owned\.cursor|decoded|mutated|constructed/i)).toBeNull();
+  });
+
   it("does not import forbidden backend, runtime, deploy, or Grafana surfaces", () => {
     const root = join(process.cwd(), "src");
     const files: string[] = [];

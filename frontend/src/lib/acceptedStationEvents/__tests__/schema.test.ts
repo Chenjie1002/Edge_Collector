@@ -37,21 +37,36 @@ describe("accepted station events schema", () => {
     expect(parsed.page.next_cursor).toBe("opaque");
   });
 
-  it("rejects raw, debug, diagnostic, candidate, legacy, work order, and product fields", () => {
-    const forbiddenPayload = {
-      ...allowedItem,
-      raw_payload: { value: "raw" },
-      raw_hex: "deadbeef",
-      adapter_reason: "diagnostic",
-      candidate_context: {},
-      production_snapshot: {},
-      work_order: "WO-1",
-      product: "SKU-1"
-    };
-
+  it.each([
+    ["raw_payload", { raw_payload: { value: "raw" } }],
+    ["raw_hex", { raw_hex: "deadbeef" }],
+    ["raw_sample_id", { raw_sample_id: "raw-1" }],
+    ["raw bytes", { raw_bytes: [222, 173, 190, 239] }],
+    ["decoded/source normalized candidate payload", { normalized_candidate_payload: { production_result: "ok" } }],
+    ["adapter disposition", { adapter_disposition: "accepted" }],
+    ["adapter reason", { adapter_reason: "diagnostic" }],
+    ["adapter phase", { adapter_phase: "projection" }],
+    ["candidate context", { candidate_context: { station_id: "WS01" } }],
+    ["raw-normalized comparison context", { raw_normalized_comparison_context: { diff: [] } }],
+    ["decoder errors", { decoder_errors: ["RAW_PARSE_ERROR"] }],
+    ["diagnostic payloads", { diagnostic_payload: { code: "ADAPTER_REJECTED" } }],
+    ["review payloads", { review_payload: { reviewer: "dq" } }],
+    ["audit payloads", { audit_payload: { raw_hex: "deadbeef" } }],
+    ["ack_status", { ack_status: "ACKED" }],
+    ["read_done", { read_done: true }],
+    ["collector_state", { collector_state: "STALE" }],
+    ["quality_pareto_input", { quality_pareto_input: { code: "NOK_A" } }],
+    ["dashboard_state", { dashboard_state: { status: "fresh" } }],
+    ["bare result", { result: "ok" }],
+    ["bare defect", { defect: "D01" }],
+    ["bare quality", { quality: "good" }],
+    ["bare pareto", { pareto: "NOK_A" }],
+    ["work_order", { work_order: "WO-1" }],
+    ["product", { product: "SKU-1" }]
+  ])("rejects forbidden leakage fixture: %s", (_name, forbiddenFields) => {
     expect(() =>
       parseAcceptedStationEventsEnvelope({
-        data: { items: [forbiddenPayload] },
+        data: { items: [{ ...allowedItem, ...forbiddenFields }] },
         page: { next_cursor: null, limit: 50 }
       })
     ).toThrow(/forbidden/i);
