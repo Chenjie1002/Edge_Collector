@@ -219,11 +219,30 @@ Current PM intake live baseline for Dashboard accepted-events no-DB vertical val
   ensure stale prior data cannot render as fresh production truth; keep future
   implementation Dashboard-only/read-only unless PM opens a separate
   API/contract gate.
-- Dashboard accepted-events vertical validation planning carry-forward
-  recommendations: keep first execution lane frontend mocked/API-client plus
-  component/viewModel focused and no-DB by default; API non-DB focused command
-  requires separate PM authorization; DB-backed validation and browser/manual
-  smoke remain separate Level 2 PM-authorized gates only.
+- Dashboard accepted-events no-DB vertical validation execution: CLOSED / PASS
+  WITH RECOMMENDATIONS; docs/status sync committed/pushed at `b413876`; PM
+  handoff after the sync committed/pushed at `c103e90`.
+- Dashboard accepted-events no-DB vertical validation evidence: Architecture /
+  Integration executed four focused frontend commands with 4 files / 19 tests
+  passed (`query.test.ts` 8, `schema.test.ts` 2, `viewModel.test.ts` 2,
+  `page.test.tsx` 7); Reliability, Data Quality and Verification focused
+  reviews are CLOSED / PASS WITH RECOMMENDATIONS with no blockers.
+- Dashboard accepted-events apiClient focused no-DB tests: planning CLOSED / PASS
+  WITH RECOMMENDATIONS; implementation CLOSED / PASS; Reliability CLOSED / PASS;
+  Data Quality CLOSED / PASS WITH RECOMMENDATIONS; Verification CLOSED / PASS
+  WITH RECOMMENDATIONS; exact-path commit/push PASS at `96c0928` /
+  `96c0928970d9917e0a4142569ebbc8459d67cc3d`.
+- apiClient focused no-DB tests changed only five frontend test files:
+  `frontend/src/lib/acceptedStationEvents/__tests__/apiClient.test.ts`,
+  `frontend/src/lib/acceptedStationEvents/__tests__/query.test.ts`,
+  `frontend/src/lib/acceptedStationEvents/__tests__/schema.test.ts`,
+  `frontend/src/lib/acceptedStationEvents/__tests__/viewModel.test.ts` and
+  `frontend/src/app/accepted-events/__tests__/page.test.tsx`.
+- apiClient focused no-DB evidence: `apiClient.test.ts` 7 passed,
+  `query.test.ts` 12 passed, `schema.test.ts` 26 passed, `viewModel.test.ts` 3
+  passed and `page.test.tsx` 8 passed. The only carry-forward recommendation is
+  a later separately authorized defense-in-depth fixture for nested or renamed
+  production-looking leakage variants.
 - DB/API/Dashboard consumer planning gate: CLOSED / PASS WITH RECOMMENDATIONS,
   no blocker; planning doc committed/pushed at `f4de1c3`.
 - DB/API/Dashboard consumer planning Reliability / Data Quality / Verification
@@ -294,12 +313,14 @@ Current PM intake live baseline for Dashboard accepted-events no-DB vertical val
 - API consumer contract freeze, API implementation planning, accepted station
   events API implementation, DB-backed API validation planning/repair,
   DB-backed API validation execution rerun, Dashboard/API implementation
-  planning, Dashboard implementation preparation / allowlist and Dashboard
-  accepted-events frontend implementation are closed. The next eligible branch
-  is exact-path docs/status sync stage/commit/push after PM approval, then PM
-  handoff may be considered if thread/context is long. Future Dashboard/API/DB
-  expansion remains Level 2 and cannot be auto-authorized as DB-backed tests,
-  DB execution, API/contract changes, Docker, stage, commit or push.
+  planning, Dashboard implementation preparation / allowlist, Dashboard
+  accepted-events frontend implementation, Dashboard accepted-events no-DB
+  vertical validation execution and Dashboard accepted-events apiClient focused
+  no-DB tests are closed. The next eligible branch is exact-path docs/status sync
+  stage/commit/push after PM approval, then PM handoff may be considered if
+  thread/context is long. Future Dashboard/API/DB expansion remains Level 2 and
+  cannot be auto-authorized as DB-backed tests, DB execution, API/contract
+  changes, Docker, stage, commit or push.
 - Future DB-backed API validation planning must freeze exact DB opt-in scope,
   DSN/test DB safety, schema/migration verification, allowed tests, cleanup,
   `EDGE_MES_ENABLE_DB_BACKED_TESTS=1` usage and review gates before execution.
@@ -1398,6 +1419,11 @@ Dashboard accepted-events frontend Verification review chain: initial HOLD V-B1 
 Dashboard accepted-events vertical validation planning: CLOSED / PASS WITH RECOMMENDATIONS at dd6dc53 / dd6dc53627c6e27b5ff206096a91d77dd76d4d23.
 Dashboard accepted-events vertical validation planning review chain: Reliability PASS WITH RECOMMENDATIONS; Data Quality PASS WITH RECOMMENDATIONS; Verification initial HOLD B1/B2/B3; Architecture HOLD repair PASS WITH RECOMMENDATIONS; Verification re-review PASS WITH RECOMMENDATIONS, B1/B2/B3 CLOSED.
 Dashboard accepted-events frontend validation evidence: npm ci PASS; npm test PASS, 9 files / 24 tests; npm run typecheck PASS; npm run build PASS; generated artifacts cleaned; git diff --check -- frontend PASS.
+Dashboard accepted-events no-DB vertical validation execution: CLOSED / PASS WITH RECOMMENDATIONS at b413876 / b41387661d62f33971d39e83ec89152c0500e859 after four focused frontend commands produced 4 files / 19 tests passed and Reliability, Data Quality and Verification reviews closed with PASS WITH RECOMMENDATIONS.
+PM handoff after Dashboard no-DB validation sync: PASS at c103e90 / c103e90eddd2252cd6f8d085f055de13e5584578.
+Dashboard accepted-events apiClient focused no-DB tests: planning CLOSED / PASS WITH RECOMMENDATIONS; implementation CLOSED / PASS; Reliability CLOSED / PASS; Data Quality CLOSED / PASS WITH RECOMMENDATIONS; Verification CLOSED / PASS WITH RECOMMENDATIONS; exact-path commit/push PASS at 96c0928 / 96c0928970d9917e0a4142569ebbc8459d67cc3d.
+apiClient focused no-DB tests changed only five frontend test files: frontend/src/lib/acceptedStationEvents/__tests__/apiClient.test.ts, frontend/src/lib/acceptedStationEvents/__tests__/query.test.ts, frontend/src/lib/acceptedStationEvents/__tests__/schema.test.ts, frontend/src/lib/acceptedStationEvents/__tests__/viewModel.test.ts and frontend/src/app/accepted-events/__tests__/page.test.tsx.
+apiClient focused no-DB test evidence: apiClient.test.ts 7 passed, query.test.ts 12 passed, schema.test.ts 26 passed, viewModel.test.ts 3 passed and page.test.tsx 8 passed. Carry-forward only: later separately authorize a defense-in-depth fixture for nested or renamed production-looking leakage variants.
 Reliability implementation review: CLOSED / PASS WITH RECOMMENDATIONS, no blocker.
 Data Quality implementation review: CLOSED / PASS WITH RECOMMENDATIONS, no blocker.
 Verification implementation review / exact allowlist audit: CLOSED / PASS WITH RECOMMENDATIONS, no blocker.
@@ -1430,7 +1456,7 @@ Dashboard implementation preparation / allowlist gate is CLOSED / PASS WITH RECO
 Dashboard accepted-events frontend implementation is CLOSED / PASS WITH RECOMMENDATIONS at 896c2d1.
 Dashboard accepted-events vertical validation planning is CLOSED / PASS WITH RECOMMENDATIONS at dd6dc53.
 API consumer contract freeze, API implementation planning, API implementation, DB-backed API validation rerun, Dashboard/API implementation planning, Dashboard implementation preparation / allowlist, Dashboard accepted-events frontend Reliability/Data Quality/Verification focused reviews and Dashboard accepted-events vertical validation planning Reliability/Data Quality/Verification reviews are CLOSED / PASS WITH RECOMMENDATIONS with no blockers after the documented HOLD repairs.
-The next eligible branch is a separately authorized no-DB validation execution gate for frontend mocked/API-client plus component/viewModel focused evidence, or PM handoff if thread/context is long.
+Dashboard accepted-events no-DB vertical validation execution and Dashboard accepted-events apiClient focused no-DB tests are now closed. The next eligible branch is exact-path docs/status sync commit/push for this sync after PM authorization, PM handoff if thread/context is long, or a separately authorized future gate such as typecheck/build, browser smoke, API non-DB, DB-backed validation, or the nested/renamed leakage defense-in-depth fixture.
 Future DB-backed API validation rerun planning must freeze exact DB opt-in scope, DSN/test DB safety, schema/migration verification, allowed tests, cleanup and EDGE_MES_ENABLE_DB_BACKED_TESTS=1 usage before execution.
 Worker/runtime DB-backed gates for unique-violation race, commit-before-ACK, non-accepted DB-backed zero-row/no ACK/read_done mutation, post-conflict re-read semantics and DB rollback remain future authorized work.
 API read path source boundary remains only production_accepted_station_event_fact; raw_plc_sample, cycle_event, station_event, production_unit, quality_event, production_snapshot and production_events must not be described as equivalent production fact sources, fallback sources or join-derived field fillers.
