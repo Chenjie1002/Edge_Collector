@@ -3,24 +3,25 @@
 Date: 2026-06-28
 
 Status: Sprint 3 Collector Ingestion Adapter planning/status reference.
-Dashboard accepted-events vertical validation planning is CLOSED / PASS WITH
+Dashboard accepted-events no-DB vertical validation execution is CLOSED / PASS
+WITH RECOMMENDATIONS after frontend dependency environment prep, Architecture /
+Integration execution and Verification / Data Quality / Reliability focused
+reviews. The current live baseline for this docs/status sync is `HEAD ==
+origin/main == 8b2e7a01045978f8f4248038fbc1b589f16e66c2`, latest commit
+`8b2e7a0 Add PM handoff after Dashboard vertical validation sync`.
+Dashboard accepted-events vertical validation planning remains CLOSED / PASS WITH
 RECOMMENDATIONS and committed/pushed at `dd6dc53`; the planning report is
 `docs/reports/sprint3_dashboard_accepted_events_vertical_validation_plan.md`.
-Reliability and Data Quality planning reviews are CLOSED / PASS WITH
-RECOMMENDATIONS with no blockers. Verification planning review initially returned
-HOLD for B1 forbidden surface matrix precision, B2 future allowlist exactness and
-B3 expired cursor fail-closed coverage; Architecture / Integration repaired the
-planning report and Verification re-review CLOSED B1/B2/B3 with PASS WITH
-RECOMMENDATIONS. The current live baseline for this docs/status sync is `HEAD ==
-origin/main == dd6dc53627c6e27b5ff206096a91d77dd76d4d23`, latest commit
-`dd6dc53 Plan Dashboard accepted-events vertical validation`. The next eligible
-branch is a separately authorized no-DB vertical validation execution gate,
-likely frontend mocked/API-client plus component/viewModel focused evidence
-first, or PM handoff if thread/context is long. Dashboard accepted-events
-frontend implementation remains CLOSED / PASS WITH RECOMMENDATIONS and
-committed/pushed at `896c2d1`; its post-push docs/status sync is committed at
-`42ccd32`, and the PM handoff after Dashboard frontend closeout is committed at
-`f433c92`.
+The planning post-push docs/status sync is committed/pushed at `b7ce52b`, and
+PM handoff after Dashboard vertical validation sync is committed/pushed at
+`8b2e7a0`. The no-DB execution evidence is 4 focused frontend files / 19 tests
+passed: `query.test.ts` 8, `schema.test.ts` 2, `viewModel.test.ts` 2 and
+`page.test.tsx` 7. `frontend/node_modules/` exists only as a local dependency
+artifact from the authorized `npm ci` environment prep and must be excluded from
+staging. Dashboard accepted-events frontend implementation remains CLOSED / PASS
+WITH RECOMMENDATIONS and committed/pushed at `896c2d1`; its post-push docs/status
+sync is committed at `42ccd32`, and the PM handoff after Dashboard frontend
+closeout is committed at `f433c92`.
 DB/API/Dashboard accepted station events API implementation is CLOSED / PASS
 WITH RECOMMENDATIONS and committed/pushed at `97dc4d5`; its Reliability, Data
 Quality and Verification focused reviews are CLOSED / PASS WITH RECOMMENDATIONS
@@ -65,11 +66,11 @@ future DB-backed reruns, Docker / docker compose lifecycle actions, actual
 timeout failure proof, worker/runtime DB-backed gates and broad tests remain not
 authorized.
 
-Current PM intake live baseline for Dashboard accepted-events vertical validation planning docs/status sync:
+Current PM intake live baseline for Dashboard accepted-events no-DB vertical validation execution docs/status sync:
 
 - Branch: `main`.
-- HEAD / `origin/main`: `dd6dc53627c6e27b5ff206096a91d77dd76d4d23`.
-- Latest commit: `dd6dc53 Plan Dashboard accepted-events vertical validation`.
+- HEAD / `origin/main`: `8b2e7a01045978f8f4248038fbc1b589f16e66c2`.
+- Latest commit: `8b2e7a0 Add PM handoff after Dashboard vertical validation sync`.
 - Current remaining dirty artifacts to exclude unless PM explicitly authorizes:
   `.gitignore`, `docs/Edge MES Demo — ChatGPT PM Handoff - 20260623.md`,
   `docs/reports/phase1_to_sprint2_management_keynote_10p.html`,
@@ -77,7 +78,16 @@ Current PM intake live baseline for Dashboard accepted-events vertical validatio
   `docs/thread_handoff/chatgpt_pm_handoff_20260624.md`,
   `docs/thread_handoff/chatgpt_pm_handoff_20260625.md`,
   `docs/thread_handoff/chatgpt_pm_handoff_20260625_final.md`,
-  `docs/thread_handoff/chatgpt_pm_handoff_20260626_slice_a_commit.md`.
+  `docs/thread_handoff/chatgpt_pm_handoff_20260626_slice_a_commit.md`,
+  `frontend/node_modules/`.
+- Dashboard accepted-events no-DB vertical validation execution: CLOSED / PASS
+  WITH RECOMMENDATIONS; Architecture execution PASS with 4 focused frontend files
+  / 19 tests passed; Verification, Data Quality and Reliability focused reviews
+  CLOSED / PASS WITH RECOMMENDATIONS, no blockers.
+- Carry-forward recommendations: separately authorize `apiClient` focused tests
+  for only-GET endpoint behavior, 4xx invalid/expired/cross-scope cursor mapping
+  and 503 unavailable mapping; add explicit invalid `limit` executable coverage;
+  expand forbidden leakage fixtures into a parameterized full matrix.
 - Sprint 3 Slice J downstream planning-only gate: CLOSED / PASS WITH
   RECOMMENDATIONS.
 - Sprint 3 Slice J tests-only hardening: CLOSED / PASS WITH RECOMMENDATIONS.

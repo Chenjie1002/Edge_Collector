@@ -1,6 +1,6 @@
 # Sprint 3 Collector Ingestion Adapter Gate Status
 
-Updated: 2026-07-07
+Updated: 2026-07-08
 
 Purpose: compact current gate/status source for Codex Threads working on Sprint 3 Collector Ingestion Adapter.
 
@@ -15,8 +15,8 @@ Read this file together with:
 
 ```text
 live HEAD / origin/main at authoring time:
-dd6dc53627c6e27b5ff206096a91d77dd76d4d23
-dd6dc53 Plan Dashboard accepted-events vertical validation
+8b2e7a01045978f8f4248038fbc1b589f16e66c2
+8b2e7a0 Add PM handoff after Dashboard vertical validation sync
 
 Branch:
 main
@@ -75,6 +75,10 @@ Dashboard accepted-events frontend implemented, reviewed, committed and pushed a
 Dashboard accepted-events frontend post-push docs/status sync committed and pushed at 42ccd32
 PM handoff after Dashboard frontend closeout committed and pushed at f433c92
 Dashboard accepted-events vertical validation planning reviewed, repaired, committed and pushed at dd6dc53
+Dashboard accepted-events vertical validation post-push docs/status sync committed and pushed at b7ce52b
+PM handoff after Dashboard vertical validation sync committed and pushed at 8b2e7a0
+Dashboard frontend no-DB validation environment prep passed after `npm ci`; `frontend/node_modules/` is local dependency artifact only
+Dashboard accepted-events no-DB vertical validation execution closed with PASS WITH RECOMMENDATIONS after Architecture execution and Verification/Data Quality/Reliability focused reviews
 
 Deploy / rollback drill:
 not performed
@@ -148,7 +152,11 @@ Dashboard accepted-events frontend implementation is CLOSED / PASS WITH RECOMMEN
 Dashboard accepted-events frontend implementation changed exactly 28 `frontend/` allowlist files. It is Dashboard/frontend only, read-only consumer only, backed only by `GET /api/v2/production/accepted-station-events`, and query params are limited to `line_id`, `start_time`, `end_time`, `limit`, `cursor`.
 Dashboard accepted-events frontend preserves DTO allowlist only accepted fact fields, no raw/debug/diagnostic/candidate/legacy fallback, no `work_order` / `product`, `accepted_at` as accepted fact timestamp only, and page summaries current-page-only.
 Dashboard accepted-events frontend validation evidence from the closed review chain: `npm ci` PASS; `npm test` PASS, 9 files / 24 tests; `npm run typecheck` PASS; `npm run build` PASS; generated artifacts cleaned; `git diff --check -- frontend` PASS. npm `allow-scripts` warning for `fsevents` / `sharp` is carried as a CI/reproducibility note, not a blocker.
-Dashboard accepted-events vertical validation planning is CLOSED / PASS WITH RECOMMENDATIONS and tracked in commit `dd6dc53` / `dd6dc53627c6e27b5ff206096a91d77dd76d4d23`. The planning report is `docs/reports/sprint3_dashboard_accepted_events_vertical_validation_plan.md`. Reliability and Data Quality planning reviews are CLOSED / PASS WITH RECOMMENDATIONS with no blockers. Verification planning review initially returned HOLD for B1 forbidden surface matrix precision, B2 future allowlist exactness and B3 expired cursor fail-closed coverage; Architecture / Integration repaired the report, and Verification re-review CLOSED B1/B2/B3 with PASS WITH RECOMMENDATIONS. The planning report keeps the first future execution lane no-DB by default and separates DB-backed validation, browser/manual smoke, Docker/runtime/server, docs/status sync and stage/commit/push behind separate PM authorization.
+Dashboard accepted-events vertical validation planning is CLOSED / PASS WITH RECOMMENDATIONS and tracked in commit `dd6dc53` / `dd6dc53627c6e27b5ff206096a91d77dd76d4d23`. The planning report is `docs/reports/sprint3_dashboard_accepted_events_vertical_validation_plan.md`. Reliability and Data Quality planning reviews are CLOSED / PASS WITH RECOMMENDATIONS with no blockers. Verification planning review initially returned HOLD for B1 forbidden surface matrix precision, B2 future allowlist exactness and B3 expired cursor fail-closed coverage; Architecture / Integration repaired the report, and Verification re-review CLOSED B1/B2/B3 with PASS WITH RECOMMENDATIONS. The planning report kept the first execution lane no-DB by default and separated DB-backed validation, browser/manual smoke, Docker/runtime/server, docs/status sync and stage/commit/push behind separate PM authorization.
+Dashboard accepted-events vertical validation post-push docs/status sync is tracked in commit `b7ce52b`; PM handoff after Dashboard vertical validation sync is tracked in commit `8b2e7a0` / `8b2e7a01045978f8f4248038fbc1b589f16e66c2`.
+Dashboard frontend no-DB validation environment prep is CLOSED / PASS: `npm ci` completed, no tracked package/source/docs diff was introduced, and `frontend/node_modules/` is a local dependency artifact to exclude from staging.
+Dashboard accepted-events no-DB vertical validation execution is CLOSED / PASS WITH RECOMMENDATIONS. Architecture / Integration executed only four authorized frontend focused test commands and reported 4 files / 19 tests passed (`query.test.ts` 8, `schema.test.ts` 2, `viewModel.test.ts` 2, `page.test.tsx` 7). Verification focused review / exact evidence audit, Data Quality focused review and Reliability focused review are CLOSED / PASS WITH RECOMMENDATIONS with no blockers.
+Carry-forward recommendations: separately authorize `apiClient` focused coverage for only-GET endpoint behavior, 4xx invalid/expired/cross-scope cursor mapping and 503 unavailable mapping; add an executable invalid `limit` case; expand forbidden leakage fixtures into a parameterized full matrix.
 
 Sprint 3 implementation files committed:
 

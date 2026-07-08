@@ -1,19 +1,19 @@
 # 当前状态 / Codex 恢复上下文
 
-更新时间：2026-07-07
+更新时间：2026-07-08
 工作目录：`/Users/chenjie/Documents/MES/edge-mes-demo`
 树莓派部署目录：`/opt/edge-mes-demo`
 
 ## 0. 当前 PM / Codex 协作状态
 
-当前主线：Phase-2 Sprint 3 Dashboard accepted-events vertical validation planning docs/status sync。
+当前主线：Phase-2 Sprint 3 Dashboard accepted-events no-DB vertical validation execution docs/status sync。
 
 Last verified baseline before this docs/status sync:
 
 ```text
 live HEAD / origin/main at authoring time:
-dd6dc53627c6e27b5ff206096a91d77dd76d4d23
-dd6dc53 Plan Dashboard accepted-events vertical validation
+8b2e7a01045978f8f4248038fbc1b589f16e66c2
+8b2e7a0 Add PM handoff after Dashboard vertical validation sync
 
 branch:
 main
@@ -224,6 +224,14 @@ Dashboard accepted-events vertical validation Verification planning review / exa
 Dashboard accepted-events vertical validation planning HOLD repair: CLOSED / PASS WITH RECOMMENDATIONS, no blocker
 Dashboard accepted-events vertical validation Verification planning HOLD repair re-review: CLOSED / PASS WITH RECOMMENDATIONS, blockers B1/B2/B3 CLOSED
 Dashboard accepted-events vertical validation planning exact-path commit/push: PASS, commit dd6dc53
+Dashboard accepted-events vertical validation post-push docs/status sync: PASS, commit b7ce52b
+PM handoff after Dashboard vertical validation sync: PASS, commit 8b2e7a0
+Dashboard frontend no-DB validation environment prep gate: CLOSED / PASS; `npm ci` completed; `frontend/node_modules/` is local dependency artifact only, not staged and not a tracked diff
+Dashboard accepted-events no-DB vertical validation execution: CLOSED / PASS WITH RECOMMENDATIONS
+Dashboard accepted-events no-DB vertical validation Architecture execution: PASS; 4 focused frontend files / 19 tests passed
+Dashboard accepted-events no-DB vertical validation Verification review / exact evidence audit: CLOSED / PASS WITH RECOMMENDATIONS, no blocker
+Dashboard accepted-events no-DB vertical validation Data Quality review: CLOSED / PASS WITH RECOMMENDATIONS, no blocker
+Dashboard accepted-events no-DB vertical validation Reliability review: CLOSED / PASS WITH RECOMMENDATIONS, no blocker
 Slice D2-C decoder registry authority implementation: PASS WITH RECOMMENDATIONS
 Slice D2-C Reliability implementation review: PASS WITH RECOMMENDATIONS, no blocker
 Slice D2-C Data Quality implementation review: PASS WITH RECOMMENDATIONS, no blocker
@@ -311,7 +319,11 @@ The committed Dashboard accepted-events frontend changed exactly 28 `frontend/` 
 Dashboard accepted-events frontend implementation boundary: Dashboard/frontend only; read-only consumer only; only `GET /api/v2/production/accepted-station-events`; query params only `line_id`, `start_time`, `end_time`, `limit`, `cursor`; DTO allowlist only accepted fact fields from `production_accepted_station_event_fact`; no raw/debug/diagnostic/candidate/legacy fallback; no `work_order` / `product`; `accepted_at` means accepted fact timestamp only; page summaries are current-page-only.
 Dashboard accepted-events frontend validation evidence from the closed review chain: `npm ci` PASS; `npm test` PASS, 9 files / 24 tests; `npm run typecheck` PASS; `npm run build` PASS after V-B1 repair; generated artifacts cleaned; `git diff --check -- frontend` PASS. npm `allow-scripts` warning for `fsevents` / `sharp` is carried as a CI/reproducibility note, not a blocker.
 Dashboard accepted-events vertical validation planning is CLOSED / PASS WITH RECOMMENDATIONS and committed/pushed at dd6dc53 / dd6dc53627c6e27b5ff206096a91d77dd76d4d23. The planning report is `docs/reports/sprint3_dashboard_accepted_events_vertical_validation_plan.md`. Reliability and Data Quality planning reviews are CLOSED / PASS WITH RECOMMENDATIONS with no blockers. Verification planning review initially returned HOLD for B1 forbidden surface matrix precision, B2 future allowlist exactness and B3 expired cursor fail-closed coverage; Architecture / Integration repaired the planning report and Verification re-review CLOSED B1/B2/B3 with PASS WITH RECOMMENDATIONS. No validation execution, tests, DB-backed run, browser/manual smoke, Docker/runtime/server, frontend/API/contract/package/DB edits or docs/status sync execution occurred in the planning gate.
-Current live baseline for this docs/status sync: dd6dc53 / dd6dc53627c6e27b5ff206096a91d77dd76d4d23. The Dashboard accepted-events vertical validation planning report commit is dd6dc53; the PM handoff after Dashboard frontend closeout is f433c92; the Dashboard accepted-events frontend post-push docs/status sync commit is 42ccd32; the Dashboard accepted-events frontend implementation commit is 896c2d1. The next eligible branch is a separately authorized no-DB vertical validation execution gate, likely frontend mocked/API-client plus component/viewModel focused evidence first.
+Dashboard accepted-events vertical validation post-push docs/status sync is committed/pushed at b7ce52b / b7ce52bde04686ff55974c8c7dac1e5605150ad5. PM handoff after Dashboard vertical validation sync is committed/pushed at 8b2e7a0 / 8b2e7a01045978f8f4248038fbc1b589f16e66c2.
+Dashboard frontend no-DB validation environment prep gate is CLOSED / PASS: exact command `cd frontend && npm ci` completed with no tracked file diff; `frontend/node_modules/` exists as a local dependency artifact and must remain excluded from staging.
+Dashboard accepted-events no-DB vertical validation execution is CLOSED / PASS WITH RECOMMENDATIONS. Architecture / Integration executed only the four authorized frontend focused commands and reported 4 files / 19 tests passed: `query.test.ts` 8 tests, `schema.test.ts` 2 tests, `viewModel.test.ts` 2 tests and `page.test.tsx` 7 tests. Verification focused review / exact evidence audit, Data Quality focused review and Reliability focused review are all CLOSED / PASS WITH RECOMMENDATIONS with no blockers.
+Carry-forward recommendations from no-DB execution reviews: add a separately authorized `apiClient` focused test for only-GET endpoint behavior, 4xx invalid/expired/cross-scope cursor mapping and 503 unavailable mapping; add an executable invalid `limit` case; expand the forbidden leakage fixture into a parameterized full matrix. These are not blockers for the closed no-DB focused validation gate.
+Current live baseline for this docs/status sync: 8b2e7a0 / 8b2e7a01045978f8f4248038fbc1b589f16e66c2. The next eligible branch is a separately authorized follow-up evidence gate such as `apiClient` focused no-DB tests, or a separate API non-DB / typecheck-build / browser smoke / DB-backed validation gate if PM explicitly authorizes it.
 Only production fact source for DB/API/Dashboard consumers: production_accepted_station_event_fact. raw_plc_sample, cycle_event, station_event, production_unit, quality_event, production_snapshot and production_events must not be used as equivalent production fact sources, fallback sources, legacy compatibility sources or join-derived field fillers.
 Response DTO fields must come field-by-field from production_accepted_station_event_fact row fields; fallback is forbidden.
 The accepted station events API route now allows only line_id, start_time, end_time, limit and cursor query parameters for this slice; all other accepted-fact filters, work_order/product, raw/diagnostic/candidate filters and unknown query parameters fail closed with 422.
