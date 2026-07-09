@@ -74,4 +74,68 @@ describe("accepted station events view model", () => {
     expect(viewModel.selectedEvidence?.productionResult).toBe("nok");
     expect(viewModel.selectedEvidence?.nokCode).toBe("NOK_A");
   });
+
+  it("does not carry nested or renamed bypass leakage into production render evidence", () => {
+    const bypassItem = {
+      ...item,
+      production_result: "nok",
+      nok_code: "NOK_A",
+      rawPayload: { value: "LEAK_RAW_PAYLOAD_VALUE" },
+      rawHex: "LEAK_RAW_HEX_VALUE",
+      rawSampleId: "LEAK_RAW_SAMPLE_ID_VALUE",
+      adapterReason: "LEAK_ADAPTER_REASON_VALUE",
+      collectorState: "LEAK_COLLECTOR_STATE_VALUE",
+      readDone: true,
+      ackStatus: "LEAK_ACK_STATUS_VALUE",
+      qualityParetoInput: { code: "LEAK_QUALITY_PARETO_VALUE" },
+      dashboardState: { status: "LEAK_DASHBOARD_STATE_VALUE" },
+      workOrder: "LEAK_WORK_ORDER_VALUE",
+      productCode: "LEAK_PRODUCT_CODE_VALUE",
+      production_quality: "LEAK_PRODUCTION_QUALITY_VALUE",
+      production_defect: "LEAK_PRODUCTION_DEFECT_VALUE",
+      production_pareto: "LEAK_PRODUCTION_PARETO_VALUE",
+      result_detail: "LEAK_RESULT_DETAIL_VALUE",
+      defect_code: "LEAK_DEFECT_CODE_VALUE",
+      quality_state: "LEAK_QUALITY_STATE_VALUE",
+      diagnostic_payload: {
+        production_result: "LEAK_DIAGNOSTIC_RESULT_VALUE",
+        fact_key: "LEAK_DIAGNOSTIC_FACT_VALUE"
+      },
+      review_payload: {
+        nok_code: "LEAK_REVIEW_NOK_VALUE",
+        source_event_id: "LEAK_REVIEW_SOURCE_VALUE"
+      },
+      audit_payload: {
+        fact_key: "LEAK_AUDIT_FACT_VALUE",
+        production_result: "LEAK_AUDIT_RESULT_VALUE"
+      },
+      candidate_payload: {
+        production_result: "LEAK_CANDIDATE_RESULT_VALUE",
+        nok_code: "LEAK_CANDIDATE_NOK_VALUE"
+      },
+      raw_payload: {
+        fact_key: "LEAK_RAW_FACT_VALUE",
+        source_event_id: "LEAK_RAW_SOURCE_VALUE"
+      }
+    } as any;
+
+    const viewModel = toAcceptedEventsViewModel({ items: [bypassItem], page: { next_cursor: null, limit: 50 } });
+    const rendered = JSON.stringify({
+      rows: viewModel.rows,
+      summary: viewModel.summary,
+      selectedEvidence: viewModel.selectedEvidence
+    });
+
+    expect(rendered).not.toMatch(
+      /rawPayload|rawHex|rawSampleId|adapterReason|collectorState|readDone|ackStatus|qualityParetoInput|dashboardState|workOrder|productCode/i
+    );
+    expect(rendered).not.toMatch(
+      /production_quality|production_defect|production_pareto|result_detail|defect_code|quality_state|diagnostic_payload|review_payload|audit_payload|candidate_payload|raw_payload/i
+    );
+    expect(rendered).not.toMatch(/LEAK_/);
+    expect(viewModel.rows[0].productionResult).toBe("nok");
+    expect(viewModel.selectedEvidence?.nokCode).toBe("NOK_A");
+    expect(viewModel.selectedEvidence?.factKey).toBe("sha256:fact");
+    expect(viewModel.selectedEvidence?.sourceEventId).toBe("PLC_001:WS01:301");
+  });
 });

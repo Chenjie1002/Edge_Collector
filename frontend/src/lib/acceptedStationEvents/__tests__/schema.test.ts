@@ -71,4 +71,75 @@ describe("accepted station events schema", () => {
       })
     ).toThrow(/forbidden/i);
   });
+
+  it.each([
+    ["camelCase rawPayload", { rawPayload: { value: "LEAK_RAW_PAYLOAD" } }],
+    ["camelCase rawHex", { rawHex: "LEAK_RAW_HEX" }],
+    ["camelCase rawSampleId", { rawSampleId: "LEAK_RAW_SAMPLE_ID" }],
+    ["camelCase adapterReason", { adapterReason: "LEAK_ADAPTER_REASON" }],
+    ["camelCase collectorState", { collectorState: "LEAK_COLLECTOR_STATE" }],
+    ["camelCase readDone", { readDone: true }],
+    ["camelCase ackStatus", { ackStatus: "LEAK_ACK_STATUS" }],
+    ["camelCase qualityParetoInput", { qualityParetoInput: { code: "LEAK_QUALITY_PARETO" } }],
+    ["camelCase dashboardState", { dashboardState: { status: "LEAK_DASHBOARD_STATE" } }],
+    ["camelCase workOrder", { workOrder: "LEAK_WORK_ORDER" }],
+    ["camelCase productCode", { productCode: "LEAK_PRODUCT_CODE" }],
+    ["production_quality alias", { production_quality: "LEAK_PRODUCTION_QUALITY" }],
+    ["production_defect alias", { production_defect: "LEAK_PRODUCTION_DEFECT" }],
+    ["production_pareto alias", { production_pareto: "LEAK_PRODUCTION_PARETO" }],
+    ["result_detail alias", { result_detail: "LEAK_RESULT_DETAIL" }],
+    ["defect_code alias", { defect_code: "LEAK_DEFECT_CODE" }],
+    ["quality_state alias", { quality_state: "LEAK_QUALITY_STATE" }],
+    [
+      "nested diagnostic accepted-looking fields",
+      { diagnostic_payload: { production_result: "LEAK_DIAGNOSTIC_RESULT", fact_key: "LEAK_DIAGNOSTIC_FACT" } }
+    ],
+    [
+      "nested review accepted-looking fields",
+      { review_payload: { nok_code: "LEAK_REVIEW_NOK", source_event_id: "LEAK_REVIEW_SOURCE" } }
+    ],
+    [
+      "nested audit accepted-looking fields",
+      { audit_payload: { fact_key: "LEAK_AUDIT_FACT", production_result: "LEAK_AUDIT_RESULT" } }
+    ],
+    [
+      "nested candidate accepted-looking fields",
+      { candidate_payload: { production_result: "LEAK_CANDIDATE_RESULT", nok_code: "LEAK_CANDIDATE_NOK" } }
+    ],
+    [
+      "nested raw accepted-looking fields",
+      { raw_payload: { fact_key: "LEAK_RAW_FACT", source_event_id: "LEAK_RAW_SOURCE" } }
+    ]
+  ])("rejects nested or renamed forbidden leakage fixture: %s", (_name, forbiddenFields) => {
+    expect(() =>
+      parseAcceptedStationEventsEnvelope({
+        data: { items: [{ ...allowedItem, ...forbiddenFields }] },
+        page: { next_cursor: null, limit: 50 }
+      })
+    ).toThrow(/forbidden/i);
+  });
+
+  it("does not return envelope, data, or page-level forbidden payloads", () => {
+    const parsed = parseAcceptedStationEventsEnvelope({
+      data: {
+        items: [allowedItem],
+        rawPayload: "LEAK_DATA_RAW_PAYLOAD",
+        diagnostic_payload: { fact_key: "LEAK_DATA_FACT" }
+      },
+      page: {
+        next_cursor: null,
+        limit: 50,
+        dashboardState: "LEAK_PAGE_DASHBOARD_STATE",
+        quality_pareto_input: "LEAK_PAGE_QUALITY_PARETO"
+      },
+      review_payload: { production_result: "LEAK_ENVELOPE_RESULT" },
+      audit_payload: { source_event_id: "LEAK_ENVELOPE_SOURCE" }
+    });
+    const parsedJson = JSON.stringify(parsed);
+
+    expect(parsed).toEqual({ items: [allowedItem], page: { next_cursor: null, limit: 50 } });
+    expect(parsedJson).not.toMatch(
+      /rawPayload|diagnostic_payload|dashboardState|quality_pareto_input|review_payload|audit_payload|LEAK_/i
+    );
+  });
 });
