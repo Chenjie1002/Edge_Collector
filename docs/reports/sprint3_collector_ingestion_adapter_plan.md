@@ -3,14 +3,16 @@
 Date: 2026-06-28
 
 Status: Sprint 3 Collector Ingestion Adapter planning/status reference.
-Dashboard accepted-events no-DB vertical validation execution is CLOSED / PASS
-WITH RECOMMENDATIONS after frontend dependency environment prep, Architecture /
-Integration execution and Verification / Data Quality / Reliability focused
-reviews. The current live baseline for this docs/status sync is `HEAD ==
-origin/main == 8b2e7a01045978f8f4248038fbc1b589f16e66c2`, latest commit
-`8b2e7a0 Add PM handoff after Dashboard vertical validation sync`.
-Dashboard accepted-events vertical validation planning remains CLOSED / PASS WITH
-RECOMMENDATIONS and committed/pushed at `dd6dc53`; the planning report is
+Dashboard accepted-events nested/renamed leakage defense-in-depth fixture is CLOSED /
+PASS after the apiClient focused no-DB test branch. The current live baseline for
+this docs/status sync is `HEAD == origin/main ==
+244a6dd82b294f695aaf2bf6a6a849d7ad94dcb6`, latest commit `244a6dd Harden
+Dashboard leakage fixtures`. Dashboard accepted-events no-DB vertical validation
+execution remains CLOSED / PASS WITH RECOMMENDATIONS after frontend dependency
+environment prep, Architecture / Integration execution and Verification / Data
+Quality / Reliability focused reviews. Dashboard accepted-events vertical
+validation planning remains CLOSED / PASS WITH RECOMMENDATIONS and
+committed/pushed at `dd6dc53`; the planning report is
 `docs/reports/sprint3_dashboard_accepted_events_vertical_validation_plan.md`.
 The planning post-push docs/status sync is committed/pushed at `b7ce52b`, and
 PM handoff after Dashboard vertical validation sync is committed/pushed at
@@ -66,11 +68,11 @@ future DB-backed reruns, Docker / docker compose lifecycle actions, actual
 timeout failure proof, worker/runtime DB-backed gates and broad tests remain not
 authorized.
 
-Current PM intake live baseline for Dashboard accepted-events no-DB vertical validation execution docs/status sync:
+Current PM intake live baseline for Dashboard accepted-events nested/renamed leakage defense-in-depth fixture docs/status sync:
 
 - Branch: `main`.
-- HEAD / `origin/main`: `8b2e7a01045978f8f4248038fbc1b589f16e66c2`.
-- Latest commit: `8b2e7a0 Add PM handoff after Dashboard vertical validation sync`.
+- HEAD / `origin/main`: `244a6dd82b294f695aaf2bf6a6a849d7ad94dcb6`.
+- Latest commit: `244a6dd Harden Dashboard leakage fixtures`.
 - Current remaining dirty artifacts to exclude unless PM explicitly authorizes:
   `.gitignore`, `docs/Edge MES Demo — ChatGPT PM Handoff - 20260623.md`,
   `docs/reports/phase1_to_sprint2_management_keynote_10p.html`,
@@ -240,9 +242,20 @@ Current PM intake live baseline for Dashboard accepted-events no-DB vertical val
   `frontend/src/app/accepted-events/__tests__/page.test.tsx`.
 - apiClient focused no-DB evidence: `apiClient.test.ts` 7 passed,
   `query.test.ts` 12 passed, `schema.test.ts` 26 passed, `viewModel.test.ts` 3
-  passed and `page.test.tsx` 8 passed. The only carry-forward recommendation is
-  a later separately authorized defense-in-depth fixture for nested or renamed
-  production-looking leakage variants.
+  passed and `page.test.tsx` 8 passed.
+- Dashboard accepted-events nested/renamed leakage defense-in-depth fixture:
+  implementation CLOSED / PASS; Reliability CLOSED / PASS WITH RECOMMENDATIONS;
+  Data Quality CLOSED / PASS WITH RECOMMENDATIONS; Verification CLOSED / PASS
+  WITH RECOMMENDATIONS; exact-path commit/push PASS at `244a6dd` /
+  `244a6dd82b294f695aaf2bf6a6a849d7ad94dcb6`.
+- Nested/renamed leakage fixture changed only two frontend test files:
+  `frontend/src/lib/acceptedStationEvents/__tests__/schema.test.ts` and
+  `frontend/src/lib/acceptedStationEvents/__tests__/viewModel.test.ts`.
+- Nested/renamed leakage fixture evidence: `schema.test.ts` 49 passed,
+  `viewModel.test.ts` 4 passed and exact two-file `git diff --check` PASS.
+  Carry-forward only: future exact-scope hardening should make
+  `parseAcceptedStationEventsEnvelope()` fail closed on unsupported
+  envelope/data/page-level keys instead of only stripping/not returning them.
 - DB/API/Dashboard consumer planning gate: CLOSED / PASS WITH RECOMMENDATIONS,
   no blocker; planning doc committed/pushed at `f4de1c3`.
 - DB/API/Dashboard consumer planning Reliability / Data Quality / Verification
@@ -1423,7 +1436,9 @@ Dashboard accepted-events no-DB vertical validation execution: CLOSED / PASS WIT
 PM handoff after Dashboard no-DB validation sync: PASS at c103e90 / c103e90eddd2252cd6f8d085f055de13e5584578.
 Dashboard accepted-events apiClient focused no-DB tests: planning CLOSED / PASS WITH RECOMMENDATIONS; implementation CLOSED / PASS; Reliability CLOSED / PASS; Data Quality CLOSED / PASS WITH RECOMMENDATIONS; Verification CLOSED / PASS WITH RECOMMENDATIONS; exact-path commit/push PASS at 96c0928 / 96c0928970d9917e0a4142569ebbc8459d67cc3d.
 apiClient focused no-DB tests changed only five frontend test files: frontend/src/lib/acceptedStationEvents/__tests__/apiClient.test.ts, frontend/src/lib/acceptedStationEvents/__tests__/query.test.ts, frontend/src/lib/acceptedStationEvents/__tests__/schema.test.ts, frontend/src/lib/acceptedStationEvents/__tests__/viewModel.test.ts and frontend/src/app/accepted-events/__tests__/page.test.tsx.
-apiClient focused no-DB test evidence: apiClient.test.ts 7 passed, query.test.ts 12 passed, schema.test.ts 26 passed, viewModel.test.ts 3 passed and page.test.tsx 8 passed. Carry-forward only: later separately authorize a defense-in-depth fixture for nested or renamed production-looking leakage variants.
+apiClient focused no-DB test evidence: apiClient.test.ts 7 passed, query.test.ts 12 passed, schema.test.ts 26 passed, viewModel.test.ts 3 passed and page.test.tsx 8 passed.
+Dashboard accepted-events nested/renamed leakage defense-in-depth fixture: implementation CLOSED / PASS; Reliability CLOSED / PASS WITH RECOMMENDATIONS; Data Quality CLOSED / PASS WITH RECOMMENDATIONS; Verification CLOSED / PASS WITH RECOMMENDATIONS; exact-path commit/push PASS at 244a6dd / 244a6dd82b294f695aaf2bf6a6a849d7ad94dcb6.
+Nested/renamed leakage fixture changed only frontend/src/lib/acceptedStationEvents/__tests__/schema.test.ts and frontend/src/lib/acceptedStationEvents/__tests__/viewModel.test.ts. Evidence: schema.test.ts 49 passed, viewModel.test.ts 4 passed and exact two-file git diff --check PASS. Carry-forward only: future exact-scope hardening should make parseAcceptedStationEventsEnvelope() fail closed on unsupported envelope/data/page-level keys instead of only stripping/not returning them.
 Reliability implementation review: CLOSED / PASS WITH RECOMMENDATIONS, no blocker.
 Data Quality implementation review: CLOSED / PASS WITH RECOMMENDATIONS, no blocker.
 Verification implementation review / exact allowlist audit: CLOSED / PASS WITH RECOMMENDATIONS, no blocker.
@@ -1456,7 +1471,7 @@ Dashboard implementation preparation / allowlist gate is CLOSED / PASS WITH RECO
 Dashboard accepted-events frontend implementation is CLOSED / PASS WITH RECOMMENDATIONS at 896c2d1.
 Dashboard accepted-events vertical validation planning is CLOSED / PASS WITH RECOMMENDATIONS at dd6dc53.
 API consumer contract freeze, API implementation planning, API implementation, DB-backed API validation rerun, Dashboard/API implementation planning, Dashboard implementation preparation / allowlist, Dashboard accepted-events frontend Reliability/Data Quality/Verification focused reviews and Dashboard accepted-events vertical validation planning Reliability/Data Quality/Verification reviews are CLOSED / PASS WITH RECOMMENDATIONS with no blockers after the documented HOLD repairs.
-Dashboard accepted-events no-DB vertical validation execution and Dashboard accepted-events apiClient focused no-DB tests are now closed. The next eligible branch is exact-path docs/status sync commit/push for this sync after PM authorization, PM handoff if thread/context is long, or a separately authorized future gate such as typecheck/build, browser smoke, API non-DB, DB-backed validation, or the nested/renamed leakage defense-in-depth fixture.
+Dashboard accepted-events no-DB vertical validation execution, Dashboard accepted-events apiClient focused no-DB tests and Dashboard accepted-events nested/renamed leakage defense-in-depth fixture are now closed. The next eligible branch is exact-path docs/status sync commit/push for this sync after PM authorization, PM handoff if thread/context is long, or a separately authorized future gate such as strict parser fail-closed hardening, typecheck/build, browser smoke, API non-DB or DB-backed validation.
 Future DB-backed API validation rerun planning must freeze exact DB opt-in scope, DSN/test DB safety, schema/migration verification, allowed tests, cleanup and EDGE_MES_ENABLE_DB_BACKED_TESTS=1 usage before execution.
 Worker/runtime DB-backed gates for unique-violation race, commit-before-ACK, non-accepted DB-backed zero-row/no ACK/read_done mutation, post-conflict re-read semantics and DB rollback remain future authorized work.
 API read path source boundary remains only production_accepted_station_event_fact; raw_plc_sample, cycle_event, station_event, production_unit, quality_event, production_snapshot and production_events must not be described as equivalent production fact sources, fallback sources or join-derived field fillers.
@@ -1472,9 +1487,9 @@ Deploy/tag/rollback/real PLC pilot require separate PM authorization.
 
 Eligible for next PM gate: exact-path docs/status sync stage/commit/push for this
 sync after PM explicitly authorizes staging, then PM handoff may be considered if
-thread/context is long. Future DB-backed reruns remain separate future
-PM-authorized gates. Actual timeout failure induction remains a separate future
-PM-authorized gate.
+thread/context is long. Future strict parser fail-closed hardening, DB-backed
+reruns and actual timeout failure induction remain separate future PM-authorized
+gates.
 
 Eligible for implementation without PM approval: no. PM approval is required
 before DB-backed API validation planning/execution, Dashboard implementation

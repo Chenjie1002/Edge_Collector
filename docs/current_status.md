@@ -1,19 +1,19 @@
 # 当前状态 / Codex 恢复上下文
 
-更新时间：2026-07-08
+更新时间：2026-07-09
 工作目录：`/Users/chenjie/Documents/MES/edge-mes-demo`
 树莓派部署目录：`/opt/edge-mes-demo`
 
 ## 0. 当前 PM / Codex 协作状态
 
-当前主线：Phase-2 Sprint 3 Dashboard accepted-events apiClient focused no-DB tests post-push docs/status sync。
+当前主线：Phase-2 Sprint 3 Dashboard accepted-events nested/renamed leakage defense-in-depth fixture post-push docs/status sync。
 
 Last verified baseline before this docs/status sync:
 
 ```text
 live HEAD / origin/main at authoring time:
-96c0928970d9917e0a4142569ebbc8459d67cc3d
-96c0928 Add focused accepted-events API client tests
+244a6dd82b294f695aaf2bf6a6a849d7ad94dcb6
+244a6dd Harden Dashboard leakage fixtures
 
 branch:
 main
@@ -238,6 +238,11 @@ Dashboard accepted-events apiClient focused no-DB tests Reliability review: CLOS
 Dashboard accepted-events apiClient focused no-DB tests Data Quality review: CLOSED / PASS WITH RECOMMENDATIONS, no blocker
 Dashboard accepted-events apiClient focused no-DB tests Verification review / exact evidence audit: CLOSED / PASS WITH RECOMMENDATIONS, no blocker
 Dashboard accepted-events apiClient focused no-DB tests exact-path commit/push: PASS, commit 96c0928
+Dashboard accepted-events nested/renamed leakage defense-in-depth fixture implementation: CLOSED / PASS
+Dashboard accepted-events nested/renamed leakage defense-in-depth fixture Reliability review: CLOSED / PASS WITH RECOMMENDATIONS, no blocker
+Dashboard accepted-events nested/renamed leakage defense-in-depth fixture Data Quality review: CLOSED / PASS WITH RECOMMENDATIONS, no blocker
+Dashboard accepted-events nested/renamed leakage defense-in-depth fixture Verification review / exact evidence audit: CLOSED / PASS WITH RECOMMENDATIONS, no blocker
+Dashboard accepted-events nested/renamed leakage defense-in-depth fixture exact-path commit/push: PASS, commit 244a6dd
 Slice D2-C decoder registry authority implementation: PASS WITH RECOMMENDATIONS
 Slice D2-C Reliability implementation review: PASS WITH RECOMMENDATIONS, no blocker
 Slice D2-C Data Quality implementation review: PASS WITH RECOMMENDATIONS, no blocker
@@ -331,8 +336,9 @@ Dashboard accepted-events no-DB vertical validation execution is CLOSED / PASS W
 The no-DB execution carry-forward recommendations were later handled by a separately authorized `apiClient` focused no-DB tests branch: only-GET endpoint behavior, 4xx invalid / expired / cross-scope cursor mapping, 503 unavailable mapping, explicit invalid `limit` executable coverage and a forbidden leakage parameterized matrix.
 Dashboard accepted-events apiClient focused no-DB test planning gate is CLOSED / PASS WITH RECOMMENDATIONS. The implementation gate is CLOSED / PASS and committed/pushed at 96c0928 / 96c0928970d9917e0a4142569ebbc8459d67cc3d with exact test-only files: `frontend/src/lib/acceptedStationEvents/__tests__/apiClient.test.ts`, `frontend/src/lib/acceptedStationEvents/__tests__/query.test.ts`, `frontend/src/lib/acceptedStationEvents/__tests__/schema.test.ts`, `frontend/src/lib/acceptedStationEvents/__tests__/viewModel.test.ts` and `frontend/src/app/accepted-events/__tests__/page.test.tsx`.
 Focused no-DB evidence for the apiClient branch: `apiClient.test.ts` 7 passed, `query.test.ts` 12 passed, `schema.test.ts` 26 passed, `viewModel.test.ts` 3 passed and `page.test.tsx` 8 passed. Reliability focused review is CLOSED / PASS; Data Quality focused review is CLOSED / PASS WITH RECOMMENDATIONS; Verification focused review / exact evidence audit is CLOSED / PASS WITH RECOMMENDATIONS. No production source, package/config, API, contract, DB, docs/status, Docker/runtime/browser, typecheck/build, stage/commit/push expansion occurred during the implementation or review gates.
-Carry-forward recommendation after the apiClient focused no-DB tests branch: later separately authorize a defense-in-depth fixture for nested or renamed production-looking leakage variants. This is not a current blocker.
-Current live baseline for this docs/status sync: 96c0928 / 96c0928970d9917e0a4142569ebbc8459d67cc3d. The next eligible branch is exact-path docs/status sync commit/push for this sync after PM authorization, PM handoff if thread/context is long, or a separately authorized future gate such as typecheck/build, browser smoke, API non-DB, DB-backed validation, or the nested/renamed leakage defense-in-depth fixture.
+Dashboard accepted-events nested/renamed leakage defense-in-depth fixture branch is CLOSED / PASS and committed/pushed at 244a6dd / 244a6dd82b294f695aaf2bf6a6a849d7ad94dcb6. The branch changed only two frontend test files: `frontend/src/lib/acceptedStationEvents/__tests__/schema.test.ts` and `frontend/src/lib/acceptedStationEvents/__tests__/viewModel.test.ts`. Focused evidence: `schema.test.ts` 49 passed, `viewModel.test.ts` 4 passed and `git diff --check -- frontend/src/lib/acceptedStationEvents/__tests__/schema.test.ts frontend/src/lib/acceptedStationEvents/__tests__/viewModel.test.ts` PASS. Reliability, Data Quality and Verification reviews all closed with PASS WITH RECOMMENDATIONS and no blockers.
+Carry-forward recommendation after the nested/renamed leakage defense-in-depth fixture branch: later separately authorize strict parser contract hardening so `parseAcceptedStationEventsEnvelope()` fails closed on unsupported envelope/data/page-level keys instead of only stripping/not returning them. This is not a current blocker.
+Current live baseline for this docs/status sync: 244a6dd / 244a6dd82b294f695aaf2bf6a6a849d7ad94dcb6. The next eligible branch is exact-path docs/status sync commit/push for this sync after PM authorization, PM handoff if thread/context is long, or a separately authorized future gate such as strict parser fail-closed hardening, typecheck/build, browser smoke, API non-DB or DB-backed validation.
 Only production fact source for DB/API/Dashboard consumers: production_accepted_station_event_fact. raw_plc_sample, cycle_event, station_event, production_unit, quality_event, production_snapshot and production_events must not be used as equivalent production fact sources, fallback sources, legacy compatibility sources or join-derived field fillers.
 Response DTO fields must come field-by-field from production_accepted_station_event_fact row fields; fallback is forbidden.
 The accepted station events API route now allows only line_id, start_time, end_time, limit and cursor query parameters for this slice; all other accepted-fact filters, work_order/product, raw/diagnostic/candidate filters and unknown query parameters fail closed with 422.
@@ -342,7 +348,7 @@ NOK/detail fields may come only from accepted fact rows and must bind accepted u
 work_order and product remain excluded until a later schema/contract authority gate. accepted_at is an accepted fact timestamp, not collector freshness, ACK time, station freshness or read_done time.
 An optional debug/review diagnostics view remains deferred and must be a separate Level 2 gate with separate diagnostic/audit/review namespaces and leakage-negative review before implementation.
 Carry-forward recommendations after implementation: configure non-default ACCEPTED_STATION_EVENTS_CURSOR_SECRET before production deploy; consider fail-closed behavior/tests for duplicate allowed query keys; optionally add explicit invalid timezone and cursor no-DB-query assertions; optionally add COMMIT/ROLLBACK sequencing spy assertions; future DB unavailable / missing schema / missing table / missing authority error envelope may be refined if Dashboard consumers need differentiated states.
-DB/API/Dashboard consumer planning, API consumer contract freeze, API implementation planning, accepted station events API implementation, DB-backed API validation planning/repair, DB-backed API validation execution rerun, Dashboard/API implementation planning, Dashboard implementation preparation / allowlist, Dashboard accepted-events frontend implementation, Dashboard accepted-events vertical validation planning, Dashboard accepted-events no-DB vertical validation execution and Dashboard accepted-events apiClient focused no-DB tests are closed. The next eligible branch is exact-path docs/status sync commit/push for this sync after PM authorization, PM handoff if thread/context is long, or a separately authorized future gate such as typecheck/build, browser smoke, API non-DB, DB-backed validation, or the nested/renamed leakage defense-in-depth fixture.
+DB/API/Dashboard consumer planning, API consumer contract freeze, API implementation planning, accepted station events API implementation, DB-backed API validation planning/repair, DB-backed API validation execution rerun, Dashboard/API implementation planning, Dashboard implementation preparation / allowlist, Dashboard accepted-events frontend implementation, Dashboard accepted-events vertical validation planning, Dashboard accepted-events no-DB vertical validation execution, Dashboard accepted-events apiClient focused no-DB tests and Dashboard accepted-events nested/renamed leakage defense-in-depth fixture are closed. The next eligible branch is exact-path docs/status sync commit/push for this sync after PM authorization, PM handoff if thread/context is long, or a separately authorized future gate such as strict parser fail-closed hardening, typecheck/build, browser smoke, API non-DB or DB-backed validation.
 DB/API/Dashboard expansion beyond the accepted station-event fact DB write path, guarded DB-backed accepted fact tests, accepted fact API read contract/docs freeze, accepted fact API read path implementation, API consumer planning/contract/planning/implementation, DB-backed API validation harness repair, completed remote live validation, the completed 88-pass SSH-tunnel DB-backed API rerun, Dashboard/API implementation planning and the committed accepted-events frontend remains not authorized except future separately authorized exact-scope gates.
 Optional debug/review diagnostics view, new migration, future DB-backed reruns, worker/runtime DB-backed gates, EDGE_MES_ENABLE_DB_BACKED_TESTS=1 outside an approved gate, local/remote Postgres connection outside an approved gate, Docker / docker compose lifecycle actions, deploy, tag, rollback, broad tests, actual timeout failure proof, real PLC pilot, API/contract/DB/runtime expansion and stage/commit/push: not authorized without separate PM approval.
 ```
