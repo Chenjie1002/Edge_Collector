@@ -1,19 +1,23 @@
 # 当前状态 / Codex 恢复上下文
 
-更新时间：2026-07-09
+更新时间：2026-07-11
 工作目录：`/Users/chenjie/Documents/MES/edge-mes-demo`
 树莓派部署目录：`/opt/edge-mes-demo`
 
 ## 0. 当前 PM / Codex 协作状态
 
-当前主线：Phase-2 Sprint 3 Dashboard accepted-events nested/renamed leakage defense-in-depth fixture post-push docs/status sync。
+当前主线：Phase-2 Sprint 3 Dashboard accepted-events strict parser fail-closed hardening post-push docs/status sync。
 
 Last verified baseline before this docs/status sync:
 
 ```text
 live HEAD / origin/main at authoring time:
-244a6dd82b294f695aaf2bf6a6a849d7ad94dcb6
-244a6dd Harden Dashboard leakage fixtures
+2cf616d4dafbd497ec3db29ade826b1159e9025a
+2cf616d Harden Dashboard accepted-events parser
+
+preceding docs authority commit:
+7824063305cfaf4d44db6c8a01d095dd59586f10
+7824063 Clarify Dashboard strict parser contract
 
 branch:
 main
@@ -243,6 +247,20 @@ Dashboard accepted-events nested/renamed leakage defense-in-depth fixture Reliab
 Dashboard accepted-events nested/renamed leakage defense-in-depth fixture Data Quality review: CLOSED / PASS WITH RECOMMENDATIONS, no blocker
 Dashboard accepted-events nested/renamed leakage defense-in-depth fixture Verification review / exact evidence audit: CLOSED / PASS WITH RECOMMENDATIONS, no blocker
 Dashboard accepted-events nested/renamed leakage defense-in-depth fixture exact-path commit/push: PASS, commit 244a6dd
+Dashboard accepted-events strict parser planning gate: CLOSED / initial HOLD because generic Envelope meta conflicted with endpoint response shape; repaired and closed
+Dashboard accepted-events exact-envelope contract clarification: CLOSED / PASS
+Dashboard accepted-events exact-envelope Reliability contract review: CLOSED / PASS WITH RECOMMENDATIONS, no blocker
+Dashboard accepted-events exact-envelope Data Quality contract review: CLOSED / PASS WITH RECOMMENDATIONS, no blocker
+Dashboard accepted-events exact-envelope Verification contract review: CLOSED / initial HOLD for item required/optional and missing/null ambiguity; repaired and closed
+Dashboard accepted-events item required-key/null contract repair: CLOSED / PASS
+Dashboard accepted-events item required-key/null Data Quality targeted re-review: CLOSED / PASS WITH RECOMMENDATIONS, no blocker
+Dashboard accepted-events item required-key/null Verification targeted re-review: CLOSED / PASS WITH RECOMMENDATIONS, original blocker CLOSED
+Dashboard accepted-events strict parser implementation: CLOSED / PASS
+Dashboard accepted-events strict parser Reliability implementation review: CLOSED / PASS, no blocker
+Dashboard accepted-events strict parser Data Quality implementation review: CLOSED / PASS WITH RECOMMENDATIONS, no blocker
+Dashboard accepted-events strict parser Verification implementation review: CLOSED / PASS WITH RECOMMENDATIONS, no blocker
+Dashboard accepted-events strict parser docs authority exact-path commit/push: PASS, commit 7824063
+Dashboard accepted-events strict parser implementation exact-path commit/push: PASS, commit 2cf616d
 Slice D2-C decoder registry authority implementation: PASS WITH RECOMMENDATIONS
 Slice D2-C Reliability implementation review: PASS WITH RECOMMENDATIONS, no blocker
 Slice D2-C Data Quality implementation review: PASS WITH RECOMMENDATIONS, no blocker
@@ -337,8 +355,15 @@ The no-DB execution carry-forward recommendations were later handled by a separa
 Dashboard accepted-events apiClient focused no-DB test planning gate is CLOSED / PASS WITH RECOMMENDATIONS. The implementation gate is CLOSED / PASS and committed/pushed at 96c0928 / 96c0928970d9917e0a4142569ebbc8459d67cc3d with exact test-only files: `frontend/src/lib/acceptedStationEvents/__tests__/apiClient.test.ts`, `frontend/src/lib/acceptedStationEvents/__tests__/query.test.ts`, `frontend/src/lib/acceptedStationEvents/__tests__/schema.test.ts`, `frontend/src/lib/acceptedStationEvents/__tests__/viewModel.test.ts` and `frontend/src/app/accepted-events/__tests__/page.test.tsx`.
 Focused no-DB evidence for the apiClient branch: `apiClient.test.ts` 7 passed, `query.test.ts` 12 passed, `schema.test.ts` 26 passed, `viewModel.test.ts` 3 passed and `page.test.tsx` 8 passed. Reliability focused review is CLOSED / PASS; Data Quality focused review is CLOSED / PASS WITH RECOMMENDATIONS; Verification focused review / exact evidence audit is CLOSED / PASS WITH RECOMMENDATIONS. No production source, package/config, API, contract, DB, docs/status, Docker/runtime/browser, typecheck/build, stage/commit/push expansion occurred during the implementation or review gates.
 Dashboard accepted-events nested/renamed leakage defense-in-depth fixture branch is CLOSED / PASS and committed/pushed at 244a6dd / 244a6dd82b294f695aaf2bf6a6a849d7ad94dcb6. The branch changed only two frontend test files: `frontend/src/lib/acceptedStationEvents/__tests__/schema.test.ts` and `frontend/src/lib/acceptedStationEvents/__tests__/viewModel.test.ts`. Focused evidence: `schema.test.ts` 49 passed, `viewModel.test.ts` 4 passed and `git diff --check -- frontend/src/lib/acceptedStationEvents/__tests__/schema.test.ts frontend/src/lib/acceptedStationEvents/__tests__/viewModel.test.ts` PASS. Reliability, Data Quality and Verification reviews all closed with PASS WITH RECOMMENDATIONS and no blockers.
-Carry-forward recommendation after the nested/renamed leakage defense-in-depth fixture branch: later separately authorize strict parser contract hardening so `parseAcceptedStationEventsEnvelope()` fails closed on unsupported envelope/data/page-level keys instead of only stripping/not returning them. This is not a current blocker.
-Current live baseline for this docs/status sync: 244a6dd / 244a6dd82b294f695aaf2bf6a6a849d7ad94dcb6. The next eligible branch is exact-path docs/status sync commit/push for this sync after PM authorization, PM handoff if thread/context is long, or a separately authorized future gate such as strict parser fail-closed hardening, typecheck/build, browser smoke, API non-DB or DB-backed validation.
+Dashboard accepted-events strict parser fail-closed hardening is CLOSED by exact-envelope contract clarification, item required-key/null repair and implementation commit `2cf616d`. Docs authority is the separate four-file commit `7824063` (`docs/contracts/dashboard_api_contract.md`, `docs/reports/sprint3_dashboard_strict_parser_fail_closed_plan.md`, `docs/reports/sprint3_dashboard_accepted_events_envelope_contract_clarification_report.md`, `docs/reports/sprint3_dashboard_accepted_events_item_required_key_contract_repair_report.md`); it is not a mixed implementation commit. Implementation commit `2cf616d` changed exactly `frontend/src/lib/acceptedStationEvents/schema.ts`, `frontend/src/lib/acceptedStationEvents/__tests__/schema.test.ts` and `frontend/src/lib/acceptedStationEvents/__tests__/apiClient.test.ts`.
+
+Contract closeout: this endpoint uses an endpoint-specific exact envelope: outer required keys are only `data` and `page`; `data` requires only `items`; `page` requires only `next_cursor` and `limit`; `meta` is unsupported. Envelope/data/page/item unknown keys fail closed. All 22 DTO keys are required by own-property presence; required means the key must exist, not that its value is non-null. Nullable values require explicit JSON `null`; missing is not explicit `null`. Missing and unknown malformed 2xx responses map to client `kind: "error"`. Silent strip, normalization, fallback, partial parsing and nested-field salvage are prohibited. The current API route remains compatible; no API change occurred.
+
+Implementation closeout: `schema.ts` now validates exact enumerable own keys at outer/data/page/item layers and required own-property presence, including the 22-field item missing matrix; `?? null` was removed and explicit `null` is preserved. `apiClient.ts` was not modified; its existing parser-throw mapping remains `kind: "error"`, with no retry, second request or fallback endpoint. No API, DB, Collector, runtime, viewModel, page, store or cache changed. Fresh no-DB focused frontend evidence: `schema.test.ts: 143 passed`; `apiClient.test.ts: 12 passed`; focused diff check: PASS. Full frontend suite, typecheck, build, browser smoke and API/DB tests were not run by this branch.
+
+Remaining non-blocking carry-forward: optional future test-gate parameterization proving explicit `null` preservation for all 22 fields; separately authorized UI/state work ensuring an error cannot render old successful data or cache as fresh production truth. Neither is a current blocker or an authorization grant.
+
+The strict-parser planning, contract authority, implementation, Reliability/Data Quality/Verification reviews, docs authority commit/push and implementation commit/push are all CLOSED. Next eligible branch: exact-path docs/status sync stage/commit/push after separate PM authorization; PM handoff if context/thread is long; separately authorized UI/state stale-data gate; optional all-fields explicit-null regression tests; or separately planned typecheck/build/browser/API/DB-backed validation.
 Only production fact source for DB/API/Dashboard consumers: production_accepted_station_event_fact. raw_plc_sample, cycle_event, station_event, production_unit, quality_event, production_snapshot and production_events must not be used as equivalent production fact sources, fallback sources, legacy compatibility sources or join-derived field fillers.
 Response DTO fields must come field-by-field from production_accepted_station_event_fact row fields; fallback is forbidden.
 The accepted station events API route now allows only line_id, start_time, end_time, limit and cursor query parameters for this slice; all other accepted-fact filters, work_order/product, raw/diagnostic/candidate filters and unknown query parameters fail closed with 422.
@@ -348,7 +373,7 @@ NOK/detail fields may come only from accepted fact rows and must bind accepted u
 work_order and product remain excluded until a later schema/contract authority gate. accepted_at is an accepted fact timestamp, not collector freshness, ACK time, station freshness or read_done time.
 An optional debug/review diagnostics view remains deferred and must be a separate Level 2 gate with separate diagnostic/audit/review namespaces and leakage-negative review before implementation.
 Carry-forward recommendations after implementation: configure non-default ACCEPTED_STATION_EVENTS_CURSOR_SECRET before production deploy; consider fail-closed behavior/tests for duplicate allowed query keys; optionally add explicit invalid timezone and cursor no-DB-query assertions; optionally add COMMIT/ROLLBACK sequencing spy assertions; future DB unavailable / missing schema / missing table / missing authority error envelope may be refined if Dashboard consumers need differentiated states.
-DB/API/Dashboard consumer planning, API consumer contract freeze, API implementation planning, accepted station events API implementation, DB-backed API validation planning/repair, DB-backed API validation execution rerun, Dashboard/API implementation planning, Dashboard implementation preparation / allowlist, Dashboard accepted-events frontend implementation, Dashboard accepted-events vertical validation planning, Dashboard accepted-events no-DB vertical validation execution, Dashboard accepted-events apiClient focused no-DB tests and Dashboard accepted-events nested/renamed leakage defense-in-depth fixture are closed. The next eligible branch is exact-path docs/status sync commit/push for this sync after PM authorization, PM handoff if thread/context is long, or a separately authorized future gate such as strict parser fail-closed hardening, typecheck/build, browser smoke, API non-DB or DB-backed validation.
+DB/API/Dashboard consumer planning, API consumer contract freeze, API implementation planning, accepted station events API implementation, DB-backed API validation planning/repair, DB-backed API validation execution rerun, Dashboard/API implementation planning, Dashboard implementation preparation / allowlist, Dashboard accepted-events frontend implementation, Dashboard accepted-events vertical validation planning, Dashboard accepted-events no-DB vertical validation execution, Dashboard accepted-events apiClient focused no-DB tests, Dashboard accepted-events nested/renamed leakage defense-in-depth fixture and Dashboard accepted-events strict parser fail-closed hardening are closed. The strict-parser next eligible branch is exact-path docs/status sync stage/commit/push after separate PM authorization, PM handoff if thread/context is long, separately authorized UI/state stale-data work, optional all-fields explicit-null regression tests, or separately planned typecheck/build/browser/API/DB-backed validation.
 DB/API/Dashboard expansion beyond the accepted station-event fact DB write path, guarded DB-backed accepted fact tests, accepted fact API read contract/docs freeze, accepted fact API read path implementation, API consumer planning/contract/planning/implementation, DB-backed API validation harness repair, completed remote live validation, the completed 88-pass SSH-tunnel DB-backed API rerun, Dashboard/API implementation planning and the committed accepted-events frontend remains not authorized except future separately authorized exact-scope gates.
 Optional debug/review diagnostics view, new migration, future DB-backed reruns, worker/runtime DB-backed gates, EDGE_MES_ENABLE_DB_BACKED_TESTS=1 outside an approved gate, local/remote Postgres connection outside an approved gate, Docker / docker compose lifecycle actions, deploy, tag, rollback, broad tests, actual timeout failure proof, real PLC pilot, API/contract/DB/runtime expansion and stage/commit/push: not authorized without separate PM approval.
 ```
