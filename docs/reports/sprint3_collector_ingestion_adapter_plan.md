@@ -7,9 +7,12 @@ Dashboard accepted-events strict parser fail-closed hardening is CLOSED after th
 separate docs authority commit `7824063 Clarify Dashboard strict parser contract`
 (`7824063305cfaf4d44db6c8a01d095dd59586f10`) and exact three-file implementation
 commit `2cf616d Harden Dashboard accepted-events parser`
-(`2cf616d4dafbd497ec3db29ade826b1159e9025a`). The authoring-time baseline for
+(`2cf616d4dafbd497ec3db29ade826b1159e9025a`). The separately authorized
+all-22-field explicit-null regression tests-only gate is also CLOSED / PASS and
+committed/pushed at `bdbcea0 Add explicit-null accepted event coverage`
+(`bdbcea0707941b4ca98f3fe4393bbbfae98a3764`). The authoring-time baseline for
 this docs/status sync is `HEAD == origin/main ==
-2cf616d4dafbd497ec3db29ade826b1159e9025a`; it is a durable audit marker and
+bdbcea0707941b4ca98f3fe4393bbbfae98a3764`; it is a durable audit marker and
 does not require a later docs-only HEAD to remain identical. The strict-parser
 planning and exact-envelope Verification reviews had initial HOLDs, respectively
 for generic Envelope `meta` conflict and item required/optional missing/null
@@ -299,9 +302,21 @@ Current PM intake live baseline for Dashboard accepted-events nested/renamed lea
   implementation review CLOSED / PASS; Data Quality and Verification implementation
   reviews CLOSED / PASS WITH RECOMMENDATIONS, no blockers. No API, DB, Collector,
   runtime, viewModel, page, store or cache changed. Fresh no-DB focused frontend
-  evidence: `schema.test.ts: 143 passed`; `apiClient.test.ts: 12 passed`; focused
-  diff check PASS. This branch did not run full frontend suite, typecheck, build,
-  browser smoke, API tests or DB tests.
+  evidence for the strict-parser implementation branch: `schema.test.ts: 143 passed`;
+  `apiClient.test.ts: 12 passed`; focused diff check PASS. That branch did not run
+  full frontend suite, typecheck, build, browser smoke, API tests or DB tests.
+- Follow-on explicit-null regression closeout: the separately authorized Level 1
+  tests-only gate changed only
+  `frontend/src/lib/acceptedStationEvents/__tests__/schema.test.ts`. It
+  parameterizes all 22 required DTO fields one at a time with explicit JSON
+  `null` and proves own-key presence, unchanged 22-key cardinality, preserved
+  `null`, and exact item round-trip. Focused evidence:
+  `schema.test.ts: 165 passed`; exact target diff check PASS. Exact-path
+  commit/push: `bdbcea0` /
+  `bdbcea0707941b4ca98f3fe4393bbbfae98a3764`. No production code, API, DB,
+  Collector, runtime, viewModel, page, store, cache, contract or package/config
+  changed. Full frontend suite, `apiClient.test.ts`, typecheck, build, browser
+  smoke, API tests and DB tests were not run by this follow-on gate.
 - DB/API/Dashboard consumer planning gate: CLOSED / PASS WITH RECOMMENDATIONS,
   no blocker; planning doc committed/pushed at `f4de1c3`.
 - DB/API/Dashboard consumer planning Reliability / Data Quality / Verification
@@ -374,9 +389,10 @@ Current PM intake live baseline for Dashboard accepted-events nested/renamed lea
   DB-backed API validation execution rerun, Dashboard/API implementation
   planning, Dashboard implementation preparation / allowlist, Dashboard
   accepted-events frontend implementation, Dashboard accepted-events no-DB
-  vertical validation execution and Dashboard accepted-events apiClient focused
-  no-DB tests are closed. The next eligible branch is exact-path docs/status sync
-  stage/commit/push after PM approval, then PM handoff may be considered if
+  vertical validation execution, Dashboard accepted-events apiClient focused
+  no-DB tests and the all-22-field explicit-null regression tests-only gate are
+  closed. The next eligible branch is exact-path commit/push of this three-file
+  docs/status sync after PM approval, then PM handoff may be considered if
   thread/context is long. Future Dashboard/API/DB expansion remains Level 2 and
   cannot be auto-authorized as DB-backed tests, DB execution, API/contract
   changes, Docker, stage, commit or push.
@@ -1517,7 +1533,7 @@ Dashboard implementation preparation / allowlist gate is CLOSED / PASS WITH RECO
 Dashboard accepted-events frontend implementation is CLOSED / PASS WITH RECOMMENDATIONS at 896c2d1.
 Dashboard accepted-events vertical validation planning is CLOSED / PASS WITH RECOMMENDATIONS at dd6dc53.
 API consumer contract freeze, API implementation planning, API implementation, DB-backed API validation rerun, Dashboard/API implementation planning, Dashboard implementation preparation / allowlist, Dashboard accepted-events frontend Reliability/Data Quality/Verification focused reviews and Dashboard accepted-events vertical validation planning Reliability/Data Quality/Verification reviews are CLOSED / PASS WITH RECOMMENDATIONS with no blockers after the documented HOLD repairs.
-Dashboard accepted-events no-DB vertical validation execution, Dashboard accepted-events apiClient focused no-DB tests, Dashboard accepted-events nested/renamed leakage defense-in-depth fixture and Dashboard accepted-events strict parser fail-closed hardening are now closed. Strict parser planning, contract authority, implementation, Reliability/Data Quality/Verification reviews, docs authority commit/push and implementation commit/push are CLOSED; no strict parser repair, implementation, test, commit or push gate is open. The next eligible branch is exact-path docs/status sync stage/commit/push after separate PM authorization, PM handoff if thread/context is long, separately authorized UI/state stale-data work, optional all-fields explicit-null regression tests, or separately planned typecheck/build/browser/API/DB-backed validation.
+Dashboard accepted-events no-DB vertical validation execution, Dashboard accepted-events apiClient focused no-DB tests, Dashboard accepted-events nested/renamed leakage defense-in-depth fixture, Dashboard accepted-events strict parser fail-closed hardening and the all-22-field explicit-null regression tests-only gate are now closed. Strict parser planning, contract authority, implementation, Reliability/Data Quality/Verification reviews, docs authority commit/push, implementation commit/push, prior post-push docs/status sync, PM handoff and explicit-null regression commit/push are CLOSED. The former optional all-fields explicit-null recommendation is closed by `bdbcea0`. The next eligible branch is exact-path commit/push of this three-file docs/status sync after separate PM authorization, PM handoff if thread/context is long, separately authorized UI/state stale-data work, or separately planned typecheck/build/browser/API/DB-backed validation.
 Future DB-backed API validation rerun planning must freeze exact DB opt-in scope, DSN/test DB safety, schema/migration verification, allowed tests, cleanup and EDGE_MES_ENABLE_DB_BACKED_TESTS=1 usage before execution.
 Worker/runtime DB-backed gates for unique-violation race, commit-before-ACK, non-accepted DB-backed zero-row/no ACK/read_done mutation, post-conflict re-read semantics and DB rollback remain future authorized work.
 API read path source boundary remains only production_accepted_station_event_fact; raw_plc_sample, cycle_event, station_event, production_unit, quality_event, production_snapshot and production_events must not be described as equivalent production fact sources, fallback sources or join-derived field fillers.
@@ -1532,15 +1548,15 @@ Deploy/tag/rollback/real PLC pilot require separate PM authorization.
 ```
 
 Current closed state: Dashboard accepted-events strict parser fail-closed
-hardening is completed and must not be re-described as a future implementation
-recommendation. The remaining non-blocking carry-forward is optional test-gate
-parameterization proving explicit `null` preservation for all 22 DTO fields, and
-a separately authorized UI/state gate ensuring an error never presents old
-success data or cache as fresh production truth.
+hardening and the all-22-field explicit-null regression tests-only gate are
+completed and must not be re-described as future implementation or test
+recommendations. The remaining non-blocking carry-forward is a separately
+authorized UI/state gate ensuring an error never presents old success data or
+cache as fresh production truth, plus separately planned validation gates.
 
-Eligible for next PM gate: exact-path docs/status sync stage/commit/push for this
+Eligible for next PM gate: exact-path commit/push of this three-file docs/status
 sync after separate PM authorization, then PM handoff may be considered if
-thread/context is long. UI/state stale-data work, all-fields explicit-null tests,
+thread/context is long. UI/state stale-data work,
 typecheck/build/browser/API/DB-backed validation, DB-backed reruns and actual
 timeout failure induction remain separate future PM-authorized gates.
 
