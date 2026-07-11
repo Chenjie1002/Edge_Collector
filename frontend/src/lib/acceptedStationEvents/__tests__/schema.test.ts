@@ -59,6 +59,16 @@ describe("accepted station events schema", () => {
     expect(parseAcceptedStationEventsEnvelope(validEnvelope(nullableItem)).items[0]).toEqual(nullableItem);
   });
 
+  it.each(acceptedStationEventFields)("preserves explicit null for required item key: %s", (field) => {
+    const item = { ...allowedItem, [field]: null };
+    const parsedItem = parseAcceptedStationEventsEnvelope(validEnvelope(item)).items[0];
+
+    expect(Object.prototype.hasOwnProperty.call(parsedItem, field)).toBe(true);
+    expect(Object.keys(parsedItem)).toHaveLength(acceptedStationEventFields.length);
+    expect(parsedItem[field]).toBeNull();
+    expect(parsedItem).toEqual(item);
+  });
+
   it.each([
     ["outer unknown", (envelope: Record<string, unknown>) => addOwnJsonKey(envelope, "unsupported")],
     ["outer meta", (envelope: Record<string, unknown>) => addOwnJsonKey(envelope, "meta")],
