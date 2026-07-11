@@ -57,6 +57,10 @@
 }
 ```
 
+通用响应 Envelope 是默认结构。当某个 endpoint 的专属合同明确声明 exact
+response envelope 时，endpoint-specific exact envelope 优先于通用 Envelope。
+通用 Envelope 继续是其他未声明专属 exact response envelope 的 endpoint 的默认合同。
+
 `data_completeness`：
 
 - `COMPLETE`
@@ -108,6 +112,39 @@ stage、commit、push、tag、rollback 或 real PLC pilot。
 用途：返回 accepted station-event business facts / production accepted fact
 list/read。该 endpoint 不是 Dashboard summary、Quality summary、Pareto input、
 debug/review diagnostics view 或 legacy trace/event 等价接口。
+
+#### Endpoint-specific exact response envelope
+
+本 endpoint 是通用响应 Envelope 的 endpoint-specific exception。成功响应外层
+exact keys 必须且只能为 `data`、`page`；二者均为 required。该 endpoint 不继承通用
+Envelope 的 `meta`，`meta` 对本 endpoint 为 unsupported。
+
+冻结的 exact response shape：
+
+```text
+outer envelope exact keys (required):
+- data
+- page
+
+data exact keys (required):
+- items
+
+page exact keys (required):
+- next_cursor
+- limit
+```
+
+任何其他 envelope/data/page-level key 均为 unsupported。unsupported key 不得被
+consumer 静默剥离、忽略、重命名或解释为兼容字段。`data.items[]` 的 exact keys
+继续由下文 Response DTO allowlist 定义，不得扩大。下文示例 envelope 仍是本 endpoint
+的规范性 accepted shape；本澄清匹配当前 API route，不要求 API response change。
+
+Consumer semantics：shape 合法的 2xx response 正常解析。包含 unsupported
+envelope/data/page/item key 的 2xx response 是 malformed successful response；consumer
+parser 必须 fail closed，并保持 Dashboard client classification 为 `kind: "error"`。
+不得将该 malformed 2xx response 映射为 `invalid-query` 或 `unavailable`。既有
+pre-request validation → `invalid-query`、API 4xx → `invalid-query`、API 503 →
+`unavailable` 的分类不变。
 
 必须保留的 production-fact visibility boundary：
 
@@ -179,6 +216,58 @@ diagnostic sources.
 | `nok_detail_code` | `production_accepted_station_event_fact.nok_detail_code` | accepted detail code only | forbidden |
 | `nok_detail_source_event_id` | `production_accepted_station_event_fact.nok_detail_source_event_id` | detail source evidence identity | forbidden |
 | `nok_detail_evidence_fact_key` | `production_accepted_station_event_fact.nok_detail_evidence_fact_key` | accepted upstream evidence fact reference | forbidden |
+
+#### Item required-key and null semantics
+
+`data.items[]` 的每个元素必须是 JSON object，其 own JSON key 集合必须与上表
+Response DTO allowlist 完全相等。上表全部 22 个字段均为 required key：
+
+```text
+line_id
+plc_id
+station_id
+station_type
+profile_id
+config_hash
+config_version
+event_type
+production_result
+unit_id
+dmc
+cycle_counter
+source_event_id
+event_ts
+accepted_at
+fact_key
+content_fingerprint
+nok_code
+nok_origin
+nok_detail_code
+nok_detail_source_event_id
+nok_detail_evidence_fact_key
+```
+
+required key presence != non-null value。required 仅表示该 key 必须存在；不改变
+任何现有业务字段的 nullable 规则。允许业务值为空的字段仍必须以完整 key 和显式
+JSON `null` 返回；不得以省略 key 表示空值、unknown 或 not applicable。missing key
+与 explicit `null` 不等价。
+
+缺失任意一个 required item key 的 2xx response 是 malformed successful response。
+consumer parser 必须 fail closed：不得使用 `?? null`、默认值、兼容映射或任何其他
+normalization 将 missing field 变为合法 item；不得从其他 table、endpoint、cache、
+diagnostic、legacy、raw 或 current source 补齐。该 malformed 2xx 必须保持 Dashboard
+client classification 为 `kind: "error"`，不得映射为空 `items`、`invalid-query` 或
+`unavailable`。
+
+allowlist 外的任意 item key 同样为 unsupported；unknown key 与 missing required key
+均使整个 response 失败。parser 不得返回 partial item 或 partial envelope，也不得从
+unsupported container 中 salvage accepted-looking field。
+
+当前 API route 的 `_format_row()` 已按 `DTO_FIELDS` 对每个 item 建立完整 22-key
+object，数据库 nullable value / Python `None` 通过完整 key 加 JSON `null` 表示。该
+合同澄清不要求 API producer、query、cursor、pagination 或 status 修改；不改变
+production authority、DTO field list、NOK/detail、config lineage、identity 或
+`accepted_at` 语义，也不授权 frontend implementation。
 
 示例 envelope：
 
