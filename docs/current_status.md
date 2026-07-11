@@ -6,26 +6,26 @@
 
 ## 0. 当前 PM / Codex 协作状态
 
-当前主线：Phase-2 Sprint 3 Dashboard accepted-events UI/state stale-data regression post-push docs/status sync。
+当前主线：Phase-2 Sprint 3 Dashboard frontend typecheck/build validation post-execution docs/status sync。
 
 Last verified baseline before this docs/status sync:
 
 ```text
 live HEAD / origin/main at authoring time:
+2a88ffec6dd528b52e104f75f0395f7ecf0bfe2e
+2a88ffe Plan Dashboard frontend typecheck build validation
+
+preceding stale-data docs/status sync commit:
+51c9e9eb0743d0451fb578d56ff8b4016d9e6565
+51c9e9e Sync Dashboard stale-data regression status
+
+preceding stale-data implementation commit:
 963218a098e97b5d3c4993f2913e5f7f7355f98e
 963218a Add Dashboard stale-data regression coverage
 
 preceding stale-data planning authority commit:
 156a812bf4529e198ca32373d7d109370a6e3e0d
 156a812 Plan Dashboard stale-data regression coverage
-
-preceding explicit-null regression commit:
-bdbcea0707941b4ca98f3fe4393bbbfae98a3764
-bdbcea0 Add explicit-null accepted event coverage
-
-preceding strict parser implementation commit:
-2cf616d4dafbd497ec3db29ade826b1159e9025a
-2cf616d Harden Dashboard accepted-events parser
 
 branch:
 main
@@ -278,6 +278,11 @@ Dashboard accepted-events UI/state stale-data planning authority exact-path comm
 Dashboard accepted-events UI/state stale-data tests-only implementation: CLOSED / PASS
 Dashboard accepted-events UI/state stale-data Verification gate: CLOSED / PASS, focused page test 14 passed
 Dashboard accepted-events UI/state stale-data tests-only exact-path commit/push: PASS, commit 963218a
+Dashboard frontend typecheck/build validation planning gate: CLOSED / PASS WITH RECOMMENDATIONS
+Dashboard frontend typecheck/build validation planning authority exact-path commit/push: PASS, commit 2a88ffe
+Dashboard frontend typecheck/build validation execution: CLOSED / PASS
+Dashboard frontend typecheck/build Verification gate: CLOSED / PASS; typecheck/build exit 0, zero tracked frontend drift, generated artifacts cleaned
+Dashboard frontend typecheck/build implementation commit: not applicable; commands-only validation changed no source/config/test/package files
 Slice D2-C decoder registry authority implementation: PASS WITH RECOMMENDATIONS
 Slice D2-C Reliability implementation review: PASS WITH RECOMMENDATIONS, no blocker
 Slice D2-C Data Quality implementation review: PASS WITH RECOMMENDATIONS, no blocker
@@ -382,9 +387,11 @@ Follow-on explicit-null regression closeout: the separately authorized Level 1 t
 
 UI/state stale-data closeout: the separately authorized Level 1 planning gate is CLOSED / PASS WITH RECOMMENDATIONS and committed/pushed at `156a812` / `156a812bf4529e198ca32373d7d109370a6e3e0d`. The tests-only Verification gate changed only `frontend/src/app/accepted-events/__tests__/page.test.tsx`, is CLOSED / PASS, and is committed/pushed at `963218a` / `963218a098e97b5d3c4993f2913e5f7f7355f98e`. Focused evidence: `page.test.tsx: 14 passed`; exact target diff check PASS. Coverage proves ready-to-loading/error/unavailable/invalid-query transitions remove prior table, current-page summary, NOK/detail evidence, trace references and distinctive values; non-empty ready to empty ready removes prior selected truth and reports current zero counts; client error and unavailable results render non-ready pages without production surfaces. No production code, API, DB, Collector, runtime, contract, package/config, typecheck, build, browser smoke or API/DB tests changed or ran in this gate.
 
-The former UI/state stale-data carry-forward and former optional all-22-field explicit-null recommendation are CLOSED by commits `156a812`, `963218a` and `bdbcea0`. Remaining separately planned validation branches are typecheck, build, browser/manual smoke, API no-DB validation and API DB-backed validation.
+Frontend typecheck/build validation closeout: the Level 1 planning gate is CLOSED / PASS WITH RECOMMENDATIONS and its authority report is committed/pushed at `2a88ffe` / `2a88ffec6dd528b52e104f75f0395f7ecf0bfe2e`. Verification independently executed package-local `npm run typecheck` (`tsc --noEmit`) and `npm run build` (`next build`); both exited 0. The build produced `/_not-found` and `/accepted-events`. There was no tracked frontend drift; `frontend/package.json`, `frontend/package-lock.json`, `frontend/tsconfig.json`, `frontend/next.config.ts` and `frontend/src/**` remained unchanged. Allowed transient artifacts were only `frontend/tsconfig.tsbuildinfo`, `frontend/.next/` and `frontend/next-env.d.ts`; all were precisely cleaned. Final frontend status was empty except pre-existing `frontend/node_modules/`, cached diff was empty, and no tests, install, server, browser, API/DB, Docker or Git write operation ran. Because this was commands-only validation, there is no implementation commit.
 
-The strict-parser chain, all-22-field explicit-null tests-only gate, UI/state stale-data planning gate, Verification gate and both stale-data exact-path commit/push gates are all CLOSED. Next eligible branch: exact-path commit/push of this three-file docs/status sync after separate PM authorization; PM handoff if context/thread is long; or separately planned typecheck/build/browser/API no-DB/API DB-backed validation.
+The former UI/state stale-data carry-forward, optional all-22-field explicit-null recommendation and current-baseline typecheck/build validation recommendation are CLOSED by commits `156a812`, `963218a`, `bdbcea0` and planning authority `2a88ffe` plus the closed commands-only Verification gate. Remaining separately planned validation branches are browser/manual smoke, API no-DB validation and API DB-backed validation.
+
+The strict-parser chain, all-22-field explicit-null tests-only gate, UI/state stale-data chain, frontend typecheck/build planning authority and frontend typecheck/build Verification execution are all CLOSED. Next eligible branch: exact-path commit/push of this three-file docs/status sync after separate PM authorization; PM handoff if context/thread is long; or separately planned browser/manual smoke, API no-DB or API DB-backed validation.
 Only production fact source for DB/API/Dashboard consumers: production_accepted_station_event_fact. raw_plc_sample, cycle_event, station_event, production_unit, quality_event, production_snapshot and production_events must not be used as equivalent production fact sources, fallback sources, legacy compatibility sources or join-derived field fillers.
 Response DTO fields must come field-by-field from production_accepted_station_event_fact row fields; fallback is forbidden.
 The accepted station events API route now allows only line_id, start_time, end_time, limit and cursor query parameters for this slice; all other accepted-fact filters, work_order/product, raw/diagnostic/candidate filters and unknown query parameters fail closed with 422.
@@ -394,7 +401,7 @@ NOK/detail fields may come only from accepted fact rows and must bind accepted u
 work_order and product remain excluded until a later schema/contract authority gate. accepted_at is an accepted fact timestamp, not collector freshness, ACK time, station freshness or read_done time.
 An optional debug/review diagnostics view remains deferred and must be a separate Level 2 gate with separate diagnostic/audit/review namespaces and leakage-negative review before implementation.
 Carry-forward recommendations after implementation: configure non-default ACCEPTED_STATION_EVENTS_CURSOR_SECRET before production deploy; consider fail-closed behavior/tests for duplicate allowed query keys; optionally add explicit invalid timezone and cursor no-DB-query assertions; optionally add COMMIT/ROLLBACK sequencing spy assertions; future DB unavailable / missing schema / missing table / missing authority error envelope may be refined if Dashboard consumers need differentiated states.
-DB/API/Dashboard consumer planning, API consumer contract freeze, API implementation planning, accepted station events API implementation, DB-backed API validation planning/repair, DB-backed API validation execution rerun, Dashboard/API implementation planning, Dashboard implementation preparation / allowlist, Dashboard accepted-events frontend implementation, Dashboard accepted-events vertical validation planning, Dashboard accepted-events no-DB vertical validation execution, Dashboard accepted-events apiClient focused no-DB tests, Dashboard accepted-events nested/renamed leakage defense-in-depth fixture, Dashboard accepted-events strict parser fail-closed hardening, the all-22-field explicit-null regression tests-only gate and the UI/state stale-data planning/tests-only gate are closed. The next eligible branch is exact-path commit/push of this three-file docs/status sync after separate PM authorization, PM handoff if thread/context is long, or separately planned typecheck/build/browser/API no-DB/API DB-backed validation.
+DB/API/Dashboard consumer planning, API consumer contract freeze, API implementation planning, accepted station events API implementation, DB-backed API validation planning/repair, DB-backed API validation execution rerun, Dashboard/API implementation planning, Dashboard implementation preparation / allowlist, Dashboard accepted-events frontend implementation, Dashboard accepted-events vertical validation planning, Dashboard accepted-events no-DB vertical validation execution, Dashboard accepted-events apiClient focused no-DB tests, Dashboard accepted-events nested/renamed leakage defense-in-depth fixture, Dashboard accepted-events strict parser fail-closed hardening, the all-22-field explicit-null regression tests-only gate, the UI/state stale-data planning/tests-only gate and the frontend typecheck/build planning/execution gate are closed. The next eligible branch is exact-path commit/push of this three-file docs/status sync after separate PM authorization, PM handoff if thread/context is long, or separately planned browser/manual smoke, API no-DB or API DB-backed validation.
 DB/API/Dashboard expansion beyond the accepted station-event fact DB write path, guarded DB-backed accepted fact tests, accepted fact API read contract/docs freeze, accepted fact API read path implementation, API consumer planning/contract/planning/implementation, DB-backed API validation harness repair, completed remote live validation, the completed 88-pass SSH-tunnel DB-backed API rerun, Dashboard/API implementation planning and the committed accepted-events frontend remains not authorized except future separately authorized exact-scope gates.
 Optional debug/review diagnostics view, new migration, future DB-backed reruns, worker/runtime DB-backed gates, EDGE_MES_ENABLE_DB_BACKED_TESTS=1 outside an approved gate, local/remote Postgres connection outside an approved gate, Docker / docker compose lifecycle actions, deploy, tag, rollback, broad tests, actual timeout failure proof, real PLC pilot, API/contract/DB/runtime expansion and stage/commit/push: not authorized without separate PM approval.
 ```

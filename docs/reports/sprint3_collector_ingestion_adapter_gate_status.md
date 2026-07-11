@@ -15,20 +15,20 @@ Read this file together with:
 
 ```text
 live HEAD / origin/main at authoring time:
+2a88ffec6dd528b52e104f75f0395f7ecf0bfe2e
+2a88ffe Plan Dashboard frontend typecheck build validation
+
+preceding stale-data docs/status sync commit:
+51c9e9eb0743d0451fb578d56ff8b4016d9e6565
+51c9e9e Sync Dashboard stale-data regression status
+
+preceding stale-data implementation commit:
 963218a098e97b5d3c4993f2913e5f7f7355f98e
 963218a Add Dashboard stale-data regression coverage
 
 preceding stale-data planning authority commit:
 156a812bf4529e198ca32373d7d109370a6e3e0d
 156a812 Plan Dashboard stale-data regression coverage
-
-preceding explicit-null regression commit:
-bdbcea0707941b4ca98f3fe4393bbbfae98a3764
-bdbcea0 Add explicit-null accepted event coverage
-
-preceding strict parser implementation commit:
-2cf616d4dafbd497ec3db29ade826b1159e9025a
-2cf616d Harden Dashboard accepted-events parser
 
 Branch:
 main
@@ -99,6 +99,8 @@ PM handoff after strict parser closeout committed and pushed at 9b47163
 Dashboard accepted-events all-22-field explicit-null regression tests-only gate passed and exact-path commit/push completed at bdbcea0
 Dashboard accepted-events UI/state stale-data planning gate closed with PASS WITH RECOMMENDATIONS and committed/pushed at 156a812
 Dashboard accepted-events UI/state stale-data tests-only implementation and Verification gate closed with PASS and committed/pushed at 963218a; focused page test 14 passed
+Dashboard frontend typecheck/build validation planning authority committed/pushed at 2a88ffe
+Dashboard frontend typecheck/build commands-only Verification execution closed with PASS: `tsc --noEmit` and `next build` exit 0, zero tracked frontend drift, allowed generated artifacts precisely cleaned, no implementation commit
 
 Deploy / rollback drill:
 not performed
@@ -189,6 +191,8 @@ Contract/implementation closeout: endpoint-specific exact envelope has outer `da
 Follow-on explicit-null regression closeout: the separately authorized Level 1 tests-only gate changed only `frontend/src/lib/acceptedStationEvents/__tests__/schema.test.ts`. It parameterizes all 22 required DTO fields with explicit JSON `null` one field at a time and proves own-key presence, unchanged 22-key cardinality, preserved `null`, and exact item round-trip. Focused evidence: `schema.test.ts: 165 passed`; exact target diff check PASS. Exact-path commit/push: `bdbcea0` / `bdbcea0707941b4ca98f3fe4393bbbfae98a3764`. No production code, API, DB, Collector, runtime, viewModel, page, store, cache, contract or package/config changed. The follow-on gate did not run the full frontend suite, `apiClient.test.ts`, typecheck, build, browser smoke, API tests or DB tests.
 
 UI/state stale-data closeout: the planning gate is CLOSED / PASS WITH RECOMMENDATIONS and its authority report is committed/pushed at `156a812` / `156a812bf4529e198ca32373d7d109370a6e3e0d`. The separately authorized Level 1 tests-only Verification gate changed only `frontend/src/app/accepted-events/__tests__/page.test.tsx`, is CLOSED / PASS, and is committed/pushed at `963218a` / `963218a098e97b5d3c4993f2913e5f7f7355f98e`. Focused evidence: `page.test.tsx: 14 passed`; exact target diff check PASS. The regression matrix proves ready-to-loading/error/unavailable/invalid-query transitions remove prior production-truth surfaces and values, ready non-empty to ready empty removes prior selected truth and reports zero current-page counts, and client error/unavailable results render non-ready pages without production surfaces. No production code, API, DB, Collector, runtime, contract, package/config, typecheck, build, browser smoke or API/DB tests changed or ran in this gate.
+
+Frontend typecheck/build validation closeout: planning is CLOSED / PASS WITH RECOMMENDATIONS and the authority report `docs/reports/sprint3_dashboard_frontend_typecheck_build_validation_plan.md` is committed/pushed at `2a88ffe` / `2a88ffec6dd528b52e104f75f0395f7ecf0bfe2e`. Verification execution is CLOSED / PASS. `npm run typecheck` executed `tsc --noEmit` and exited 0; `npm run build` executed `next build` and exited 0, producing `/_not-found` and `/accepted-events`. No tracked frontend file changed, including package, lockfile, TypeScript config, Next config and `frontend/src/**`; cached diff stayed empty. The only generated artifacts were `frontend/tsconfig.tsbuildinfo`, `frontend/.next/` and `frontend/next-env.d.ts`, and all were precisely cleaned. Final frontend status was empty except pre-existing `frontend/node_modules/`. No tests, dependency install, server, browser, API/DB, Docker, source/config repair or Git write operation ran. This commands-only validation has no implementation commit.
 
 Sprint 3 implementation files committed:
 
@@ -726,6 +730,10 @@ behavior, Docker/deploy/tag/rollback or ACK/read_done ownership.
 | Dashboard accepted-events UI/state stale-data planning authority exact-path commit/push | PASS | commit 156a812 |
 | Dashboard accepted-events UI/state stale-data tests-only implementation / Verification gate | CLOSED / PASS | page.test.tsx 14 passed; no production code change |
 | Dashboard accepted-events UI/state stale-data tests-only exact-path commit/push | PASS | commit 963218a |
+| Dashboard frontend typecheck/build validation planning gate | CLOSED / PASS WITH RECOMMENDATIONS | no blocker; commands-only execution frozen |
+| Dashboard frontend typecheck/build planning authority exact-path commit/push | PASS | commit 2a88ffe |
+| Dashboard frontend typecheck/build Verification execution | CLOSED / PASS | typecheck/build exit 0; zero tracked drift; artifacts cleaned |
+| Dashboard frontend typecheck/build implementation commit | N/A | commands-only validation; no source/config/test/package changes |
 | DB/API/Dashboard consumer planning gate | PASS WITH RECOMMENDATIONS | none |
 | DB/API/Dashboard consumer planning Reliability focused review | PASS WITH RECOMMENDATIONS | none |
 | DB/API/Dashboard consumer planning Data Quality focused review | PASS WITH RECOMMENDATIONS | none |
@@ -910,9 +918,9 @@ raw_payload/raw_hex is evidence, not a production fact.
 Decoded/source normalized payloads remain candidates until accepted.
 Non-accepted dispositions do not write defect detail; NOK/detail visibility must bind to accepted upstream business evidence.
 Preserve exact wording: no ACK/read_done mutation for the current non-accepted payload.
-Current Dashboard closeout state: strict-parser planning/contract/implementation/reviews, all-22-field explicit-null regression, UI/state stale-data planning, stale-data Verification, and their exact-path commit/push gates are all CLOSED. The former explicit-null and stale-prior-data recommendations are CLOSED by `bdbcea0`, `156a812` and `963218a`. Remaining separately planned validation branches are typecheck, build, browser/manual smoke, API no-DB validation and API DB-backed validation.
+Current Dashboard closeout state: strict-parser planning/contract/implementation/reviews, all-22-field explicit-null regression, UI/state stale-data planning/Verification, frontend typecheck/build planning authority and frontend typecheck/build Verification execution are all CLOSED. The former explicit-null, stale-prior-data and current-baseline typecheck/build recommendations are CLOSED by `bdbcea0`, `156a812`, `963218a`, planning authority `2a88ffe` and the completed commands-only execution. Remaining separately planned validation branches are browser/manual smoke, API no-DB validation and API DB-backed validation.
 
-Next eligible gate: exact-path commit/push of this three-file docs/status sync after separate PM authorization, or PM handoff if this thread/context is long. Separately authorized future branches may cover typecheck/build/browser/API no-DB/API DB-backed validation. DB/API/Dashboard consumer planning, API consumer contract freeze, API implementation planning, accepted station events API implementation, DB-backed API validation planning/repair, DB-backed API validation execution rerun and Dashboard/API implementation planning are closed. Dashboard implementation expansion, optional debug/review diagnostics view, future DB-backed reruns, actual timeout failure induction, worker/runtime DB-backed gates for unique-violation race, commit-before-ACK, non-accepted DB-backed zero-row/no ACK/read_done mutation, post-conflict re-read semantics and DB rollback remain future authorized work. Deploy/tag/rollback/real PLC pilot require separate PM authorization.
+Next eligible gate: exact-path commit/push of this three-file docs/status sync after separate PM authorization, or PM handoff if this thread/context is long. Separately authorized future branches may cover browser/manual smoke, API no-DB or API DB-backed validation. DB/API/Dashboard consumer planning, API consumer contract freeze, API implementation planning, accepted station events API implementation, DB-backed API validation planning/repair, DB-backed API validation execution rerun and Dashboard/API implementation planning are closed. Dashboard implementation expansion, optional debug/review diagnostics view, future DB-backed reruns, actual timeout failure induction, worker/runtime DB-backed gates for unique-violation race, commit-before-ACK, non-accepted DB-backed zero-row/no ACK/read_done mutation, post-conflict re-read semantics and DB rollback remain future authorized work. Deploy/tag/rollback/real PLC pilot require separate PM authorization.
 Slice B inserted the adapter gate after payload/cycle/counter guards and counter reset fail-safe, before existing storage.persist_cycle().
 Slice B accepted-only path continues to existing storage.persist_cycle() plus existing read_done/ACK behavior.
 Slice B non-accepted decisions do not persist, do not project, do not write defect detail, and do not ACK.
