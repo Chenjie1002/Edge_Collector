@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { parseAcceptedStationEventsEnvelope } from "../schema";
+import { acceptedStationEventFields, parseAcceptedStationEventsEnvelope } from "../schema";
 
 const allowedItem = {
   line_id: "LINE_001",
@@ -26,15 +26,70 @@ const allowedItem = {
   nok_detail_evidence_fact_key: "sha256:evidence"
 };
 
+function validEnvelope(item: unknown = allowedItem) {
+  return {
+    data: { items: [typeof item === "object" && item !== null && !Array.isArray(item) ? { ...item } : item] },
+    page: { next_cursor: null, limit: 50 }
+  };
+}
+
+function addOwnJsonKey(target: object, key: string) {
+  const jsonObject = JSON.parse(`{${JSON.stringify(key)}:"forbidden"}`) as object;
+  Object.defineProperties(target, Object.getOwnPropertyDescriptors(jsonObject));
+}
+
 describe("accepted station events schema", () => {
-  it("admits the accepted fact DTO allowlist", () => {
+  it("admits only the exact envelope and complete DTO allowlist", () => {
     const parsed = parseAcceptedStationEventsEnvelope({
       data: { items: [allowedItem] },
       page: { next_cursor: "opaque", limit: 50 }
     });
 
     expect(parsed.items[0]).toEqual(allowedItem);
-    expect(parsed.page.next_cursor).toBe("opaque");
+    expect(parsed.page).toEqual({ next_cursor: "opaque", limit: 50 });
+  });
+
+  it("admits empty items and explicit null values without treating them as missing", () => {
+    expect(parseAcceptedStationEventsEnvelope({ data: { items: [] }, page: { next_cursor: null, limit: 50 } })).toEqual({
+      items: [],
+      page: { next_cursor: null, limit: 50 }
+    });
+
+    const nullableItem = { ...allowedItem, nok_code: null, nok_origin: null, nok_detail_code: null };
+    expect(parseAcceptedStationEventsEnvelope(validEnvelope(nullableItem)).items[0]).toEqual(nullableItem);
+  });
+
+  it.each([
+    ["outer unknown", (envelope: Record<string, unknown>) => addOwnJsonKey(envelope, "unsupported")],
+    ["outer meta", (envelope: Record<string, unknown>) => addOwnJsonKey(envelope, "meta")],
+    ["data unknown", (envelope: Record<string, unknown>) => addOwnJsonKey(envelope.data as object, "raw")],
+    ["page unknown", (envelope: Record<string, unknown>) => addOwnJsonKey(envelope.page as object, "dashboard_state")],
+    ["item unknown", (envelope: Record<string, unknown>) => addOwnJsonKey((envelope.data as { items: object[] }).items[0], "work_order")]
+  ])("rejects %s exact-key violation", (_name, mutate) => {
+    const envelope = validEnvelope() as Record<string, unknown>;
+    mutate(envelope);
+    expect(() => parseAcceptedStationEventsEnvelope(envelope)).toThrow(/forbidden|unsupported/i);
+  });
+
+  it.each([
+    ["data", (envelope: Record<string, unknown>) => delete envelope.data],
+    ["page", (envelope: Record<string, unknown>) => delete envelope.page],
+    ["items", (envelope: Record<string, unknown>) => delete (envelope.data as Record<string, unknown>).items],
+    ["next_cursor", (envelope: Record<string, unknown>) => delete (envelope.page as Record<string, unknown>).next_cursor],
+    ["limit", (envelope: Record<string, unknown>) => delete (envelope.page as Record<string, unknown>).limit]
+  ])("rejects missing required %s key", (_name, mutate) => {
+    const envelope = validEnvelope() as Record<string, unknown>;
+    mutate(envelope);
+    expect(() => parseAcceptedStationEventsEnvelope(envelope)).toThrow(/missing|required/i);
+  });
+
+  it.each(acceptedStationEventFields)("rejects a missing required item key: %s", (field) => {
+    const item = { ...allowedItem } as Record<string, unknown>;
+    delete item[field];
+
+    expect(Object.keys(item)).toHaveLength(acceptedStationEventFields.length - 1);
+    expect(acceptedStationEventFields.filter((candidate) => candidate !== field).every((candidate) => candidate in item)).toBe(true);
+    expect(() => parseAcceptedStationEventsEnvelope(validEnvelope(item))).toThrow(/missing|required/i);
   });
 
   it.each([
@@ -63,13 +118,8 @@ describe("accepted station events schema", () => {
     ["bare pareto", { pareto: "NOK_A" }],
     ["work_order", { work_order: "WO-1" }],
     ["product", { product: "SKU-1" }]
-  ])("rejects forbidden leakage fixture: %s", (_name, forbiddenFields) => {
-    expect(() =>
-      parseAcceptedStationEventsEnvelope({
-        data: { items: [{ ...allowedItem, ...forbiddenFields }] },
-        page: { next_cursor: null, limit: 50 }
-      })
-    ).toThrow(/forbidden/i);
+  ])("retains rejection of forbidden leakage fixture: %s", (_name, forbiddenFields) => {
+    expect(() => parseAcceptedStationEventsEnvelope(validEnvelope({ ...allowedItem, ...forbiddenFields }))).toThrow(/forbidden|unsupported/i);
   });
 
   it.each([
@@ -90,56 +140,95 @@ describe("accepted station events schema", () => {
     ["result_detail alias", { result_detail: "LEAK_RESULT_DETAIL" }],
     ["defect_code alias", { defect_code: "LEAK_DEFECT_CODE" }],
     ["quality_state alias", { quality_state: "LEAK_QUALITY_STATE" }],
-    [
-      "nested diagnostic accepted-looking fields",
-      { diagnostic_payload: { production_result: "LEAK_DIAGNOSTIC_RESULT", fact_key: "LEAK_DIAGNOSTIC_FACT" } }
-    ],
-    [
-      "nested review accepted-looking fields",
-      { review_payload: { nok_code: "LEAK_REVIEW_NOK", source_event_id: "LEAK_REVIEW_SOURCE" } }
-    ],
-    [
-      "nested audit accepted-looking fields",
-      { audit_payload: { fact_key: "LEAK_AUDIT_FACT", production_result: "LEAK_AUDIT_RESULT" } }
-    ],
-    [
-      "nested candidate accepted-looking fields",
-      { candidate_payload: { production_result: "LEAK_CANDIDATE_RESULT", nok_code: "LEAK_CANDIDATE_NOK" } }
-    ],
-    [
-      "nested raw accepted-looking fields",
-      { raw_payload: { fact_key: "LEAK_RAW_FACT", source_event_id: "LEAK_RAW_SOURCE" } }
-    ]
-  ])("rejects nested or renamed forbidden leakage fixture: %s", (_name, forbiddenFields) => {
-    expect(() =>
-      parseAcceptedStationEventsEnvelope({
-        data: { items: [{ ...allowedItem, ...forbiddenFields }] },
-        page: { next_cursor: null, limit: 50 }
-      })
-    ).toThrow(/forbidden/i);
+    ["nested diagnostic accepted-looking fields", { diagnostic_payload: { production_result: "LEAK_DIAGNOSTIC_RESULT", fact_key: "LEAK_DIAGNOSTIC_FACT" } }],
+    ["nested review accepted-looking fields", { review_payload: { nok_code: "LEAK_REVIEW_NOK", source_event_id: "LEAK_REVIEW_SOURCE" } }],
+    ["nested audit accepted-looking fields", { audit_payload: { fact_key: "LEAK_AUDIT_FACT", production_result: "LEAK_AUDIT_RESULT" } }],
+    ["nested candidate accepted-looking fields", { candidate_payload: { production_result: "LEAK_CANDIDATE_RESULT", nok_code: "LEAK_CANDIDATE_NOK" } }],
+    ["nested raw accepted-looking fields", { raw_payload: { fact_key: "LEAK_RAW_FACT", source_event_id: "LEAK_RAW_SOURCE" } }]
+  ])("retains rejection of nested or renamed forbidden leakage fixture: %s", (_name, forbiddenFields) => {
+    expect(() => parseAcceptedStationEventsEnvelope(validEnvelope({ ...allowedItem, ...forbiddenFields }))).toThrow(/forbidden|unsupported/i);
   });
 
-  it("does not return envelope, data, or page-level forbidden payloads", () => {
-    const parsed = parseAcceptedStationEventsEnvelope({
-      data: {
-        items: [allowedItem],
-        rawPayload: "LEAK_DATA_RAW_PAYLOAD",
-        diagnostic_payload: { fact_key: "LEAK_DATA_FACT" }
-      },
-      page: {
-        next_cursor: null,
-        limit: 50,
-        dashboardState: "LEAK_PAGE_DASHBOARD_STATE",
-        quality_pareto_input: "LEAK_PAGE_QUALITY_PARETO"
-      },
-      review_payload: { production_result: "LEAK_ENVELOPE_RESULT" },
-      audit_payload: { source_event_id: "LEAK_ENVELOPE_SOURCE" }
-    });
-    const parsedJson = JSON.stringify(parsed);
+  it.each([
+    ["item raw evidence", "item", "raw_payload"],
+    ["item candidate evidence", "item", "candidate_payload"],
+    ["item diagnostic evidence", "item", "diagnostic_payload"],
+    ["item review evidence", "item", "review_payload"],
+    ["item audit evidence", "item", "audit_payload"],
+    ["item ACK/read_done", "item", "read_done"],
+    ["item collector evidence", "item", "collector_state"],
+    ["item quality/Pareto", "item", "quality_pareto_input"],
+    ["item dashboard evidence", "item", "dashboard_state"],
+    ["item camelCase alias", "item", "rawPayload"],
+    ["item accepted-looking nested field", "item", "accepted_fact"],
+    ["item work order", "item", "work_order"],
+    ["item product", "item", "product"],
+    ["data raw evidence", "data", "raw"],
+    ["data diagnostic evidence", "data", "diagnostic_payload"],
+    ["page dashboard evidence", "page", "dashboard_state"],
+    ["page Pareto evidence", "page", "quality_pareto_input"],
+    ["outer review evidence", "outer", "review_payload"],
+    ["outer audit evidence", "outer", "audit_payload"]
+  ])("rejects unsupported evidence at %s", (_name, level, key) => {
+    const envelope = validEnvelope() as Record<string, unknown>;
+    const target =
+      level === "outer"
+        ? envelope
+        : level === "data"
+          ? (envelope.data as object)
+          : level === "page"
+            ? (envelope.page as object)
+            : ((envelope.data as { items: object[] }).items[0] as object);
+    addOwnJsonKey(target, key);
+    expect(() => parseAcceptedStationEventsEnvelope(envelope)).toThrow(/forbidden|unsupported/i);
+  });
 
-    expect(parsed).toEqual({ items: [allowedItem], page: { next_cursor: null, limit: 50 } });
-    expect(parsedJson).not.toMatch(
-      /rawPayload|diagnostic_payload|dashboardState|quality_pareto_input|review_payload|audit_payload|LEAK_/i
-    );
+  it.each(["", "__proto__", "prototype", "constructor"])("rejects prototype-looking own JSON key %s at every layer", (key) => {
+    for (const level of ["outer", "data", "page", "item"] as const) {
+      const envelope = validEnvelope() as Record<string, unknown>;
+      const target =
+        level === "outer"
+          ? envelope
+          : level === "data"
+            ? (envelope.data as object)
+            : level === "page"
+              ? (envelope.page as object)
+              : ((envelope.data as { items: object[] }).items[0] as object);
+      addOwnJsonKey(target, key);
+      expect(Object.prototype.hasOwnProperty.call(target, key)).toBe(true);
+      expect(() => parseAcceptedStationEventsEnvelope(envelope)).toThrow(/forbidden|unsupported/i);
+    }
+  });
+
+  it.each([null, [], "envelope", 1, true])("rejects invalid envelope shape: %j", (value) => {
+    expect(() => parseAcceptedStationEventsEnvelope(value)).toThrow(/object|invalid/i);
+  });
+
+  it.each([null, [], "data", 1, true])("rejects invalid data shape: %j", (data) => {
+    expect(() => parseAcceptedStationEventsEnvelope({ data, page: { next_cursor: null, limit: 50 } })).toThrow(/object|invalid/i);
+  });
+
+  it.each([null, [], "page", 1, true])("rejects invalid page shape: %j", (page) => {
+    expect(() => parseAcceptedStationEventsEnvelope({ data: { items: [] }, page })).toThrow(/object|invalid/i);
+  });
+
+  it.each([null, {}, "items", 1, true])("rejects non-array data.items: %j", (items) => {
+    expect(() => parseAcceptedStationEventsEnvelope({ data: { items }, page: { next_cursor: null, limit: 50 } })).toThrow(/array|invalid/i);
+  });
+
+  it.each([null, [], "item", 1, true])("rejects invalid item shape: %j", (item) => {
+    expect(() => parseAcceptedStationEventsEnvelope(validEnvelope(item))).toThrow(/object|invalid/i);
+  });
+
+  it.each([{}, [], true, undefined])("rejects invalid item field value: %j", (fieldValue) => {
+    expect(() => parseAcceptedStationEventsEnvelope(validEnvelope({ ...allowedItem, line_id: fieldValue }))).toThrow(/invalid/i);
+  });
+
+  it.each([{}, [], 1, true, undefined])("rejects invalid next_cursor value: %j", (nextCursor) => {
+    expect(() => parseAcceptedStationEventsEnvelope({ data: { items: [] }, page: { next_cursor: nextCursor, limit: 50 } })).toThrow(/invalid/i);
+  });
+
+  it.each(["50", null, 1.5, 0, 501])("rejects invalid limit value: %j", (limit) => {
+    expect(() => parseAcceptedStationEventsEnvelope({ data: { items: [] }, page: { next_cursor: null, limit } })).toThrow(/invalid/i);
   });
 });
