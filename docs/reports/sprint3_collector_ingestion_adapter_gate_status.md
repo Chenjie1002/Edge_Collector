@@ -15,16 +15,20 @@ Read this file together with:
 
 ```text
 live HEAD / origin/main at authoring time:
+963218a098e97b5d3c4993f2913e5f7f7355f98e
+963218a Add Dashboard stale-data regression coverage
+
+preceding stale-data planning authority commit:
+156a812bf4529e198ca32373d7d109370a6e3e0d
+156a812 Plan Dashboard stale-data regression coverage
+
+preceding explicit-null regression commit:
 bdbcea0707941b4ca98f3fe4393bbbfae98a3764
 bdbcea0 Add explicit-null accepted event coverage
 
 preceding strict parser implementation commit:
 2cf616d4dafbd497ec3db29ade826b1159e9025a
 2cf616d Harden Dashboard accepted-events parser
-
-preceding docs authority commit:
-7824063305cfaf4d44db6c8a01d095dd59586f10
-7824063 Clarify Dashboard strict parser contract
 
 Branch:
 main
@@ -93,6 +97,8 @@ Dashboard accepted-events strict parser contract authority committed and pushed 
 Dashboard accepted-events strict parser post-push docs/status sync committed and pushed at f784c91
 PM handoff after strict parser closeout committed and pushed at 9b47163
 Dashboard accepted-events all-22-field explicit-null regression tests-only gate passed and exact-path commit/push completed at bdbcea0
+Dashboard accepted-events UI/state stale-data planning gate closed with PASS WITH RECOMMENDATIONS and committed/pushed at 156a812
+Dashboard accepted-events UI/state stale-data tests-only implementation and Verification gate closed with PASS and committed/pushed at 963218a; focused page test 14 passed
 
 Deploy / rollback drill:
 not performed
@@ -160,7 +166,7 @@ DB-backed API validation post-execution docs/status sync is tracked in commit `b
 Dashboard/API implementation planning gate is CLOSED / PASS WITH RECOMMENDATIONS with no blockers, and the planning report is tracked in commit `4fcdd66`.
 Dashboard/API implementation planning Architecture / Integration, Reliability, Data Quality and Verification focused planning reviews are CLOSED / PASS WITH RECOMMENDATIONS with no blockers; recommendations are carry-forward items.
 Dashboard/API implementation planning changed file: `docs/reports/sprint3_dashboard_api_implementation_plan.md`.
-Dashboard/API implementation planning carry-forward recommendations: convert category-level future Dashboard implementation allowlist into exact file paths before implementation authorization; add invalid / expired / cross-scope cursor UI negative tests; keep page-level summary labelled as current page only; ensure stale prior data cannot render as fresh production truth; keep future implementation Dashboard-only/read-only unless PM opens a separate API/contract gate.
+Dashboard/API implementation planning carry-forward recommendations: convert category-level future Dashboard implementation allowlist into exact file paths before implementation authorization; add invalid / expired / cross-scope cursor UI negative tests; keep page-level summary labelled as current page only; keep future implementation Dashboard-only/read-only unless PM opens a separate API/contract gate. The former stale-prior-data carry-forward is CLOSED by `156a812` and `963218a`.
 Dashboard implementation preparation / allowlist gate is CLOSED / PASS WITH RECOMMENDATIONS with no blockers, and the preparation report is tracked in commit `4ad0e91`.
 Dashboard accepted-events frontend implementation is CLOSED / PASS WITH RECOMMENDATIONS with no blockers after Reliability initial HOLD, Architecture / Integration HOLD repair, Reliability re-review, Data Quality review, Verification initial HOLD, Architecture / Integration HOLD repair and Verification re-review. The implementation is tracked in commit `896c2d1` / `896c2d159ce9c934c53f62607d93475d5fffd681`.
 Dashboard accepted-events frontend implementation changed exactly 28 `frontend/` allowlist files. It is Dashboard/frontend only, read-only consumer only, backed only by `GET /api/v2/production/accepted-station-events`, and query params are limited to `line_id`, `start_time`, `end_time`, `limit`, `cursor`.
@@ -181,6 +187,8 @@ Contract authority is the separate exact four-file docs commit `7824063` / `7824
 Contract/implementation closeout: endpoint-specific exact envelope has outer `data`/`page`, data `items`, and page `next_cursor`/`limit` as its only required keys; `meta` is unsupported. Envelope/data/page/item unknown enumerable own keys and missing required own keys fail closed. All 22 DTO keys are required but may be explicit JSON `null`; missing is not explicit `null`. Missing/unknown malformed 2xx maps through the existing unmodified `apiClient.ts` to `kind: "error"`; there is no silent strip, normalization, fallback, partial parsing, nested-field salvage, retry, second request or fallback endpoint. `schema.ts` added exact own-key and required-presence validation, the 22-field missing matrix, removed `?? null`, and preserves explicit `null`. No API/DB/Collector/runtime/viewModel/page/store/cache or API response producer changed. Fresh no-DB focused frontend evidence for the strict-parser implementation branch: `schema.test.ts: 143 passed`; `apiClient.test.ts: 12 passed`; focused diff check PASS. No full frontend suite, typecheck, build, browser smoke, API or DB test ran for that branch.
 
 Follow-on explicit-null regression closeout: the separately authorized Level 1 tests-only gate changed only `frontend/src/lib/acceptedStationEvents/__tests__/schema.test.ts`. It parameterizes all 22 required DTO fields with explicit JSON `null` one field at a time and proves own-key presence, unchanged 22-key cardinality, preserved `null`, and exact item round-trip. Focused evidence: `schema.test.ts: 165 passed`; exact target diff check PASS. Exact-path commit/push: `bdbcea0` / `bdbcea0707941b4ca98f3fe4393bbbfae98a3764`. No production code, API, DB, Collector, runtime, viewModel, page, store, cache, contract or package/config changed. The follow-on gate did not run the full frontend suite, `apiClient.test.ts`, typecheck, build, browser smoke, API tests or DB tests.
+
+UI/state stale-data closeout: the planning gate is CLOSED / PASS WITH RECOMMENDATIONS and its authority report is committed/pushed at `156a812` / `156a812bf4529e198ca32373d7d109370a6e3e0d`. The separately authorized Level 1 tests-only Verification gate changed only `frontend/src/app/accepted-events/__tests__/page.test.tsx`, is CLOSED / PASS, and is committed/pushed at `963218a` / `963218a098e97b5d3c4993f2913e5f7f7355f98e`. Focused evidence: `page.test.tsx: 14 passed`; exact target diff check PASS. The regression matrix proves ready-to-loading/error/unavailable/invalid-query transitions remove prior production-truth surfaces and values, ready non-empty to ready empty removes prior selected truth and reports zero current-page counts, and client error/unavailable results render non-ready pages without production surfaces. No production code, API, DB, Collector, runtime, contract, package/config, typecheck, build, browser smoke or API/DB tests changed or ran in this gate.
 
 Sprint 3 implementation files committed:
 
@@ -714,6 +722,10 @@ behavior, Docker/deploy/tag/rollback or ACK/read_done ownership.
 | PM handoff after strict parser closeout | PASS | commit 9b47163 |
 | Dashboard accepted-events all-22-field explicit-null regression tests-only gate | CLOSED / PASS | schema.test.ts 165 passed; no production code change |
 | Dashboard accepted-events all-22-field explicit-null regression exact-path commit/push | PASS | commit bdbcea0 |
+| Dashboard accepted-events UI/state stale-data planning gate | CLOSED / PASS WITH RECOMMENDATIONS | no blocker; tests-only approach selected |
+| Dashboard accepted-events UI/state stale-data planning authority exact-path commit/push | PASS | commit 156a812 |
+| Dashboard accepted-events UI/state stale-data tests-only implementation / Verification gate | CLOSED / PASS | page.test.tsx 14 passed; no production code change |
+| Dashboard accepted-events UI/state stale-data tests-only exact-path commit/push | PASS | commit 963218a |
 | DB/API/Dashboard consumer planning gate | PASS WITH RECOMMENDATIONS | none |
 | DB/API/Dashboard consumer planning Reliability focused review | PASS WITH RECOMMENDATIONS | none |
 | DB/API/Dashboard consumer planning Data Quality focused review | PASS WITH RECOMMENDATIONS | none |
@@ -837,7 +849,7 @@ DB-backed API validation post-execution docs/status sync: PASS, committed/pushed
 Dashboard/API implementation planning gate: CLOSED / PASS WITH RECOMMENDATIONS, committed/pushed at 4fcdd66 / 4fcdd6623247aaf9d3d3df23fd7cadf49f5d662a.
 Dashboard/API implementation planning changed file: docs/reports/sprint3_dashboard_api_implementation_plan.md.
 Dashboard/API implementation planning Architecture / Integration, Reliability, Data Quality and Verification focused planning reviews: CLOSED / PASS WITH RECOMMENDATIONS with no blockers.
-Dashboard/API implementation planning carry-forward recommendations: convert category-level future Dashboard implementation allowlist into exact file paths before implementation authorization; add invalid / expired / cross-scope cursor UI negative tests; keep page-level summary labelled as current page only; ensure stale prior data cannot render as fresh production truth; keep future implementation Dashboard-only/read-only unless PM opens a separate API/contract gate.
+Dashboard/API implementation planning carry-forward recommendations: convert category-level future Dashboard implementation allowlist into exact file paths before implementation authorization; add invalid / expired / cross-scope cursor UI negative tests; keep page-level summary labelled as current page only; keep future implementation Dashboard-only/read-only unless PM opens a separate API/contract gate. The former stale-prior-data carry-forward is CLOSED by `156a812` and `963218a`.
 Dashboard implementation preparation / allowlist gate: CLOSED / PASS WITH RECOMMENDATIONS, committed/pushed at 4ad0e91 / 4ad0e91b41c4595295140d32b6bc96aa41f81b35.
 Dashboard accepted-events frontend implementation: CLOSED / PASS WITH RECOMMENDATIONS, committed/pushed at 896c2d1 / 896c2d159ce9c934c53f62607d93475d5fffd681.
 Dashboard accepted-events frontend Reliability review chain: initial HOLD for B1 missing query fallback and B2 package-local validation reproducibility; Architecture / Integration HOLD repair PASS WITH RECOMMENDATIONS; re-review CLOSED / PASS WITH RECOMMENDATIONS, B1/B2 CLOSED.
@@ -898,9 +910,9 @@ raw_payload/raw_hex is evidence, not a production fact.
 Decoded/source normalized payloads remain candidates until accepted.
 Non-accepted dispositions do not write defect detail; NOK/detail visibility must bind to accepted upstream business evidence.
 Preserve exact wording: no ACK/read_done mutation for the current non-accepted payload.
-Strict-parser current closed state: planning, contract authority, implementation, Reliability/Data Quality/Verification reviews, docs authority commit/push, implementation commit/push, prior post-push docs/status sync, PM handoff and the all-22-field explicit-null tests-only gate are all CLOSED. The former optional explicit-null parameterization recommendation is CLOSED by `bdbcea0`. Remaining non-blocking carry-forward is separately authorized UI/state stale-data work so an error cannot display old success/cache as fresh production truth, plus separately planned typecheck/build/browser/API/DB-backed validation.
+Current Dashboard closeout state: strict-parser planning/contract/implementation/reviews, all-22-field explicit-null regression, UI/state stale-data planning, stale-data Verification, and their exact-path commit/push gates are all CLOSED. The former explicit-null and stale-prior-data recommendations are CLOSED by `bdbcea0`, `156a812` and `963218a`. Remaining separately planned validation branches are typecheck, build, browser/manual smoke, API no-DB validation and API DB-backed validation.
 
-Next eligible gate: exact-path commit/push of this three-file docs/status sync after separate PM authorization, or PM handoff if this thread/context is long. Separately authorized future branches may cover UI/state stale-data or planned typecheck/build/browser/API/DB-backed validation. DB/API/Dashboard consumer planning, API consumer contract freeze, API implementation planning, accepted station events API implementation, DB-backed API validation planning/repair, DB-backed API validation execution rerun and Dashboard/API implementation planning are closed. Dashboard implementation, optional debug/review diagnostics view, future DB-backed reruns, actual timeout failure induction, worker/runtime DB-backed gates for unique-violation race, commit-before-ACK, non-accepted DB-backed zero-row/no ACK/read_done mutation, post-conflict re-read semantics and DB rollback remain future authorized work. Deploy/tag/rollback/real PLC pilot require separate PM authorization.
+Next eligible gate: exact-path commit/push of this three-file docs/status sync after separate PM authorization, or PM handoff if this thread/context is long. Separately authorized future branches may cover typecheck/build/browser/API no-DB/API DB-backed validation. DB/API/Dashboard consumer planning, API consumer contract freeze, API implementation planning, accepted station events API implementation, DB-backed API validation planning/repair, DB-backed API validation execution rerun and Dashboard/API implementation planning are closed. Dashboard implementation expansion, optional debug/review diagnostics view, future DB-backed reruns, actual timeout failure induction, worker/runtime DB-backed gates for unique-violation race, commit-before-ACK, non-accepted DB-backed zero-row/no ACK/read_done mutation, post-conflict re-read semantics and DB rollback remain future authorized work. Deploy/tag/rollback/real PLC pilot require separate PM authorization.
 Slice B inserted the adapter gate after payload/cycle/counter guards and counter reset fail-safe, before existing storage.persist_cycle().
 Slice B accepted-only path continues to existing storage.persist_cycle() plus existing read_done/ACK behavior.
 Slice B non-accepted decisions do not persist, do not project, do not write defect detail, and do not ACK.

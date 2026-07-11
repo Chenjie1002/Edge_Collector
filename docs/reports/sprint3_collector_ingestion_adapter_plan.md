@@ -8,12 +8,18 @@ separate docs authority commit `7824063 Clarify Dashboard strict parser contract
 (`7824063305cfaf4d44db6c8a01d095dd59586f10`) and exact three-file implementation
 commit `2cf616d Harden Dashboard accepted-events parser`
 (`2cf616d4dafbd497ec3db29ade826b1159e9025a`). The separately authorized
-all-22-field explicit-null regression tests-only gate is also CLOSED / PASS and
+all-22-field explicit-null regression tests-only gate is CLOSED / PASS and
 committed/pushed at `bdbcea0 Add explicit-null accepted event coverage`
-(`bdbcea0707941b4ca98f3fe4393bbbfae98a3764`). The authoring-time baseline for
-this docs/status sync is `HEAD == origin/main ==
-bdbcea0707941b4ca98f3fe4393bbbfae98a3764`; it is a durable audit marker and
-does not require a later docs-only HEAD to remain identical. The strict-parser
+(`bdbcea0707941b4ca98f3fe4393bbbfae98a3764`). The Dashboard accepted-events
+UI/state stale-data planning gate is CLOSED / PASS WITH RECOMMENDATIONS and its
+authority report is committed/pushed at `156a812 Plan Dashboard stale-data
+regression coverage` (`156a812bf4529e198ca32373d7d109370a6e3e0d`). The
+separately authorized tests-only Verification gate is CLOSED / PASS and
+committed/pushed at `963218a Add Dashboard stale-data regression coverage`
+(`963218a098e97b5d3c4993f2913e5f7f7355f98e`) with focused `page.test.tsx: 14
+passed`. The authoring-time baseline for this docs/status sync is `HEAD ==
+origin/main == 963218a098e97b5d3c4993f2913e5f7f7355f98e`; it is a durable audit marker
+and does not require a later docs-only HEAD to remain identical. The strict-parser
 planning and exact-envelope Verification reviews had initial HOLDs, respectively
 for generic Envelope `meta` conflict and item required/optional missing/null
 ambiguity; contract clarification and required-key/null repair closed both.
@@ -228,10 +234,10 @@ Current PM intake live baseline for Dashboard accepted-events nested/renamed lea
 - Dashboard/API implementation planning carry-forward recommendations: convert
   category-level future Dashboard implementation allowlist into exact file paths
   before implementation authorization; add invalid / expired / cross-scope cursor
-  UI negative tests; keep page-level summary labelled as current page only;
-  ensure stale prior data cannot render as fresh production truth; keep future
-  implementation Dashboard-only/read-only unless PM opens a separate
-  API/contract gate.
+  UI negative tests; keep page-level summary labelled as current page only; keep
+  future implementation Dashboard-only/read-only unless PM opens a separate
+  API/contract gate. The former stale-prior-data carry-forward is CLOSED by
+  `156a812` and `963218a`.
 - Dashboard accepted-events no-DB vertical validation execution: CLOSED / PASS
   WITH RECOMMENDATIONS; docs/status sync committed/pushed at `b413876`; PM
   handoff after the sync committed/pushed at `c103e90`.
@@ -317,6 +323,19 @@ Current PM intake live baseline for Dashboard accepted-events nested/renamed lea
   Collector, runtime, viewModel, page, store, cache, contract or package/config
   changed. Full frontend suite, `apiClient.test.ts`, typecheck, build, browser
   smoke, API tests and DB tests were not run by this follow-on gate.
+- UI/state stale-data closeout: the Level 1 planning gate is CLOSED / PASS WITH
+  RECOMMENDATIONS and committed/pushed at `156a812` /
+  `156a812bf4529e198ca32373d7d109370a6e3e0d`. The tests-only Verification gate
+  changed only `frontend/src/app/accepted-events/__tests__/page.test.tsx`, is
+  CLOSED / PASS, and is committed/pushed at `963218a` /
+  `963218a098e97b5d3c4993f2913e5f7f7355f98e`. Focused evidence:
+  `page.test.tsx: 14 passed`; exact target diff check PASS. The matrix proves
+  ready-to-loading/error/unavailable/invalid-query transitions clear prior table,
+  summary, NOK/detail evidence, trace references and distinctive values; ready
+  non-empty to ready empty clears prior selected truth and reports zero current
+  counts; client error/unavailable results render no ready production surfaces.
+  No production code, API, DB, Collector, runtime, contract, package/config,
+  typecheck, build, browser smoke or API/DB tests changed or ran in this gate.
 - DB/API/Dashboard consumer planning gate: CLOSED / PASS WITH RECOMMENDATIONS,
   no blocker; planning doc committed/pushed at `f4de1c3`.
 - DB/API/Dashboard consumer planning Reliability / Data Quality / Verification
@@ -1485,7 +1504,7 @@ DB-backed API validation post-execution docs/status sync: PASS at ba02249 / ba02
 Dashboard/API implementation planning gate: CLOSED / PASS WITH RECOMMENDATIONS at 4fcdd66 / 4fcdd6623247aaf9d3d3df23fd7cadf49f5d662a.
 Dashboard/API implementation planning report changed file: docs/reports/sprint3_dashboard_api_implementation_plan.md.
 Dashboard/API implementation planning Architecture / Integration, Reliability, Data Quality and Verification focused planning reviews: CLOSED / PASS WITH RECOMMENDATIONS with no blockers.
-Dashboard/API implementation planning carry-forward recommendations: convert category-level future Dashboard implementation allowlist into exact file paths before implementation authorization; add invalid / expired / cross-scope cursor UI negative tests; keep page-level summary labelled as current page only; ensure stale prior data cannot render as fresh production truth; keep future implementation Dashboard-only/read-only unless PM opens a separate API/contract gate.
+Dashboard/API implementation planning carry-forward recommendations: convert category-level future Dashboard implementation allowlist into exact file paths before implementation authorization; add invalid / expired / cross-scope cursor UI negative tests; keep page-level summary labelled as current page only; keep future implementation Dashboard-only/read-only unless PM opens a separate API/contract gate. The former stale-prior-data carry-forward is CLOSED by `156a812` and `963218a`.
 Dashboard implementation preparation / allowlist gate: CLOSED / PASS WITH RECOMMENDATIONS at 4ad0e91 / 4ad0e91b41c4595295140d32b6bc96aa41f81b35.
 Dashboard accepted-events frontend implementation: CLOSED / PASS WITH RECOMMENDATIONS at 896c2d1 / 896c2d159ce9c934c53f62607d93475d5fffd681.
 Dashboard accepted-events frontend Reliability review chain: initial HOLD B1/B2 repaired and CLOSED by re-review / PASS WITH RECOMMENDATIONS.
@@ -1533,7 +1552,7 @@ Dashboard implementation preparation / allowlist gate is CLOSED / PASS WITH RECO
 Dashboard accepted-events frontend implementation is CLOSED / PASS WITH RECOMMENDATIONS at 896c2d1.
 Dashboard accepted-events vertical validation planning is CLOSED / PASS WITH RECOMMENDATIONS at dd6dc53.
 API consumer contract freeze, API implementation planning, API implementation, DB-backed API validation rerun, Dashboard/API implementation planning, Dashboard implementation preparation / allowlist, Dashboard accepted-events frontend Reliability/Data Quality/Verification focused reviews and Dashboard accepted-events vertical validation planning Reliability/Data Quality/Verification reviews are CLOSED / PASS WITH RECOMMENDATIONS with no blockers after the documented HOLD repairs.
-Dashboard accepted-events no-DB vertical validation execution, Dashboard accepted-events apiClient focused no-DB tests, Dashboard accepted-events nested/renamed leakage defense-in-depth fixture, Dashboard accepted-events strict parser fail-closed hardening and the all-22-field explicit-null regression tests-only gate are now closed. Strict parser planning, contract authority, implementation, Reliability/Data Quality/Verification reviews, docs authority commit/push, implementation commit/push, prior post-push docs/status sync, PM handoff and explicit-null regression commit/push are CLOSED. The former optional all-fields explicit-null recommendation is closed by `bdbcea0`. The next eligible branch is exact-path commit/push of this three-file docs/status sync after separate PM authorization, PM handoff if thread/context is long, separately authorized UI/state stale-data work, or separately planned typecheck/build/browser/API/DB-backed validation.
+Dashboard accepted-events no-DB vertical validation execution, Dashboard accepted-events apiClient focused no-DB tests, Dashboard accepted-events nested/renamed leakage defense-in-depth fixture, Dashboard accepted-events strict parser fail-closed hardening, the all-22-field explicit-null regression tests-only gate and the UI/state stale-data planning/tests-only gate are now closed. Strict parser planning, contract authority, implementation, Reliability/Data Quality/Verification reviews, docs authority commit/push, implementation commit/push, prior post-push docs/status sync, PM handoff, explicit-null regression commit/push and stale-data commits `156a812` / `963218a` are CLOSED. The former optional all-fields explicit-null and stale-prior-data recommendations are closed. The next eligible branch is exact-path commit/push of this three-file docs/status sync after separate PM authorization, PM handoff if thread/context is long, or separately planned typecheck/build/browser/API no-DB/API DB-backed validation.
 Future DB-backed API validation rerun planning must freeze exact DB opt-in scope, DSN/test DB safety, schema/migration verification, allowed tests, cleanup and EDGE_MES_ENABLE_DB_BACKED_TESTS=1 usage before execution.
 Worker/runtime DB-backed gates for unique-violation race, commit-before-ACK, non-accepted DB-backed zero-row/no ACK/read_done mutation, post-conflict re-read semantics and DB rollback remain future authorized work.
 API read path source boundary remains only production_accepted_station_event_fact; raw_plc_sample, cycle_event, station_event, production_unit, quality_event, production_snapshot and production_events must not be described as equivalent production fact sources, fallback sources or join-derived field fillers.
@@ -1548,17 +1567,18 @@ Deploy/tag/rollback/real PLC pilot require separate PM authorization.
 ```
 
 Current closed state: Dashboard accepted-events strict parser fail-closed
-hardening and the all-22-field explicit-null regression tests-only gate are
-completed and must not be re-described as future implementation or test
-recommendations. The remaining non-blocking carry-forward is a separately
-authorized UI/state gate ensuring an error never presents old success data or
-cache as fresh production truth, plus separately planned validation gates.
+hardening, the all-22-field explicit-null regression tests-only gate and the
+UI/state stale-data planning/tests-only gate are completed and must not be
+re-described as future implementation or test recommendations. The former
+stale-prior-data carry-forward is CLOSED by `156a812` and `963218a`. Remaining
+separately planned validation gates are typecheck, build, browser/manual smoke,
+API no-DB validation and API DB-backed validation.
 
 Eligible for next PM gate: exact-path commit/push of this three-file docs/status
 sync after separate PM authorization, then PM handoff may be considered if
-thread/context is long. UI/state stale-data work,
-typecheck/build/browser/API/DB-backed validation, DB-backed reruns and actual
-timeout failure induction remain separate future PM-authorized gates.
+thread/context is long. Typecheck/build/browser/API no-DB/API DB-backed
+validation, DB-backed reruns and actual timeout failure induction remain separate
+future PM-authorized gates.
 
 Eligible for implementation without PM approval: no. PM approval is required
 before DB-backed API validation planning/execution, Dashboard implementation
