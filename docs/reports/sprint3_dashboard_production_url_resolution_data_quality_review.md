@@ -1,8 +1,8 @@
-# Sprint 3 Dashboard production URL-resolution Data Quality planning review report
+# Sprint 3 Dashboard production URL-resolution focused Data Quality re-review report
 
-报告名称：Sprint 3 Dashboard production URL-resolution Data Quality planning review report
+报告名称：Sprint 3 Dashboard production URL-resolution focused Data Quality re-review report
 
-任务名称：Review the repaired Dashboard URL-resolution authority for production-fact lineage, strict response semantics and no-data-substitution guarantees
+任务名称：Re-review the `d75c547` VER-URL-V1 resolver-contract repair after focused Reliability acceptance
 
 执行 Thread：Data Quality
 
@@ -10,7 +10,368 @@
 
 结论：**PASS WITH RECOMMENDATIONS**
 
-本 review 只审查已提交的 URL-resolution planning authority 是否保持 Dashboard accepted-facts 的 production-fact、response-contract 与 stale-data 边界；不授权 implementation、tests、typecheck/build、runtime capture、browser/server、API、DB、Docker、stage、commit 或 push。
+本次 focused re-review 独立审查 `d75c5477251de1b60f7a16e5d8803fd7c20f5b38`
+对 resolver result、error-code、brand 和 typed environment seam 的 planning repair，确认其
+是否保持 Dashboard accepted-facts 的 production-fact authority、严格 DTO/parser 语义、
+transport/business profile 隔离以及 no-data-substitution 边界。Reliability 已在
+`2483f2bec01a6ff19dab9432b28bfd0bd120814c` 接受该修复的 Reliability planning
+authority；该结论只作为 review 输入，不替代本 Data Quality 独立裁决。
+
+本 gate 不授权 implementation、tests、typecheck、build、runtime capture、browser/
+server、API、DB/Postgres、Docker、status sync、stage、commit 或 push。
+
+## A.1 Live baseline and read-only recovery
+
+本次第一动作是 read-only recovery；在恢复前未修改文件或运行测试/runtime。
+
+| Item | Live evidence |
+| --- | --- |
+| Branch | `main...origin/main` |
+| HEAD | `2483f2bec01a6ff19dab9432b28bfd0bd120814c` |
+| origin/main | `2483f2bec01a6ff19dab9432b28bfd0bd120814c` |
+| Latest commit | `2483f2b Re-review Dashboard resolver contract reliability` |
+| Parent | `6482e64344dd64c669a1602985081d24032f88df` |
+| Ahead / behind | `0 / 0` |
+| Cached diff | empty |
+| Existing tracked diff | `.gitignore` only |
+| Current review authority | committed historical report at `bb1935a` |
+
+Expected external artifacts remained unchanged and excluded from this gate:
+
+```text
+M  .gitignore
+?? docs/Edge MES Demo — ChatGPT PM Handoff - 20260623.md
+?? docs/reports/phase1_to_sprint2_management_keynote_10p.html
+?? docs/reports/sprint3_db_backed_api_validation_reliability_review.md
+?? docs/thread_handoff/chatgpt_pm_handoff_20260624.md
+?? docs/thread_handoff/chatgpt_pm_handoff_20260625.md
+?? docs/thread_handoff/chatgpt_pm_handoff_20260625_final.md
+?? docs/thread_handoff/chatgpt_pm_handoff_20260626_slice_a_commit.md
+?? frontend/node_modules/
+```
+
+No unexpected staged file, source/config/package drift or authority collision was found.
+
+## A.2 Reviewed authority and source boundaries
+
+Focused review inputs:
+
+```text
+d75c547  Repair Dashboard URL resolution resolver contract
+2483f2b  Re-review Dashboard resolver contract reliability
+bb1935a  Record Dashboard URL resolution Data Quality review
+```
+
+`git show` confirms `d75c547` changed only
+`docs/reports/sprint3_dashboard_production_url_resolution_plan.md`, and `2483f2b`
+changed only the Reliability re-review report. Neither commit changed frontend source,
+API contract, schema, query, view model, package/config or runtime topology.
+
+The review re-read the Dashboard API contract, repaired URL-resolution plan, focused
+Reliability conclusion, historical Data Quality authority, and current accepted-events
+`page.tsx`, `apiClient.ts`, `schema.ts`, `viewModel.ts`, state component and focused
+page/client tests. No resolver implementation exists yet; that is the expected
+pre-implementation state, not a defect.
+
+## A.3 Review question and bounded scope
+
+The focused question is whether the new executable resolver contract can alter or
+contaminate production fact meaning. The allowed future data flow remains:
+
+```text
+validated query
+-> transport-only resolver result
+-> fixed accepted-events endpoint
+-> existing response classification
+-> strict accepted-events parser
+-> accepted-fact view model
+-> ready or non-ready UI state
+```
+
+The resolver may decide only whether one trusted absolute root exists. It may not
+select facts, add response metadata, reinterpret `profile_id`, synthesize an envelope,
+modify query scope, preserve stale ready data or create a second source path.
+
+## A.4 Resolver result union and UI-data isolation
+
+**PASS.** The repaired authority freezes exactly:
+
+```text
+success own keys: ok, origin
+failure own keys: ok, code, message
+```
+
+The failure message is the fixed safe literal:
+
+```text
+Accepted events service is not configured.
+```
+
+The plan explicitly forbids raw origin, raw profile, hostname, URL, query, headers,
+credentials, parser error, stack, cause, diagnostic metadata or logging state from
+entering either result branch. `page.tsx` must use only the `ok` discriminant and the
+fixed failure `message`; it must not inspect or render `code`.
+
+The existing page-state authority accepts only `kind` and `message` for `error`. It has
+no transport profile, configuration code, origin or diagnostic slot. Therefore a
+configuration failure cannot become an API DTO, ready view model, trace reference,
+summary dimension or accepted-fact lineage value.
+
+Future page tests must prove the generic error is visible while raw values, safe code,
+transport profile and prior production surfaces remain absent. This is carry-forward
+evidence, not an authority blocker.
+
+## A.5 Transport profile versus accepted-fact `profile_id`
+
+**PASS WITH RECOMMENDATION.** The two concepts remain separate:
+
+```text
+EDGE_MES_DASHBOARD_API_ORIGIN_PROFILE
+  = local | container | production
+  = outbound transport policy only
+
+profile_id
+  = production_accepted_station_event_fact.profile_id
+  = response-owned accepted-fact lineage only
+```
+
+`AcceptedEventsApiOriginEnvironment` contains only two optional readonly transport
+properties and is expressly forbidden from acquiring business `profile_id`, query,
+headers, response data or fallback URL. The page must not pass the transport profile
+to the client or view model. The resolver success path passes only the branded root
+origin; the API response remains the sole source of item `profile_id`.
+
+Current `schema.ts` contains `profile_id` only in the frozen 22-field DTO allowlist, and
+`viewModel.ts` copies it only from the parsed item into `TraceReference.profileId`.
+Current source has no environment-origin/profile imports or mapping. No
+`schema.ts`, `query.ts` or `viewModel.ts` change is needed.
+
+`DQ-URL-D1` remains carry-forward because implementation evidence must still prove
+that `local`, `container` and `production` never overwrite/filter/render as business
+`profile_id`, and that a ready trace reference preserves the response value exactly.
+
+## A.6 Production fact authority and strict response semantics
+
+**PASS.** The repaired resolver contract changes no data authority:
+
+- only `production_accepted_station_event_fact` supplies consumer-facing facts;
+- endpoint remains `GET /api/v2/production/accepted-station-events`;
+- query authority remains the exact five keys and opaque API-owned cursor;
+- response remains exact `{data,page}` / `{items}` / `{next_cursor,limit}`;
+- all 22 item own keys remain required;
+- explicit JSON `null` remains distinct from missing;
+- unknown own keys remain forbidden;
+- malformed 2xx remains `kind: "error"`;
+- no raw/debug/diagnostic/candidate/review/audit source or fallback is introduced.
+
+`schema.ts` still performs exact own-key validation at envelope, data, page and item
+levels before copying values. A resolver result cannot bypass or populate that parser.
+The API client must continue to send successful JSON through
+`parseAcceptedStationEventsEnvelope()` before a ready result exists.
+
+## A.7 Failure classification, stale truth and no substitution
+
+**PASS.** The repaired sequence remains:
+
+```text
+invalid query
+-> invalid-query before resolver/fetch
+
+valid query + invalid/missing transport config
+-> error with fixed message
+-> zero client call
+-> zero fetch
+-> zero ready production surfaces
+
+successful transport + malformed 2xx
+-> error through strict parser
+
+successful transport + valid exact response
+-> ready from current response only
+```
+
+Configuration failure is not `empty`, `unavailable` or an accepted-fact absence claim.
+It is a transport-configuration error. Existing page rendering returns early for every
+non-ready state, so table, current-page summary, NOK evidence, trace reference and
+cursor surfaces are absent. The repair adds no cache, old-result reuse, target/profile
+merge, fixture fallback or missing-to-empty conversion.
+
+This preserves the rule that empty means a valid exact response containing zero
+accepted facts in the bounded query scope; configuration error never means empty.
+
+## A.8 Safe logging versus production evidence
+
+**PASS WITH CARRY-FORWARD.** The server log may contain only a fixed event marker, one
+of eight safe configuration codes, fixed variable names and a safely known transport
+profile category. It may not contain origin/hostname/raw profile, query scope,
+credentials, response DTO values, DMC, unit ID, fact/source IDs, NOK evidence,
+`profile_id`, accepted timestamps or parser payload.
+
+Logging is outside resolver result, API response and view state. A logging failure must
+not change the failure code/message or create a ready result. Future logging tests must
+prove redaction and non-throwing containment; they are Reliability/Data Quality
+carry-forward evidence inside `apiOrigin.test.ts`, not justification for a logger,
+schema or DTO scope expansion.
+
+## A.9 Runtime fixture and evidence classification
+
+**PASS WITH RECOMMENDATION.** `VER-URL-V3` remains a dedicated future runtime-planning
+gate. The repaired plan does not authorize a fixture or claim production-fact evidence.
+It requires the future gate to distinguish:
+
+```text
+transport/request-count evidence
+synthetic strict-parser fixture evidence
+real production-fact evidence
+```
+
+A request-capture body that is malformed may prove method/path/query/count, but its
+page outcome must remain `error`; it cannot be reported as ready or production-fact
+evidence. A synthetic exact 22-key body can prove parser/view behavior only and still
+is not DB-backed production evidence. `DQ-URL-D2` therefore remains carry-forward.
+
+## A.10 Full regression evidence
+
+**PASS WITH RECOMMENDATION.** The six-file focused implementation can add resolver and
+page/client tests without modifying strict schema/view-model tests. However, focused URL
+tests alone cannot certify the entire accepted-fact contract. A later authorized full
+frontend regression must still execute existing schema/query/view-model/page/client
+coverage for:
+
+- exact 22 keys and explicit-null versus missing semantics;
+- unknown-key and malformed-envelope rejection;
+- malformed 2xx error classification;
+- current-page-only summary;
+- response-owned lineage and NOK evidence;
+- stale-data removal across non-ready states.
+
+`DQ-URL-D3` remains carry-forward. No additional test file or source-file expansion is
+needed.
+
+## A.11 Exact implementation allowlist assessment
+
+**PASS.** The repaired authority remains implementable within exactly six files:
+
+```text
+Create frontend/src/lib/acceptedStationEvents/apiOrigin.ts
+Modify frontend/src/lib/acceptedStationEvents/apiClient.ts
+Modify frontend/src/app/accepted-events/page.tsx
+Create frontend/src/lib/acceptedStationEvents/__tests__/apiOrigin.test.ts
+Modify frontend/src/lib/acceptedStationEvents/__tests__/apiClient.test.ts
+Modify frontend/src/app/accepted-events/__tests__/page.test.tsx
+```
+
+Data Quality requires no change to `schema.ts`, `query.ts`, `viewModel.ts`, components,
+API, DB, package/lockfile, Next/TS config, Compose, README or dependency set. A claimed
+need to place transport fields in DTO/view state, alter parser/query/view model, add a
+fixture source or expand the six-file allowlist is `HOLD`, not permission to expand.
+
+## A.12 Finding adjudication
+
+### DQ-URL-D1
+
+```text
+Status: CARRY FORWARD
+Severity: RECOMMENDATION
+Area: transport profile / accepted-fact profile_id isolation
+```
+
+The planning authority now states the isolation directly and prohibits `code`/profile
+from entering DTO or view state. Implementation tests still must prove it using the
+public page/client/resolver boundaries. No planning blocker remains.
+
+### DQ-URL-D2
+
+```text
+Status: CARRY FORWARD
+Severity: RECOMMENDATION
+Area: runtime fixture/evidence classification
+```
+
+The future runtime gate must separately label transport capture, synthetic strict-parser
+fixture and real production-fact evidence. No runtime mechanism is authorized here.
+
+### DQ-URL-D3
+
+```text
+Status: CARRY FORWARD
+Severity: RECOMMENDATION
+Area: full frontend contract regression
+```
+
+Future validation must run the existing full regression without expanding the focused
+source/test allowlist.
+
+### New findings
+
+```text
+none
+```
+
+### Blocking findings
+
+```text
+none
+```
+
+## A.13 VER-URL-V1 Data Quality decision
+
+The `d75c547` planning repair is accepted from the Data Quality perspective:
+
+```text
+VER-URL-V1 Data Quality acceptance:
+yes, planning authority only
+
+Data Quality gate:
+PASS WITH RECOMMENDATIONS
+
+Data Quality blockers:
+none
+
+Carry-forward:
+DQ-URL-D1
+DQ-URL-D2
+DQ-URL-D3
+
+VER-URL-V1 cross-functional closure:
+pending independent Verification re-review
+
+Verification gate:
+remains HOLD
+```
+
+This decision does not overwrite Verification authority and does not authorize
+implementation, tests, build or runtime evidence.
+
+## A.14 Authorization and next gate
+
+```text
+Focused Data Quality re-review: completed
+Data Quality report commit/push: not authorized
+Verification re-review: not authorized
+Security/privacy planning review: not authorized
+Implementation: not authorized
+Tests/typecheck/build: not authorized
+Runtime planning/validation: not authorized
+Status sync: not authorized
+```
+
+After a separately authorized exact-path commit of this report, the recommended next
+technical gate is:
+
+```text
+Verification re-review of the repaired VER-URL-V1 planning authority
+```
+
+Do not start Verification, Security/privacy or implementation from this report without
+a new exact PM authorization.
+
+---
+
+## Historical Data Quality planning review — bb1935a
+
+The sections below preserve the earlier Data Quality adjudication. Git history remains
+the source of truth for the exact pre-`d75c547` report revision.
 
 ## 1. Baseline and recovery
 
