@@ -1,8 +1,8 @@
-# Sprint 3 Dashboard production URL-resolution planning gate report
+# Sprint 3 Dashboard production URL-resolution VER-URL-V1 planning authority repair report
 
-报告名称：Sprint 3 Dashboard production URL-resolution planning gate report
+报告名称：Sprint 3 Dashboard production URL-resolution VER-URL-V1 planning authority repair report
 
-任务名称：Design a secure and deployment-safe absolute API URL resolution boundary for the Dashboard accepted-events Server Component
+任务名称：Repair executable resolver result and environment-read test contract
 
 执行 Thread：Architecture / Integration
 
@@ -11,15 +11,18 @@
 结论：**PASS WITH RECOMMENDATIONS**
 
 本报告冻结 server-only、request-time、fail-closed 的 absolute API URL-resolution
-boundary，并已按 Reliability HOLD repair 补足 deterministic canonicalization、restart
-recovery 和 carry-forward acceptance。它不授权 implementation、tests、runtime probe、
-deployment、configuration write、status sync、stage、commit 或 push。
+boundary，并以本次 Architecture planning repair 补足 `VER-URL-V1` 所需的可执行
+resolver result、brand 与 environment-read test contract。它不授权 implementation、
+tests、runtime probe、deployment、configuration write、status sync、stage、commit 或
+push。
 
 Architecture planning repair has addressed the documented
 Reliability HOLD findings in the planning authority.
 
-The Reliability gate remains HOLD until an independent
-Reliability re-review accepts the repaired authority.
+Architecture planning repair addresses `VER-URL-V1` in authority only.
+
+Verification remains **HOLD** until independent cross-functional re-review accepts
+the repaired authority.
 
 ## 1. Baseline and read-only recovery
 
@@ -171,14 +174,57 @@ Create the future focused resolver module:
 frontend/src/lib/acceptedStationEvents/apiOrigin.ts
 ```
 
-It exposes a branded `TrustedAcceptedEventsApiOrigin` and
-`resolveTrustedAcceptedEventsApiOrigin()`. At the beginning of **each invocation** it
-reads `EDGE_MES_DASHBOARD_API_ORIGIN` and
-`EDGE_MES_DASHBOARD_API_ORIGIN_PROFILE` exactly once into an immutable local snapshot.
-Every validation, canonicalization, logging category, typed failure, and brand derives
-only from that same snapshot. The implementation need not literally use
-`Object.freeze`, but it must not reread either environment property during an
-invocation.
+Its public contract is frozen exactly as follows; future implementation must not
+rename, widen, replace, or redesign it:
+
+```ts
+export type AcceptedEventsApiOriginEnvironment = Readonly<{
+  EDGE_MES_DASHBOARD_API_ORIGIN?: string;
+  EDGE_MES_DASHBOARD_API_ORIGIN_PROFILE?: string;
+}>;
+
+declare const trustedAcceptedEventsApiOriginBrand: unique symbol;
+
+export type TrustedAcceptedEventsApiOrigin = string & {
+  readonly [trustedAcceptedEventsApiOriginBrand]:
+    "TrustedAcceptedEventsApiOrigin";
+};
+
+export type OriginConfigurationErrorCode =
+  | "ORIGIN_MISSING"
+  | "PROFILE_MISSING"
+  | "ORIGIN_EMPTY"
+  | "PROFILE_EMPTY"
+  | "PROFILE_UNSUPPORTED"
+  | "ORIGIN_NON_CANONICAL"
+  | "ORIGIN_PROFILE_MISMATCH"
+  | "ORIGIN_MALFORMED";
+
+export type AcceptedEventsApiOriginResolution =
+  | { readonly ok: true; readonly origin: TrustedAcceptedEventsApiOrigin }
+  | {
+      readonly ok: false;
+      readonly code: OriginConfigurationErrorCode;
+      readonly message: "Accepted events service is not configured.";
+    };
+
+export function resolveTrustedAcceptedEventsApiOrigin(
+  environment?: AcceptedEventsApiOriginEnvironment
+): AcceptedEventsApiOriginResolution;
+```
+
+`environment === undefined` means that the resolver itself uses `process.env`.
+The no-argument call is the production call: `page.tsx` calls
+`resolveTrustedAcceptedEventsApiOrigin()`. Supplying a typed environment is a formal,
+production-compatible dependency seam for focused resolver tests, not a test-only
+export. No caller may use a global mutable override, `setEnvironmentForTests()`, or a
+production reset export.
+
+At the beginning of **each invocation** the resolver chooses the supplied environment
+or `process.env`, reads each named property exactly once, and creates an immutable
+local snapshot. Every validation, classification, logging category, typed result, and
+brand derives only from that snapshot. The implementation need not literally use
+`Object.freeze`, but it must not reread either source property during an invocation.
 
 There is no module-import environment read and no build-time snapshot. `page.tsx`
 does not read either variable itself. `apiClient.ts` has no environment or header
@@ -186,9 +232,21 @@ knowledge and accepts only the brand, never an unvalidated string endpoint. This
 also the implementation acceptance for `REL-URL-R3`.
 
 `page.tsx` remains the only production call site. After existing query validation
-succeeds, it resolves the origin. A typed resolver failure renders the existing
-`kind: "error"` branch and performs zero client/fetch calls. On success it passes the
-brand to `fetchAcceptedStationEvents(query, trustedApiOrigin, fetchImpl)`.
+succeeds, it resolves the origin with no argument. It must use the discriminant:
+
+```ts
+const resolution = resolveTrustedAcceptedEventsApiOrigin();
+
+if (!resolution.ok) {
+  return { kind: "error", message: resolution.message };
+}
+```
+
+The actual page return structure follows its existing view contract. Failure performs
+zero client calls, zero fetch calls, and exposes no ready data. On success it passes
+only `resolution.origin` to `fetchAcceptedStationEvents(query, resolution.origin,
+fetchImpl)`. The page must not inspect `code`, read env, create/cast a brand, select an
+endpoint, or catch a configuration exception as ordinary control flow.
 
 ## 10. Environment/configuration contract
 
@@ -206,23 +264,51 @@ replace, remove dots, remove ports, or otherwise repair malformed input into a
 trusted origin. Profile matching is raw-syntax policy plus parser verification, not
 case-insensitive or DNS-equivalent matching.
 
+`AcceptedEventsApiOriginEnvironment` contains only the two readonly optional transport
+properties in section 9. It must not acquire query values, headers, `Host`,
+`Forwarded`, browser origin, fetch, logger, fallback URL, business `profile_id`, or
+response data. The production-default sequence is conceptually:
+
+```ts
+const source = process.env;
+const rawOrigin = source.EDGE_MES_DASHBOARD_API_ORIGIN;
+const rawProfile = source.EDGE_MES_DASHBOARD_API_ORIGIN_PROFILE;
+const snapshot = { rawOrigin, rawProfile };
+```
+
+Each property access is exactly once, and after `snapshot` is made the resolver must
+not access `source` again. It must not store source or snapshot in module scope, read
+it in helpers/logging/page/client, or read it at import/build time. The optional
+argument permits tests to use a local typed getter object; it neither modifies nor
+proxies global `process.env`.
+
 ## 11. URL validation and composition
 
 ### 11.1 Deterministic resolver algorithm
 
-For one snapshot, the algorithm is fixed in this exact order:
+For one snapshot, classification returns the first matching failure and is fixed in
+this exact precedence: `ORIGIN_MISSING`, `PROFILE_MISSING`, `ORIGIN_EMPTY`,
+`PROFILE_EMPTY`, `PROFILE_UNSUPPORTED`, raw safety/canonicality validation, profile
+matching, `new URL()` parsing, parsed-component re-verification. The deterministic
+mapping is:
 
-1. Check that both profile and origin properties exist.
-2. Check that neither value is an empty string.
-3. Reject leading or trailing whitespace.
-4. Reject any ASCII control character.
-5. Reject any non-ASCII character.
-6. Reject any percent sign (`%`).
-7. Reject any backslash (`\\`).
-8. Reject raw syntax not in the profile-specific closed forms in section 7.
-9. Only then call platform `new URL()`.
-10. Verify parsed components and the same profile policy again.
-11. Return one canonical branded origin or a typed configuration failure.
+| Condition | Result code |
+| --- | --- |
+| origin property absent | `ORIGIN_MISSING` |
+| profile property absent | `PROFILE_MISSING` |
+| origin is exactly `""` | `ORIGIN_EMPTY` |
+| profile is exactly `""` | `PROFILE_EMPTY` |
+| profile is not exactly `local`, `container`, or `production` | `PROFILE_UNSUPPORTED` |
+| whitespace/control/non-ASCII/`%`/backslash, or no allowed canonical raw representation | `ORIGIN_NON_CANONICAL` |
+| origin has another known profile's exact canonical syntax but not the selected profile | `ORIGIN_PROFILE_MISMATCH` |
+| `new URL()` throws after raw checks | `ORIGIN_MALFORMED` |
+| parsed protocol/host/port/path/userinfo/query/fragment disagrees with selected profile or raw identity | `ORIGIN_PROFILE_MISMATCH` |
+
+First test the selected profile's closed raw syntax. If that fails but another known
+profile's exact syntax succeeds, return `ORIGIN_PROFILE_MISMATCH`; if no known syntax
+succeeds, return `ORIGIN_NON_CANONICAL`. Production FQDN grammar is a known production
+syntax. DNS, parser lowercase/default-port normalization, and Unicode conversion never
+establish a match.
 
 The raw-syntax step rejects uppercase scheme or hostname, trailing-dot hostnames,
 explicit production `:443`, noncanonical or zero-padded ports, Unicode/raw IDN,
@@ -235,7 +321,9 @@ After parsing, verify `protocol`, `hostname`, `port`, `pathname`, `username`,
 `password`, `search`, `hash`, and `origin`. The pathname must be exactly `/`; username,
 password, search, and hash must be empty; scheme/host/port must still match the same
 profile. If parser normalization conflicts with raw policy or changes profile identity,
-reject rather than canonicalize through the conflict.
+return `ORIGIN_PROFILE_MISMATCH` rather than canonicalize through the conflict. Every
+expected configuration invalidity is non-throwing and returns the failure union; only a
+genuine programming defect may naturally throw.
 
 ### 11.2 Canonicalization decision matrix
 
@@ -268,6 +356,14 @@ http://127.0.0.1:8000/ -> http://127.0.0.1:8000
 http://[::1]:3100/ -> http://[::1]:3100
 https://internal-api.example/ -> https://internal-api.example
 ```
+
+The branded string is exactly `parsedUrl.origin`. The brand can be created only on the
+successful path of `resolveTrustedAcceptedEventsApiOrigin`; its constructor/branding
+helper is not exported. Production call sites must not use `as
+TrustedAcceptedEventsApiOrigin`. `apiClient.ts` accepts the brand, never a raw string
+or string union; its tests obtain a valid brand through this resolver and typed test
+environment. A compile-time negative test may use `// @ts-expect-error ordinary string
+must not satisfy the brand`, but production code gains no unsafe test constructor.
 
 The client must compose, never concatenate:
 
@@ -307,8 +403,8 @@ CRLF/control/repeated-value rejection, host/port validation, and protocol valida
 ```text
 AcceptedEventsPage
   -> validateAcceptedStationEventsQuery
-  -> resolveTrustedAcceptedEventsApiOrigin (one server-env snapshot)
-  -> typed configuration error / no outbound request
+  -> resolveTrustedAcceptedEventsApiOrigin() (one server-env snapshot)
+  -> `{ ok: false, code, message }` / no outbound request
      OR TrustedAcceptedEventsApiOrigin
   -> fetchAcceptedStationEvents(query, brand, fetchImpl)
   -> buildAcceptedStationEventsQuery
@@ -320,7 +416,15 @@ AcceptedEventsPage
 Invalid query remains `invalid-query` before resolution. Valid query with missing or
 invalid configuration becomes `error`, hides ready production data, and sends no
 accepted-events request. Valid origin preserves parser/classification/view-model
-behavior.
+behavior. The success result owns exactly `ok` and `origin`; the failure result owns
+exactly `ok`, `code`, and `message`. Neither raw input, profile, hostname, URL,
+diagnostic metadata, query, headers, parser error, stack, cause, credentials, nor
+logging state may be added to either resolver result.
+
+The transport profile and safe configuration code never enter the API DTO, response,
+or view model. `profile_id` remains response-owned accepted-fact data only; the
+environment seam neither changes production-fact authority nor schema/query/view-model
+semantics.
 
 ## 14. Error and logging behavior
 
@@ -330,19 +434,23 @@ message `Accepted events service is not configured.`
 
 Logging is bounded and non-throwing without a new dependency or logger file:
 
-- failure uses a closed `OriginConfigurationErrorCode` enum;
+- failure uses exactly the closed `OriginConfigurationErrorCode` union in section 9;
 - module scope holds only `Set<OriginConfigurationErrorCode>`; each safe code logs at
-  most once per process, and the finite enum bounds set size;
+  most once per process, and the finite union bounds set size;
 - restart naturally resets deduplication;
 - each log contains `DASHBOARD_API_ORIGIN_CONFIGURATION_ERROR`, safe category,
   variable names, and profile category only when safely known;
 - it never includes raw origin, URL, hostname, query, headers, credentials, or user
   input;
 - `console.error`/logging is wrapped in non-throwing containment. Logging failure
-  must not alter the typed resolver result or enter a Next error boundary.
+  must not alter the typed resolver result or enter a Next error boundary; logging
+  occurs before failure return but does not appear in that result.
 
-Tests may isolate dedupe by module reset/isolation. No production-only reset export is
-allowed. This is the implementation acceptance for `REL-URL-R4`.
+Logging derives only from the captured snapshot and determined safe code; it must not
+reread the environment. Safe variable-name mapping is fixed constants, never raw
+input. Tests isolate dedupe using `vi.resetModules()` and dynamic import, not an
+exported dedupe set or production reset function. This is the implementation acceptance
+for `REL-URL-R4`.
 
 ## 15. Deployment matrix
 
@@ -395,22 +503,37 @@ Only the three test paths in section 17 may change. They must cover:
 
 | Test area | Required assertions |
 | --- | --- |
-| Resolver positives | every exact local/container form, compliant production FQDN/punycode, optional root slash, `URL.origin` brand |
-| Resolver negatives | every section-11 matrix reject; missing/empty/unknown pair; wrong profile pair; controls/whitespace/non-ASCII/percent/backslash; parser conflict; no raw-value output |
-| Snapshot timing | one invocation reads each env property once; no module-import/build snapshot; `page.tsx`/client never read env |
+| Resolver positives | every exact local/container form, compliant production FQDN/punycode, optional root slash, `URL.origin` brand; direct exact own keys `ok`, `origin` |
+| Resolver negatives | every section-11 matrix reject; each of the eight safe codes; direct exact own keys `ok`, `code`, `message`; exact fixed safe message and no raw-value output |
+| Snapshot timing | success and failure getter-object tests prove each input property is read once; no module-import/build snapshot; `page.tsx`/client never read env |
 | API client | exact absolute endpoint; only five query keys; cursor encoding; GET/no-store/omit/redirect-error; injected fetch; no relative URL |
 | Failure isolation | resolver failure yields no fetch, visible error, and no stale production surface |
 | Regression | strict malformed-2xx error and existing 4xx/503/other classifications |
 | Logging | finite once-per-code dedupe, redaction, non-throwing containment through module isolation/reset |
 
-Environment-mutating tests must save each property’s prior presence and value. In
-`afterEach`, restore the old value when it existed; otherwise `delete` the property.
-They must never write string `"undefined"`, must run serially (for example a Vitest
-sequential suite), set a complete origin/profile pair per case, and never use the
-developer machine environment as a default. `afterEach` restoration must run after
-test failure. Module cache isolation cannot freeze a test’s environment snapshot.
-Page mocks and `process.env` restoration remain independent. This is the test
+The required exact-read seam is a typed local getter object, not a global proxy. A
+focused success test and focused failure test each use the formal `environment`
+argument, increment `originReads` and `profileReads` from its two getters, invoke the
+resolver, and assert both counts are exactly `1`. The failure case proves there is no
+extra read after classification failure. It must not use `Proxy(process.env)`, replace
+global `process.env`, call `Object.defineProperty(process.env, ...)`, monkey-patch
+`ProcessEnv`, install a global getter hook, or add a production counter/reset export.
+
+A separate request-time re-read test proves invocation A observes environment A and
+invocation B observes environment B. It does not replace the getter-based
+single-invocation proof. Direct-argument parameterized tests require no mutation of
+`process.env`. Only production-default or re-read tests may mutate it; those tests save
+each property's prior presence and value and, in `afterEach`, restore the old value or
+`delete` it. They never write string `"undefined"`, run serially, set a complete pair,
+and never use developer-machine env as a default. Restoration must run after test
+failure. Page mocks and `process.env` restoration remain independent. This is the test
 acceptance for `REL-URL-R5`.
+
+Brand-boundary tests prove resolver success creates the brand, the API client accepts
+that resolver brand, an ordinary string fails compile time, the page contains no cast,
+and its underlying value is canonical `URL.origin`. Logging tests prove same-code
+dedupe, distinct-code logging, redaction of both raw values, containment when
+`console.error` throws, and reset only through `vi.resetModules()` plus dynamic import.
 
 ## 19. Future test and runtime validation strategy
 
@@ -419,57 +542,28 @@ evidence order is resolver tests, client tests, page tests, full frontend tests,
 typecheck, build/artifact audit, then separately authorized runtime probes. No test,
 build, server, capture endpoint, or recovery probe is run by this repair.
 
-### Restart recovery acceptance
+### Bundle carry-forward
 
-This is an independent future runtime gate, not hot reload. It must prove:
+`VER-URL-V2` remains **CARRY FORWARD**. A future build-evidence gate must inspect
+`.next/static/**` separately from `.next/server/**`, prove raw configured origin values
+do not enter client artifacts, and not treat server occurrence of variable names as a
+leak. A whole-`.next` grep alone is not browser-safety evidence. This repair performs
+neither build nor bundle inspection.
 
-```text
-missing/invalid config
--> valid accepted-events page request fails closed
--> visible kind:"error"
--> zero accepted-events outbound request
--> stop Next process
--> correct runtime environment
--> restart the same build artifact
--> subsequent valid request resolves corrected origin
--> exactly one accepted-events request
--> no rebuild between the two runs
-```
+### Runtime carry-forward
 
-`next build` executes once only and requires neither origin value. Both phases use the
-same `frontend/.next/standalone` artifact. The corrected run is a fresh process, not
-a changed environment within the first process; module cache/import state cannot
-retain the old pair, and the first valid request after restart reads the new snapshot.
+`VER-URL-V3` remains **CARRY FORWARD** and is an independent runtime-planning gate,
+not hot reload or an authorization to run a server. It must later choose and authorize
+the exact capture/fixture method, temporary/log/request-counter artifact allowlist,
+zero/exactly-one evidence, same-artifact hash, `/usr/sbin/lsof` preflight, PID/port
+cleanup, and Data Quality evidence classification. This repair neither chooses that
+mechanism nor adds a helper, fixture, package/config, or runtime procedure.
 
-Future topology is Next standalone on `127.0.0.1:3100` and an authorized loopback
-capture/fixture endpoint on `127.0.0.1:8000`.
-
-**Phase A — invalid or missing configuration.** Do not start the capture endpoint, or
-prove its request count is zero. Start the same artifact with an absent pair or an
-explicit invalid pair; send one valid accepted-events page query; observe safe
-configuration `error`, zero accepted-events outbound request, and no relative,
-localhost, container, or mock fallback. Stop Next and prove the port is released.
-
-**Phase B — corrected configuration after restart.** Start the separately authorized
-loopback-only synthetic capture/fixture endpoint. Without rebuild, restart that same
-standalone artifact with:
-
-```text
-EDGE_MES_DASHBOARD_API_ORIGIN_PROFILE=local
-EDGE_MES_DASHBOARD_API_ORIGIN=http://127.0.0.1:8000
-```
-
-Send the same valid page query. The capture endpoint observes exactly one
-`GET /api/v2/production/accepted-station-events`; the query contains only `line_id`,
-`start_time`, `end_time`, `limit`, and `cursor` only when explicitly requested.
-Method, path, query, and fetch options remain contractual; a synthetic response still
-passes the strict parser; record final page state. Stop every recorded process, free
-both ports, clean only recorded generated artifacts, and restore Git status.
-
-This future probe passes only with same artifact, no rebuild, Phase-A zero request,
-corrected-restart exactly one request to corrected absolute origin, no stale
-env/module snapshot, no fallback, no extra request, no client-bundle origin leak, and
-complete cleanup. This addresses `REL-URL-R2` in planning authority only.
+The retained outcome requirement is request-time behavior: a fresh invocation must
+observe its current configured pair, and a corrected process restart against the same
+artifact must not be claimed without later evidence. That future evidence must
+distinguish synthetic transport/strict-parser fixture evidence from real
+production-fact evidence.
 
 ## 20. Package/config/dependency impact
 
@@ -498,49 +592,58 @@ Unexpected tracked/config/package/generated drift is `HOLD`.
 This planning authority is PASS-capable only when all of these remain true:
 
 - exact paired runtime variables, single immutable invocation snapshot, strict raw
-  parser order, profile forms, parser re-verification, and `URL.origin` brand;
+  parser order, eight-code precedence, profile forms, parser re-verification, exact
+  discriminated result own keys, and `URL.origin` brand;
 - no browser/header/relative/default/profile fallback or client leak;
 - valid query plus invalid configuration is safe `error` with zero request;
+- formal typed environment seam, success/failure getter exact-read evidence, separate
+  request-time re-read evidence, and no global `process.env` proxy/test-only export;
 - finite, redacted, non-throwing configuration logging and serial exact env-test
   isolation;
-- same-artifact restart recovery acceptance with Phase-A zero and Phase-B exactly-one
-  request is frozen for a future runtime gate;
+- `VER-URL-V2` and `VER-URL-V3` remain carry-forward future gates;
 - the six-file allowlist is unchanged with no package/config/deployment expansion;
 - parser/contract/fact authority/stale-data behavior is preserved;
-- Reliability blockers addressed by planning repair; closure remains pending
-  Reliability re-review.
+- `VER-URL-V1` is addressed in authority only; cross-functional closure remains
+  pending.
 
 ## 23. HOLD conditions
 
 Future gates must stop with **HOLD** for any raw input repair/implicit normalization,
 case-insensitive or DNS-equivalent matching, default-port acceptance outside the exact
 forms, Unicode conversion, expanded IPv6 acceptance, reread/mixed environment pair,
-module-import/build snapshot, hot-reload claim, missing Phase-A/Phase-B recovery
-evidence, unbounded/throwing logging, env-test leakage, fallback, client leak,
-unexpected request, contract/parser/authority/query/cursor/cache/stale-data change,
-or any need for a non-six-file/package/config/deployment/mock expansion. Unauthorized
-stage/commit/push/deploy/runtime actions are also HOLD.
+module-import/build snapshot, raw-string/cast brand creation, non-discriminated or
+throwing configuration handling, extra result keys, a missing safe code/mapping,
+global env proxy, production test-only reset/export, unbounded/throwing logging,
+env-test leakage, fallback, client leak, unexpected request, contract/parser/
+authority/query/cursor/cache/stale-data change, or any need for a non-six-file/
+package/config/deployment/mock expansion. Unauthorized stage/commit/push/deploy/runtime
+actions are also HOLD.
 
 ## 24. Required reviews
 
-After an explicitly authorized planning-authority commit, the immediate next gate is
-an independent Reliability re-review of this repaired authority. It alone may accept
-or retain `REL-URL-R1`/`REL-URL-R2`; this report does not alter the Reliability review
-or claim its gate passed. Later Data Quality, Verification, Security/privacy,
-implementation, tests, build, and runtime work each require new authorization.
+After an explicitly authorized planning-authority commit, the required sequence is an
+independent focused Reliability re-review, focused Data Quality re-review, then
+Verification re-review. They decide whether the authority repair closes `VER-URL-V1`;
+this report does not alter any review authority or claim a gate passed. Focused
+Security/privacy planning review follows before any PM implementation decision.
+Implementation, tests, build, and runtime work each require new authorization.
 
 Reliability must recheck raw canonicalization/profile matching, one-snapshot timing,
-finite failure logging, test isolation, and same-artifact restart recovery acceptance.
-Data Quality must preserve endpoint/parser/fact authority; Verification must audit the
-exact allowlist, static matrix, and future evidence topology.
+the non-throwing union, finite failure logging, and test isolation. Data Quality must
+confirm error code/failure union do not enter DTO or view state and transport profile
+stays isolated from `profile_id`. Verification must audit the exact allowlist, result
+contract, getter seam, and carry-forward evidence topology.
 
 ## 25. Next gate sequence
 
 ```text
 PM exact-path commit authorization (not granted here)
 -> planning authority commit
--> independent Reliability re-review of repaired authority
--> any later reviews/implementation only after explicit PM authorization
+-> focused Reliability re-review
+-> focused Data Quality re-review
+-> Verification re-review
+-> focused Security/privacy planning review
+-> PM implementation authorization decision
 ```
 
 No implementation may start from this report. The mock-capability plan remains HOLD
@@ -558,17 +661,38 @@ until later implementation and runtime validation, and this report does not resu
 4. **Mock capability:** absolute resolution is a prerequisite, not mock design or
    proof. Keep its separate plan HOLD until its own authority is re-reviewed.
 
-### Reliability HOLD repair matrix
+### Reliability/Verification repair matrix
 
 | Finding | Repair status in plan | Remaining authority |
 | --- | --- | --- |
-| REL-URL-R1 | addressed | pending Reliability re-review |
-| REL-URL-R2 | addressed | pending Reliability re-review |
-| REL-URL-R3 | incorporated as implementation acceptance | pending Reliability re-review |
-| REL-URL-R4 | incorporated as implementation acceptance | pending Reliability re-review |
-| REL-URL-R5 | incorporated as test acceptance | pending Reliability re-review |
-| REL-URL-R6 | retained as deployment follow-up | pending Reliability re-review |
-| REL-URL-R7 | closed by existing bounded scope | pending Reliability acknowledgement |
+| VER-URL-V1 | addressed with exact result union, error-code set, brand and typed env seam | pending Reliability/Data Quality/Verification re-review |
+| VER-URL-V2 | retained | future build evidence gate |
+| VER-URL-V3 | retained | dedicated runtime planning gate |
+| REL-URL-R3 | preserved and made directly testable | pending implementation evidence |
+| REL-URL-R4 | preserved with exact safe codes | pending implementation evidence |
+| REL-URL-R5 | preserved | pending test evidence |
+| DQ-URL-D1 | preserved | pending page/client test evidence |
+| DQ-URL-D2 | retained | pending runtime evidence |
+| DQ-URL-D3 | retained | pending full regression |
+
+### Repair conclusion
+
+The planning conclusion remains **PASS WITH RECOMMENDATIONS**. Architecture has
+repaired the executable resolver and testability contract required by `VER-URL-V1`.
+Verification remains **HOLD** until independent cross-functional re-review accepts the
+repaired authority. This is not implementation authorization.
+
+### Historical Reliability repair matrix
+
+| Finding | Repair status in plan | Remaining authority |
+| --- | --- | --- |
+| REL-URL-R1 | historical planning repair retained | independent Reliability re-review |
+| REL-URL-R2 | historical planning repair retained | dedicated future runtime evidence |
+| REL-URL-R3 | incorporated and directly testable | pending implementation evidence |
+| REL-URL-R4 | incorporated with exact safe codes | pending implementation evidence |
+| REL-URL-R5 | incorporated as test acceptance | pending test evidence |
+| REL-URL-R6 | retained as deployment follow-up | future deployment gate |
+| REL-URL-R7 | closed by existing bounded scope | no new authority in this repair |
 
 ## 27. Thread output / context assessment
 
