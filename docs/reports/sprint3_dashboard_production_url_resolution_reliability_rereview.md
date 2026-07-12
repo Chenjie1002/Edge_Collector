@@ -1,8 +1,8 @@
-# Sprint 3 Dashboard production URL-resolution Reliability planning re-review report
+# Sprint 3 Dashboard production URL-resolution Reliability focused re-review report
 
-报告名称：Sprint 3 Dashboard production URL-resolution Reliability planning re-review report
+报告名称：Sprint 3 Dashboard production URL-resolution Reliability focused re-review report
 
-任务名称：Re-review the repaired Dashboard production URL-resolution planning authority and adjudicate REL-URL-R1 through REL-URL-R7
+任务名称：Re-review the repaired VER-URL-V1 resolver contract at commit d75c547
 
 执行 Thread：Reliability
 
@@ -10,7 +10,345 @@
 
 结论：**PASS WITH RECOMMENDATIONS**
 
-本报告独立复审已提交的 repair authority `f4c24ea8d829325788ce36d8029f71d516eef7f0`。不采纳 Architecture 的 “addressed” 声明作为证据；以下结论仅来自 committed repair、原 Reliability HOLD authority、Dashboard contract 和授权的当前 frontend surfaces。未运行 tests、typecheck、build、server、probe、browser、API、DB/Postgres 或 Docker；未 stage、commit 或 push。
+本报告在保留早期 `f4c24ea` Reliability planning re-review 审计记录的基础上，新增对
+commit `d75c5477251de1b60f7a16e5d8803fd7c20f5b38` 中 `VER-URL-V1` planning
+authority repair 的独立 focused Reliability re-review。
+
+本次 review 未运行 tests、typecheck、build、bundle inspection、server、probe、browser、
+API、DB/Postgres 或 Docker；未修改 frontend、package、config、test 或 runtime surface；
+未 stage、commit 或 push。
+
+## A. Latest focused Reliability re-review — d75c547
+
+### A.1 Live baseline
+
+创建本次 focused addendum 前的 live recovery：
+
+```text
+branch: main
+HEAD == origin/main:
+6482e64344dd64c669a1602985081d24032f88df
+latest commit:
+6482e64 Add PM handoff after Dashboard resolver planning repair
+HEAD parent:
+d75c5477251de1b60f7a16e5d8803fd7c20f5b38
+ahead/behind: 0 0
+cached diff: empty
+tracked external diff before this report edit: .gitignore only
+```
+
+`6482e64` is a lawful handoff-only forward move. It adds only:
+
+```text
+docs/thread_handoff/chatgpt_pm_handoff_260712-0950.md
+```
+
+No authority, frontend, package, config, test or runtime drift was found.
+
+Expected external dirty artifacts remain excluded:
+
+```text
+M .gitignore
+?? docs/Edge MES Demo — ChatGPT PM Handoff - 20260623.md
+?? docs/reports/phase1_to_sprint2_management_keynote_10p.html
+?? docs/reports/sprint3_db_backed_api_validation_reliability_review.md
+?? docs/thread_handoff/chatgpt_pm_handoff_20260624.md
+?? docs/thread_handoff/chatgpt_pm_handoff_20260625.md
+?? docs/thread_handoff/chatgpt_pm_handoff_20260625_final.md
+?? docs/thread_handoff/chatgpt_pm_handoff_20260626_slice_a_commit.md
+?? frontend/node_modules/
+```
+
+### A.2 Exact gate scope
+
+本 gate 的 exact changed-file allowlist 只有：
+
+```text
+docs/reports/sprint3_dashboard_production_url_resolution_reliability_rereview.md
+```
+
+本 review 只判断 `d75c547` 新增的以下 authority 是否可靠、确定、fail closed 且可在
+既有六文件边界内实施：
+
+- non-throwing discriminated result union；
+- eight-code closed safe error set and precedence；
+- brand creation/consumption boundary；
+- typed environment-input seam；
+- exactly-once property reads and zero reread snapshot；
+- page/client zero environment reads；
+- finite, redacted, non-throwing logging；
+- `vi.resetModules()` and exact environment restoration；
+- unchanged six-file implementation allowlist；
+- `VER-URL-V2` / `VER-URL-V3` retained as later gates。
+
+本 review 不重新打开未受 `d75c547` 影响且已关闭的 canonicalization/profile design，
+也不执行 future same-artifact runtime proof。
+
+### A.3 Repaired result contract
+
+`d75c547` now freezes an executable public contract:
+
+```ts
+export type AcceptedEventsApiOriginEnvironment = Readonly<{
+  EDGE_MES_DASHBOARD_API_ORIGIN?: string;
+  EDGE_MES_DASHBOARD_API_ORIGIN_PROFILE?: string;
+}>;
+
+export type OriginConfigurationErrorCode =
+  | "ORIGIN_MISSING"
+  | "PROFILE_MISSING"
+  | "ORIGIN_EMPTY"
+  | "PROFILE_EMPTY"
+  | "PROFILE_UNSUPPORTED"
+  | "ORIGIN_NON_CANONICAL"
+  | "ORIGIN_PROFILE_MISMATCH"
+  | "ORIGIN_MALFORMED";
+
+export type AcceptedEventsApiOriginResolution =
+  | { readonly ok: true; readonly origin: TrustedAcceptedEventsApiOrigin }
+  | {
+      readonly ok: false;
+      readonly code: OriginConfigurationErrorCode;
+      readonly message: "Accepted events service is not configured.";
+    };
+```
+
+Reliability assessment: **PASS**.
+
+- `ok` is an unambiguous discriminant.
+- Success owns exactly `ok, origin`.
+- Failure owns exactly `ok, code, message`.
+- Expected configuration invalidity is value-returning, not exception control flow.
+- The browser receives only the fixed safe message.
+- Failure produces zero API-client calls and zero fetch calls.
+- Raw origin/profile values, host, URL, query, headers, credentials, stack, cause and
+  logging state cannot enter the result.
+- Brand creation is limited to resolver success; page and client cannot create/cast it.
+
+### A.4 Error-code precedence
+
+Frozen precedence:
+
+```text
+1. ORIGIN_MISSING
+2. PROFILE_MISSING
+3. ORIGIN_EMPTY
+4. PROFILE_EMPTY
+5. PROFILE_UNSUPPORTED
+6. raw safety/canonicality validation
+7. profile matching
+8. URL parsing
+9. parsed-component re-verification
+```
+
+Reliability assessment: **PASS WITH IMPLEMENTATION-TEST CARRY-FORWARD**.
+
+The mapping is deterministic and fail closed. Multiple-invalid-input cases return the
+first frozen code. Exact syntax for another known profile maps to
+`ORIGIN_PROFILE_MISMATCH`; input outside all known forms maps to
+`ORIGIN_NON_CANONICAL`; parser failure after raw checks maps to `ORIGIN_MALFORMED`;
+parsed identity conflicts map to `ORIGIN_PROFILE_MISMATCH`.
+
+Future resolver tests must exercise all eight codes through the public resolver and
+assert exact own keys plus the fixed safe message. If an implementation cannot produce
+an input-native executable vector for every frozen code without redefining authority or
+monkey-patching a production boundary, that implementation gate must return `HOLD`.
+
+### A.5 Typed environment seam and snapshot
+
+Reliability assessment: **PASS WITH IMPLEMENTATION EVIDENCE CARRY-FORWARD**.
+
+The optional typed argument contains only the two readonly transport properties. It does
+not contain query, header, browser origin, logger, fetch, response, fallback URL or
+business `profile_id`.
+
+Production remains:
+
+```text
+page.tsx
+-> resolveTrustedAcceptedEventsApiOrigin()
+-> fetchAcceptedStationEvents(query, resolution.origin, fetchImpl)
+```
+
+Tests may use a local typed getter object, but cannot bypass validation or create the
+brand directly.
+
+Each invocation must:
+
+```text
+choose supplied environment or process.env
+-> read origin exactly once
+-> read profile exactly once
+-> create local snapshot
+-> perform zero source rereads
+-> derive validation, classification, logging, result and brand from snapshot only
+```
+
+Getter tests can independently assert `originReads == 1` and `profileReads == 1` for
+success and failure without a global `process.env` proxy. A separate two-invocation test
+proves request-time re-read and does not replace the single-invocation getter proof.
+
+Implementation review must confirm that the snapshot occurs before classification and
+that no helper/logging/page/client path rereads either property.
+
+### A.6 Page/client boundary
+
+Reliability assessment: **PASS**.
+
+- invalid query remains before resolver and fetch;
+- valid query plus invalid configuration becomes existing `kind: "error"`;
+- page calls resolver with no argument only;
+- page does not inspect safe code, raw env or create a brand;
+- API client accepts only the brand and has no environment/header knowledge;
+- no relative/default/header/profile/mock fallback remains in the future design;
+- no retry, timeout, circuit breaker, secondary origin or extra request is introduced.
+
+Read-only source inspection confirms the current frontend has one accepted-events
+production client call site and no current `process.env`, `NEXT_PUBLIC_*`, `headers()`,
+`Host` or `Forwarded` origin reader that requires an additional repair file.
+
+### A.7 Logging reliability
+
+Reliability assessment: **PASS WITH IMPLEMENTATION EVIDENCE CARRY-FORWARD**.
+
+Frozen boundary:
+
+```text
+event marker: DASHBOARD_API_ORIGIN_CONFIGURATION_ERROR
+state: Set<OriginConfigurationErrorCode>
+size: bounded by eight safe codes
+frequency: at most once per safe code per process
+raw origin/profile/host/query/header/credential: never logged
+logging failure: contained and must not alter resolver result
+reset: process restart or vi.resetModules() + dynamic import
+production reset export: forbidden
+```
+
+Implementation must mark dedupe independently of logging success so a throwing
+`console.error` cannot cause unbounded repeated attempts. Logging must use only the
+captured snapshot and safe code, perform zero environment rereads, and restore console
+spies after tests.
+
+### A.8 Vitest and environment isolation
+
+Reliability assessment: **PASS**.
+
+`vi.resetModules()` is sufficient only when followed by dynamic import of a fresh
+`apiOrigin.ts` instance. A retained static import is not a dedupe reset. No exported
+reset function or dedupe set is permitted.
+
+Exact environment restoration is sufficient:
+
+- save prior property presence and value;
+- restore old value when present, otherwise delete;
+- never assign string `"undefined"`;
+- set a complete pair per shared-env case;
+- run shared-env cases serially;
+- restore in `afterEach`, including assertion failure paths;
+- never depend on developer-machine environment defaults;
+- keep page mocks and environment restoration independent.
+
+Broad positive/negative matrices should prefer direct typed environment objects and
+avoid global environment mutation.
+
+### A.9 Six-file allowlist
+
+Reliability assessment: **PASS**.
+
+The future implementation remains fully bounded by:
+
+```text
+Create: frontend/src/lib/acceptedStationEvents/apiOrigin.ts
+Modify: frontend/src/lib/acceptedStationEvents/apiClient.ts
+Modify: frontend/src/app/accepted-events/page.tsx
+Create: frontend/src/lib/acceptedStationEvents/__tests__/apiOrigin.test.ts
+Modify: frontend/src/lib/acceptedStationEvents/__tests__/apiClient.test.ts
+Modify: frontend/src/app/accepted-events/__tests__/page.test.tsx
+```
+
+No Reliability requirement justifies package/lock, Next/TS config, `.env.example`,
+Compose, README, schema/query/viewModel, loading/error, logger/config helper, test helper
+or runtime fixture changes. A future claimed need to expand scope remains `HOLD`.
+
+### A.10 Carry-forward gates
+
+`VER-URL-V2` correctly remains a future build/bundle evidence gate. It must inspect
+`.next/static/**` separately from `.next/server/**`; a whole-`.next` grep is not browser
+leakage proof.
+
+`VER-URL-V3` correctly remains a dedicated runtime planning gate for the capture method,
+request counter, zero/exactly-one proof, same-artifact hash, temporary artifacts,
+`/usr/sbin/lsof`, owned PID/port cleanup and Data Quality evidence classification.
+
+Neither gate is executed or closed here.
+
+### A.11 Finding adjudication
+
+```text
+REL-URL-R1: remains CLOSED
+REL-URL-R2: remains CLOSED at planning level; runtime execution still carry-forward
+REL-URL-R3: CLOSED WITH CARRY-FORWARD
+REL-URL-R4: CLOSED WITH CARRY-FORWARD
+REL-URL-R5: CLOSED WITH CARRY-FORWARD
+REL-URL-R6: CLOSED WITH CARRY-FORWARD
+REL-URL-R7: remains CLOSED
+New Reliability findings: none
+Blocking findings: none
+```
+
+### A.12 Focused VER-URL-V1 conclusion
+
+```text
+VER-URL-V1 planning repair:
+accepted by focused Reliability re-review
+
+Reliability gate:
+PASS WITH RECOMMENDATIONS
+
+Reliability blockers:
+none
+
+VER-URL-V1 cross-functional closure:
+pending independent Data Quality and Verification re-review
+
+Verification gate:
+remains HOLD
+```
+
+This Reliability conclusion does not overwrite Verification authority and does not
+authorize implementation.
+
+### A.13 Authorization and next gate
+
+```text
+Focused Reliability re-review: completed
+Reliability report commit/push: not authorized
+Data Quality re-review: not authorized
+Verification re-review: not authorized
+Security/privacy review: not authorized
+Implementation: not authorized
+Tests/typecheck/build: not authorized
+Runtime planning/validation: not authorized
+Status sync: not authorized
+```
+
+After a separately authorized exact-path commit of this report, the recommended next
+technical gate is:
+
+```text
+Focused Data Quality re-review of the repaired VER-URL-V1 planning authority
+```
+
+Do not start that gate, Verification, Security/privacy or implementation from this
+report without a new exact PM authorization.
+
+---
+
+## Historical Reliability planning re-review — f4c24ea
+
+The sections below preserve the earlier independent Reliability adjudication of
+`REL-URL-R1` through `REL-URL-R7`. Git history remains the source of truth for the exact
+pre-`d75c547` report revision.
 
 ## 1. Baseline and recovery
 
