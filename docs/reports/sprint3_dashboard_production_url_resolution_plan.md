@@ -1,8 +1,8 @@
-# Sprint 3 Dashboard production URL-resolution VER-URL-V1 planning authority repair report
+# Sprint 3 Dashboard production URL-resolution VER-URL-V1-B1 planning authority repair report
 
-报告名称：Sprint 3 Dashboard production URL-resolution VER-URL-V1 planning authority repair report
+报告名称：Sprint 3 Dashboard production URL-resolution VER-URL-V1-B1 planning authority repair report
 
-任务名称：Repair executable resolver result and environment-read test contract
+任务名称：Resolve the executable reachability of `ORIGIN_MALFORMED` and repair the closed resolver error contract
 
 执行 Thread：Architecture / Integration
 
@@ -11,15 +11,16 @@
 结论：**PASS WITH RECOMMENDATIONS**
 
 本报告冻结 server-only、request-time、fail-closed 的 absolute API URL-resolution
-boundary，并以本次 Architecture planning repair 补足 `VER-URL-V1` 所需的可执行
-resolver result、brand 与 environment-read test contract。它不授权 implementation、
+boundary，并以本次 Architecture planning repair 补足 `VER-URL-V1` / `VER-URL-V1-B1`
+所需的可执行 resolver result、brand、environment-read test contract 与
+`ORIGIN_MALFORMED` input-native reachability。它不授权 implementation、
 tests、runtime probe、deployment、configuration write、status sync、stage、commit 或
 push。
 
 Architecture planning repair has addressed the documented
 Reliability HOLD findings in the planning authority.
 
-Architecture planning repair addresses `VER-URL-V1` in authority only.
+Architecture planning repair addresses `VER-URL-V1-B1` in authority only.
 
 Verification remains **HOLD** until independent cross-functional re-review accepts
 the repaired authority.
@@ -42,6 +43,23 @@ the repaired authority.
 
 External dirty artifacts are excluded from this planning authority. They must never
 be cleaned, staged, or modified without separate exact-path PM authorization.
+
+### VER-URL-V1-B1 live repair baseline and external artifacts
+
+This B1 authority repair was made only after read-only recovery confirmed:
+
+```text
+HEAD == origin/main == bba8648e4862cfa31bc0bd02d620750288305056
+latest commit: bba8648 Re-review Dashboard resolver contract data quality
+ahead/behind: 0 0
+cached diff: empty
+tracked diff: .gitignore only
+```
+
+The unchanged external artifacts are `M .gitignore`, the listed historical PM handoff
+and reporting files, and `frontend/node_modules/`. They are not plan inputs to edit,
+cleanup, stage, commit, or otherwise mutate. The sole writable path for this B1 repair
+is this report.
 
 ## 2. Context reviewed
 
@@ -213,6 +231,12 @@ export function resolveTrustedAcceptedEventsApiOrigin(
 ): AcceptedEventsApiOriginResolution;
 ```
 
+`OriginConfigurationErrorCode` is a closed union of exactly **eight** codes. No
+catch-all code, parser-error payload, raw value, profile, URL, or diagnostic key may
+be added to the public failure result. `ORIGIN_MALFORMED` remains in that eight-code
+union because section 11.1 now freezes an input-native, native-parser reachability
+vector; it is not a monkey-patch-only contingency.
+
 `environment === undefined` means that the resolver itself uses `process.env`.
 The no-argument call is the production call: `page.tsx` calls
 `resolveTrustedAcceptedEventsApiOrigin()`. Supplying a typed environment is a formal,
@@ -325,6 +349,52 @@ return `ORIGIN_PROFILE_MISMATCH` rather than canonicalize through the conflict. 
 expected configuration invalidity is non-throwing and returns the failure union; only a
 genuine programming defect may naturally throw.
 
+### 11.1A `ORIGIN_MALFORMED` executable reachability freeze (`VER-URL-V1-B1`)
+
+Architecture independently selects **Path A: an executable input-native vector
+exists**. The exact public-resolver input is:
+
+```ts
+{
+  EDGE_MES_DASHBOARD_API_ORIGIN: "https://xn--a.example",
+  EDGE_MES_DASHBOARD_API_ORIGIN_PROFILE: "production",
+}
+```
+
+It passes the selected `production` raw grammar before parsing: `https` is exact
+lower-case; `xn--a.example` is lower-case ASCII; it has a dot; both labels are 1--63
+characters and begin/end with an ASCII letter or digit; the hostname is below 253
+characters; and it has neither an explicit port nor a non-root path, userinfo, query,
+fragment, percent sign, backslash, control, or non-ASCII character. It therefore is
+neither `ORIGIN_NON_CANONICAL` nor `ORIGIN_PROFILE_MISMATCH` at the raw stage.
+
+The `xn--a` label is syntactically within the closed raw FQDN policy but is not a valid
+IDNA A-label for the target WHATWG parser. The local deterministic probe on the target
+implementation runtime, `node v22.23.0`, produced `TypeError` from both
+`new URL("https://xn--a.example")` and the optional-root-slash variant. The resolver
+must catch that native parser exception and return exactly:
+
+```ts
+{
+  ok: false,
+  code: "ORIGIN_MALFORMED",
+  message: "Accepted events service is not configured.",
+}
+```
+
+The future public resolver test calls the resolver with the typed environment object
+above and asserts that exact own-key result. It must not monkey-patch global `URL`,
+inject a parser, replace a production boundary, add a constructor/reset seam, or use a
+synthetic thrown exception as acceptance evidence.
+
+Runtime assumption and drift rule: the currently frozen executable evidence is Node
+`v22.23.0` WHATWG `URL`. The implementation/test gate must record its actual Node
+version and must prove this same input still throws natively before accepting
+`ORIGIN_MALFORMED`. If a supported target runtime instead accepts it, the gate is
+**HOLD**: it must not simulate rejection, silently reclassify the vector, remove the
+code, or widen the raw grammar. Architecture must first issue a new authority repair
+that preserves fail-closed canonicality and the public exact-result contract.
+
 ### 11.2 Canonicalization decision matrix
 
 | Input class | Decision | Reason/canonical result |
@@ -345,6 +415,30 @@ genuine programming defect may naturally throw.
 | query/fragment/userinfo | reject | base origin only |
 | empty/single-label production host | reject | profile mismatch |
 | port overflow | reject | malformed configuration |
+
+### 11.2A Closed public-resolver input-native negative matrix
+
+Every closed code has one direct public-resolver vector. These are typed local
+environment-object inputs to `resolveTrustedAcceptedEventsApiOrigin(environment)`;
+they do not mutate `process.env`, use a global proxy, or inject a production seam.
+The table fixes the expected first result under section-11 precedence.
+
+| Code | Exact environment input | Why this code wins |
+| --- | --- | --- |
+| `ORIGIN_MISSING` | `{ EDGE_MES_DASHBOARD_API_ORIGIN_PROFILE: "local" }` | origin property is absent; first precedence check |
+| `PROFILE_MISSING` | `{ EDGE_MES_DASHBOARD_API_ORIGIN: "http://127.0.0.1:8000" }` | origin exists; profile property is absent |
+| `ORIGIN_EMPTY` | `{ EDGE_MES_DASHBOARD_API_ORIGIN: "", EDGE_MES_DASHBOARD_API_ORIGIN_PROFILE: "local" }` | both properties exist; origin is exactly empty |
+| `PROFILE_EMPTY` | `{ EDGE_MES_DASHBOARD_API_ORIGIN: "http://127.0.0.1:8000", EDGE_MES_DASHBOARD_API_ORIGIN_PROFILE: "" }` | origin is valid and profile is exactly empty |
+| `PROFILE_UNSUPPORTED` | `{ EDGE_MES_DASHBOARD_API_ORIGIN: "http://127.0.0.1:8000", EDGE_MES_DASHBOARD_API_ORIGIN_PROFILE: "staging" }` | profile is non-empty but outside the closed set |
+| `ORIGIN_NON_CANONICAL` | `{ EDGE_MES_DASHBOARD_API_ORIGIN: "http://127.0.0.1:08000", EDGE_MES_DASHBOARD_API_ORIGIN_PROFILE: "local" }` | zero-padded port is no exact known-profile form and raw policy rejects it before parsing |
+| `ORIGIN_PROFILE_MISMATCH` | `{ EDGE_MES_DASHBOARD_API_ORIGIN: "http://api:8000", EDGE_MES_DASHBOARD_API_ORIGIN_PROFILE: "local" }` | raw input is the exact `container` form, not the selected `local` form |
+| `ORIGIN_MALFORMED` | `{ EDGE_MES_DASHBOARD_API_ORIGIN: "https://xn--a.example", EDGE_MES_DASHBOARD_API_ORIGIN_PROFILE: "production" }` | selected production raw grammar passes; target native `new URL()` throws as section 11.1A freezes |
+
+For every row, the failure result owns exactly `ok`, `code`, and `message`, and the
+message is the fixed safe literal. The test must assert the direct own-key set, not
+only the code. A future test may include additional reject rows from section 11.2, but
+may not replace any table row with a global parser mock or an implementation-only
+helper.
 
 ### 11.3 Branded base and endpoint composition
 
@@ -436,7 +530,7 @@ Logging is bounded and non-throwing without a new dependency or logger file:
 
 - failure uses exactly the closed `OriginConfigurationErrorCode` union in section 9;
 - module scope holds only `Set<OriginConfigurationErrorCode>`; each safe code logs at
-  most once per process, and the finite union bounds set size;
+  most once per process, and the eight-code closed union bounds set size at **8**;
 - restart naturally resets deduplication;
 - each log contains `DASHBOARD_API_ORIGIN_CONFIGURATION_ERROR`, safe category,
   variable names, and profile category only when safely known;
@@ -504,7 +598,7 @@ Only the three test paths in section 17 may change. They must cover:
 | Test area | Required assertions |
 | --- | --- |
 | Resolver positives | every exact local/container form, compliant production FQDN/punycode, optional root slash, `URL.origin` brand; direct exact own keys `ok`, `origin` |
-| Resolver negatives | every section-11 matrix reject; each of the eight safe codes; direct exact own keys `ok`, `code`, `message`; exact fixed safe message and no raw-value output |
+| Resolver negatives | every section-11 matrix reject; every row in section 11.2A (all eight safe codes); direct exact own keys `ok`, `code`, `message`; exact fixed safe message and no raw-value output; `ORIGIN_MALFORMED` uses only the native `https://xn--a.example` vector and records the actual Node version |
 | Snapshot timing | success and failure getter-object tests prove each input property is read once; no module-import/build snapshot; `page.tsx`/client never read env |
 | API client | exact absolute endpoint; only five query keys; cursor encoding; GET/no-store/omit/redirect-error; injected fetch; no relative URL |
 | Failure isolation | resolver failure yields no fetch, visible error, and no stale production surface |
@@ -594,6 +688,9 @@ This planning authority is PASS-capable only when all of these remain true:
 - exact paired runtime variables, single immutable invocation snapshot, strict raw
   parser order, eight-code precedence, profile forms, parser re-verification, exact
   discriminated result own keys, and `URL.origin` brand;
+- every one of the eight closed public codes has the section-11.2A input-native vector;
+  specifically, `https://xn--a.example` passes raw production grammar and throws from
+  the actual target Node `new URL()` without a monkey-patch or injected parser;
 - no browser/header/relative/default/profile fallback or client leak;
 - valid query plus invalid configuration is safe `error` with zero request;
 - formal typed environment seam, success/failure getter exact-read evidence, separate
@@ -603,7 +700,7 @@ This planning authority is PASS-capable only when all of these remain true:
 - `VER-URL-V2` and `VER-URL-V3` remain carry-forward future gates;
 - the six-file allowlist is unchanged with no package/config/deployment expansion;
 - parser/contract/fact authority/stale-data behavior is preserved;
-- `VER-URL-V1` is addressed in authority only; cross-functional closure remains
+- `VER-URL-V1-B1` is addressed in authority only; cross-functional closure remains
   pending.
 
 ## 23. HOLD conditions
@@ -617,13 +714,17 @@ global env proxy, production test-only reset/export, unbounded/throwing logging,
 env-test leakage, fallback, client leak, unexpected request, contract/parser/
 authority/query/cursor/cache/stale-data change, or any need for a non-six-file/
 package/config/deployment/mock expansion. Unauthorized stage/commit/push/deploy/runtime
-actions are also HOLD.
+actions are also HOLD. It is additionally **HOLD** if the target Node runtime does not
+natively throw for `https://xn--a.example`, if `ORIGIN_MALFORMED` lacks an
+input-native public vector, or if a test attempts to manufacture that failure by a
+global `URL` monkey-patch, injected parser, production-only constructor/reset, or
+production-boundary override.
 
 ## 24. Required reviews
 
 After an explicitly authorized planning-authority commit, the required sequence is an
 independent focused Reliability re-review, focused Data Quality re-review, then
-Verification re-review. They decide whether the authority repair closes `VER-URL-V1`;
+Verification re-review. They decide whether the authority repair closes `VER-URL-V1-B1`;
 this report does not alter any review authority or claim a gate passed. Focused
 Security/privacy planning review follows before any PM implementation decision.
 Implementation, tests, build, and runtime work each require new authorization.
@@ -665,7 +766,8 @@ until later implementation and runtime validation, and this report does not resu
 
 | Finding | Repair status in plan | Remaining authority |
 | --- | --- | --- |
-| VER-URL-V1 | addressed with exact result union, error-code set, brand and typed env seam | pending Reliability/Data Quality/Verification re-review |
+| VER-URL-V1 | prior resolver/test seam repair retained | superseded for Verification closure by `VER-URL-V1-B1` |
+| VER-URL-V1-B1 | `ORIGIN_MALFORMED` is reachable through the exact native-parser vector; eight-code union, precedence, public vectors, logging bound and runtime-drift HOLD are frozen | pending independent Reliability/Data Quality/Verification re-review |
 | VER-URL-V2 | retained | future build evidence gate |
 | VER-URL-V3 | retained | dedicated runtime planning gate |
 | REL-URL-R3 | preserved and made directly testable | pending implementation evidence |
@@ -678,7 +780,8 @@ until later implementation and runtime validation, and this report does not resu
 ### Repair conclusion
 
 The planning conclusion remains **PASS WITH RECOMMENDATIONS**. Architecture has
-repaired the executable resolver and testability contract required by `VER-URL-V1`.
+repaired the executable `ORIGIN_MALFORMED` reachability and closed resolver error
+contract required by `VER-URL-V1-B1`.
 Verification remains **HOLD** until independent cross-functional re-review accepts the
 repaired authority. This is not implementation authorization.
 
