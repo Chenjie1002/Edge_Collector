@@ -5,6 +5,7 @@ import { NokDetailEvidencePanel } from "../../components/accepted-events/NokDeta
 import { PageSummaryStrip } from "../../components/accepted-events/PageSummaryStrip";
 import { TraceReferencePanel } from "../../components/accepted-events/TraceReferencePanel";
 import { fetchAcceptedStationEvents } from "../../lib/acceptedStationEvents/apiClient";
+import { resolveTrustedAcceptedEventsApiOrigin } from "../../lib/acceptedStationEvents/apiOrigin";
 import { validateAcceptedStationEventsQuery, type AcceptedStationEventsQuery } from "../../lib/acceptedStationEvents/query";
 import { toAcceptedEventsViewModel, type AcceptedEventsViewModel } from "../../lib/acceptedStationEvents/viewModel";
 
@@ -81,7 +82,12 @@ export default async function AcceptedEventsPage({
     return <AcceptedEventsPageView state={{ kind: "invalid-query", message: validation.reason }} />;
   }
 
-  const result = await fetchAcceptedStationEvents(validation.query);
+  const resolution = resolveTrustedAcceptedEventsApiOrigin();
+  if (!resolution.ok) {
+    return <AcceptedEventsPageView state={{ kind: "error", message: resolution.message }} />;
+  }
+
+  const result = await fetchAcceptedStationEvents(validation.query, resolution.origin);
   if (!result.ok) {
     return <AcceptedEventsPageView state={{ kind: result.kind, message: result.message }} />;
   }

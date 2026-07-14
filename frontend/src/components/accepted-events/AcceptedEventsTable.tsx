@@ -3,10 +3,9 @@ import type { AcceptedEventRow } from "../../lib/acceptedStationEvents/viewModel
 type Props = {
   rows: AcceptedEventRow[];
   selectedFactKey?: string;
-  onSelect?: (factKey: string) => void;
 };
 
-export function AcceptedEventsTable({ rows, selectedFactKey, onSelect }: Props) {
+export function AcceptedEventsTable({ rows, selectedFactKey }: Props) {
   if (rows.length === 0) return null;
 
   return (
@@ -28,9 +27,7 @@ export function AcceptedEventsTable({ rows, selectedFactKey, onSelect }: Props) 
         {rows.map((row) => (
           <tr key={row.factKey} className={row.factKey === selectedFactKey ? "is-selected" : undefined}>
             <td>
-              <button type="button" className="row-link" onClick={() => onSelect?.(row.factKey)}>
-                {row.stationId}
-              </button>
+              <strong>{row.stationId}</strong>
             </td>
             <td>{row.stationType}</td>
             <td>{row.eventType}</td>

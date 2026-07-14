@@ -4,15 +4,27 @@ import { join } from "node:path";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import AcceptedEventsPage, { AcceptedEventsPageView } from "../page";
 import { fetchAcceptedStationEvents } from "../../../lib/acceptedStationEvents/apiClient";
+import { resolveTrustedAcceptedEventsApiOrigin } from "../../../lib/acceptedStationEvents/apiOrigin";
 import { toAcceptedEventsViewModel } from "../../../lib/acceptedStationEvents/viewModel";
 
 vi.mock("../../../lib/acceptedStationEvents/apiClient", () => ({
   fetchAcceptedStationEvents: vi.fn()
 }));
 
+vi.mock("../../../lib/acceptedStationEvents/apiOrigin", async (importOriginal) => {
+  const actual = await importOriginal<typeof import("../../../lib/acceptedStationEvents/apiOrigin")>();
+  const success = actual.resolveTrustedAcceptedEventsApiOrigin({
+    EDGE_MES_DASHBOARD_API_ORIGIN: "https://accepted-api.example",
+    EDGE_MES_DASHBOARD_API_ORIGIN_PROFILE: "production"
+  });
+  return { ...actual, resolveTrustedAcceptedEventsApiOrigin: vi.fn(() => success) };
+});
+
 afterEach(() => {
+  vi.restoreAllMocks();
   cleanup();
   vi.mocked(fetchAcceptedStationEvents).mockReset();
+  vi.mocked(resolveTrustedAcceptedEventsApiOrigin).mockReset();
 });
 
 const readyQuery = {
@@ -29,6 +41,50 @@ const staleProductionValues = [
   "STALE_DETAIL",
   "stale-config-version"
 ];
+
+async function trustedResolution(origin = "https://accepted-api.example", profile = "production") {
+  const actual = await vi.importActual<typeof import("../../../lib/acceptedStationEvents/apiOrigin")>(
+    "../../../lib/acceptedStationEvents/apiOrigin"
+  );
+  const resolution = actual.resolveTrustedAcceptedEventsApiOrigin({
+    EDGE_MES_DASHBOARD_API_ORIGIN: origin,
+    EDGE_MES_DASHBOARD_API_ORIGIN_PROFILE: profile
+  });
+  if (!resolution.ok) throw new Error("test resolver fixture must succeed");
+  return resolution;
+}
+
+function readyEnvelope(profileId: string) {
+  return {
+    items: [
+      {
+        line_id: "LINE_001",
+        plc_id: "PLC_001",
+        station_id: "WS01",
+        station_type: "ASSEMBLY",
+        profile_id: profileId,
+        config_hash: "sha256:transport-profile-config",
+        config_version: "transport-profile-config-version",
+        event_type: "station_result",
+        production_result: "ok",
+        unit_id: "UNIT-TRANSPORT-001",
+        dmc: "DMC-TRANSPORT-001",
+        cycle_counter: 302,
+        source_event_id: "PLC_001:WS01:transport-profile",
+        event_ts: "2026-07-05T11:00:00Z",
+        accepted_at: "2026-07-05T11:00:01Z",
+        fact_key: "sha256:transport-profile-fact",
+        content_fingerprint: "sha256:transport-profile-content",
+        nok_code: null,
+        nok_origin: null,
+        nok_detail_code: null,
+        nok_detail_source_event_id: null,
+        nok_detail_evidence_fact_key: null
+      }
+    ],
+    page: { next_cursor: null, limit: 50 }
+  };
+}
 
 function staleReadyState() {
   return {
@@ -163,7 +219,18 @@ describe("accepted events page", () => {
     }
   });
 
+  it("keeps the response-owned profile_id in ready trace data without transport-profile UI leakage", () => {
+    render(<AcceptedEventsPageView state={staleReadyState()} />);
+
+    const trace = screen.getByLabelText("Accepted fact trace references");
+    expect(trace.textContent).toContain("normal / stale-config-version / sha256:stale-config");
+    expect(trace.textContent).not.toContain("production");
+    expect(trace.textContent).not.toContain("container");
+    expect(trace.textContent).not.toContain("local");
+  });
+
   it("renders a client error as a non-ready page without production surfaces", async () => {
+    vi.mocked(resolveTrustedAcceptedEventsApiOrigin).mockReturnValue(await trustedResolution());
     vi.mocked(fetchAcceptedStationEvents).mockResolvedValue({
       ok: false,
       kind: "error",
@@ -178,6 +245,7 @@ describe("accepted events page", () => {
   });
 
   it("renders source unavailable as a non-ready page without production surfaces", async () => {
+    vi.mocked(resolveTrustedAcceptedEventsApiOrigin).mockReturnValue(await trustedResolution());
     vi.mocked(fetchAcceptedStationEvents).mockResolvedValue({
       ok: false,
       kind: "unavailable",
@@ -197,17 +265,22 @@ describe("accepted events page", () => {
     ["end_time", { line_id: "LINE_001", start_time: "2026-07-05T00:00:00Z" }]
   ])("renders invalid query before request when %s is missing", async (_field, searchParams) => {
     const fetchMock = vi.mocked(fetchAcceptedStationEvents);
+    const resolverMock = vi.mocked(resolveTrustedAcceptedEventsApiOrigin);
     fetchMock.mockClear();
+    resolverMock.mockClear();
 
     render(await AcceptedEventsPage({ searchParams }));
 
     expect(screen.getByText("invalid-query")).toBeTruthy();
     expect(fetchMock).not.toHaveBeenCalled();
+    expect(resolverMock).not.toHaveBeenCalled();
   });
 
   it("fails closed for invalid URL limit without fetching, stale rows, or cursor decoding", async () => {
     const fetchMock = vi.mocked(fetchAcceptedStationEvents);
+    const resolverMock = vi.mocked(resolveTrustedAcceptedEventsApiOrigin);
     fetchMock.mockClear();
+    resolverMock.mockClear();
 
     render(
       await AcceptedEventsPage({
@@ -224,8 +297,72 @@ describe("accepted events page", () => {
     expect(screen.getByText("invalid-query")).toBeTruthy();
     expect(screen.getByText(/limit must be between 1 and 500/i)).toBeTruthy();
     expect(fetchMock).not.toHaveBeenCalled();
+    expect(resolverMock).not.toHaveBeenCalled();
     expect(screen.queryByRole("table")).toBeNull();
     expect(screen.queryByText(/opaque\.api\.owned\.cursor|decoded|mutated|constructed/i)).toBeNull();
+  });
+
+  it("renders a configuration failure as a safe generic error without requesting production truth", async () => {
+    const rawOrigin = "https://unsafe.example/secret-path";
+    const rawProfile = "unsafe-profile";
+    const fetchSpy = vi.spyOn(globalThis, "fetch");
+    vi.mocked(resolveTrustedAcceptedEventsApiOrigin).mockReturnValue({
+      ok: false,
+      code: "ORIGIN_NON_CANONICAL",
+      message: "Accepted events service is not configured."
+    });
+
+    render(await AcceptedEventsPage({ searchParams: { line_id: "LINE_001", start_time: readyQuery.startTime, end_time: readyQuery.endTime } }));
+
+    expect(screen.getByText("error")).toBeTruthy();
+    expect(screen.getByText("Accepted events service is not configured.")).toBeTruthy();
+    expect(screen.queryByText("ORIGIN_NON_CANONICAL")).toBeNull();
+    expect(screen.queryByText(rawOrigin)).toBeNull();
+    expect(screen.queryByText(rawProfile)).toBeNull();
+    expect(vi.mocked(fetchAcceptedStationEvents)).not.toHaveBeenCalled();
+    expect(fetchSpy).not.toHaveBeenCalled();
+    expectPriorProductionTruthToBeRemoved();
+  });
+
+  it("passes the resolver-issued brand exactly once to the client after valid query validation", async () => {
+    const resolution = await trustedResolution();
+    vi.mocked(resolveTrustedAcceptedEventsApiOrigin).mockReturnValue(resolution);
+    vi.mocked(fetchAcceptedStationEvents).mockResolvedValue({
+      ok: false,
+      kind: "error",
+      message: "client fixture result"
+    });
+
+    render(await AcceptedEventsPage({ searchParams: { line_id: "LINE_001", start_time: readyQuery.startTime, end_time: readyQuery.endTime } }));
+
+    expect(resolveTrustedAcceptedEventsApiOrigin).toHaveBeenCalledTimes(1);
+    expect(fetchAcceptedStationEvents).toHaveBeenCalledTimes(1);
+    expect(vi.mocked(fetchAcceptedStationEvents).mock.calls[0]?.[1]).toBe(resolution.origin);
+  });
+
+  it.each([
+    ["local", "http://127.0.0.1:8000"],
+    ["container", "http://api:8000"],
+    ["production", "https://accepted-api.example"]
+  ] as const)("keeps response-owned profile_id isolated from the %s transport profile", async (transportProfile, origin) => {
+    const responseProfileId = "accepted-fact-profile-42";
+    const resolution = await trustedResolution(origin, transportProfile);
+    vi.mocked(resolveTrustedAcceptedEventsApiOrigin).mockReturnValue(resolution);
+    vi.mocked(fetchAcceptedStationEvents).mockResolvedValue({ ok: true, envelope: readyEnvelope(responseProfileId) });
+
+    render(await AcceptedEventsPage({ searchParams: { line_id: "LINE_001", start_time: readyQuery.startTime, end_time: readyQuery.endTime } }));
+
+    expect(resolveTrustedAcceptedEventsApiOrigin).toHaveBeenCalledTimes(1);
+    expect(fetchAcceptedStationEvents).toHaveBeenCalledTimes(1);
+    expect(vi.mocked(fetchAcceptedStationEvents).mock.calls[0]).toHaveLength(2);
+    expect(vi.mocked(fetchAcceptedStationEvents).mock.calls[0]?.[0]).toEqual(readyQuery);
+    expect(vi.mocked(fetchAcceptedStationEvents).mock.calls[0]?.[1]).toBe(resolution.origin);
+
+    expect(screen.getByRole("table")).toBeTruthy();
+    expect(screen.getByLabelText("Accepted events page summary").textContent).toContain("1");
+    const trace = screen.getByLabelText("Accepted fact trace references");
+    expect(trace.textContent).toContain(responseProfileId);
+    expect(trace.textContent).not.toContain(transportProfile);
   });
 
   it("does not import forbidden backend, runtime, deploy, or Grafana surfaces", () => {

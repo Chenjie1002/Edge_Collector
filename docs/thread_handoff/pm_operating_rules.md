@@ -368,3 +368,38 @@ When a repository report/status file is updated, the chat-window report should i
 If the task is small, read-only, or temporary, a repository report file is optional. The Thread should still return a short window report.
 
 If the task changes current gate status, update the relevant gate/status document or explicitly state why it was not updated.
+
+## 12. Evidence-gate scope control
+
+Verification strength must be proportional to the product claim being made. A local synthetic
+validation must not silently become a general-purpose tamper-resistant audit, archive or
+forensics subsystem unless PM opens that work as a separate Level 2 project.
+
+A review finding may block an evidence gate only when it can materially cause one of the
+following outcomes:
+
+- a false PASS for the product behavior under test;
+- stale, incomplete or schema-invalid data being presented as valid production truth;
+- an owned process or listener remaining active and contaminating a later run;
+- an unknown process being selected for termination;
+- deletion, overwrite or mutation of an object not proven to belong to the authorized task;
+- synthetic, local or no-DB evidence being represented as production, deployed or DB-backed evidence.
+
+Diagnostic precision, telemetry taxonomy, retained archive uniqueness, full failure-record
+self-containment and cross-field completeness are recommendations unless they directly create
+one of the blocker outcomes above. Every evidence plan must distinguish terminal authority
+fields from diagnostic-only fields. Diagnostic-only fields must not acquire blocker authority
+through review wording alone.
+
+Reviewers must not expand the product claim, threat model, field authority, retention model or
+runtime topology without explicit PM approval. After one focused repair and one independent
+re-review of the same gate, a new blocker class requires PM to reassess scope and assurance
+proportionality before authorizing another repair. PM may supersede an overgrown validation
+branch with a narrower authority document; superseded executable literals must be clearly
+marked and must not be run by conversational momentum.
+
+Static review has a stopping rule: once all defined terminal invariants are covered and no
+credible false-PASS or safety-boundary violation remains, new diagnostic completeness findings
+move to backlog or recommendations. A reviewer may not require proof of every theoretically
+possible state combination when those combinations cannot change the authorized PASS/HOLD
+claim.

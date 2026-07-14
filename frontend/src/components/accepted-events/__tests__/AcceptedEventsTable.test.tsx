@@ -18,9 +18,10 @@ const row: AcceptedEventRow = {
 
 describe("AcceptedEventsTable", () => {
   it("renders accepted fact rows without forbidden freshness or fallback labels", () => {
-    render(<AcceptedEventsTable rows={[row]} selectedFactKey={row.factKey} onSelect={() => undefined} />);
+    render(<AcceptedEventsTable rows={[row]} selectedFactKey={row.factKey} />);
 
     expect(screen.getByText("WS01")).toBeTruthy();
+    expect(screen.queryByRole("button", { name: "WS01" })).toBeNull();
     expect(screen.getAllByText("Accepted fact timestamp").length).toBeGreaterThan(0);
     expect(screen.queryByText(/freshness|ACK|read_done|work order|product/i)).toBeNull();
   });

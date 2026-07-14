@@ -1,5 +1,6 @@
 import { buildAcceptedStationEventsQuery, type AcceptedStationEventsQuery } from "./query";
 import { parseAcceptedStationEventsEnvelope, type AcceptedStationEventsEnvelope } from "./schema";
+import type { TrustedAcceptedEventsApiOrigin } from "./apiOrigin";
 
 export type AcceptedStationEventsClientResult =
   | { ok: true; envelope: AcceptedStationEventsEnvelope }
@@ -7,6 +8,7 @@ export type AcceptedStationEventsClientResult =
 
 export async function fetchAcceptedStationEvents(
   query: AcceptedStationEventsQuery,
+  trustedApiOrigin: TrustedAcceptedEventsApiOrigin,
   fetchImpl: typeof fetch = fetch
 ): Promise<AcceptedStationEventsClientResult> {
   let params: URLSearchParams;
@@ -17,9 +19,13 @@ export async function fetchAcceptedStationEvents(
   }
 
   try {
-    const response = await fetchImpl(`/api/v2/production/accepted-station-events?${params.toString()}`, {
+    const endpoint = new URL("/api/v2/production/accepted-station-events", trustedApiOrigin);
+    endpoint.search = params.toString();
+    const response = await fetchImpl(endpoint, {
       method: "GET",
-      cache: "no-store"
+      cache: "no-store",
+      credentials: "omit",
+      redirect: "error"
     });
 
     if (!response.ok) {

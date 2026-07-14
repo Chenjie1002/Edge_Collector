@@ -1,8 +1,47 @@
 # 当前状态 / Codex 恢复上下文
 
-更新时间：2026-07-11
+更新时间：2026-07-14
 工作目录：`/Users/chenjie/Documents/MES/edge-mes-demo`
 树莓派部署目录：`/opt/edge-mes-demo`
+
+## 0A. 2026-07-14 Dashboard URL runtime-evidence scope reset
+
+当前最高优先级 authority：
+
+- `docs/reports/sprint3_dashboard_production_url_resolution_scope_reset_design.md`
+- `docs/reports/sprint3_dashboard_production_url_resolution_scope_reset_implementation_plan.md`
+- `docs/reports/sprint3_dashboard_production_url_resolution_scope_reset_execution_report.md`
+- `docs/thread_handoff/pm_operating_rules.md` Section 12
+
+PM 已终止 Dashboard URL validation 向通用强审计取证框架的目标漂移。旧
+`docs/reports/sprint3_dashboard_production_url_resolution_runtime_evidence_plan.md`
+Section 14 已标记为 historical / superseded，不得执行；Option C D7 与完整 D8
+76-field relation matrix 已降级为 recommendation/backlog。
+
+当前 gate：
+
+```text
+Dashboard trusted API origin implementation: PASS WITH RECOMMENDATIONS
+Focused resolver/client/page/table tests: PASS, 92 passed
+Full frontend regression suite: PASS, 277 passed
+TypeScript typecheck: PASS
+Next production build: PASS
+Local synthetic runtime smoke: PASS
+Exact target request count/method/host/path/query: PASS
+Strict synthetic response visible in Dashboard: PASS
+Next runtime error log: PASS / no error
+Owned PID cleanup and port 3100/3101 release: PASS
+Generated build artifact cleanup: PASS
+Production DNS/TLS/egress/API/DB evidence: NOT EXECUTED / NOT CLAIMED
+Git stage/commit/push: NOT AUTHORIZED / NOT PERFORMED
+```
+
+Runtime smoke 发现并关闭了一个真实产品缺陷：`AcceptedEventsTable` 作为 Server
+Component 无条件创建 `onClick`，导致 Next RSC runtime error。修复删除了未使用的
+`onSelect`/button 伪交互，并增加 read-only table regression test。
+
+下一 eligible gate：exact allowlist review，以及用户明确授权后的 stage/commit/push。
+不得重新打开旧 Option C 强审计分支，除非 PM 单独批准为新的 Level 2 子项目。
 
 ## 0. 当前 PM / Codex 协作状态
 
