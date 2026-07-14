@@ -43,17 +43,30 @@ const validEnvelope = {
 const itemMissingRequiredKey = { ...validItem } as Record<string, unknown>;
 delete itemMissingRequiredKey.nok_detail_code;
 
-function response(status: number, body: unknown) {
+type ResponseStub = {
+  response: Response;
+  text: ReturnType<typeof vi.fn>;
+  json: ReturnType<typeof vi.fn>;
+};
+
+function response(status: number, body: unknown, rawText?: string): ResponseStub {
+  const text = vi.fn().mockResolvedValue(rawText ?? JSON.stringify(body));
+  const json = vi.fn().mockResolvedValue(body);
   return {
-    ok: status >= 200 && status < 300,
-    status,
-    json: vi.fn().mockResolvedValue(body)
-  } as unknown as Response;
+    response: {
+      ok: status >= 200 && status < 300,
+      status,
+      text,
+      json
+    } as unknown as Response,
+    text,
+    json
+  };
 }
 
-function trustedOrigin() {
+function trustedOrigin(origin = "https://accepted-api.example") {
   const resolution = resolveTrustedAcceptedEventsApiOrigin({
-    EDGE_MES_DASHBOARD_API_ORIGIN: "https://accepted-api.example",
+    EDGE_MES_DASHBOARD_API_ORIGIN: origin,
     EDGE_MES_DASHBOARD_API_ORIGIN_PROFILE: "production"
   });
   if (!resolution.ok) throw new Error("test fixture origin must resolve");
@@ -75,13 +88,17 @@ function assertOrdinaryStringIsRejectedAtCompileTime() {
 void assertOrdinaryStringIsRejectedAtCompileTime;
 
 describe("accepted station events api client", () => {
-  it("constructs one GET request to the accepted station events endpoint with only frozen query params", async () => {
-    const fetchMock = vi.fn().mockResolvedValue(response(200, validEnvelope));
+  it("uses response.text and the raw-text parser for one successful GET request", async () => {
+    const stub = response(200, validEnvelope);
+    const fetchMock = vi.fn().mockResolvedValue(stub.response);
 
     const result = await fetchAcceptedStationEvents(validQuery, trustedOrigin(), fetchMock);
 
-    expect(result.ok).toBe(true);
+    expect(result).toMatchObject({ ok: true, envelope: { items: [validItem] } });
     expectSingleAcceptedRequest(fetchMock);
+    expect(stub.text).toHaveBeenCalledTimes(1);
+    expect(stub.json).not.toHaveBeenCalled();
+
     const [url, options] = fetchMock.mock.calls[0];
     const requestUrl = new URL(String(url));
     expect(String(url)).toBe("https://accepted-api.example/api/v2/production/accepted-station-events?line_id=LINE_001&start_time=2026-07-05T00%3A00%3A00Z&end_time=2026-07-05T08%3A00%3A00Z&limit=50&cursor=opaque.cursor.value");
@@ -101,16 +118,24 @@ describe("accepted station events api client", () => {
     ["invalid cursor", 400],
     ["expired cursor", 410],
     ["cross-scope cursor", 422]
-  ])("maps %s 4xx responses to invalid-query without retry or fallback", async (_case, status) => {
-    const fetchMock = vi.fn().mockResolvedValue(response(status, { error: { code: "INVALID_CURSOR" } }));
+  ])("maps %s 4xx responses to invalid-query without reading the body, retry, or fallback", async (_case, status) => {
+    const stub = response(status, { error: { code: "INVALID_CURSOR" } });
+    const fetchMock = vi.fn().mockResolvedValue(stub.response);
+
     expect(await fetchAcceptedStationEvents(validQuery, trustedOrigin(), fetchMock)).toMatchObject({ ok: false, kind: "invalid-query" });
     expectSingleAcceptedRequest(fetchMock);
+    expect(stub.text).not.toHaveBeenCalled();
+    expect(stub.json).not.toHaveBeenCalled();
   });
 
-  it("maps accepted fact source unavailable to unavailable without fallback", async () => {
-    const fetchMock = vi.fn().mockResolvedValue(response(503, { detail: "accepted fact source unavailable" }));
+  it("maps accepted fact source unavailable to unavailable without reading the body or fallback", async () => {
+    const stub = response(503, { detail: "accepted fact source unavailable" });
+    const fetchMock = vi.fn().mockResolvedValue(stub.response);
+
     expect(await fetchAcceptedStationEvents(validQuery, trustedOrigin(), fetchMock)).toMatchObject({ ok: false, kind: "unavailable" });
     expectSingleAcceptedRequest(fetchMock);
+    expect(stub.text).not.toHaveBeenCalled();
+    expect(stub.json).not.toHaveBeenCalled();
   });
 
   it.each([
@@ -119,30 +144,77 @@ describe("accepted station events api client", () => {
     ["data unknown key", { ...validEnvelope, data: { ...validEnvelope.data, diagnostic_payload: {} } }],
     ["page unknown key", { ...validEnvelope, page: { ...validEnvelope.page, dashboard_state: "stale" } }],
     ["missing required item key", { ...validEnvelope, data: { items: [itemMissingRequiredKey] } }]
-  ])("maps 2xx malformed response with %s to error without fallback", async (_case, body) => {
-    const fetchMock = vi.fn().mockResolvedValue(response(200, body));
+  ])("maps 2xx malformed response with %s to a stable error without fallback", async (_case, body) => {
+    const stub = response(200, body);
+    const fetchMock = vi.fn().mockResolvedValue(stub.response);
     const result = await fetchAcceptedStationEvents(validQuery, trustedOrigin(), fetchMock);
 
-    expect(result).toMatchObject({ ok: false, kind: "error" });
-    expect(result).not.toMatchObject({ ok: false, kind: "invalid-query" });
-    expect(result).not.toMatchObject({ ok: false, kind: "unavailable" });
-    expect(result).not.toMatchObject({ ok: true, envelope: { items: [] } });
+    expect(result).toEqual({ ok: false, kind: "error", message: "Accepted events response was invalid." });
+    expectSingleAcceptedRequest(fetchMock);
+    expect(stub.text).toHaveBeenCalledTimes(1);
+    expect(stub.json).not.toHaveBeenCalled();
+  });
+
+  it.each([
+    ["fraction", '"cycle_counter":1.0'],
+    ["exponent", '"cycle_counter":1e0'],
+    ["rounded boundary fraction", '"cycle_counter":9007199254740991.1']
+  ])("rejects a %s numeric lexeme without retry or partial success", async (_name, replacement) => {
+    const rawText = JSON.stringify(validEnvelope).replace('"cycle_counter":301', replacement);
+    const stub = response(200, validEnvelope, rawText);
+    const fetchMock = vi.fn().mockResolvedValue(stub.response);
+
+    expect(await fetchAcceptedStationEvents(validQuery, trustedOrigin(), fetchMock)).toEqual({
+      ok: false,
+      kind: "error",
+      message: "Accepted events response was invalid."
+    });
+    expectSingleAcceptedRequest(fetchMock);
+    expect(stub.text).toHaveBeenCalledTimes(1);
+    expect(stub.json).not.toHaveBeenCalled();
+  });
+
+  it("does not leak raw body, numeric lexeme, parser details, or trusted origin in a parser error", async () => {
+    const rawSecret = "RAW-RESPONSE-SECRET";
+    const secretOrigin = "https://accepted-api.example";
+    const rawText = JSON.stringify({ ...validEnvelope, rawSecret }).replace('"cycle_counter":301', '"cycle_counter":9007199254740991.1');
+    const stub = response(200, validEnvelope, rawText);
+    const fetchMock = vi.fn().mockResolvedValue(stub.response);
+
+    const result = await fetchAcceptedStationEvents(validQuery, trustedOrigin(secretOrigin), fetchMock);
+
+    expect(result).toEqual({ ok: false, kind: "error", message: "Accepted events response was invalid." });
+    if (!result.ok) {
+      expect(result.message).not.toContain(rawSecret);
+      expect(result.message).not.toContain("9007199254740991.1");
+      expect(result.message).not.toContain(secretOrigin);
+      expect(result.message).not.toMatch(/numeric source|JSON|parser|stack/i);
+    }
     expectSingleAcceptedRequest(fetchMock);
   });
 
-  it("maps malformed DTO and unexpected responses to error", async () => {
-    const malformedFetch = vi.fn().mockResolvedValue(response(200, { data: { items: [{ raw_hex: "deadbeef" }] }, page: { next_cursor: null, limit: 50 } }));
-    const unexpectedFetch = vi.fn().mockResolvedValue(response(500, { error: "boom" }));
+  it("maps malformed DTO and unexpected 5xx responses without fallback", async () => {
+    const malformedStub = response(200, { data: { items: [{ raw_hex: "deadbeef" }] }, page: { next_cursor: null, limit: 50 } });
+    const unexpectedStub = response(500, { error: "boom" });
+    const malformedFetch = vi.fn().mockResolvedValue(malformedStub.response);
+    const unexpectedFetch = vi.fn().mockResolvedValue(unexpectedStub.response);
 
-    await expect(fetchAcceptedStationEvents(validQuery, trustedOrigin(), malformedFetch)).resolves.toMatchObject({ ok: false, kind: "error" });
+    await expect(fetchAcceptedStationEvents(validQuery, trustedOrigin(), malformedFetch)).resolves.toEqual({
+      ok: false,
+      kind: "error",
+      message: "Accepted events response was invalid."
+    });
     await expect(fetchAcceptedStationEvents(validQuery, trustedOrigin(), unexpectedFetch)).resolves.toMatchObject({ ok: false, kind: "error" });
     expectSingleAcceptedRequest(malformedFetch);
     expectSingleAcceptedRequest(unexpectedFetch);
+    expect(unexpectedStub.text).not.toHaveBeenCalled();
   });
 
-  it.each(["network", "redirect"])("maps %s failures to error with no fallback request", async (kind) => {
-    const fetchMock = vi.fn().mockRejectedValue(new TypeError(`${kind} failure`));
-    await expect(fetchAcceptedStationEvents(validQuery, trustedOrigin(), fetchMock)).resolves.toMatchObject({ ok: false, kind: "error" });
+  it.each(["network", "redirect"])("maps %s failures to a stable error with no fallback request", async (kind) => {
+    const fetchMock = vi.fn().mockRejectedValue(new TypeError(`${kind} failure at https://accepted-api.example/private`));
+    const result = await fetchAcceptedStationEvents(validQuery, trustedOrigin(), fetchMock);
+
+    expect(result).toEqual({ ok: false, kind: "error", message: "Accepted events request failed." });
     expectSingleAcceptedRequest(fetchMock);
   });
 });

@@ -4,9 +4,13 @@ type Props = {
   summary: PageSummary;
 };
 
+function displayCountKey(key: string) {
+  return key === "" ? "Empty string" : key;
+}
+
 function renderCounts(counts: Record<string, number>) {
   return Object.entries(counts)
-    .map(([key, count]) => `${key}: ${count}`)
+    .map(([key, count]) => `${displayCountKey(key)}: ${count}`)
     .join(" / ");
 }
 
@@ -19,7 +23,7 @@ export function PageSummaryStrip({ summary }: Props) {
         <small>accepted facts</small>
       </div>
       <div>
-        <span>Result mix</span>
+        <span>Production result mix (station_result only)</span>
         <strong>{renderCounts(summary.byResult) || "none"}</strong>
       </div>
       <div>

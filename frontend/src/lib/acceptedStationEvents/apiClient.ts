@@ -1,5 +1,5 @@
 import { buildAcceptedStationEventsQuery, type AcceptedStationEventsQuery } from "./query";
-import { parseAcceptedStationEventsEnvelope, type AcceptedStationEventsEnvelope } from "./schema";
+import { parseAcceptedStationEventsEnvelopeJson, type AcceptedStationEventsEnvelope } from "./schema";
 import type { TrustedAcceptedEventsApiOrigin } from "./apiOrigin";
 
 export type AcceptedStationEventsClientResult =
@@ -38,8 +38,13 @@ export async function fetchAcceptedStationEvents(
       return { ok: false, kind: "error", message: `accepted events request failed (${response.status})` };
     }
 
-    return { ok: true, envelope: parseAcceptedStationEventsEnvelope(await response.json()) };
-  } catch (error) {
-    return { ok: false, kind: "error", message: error instanceof Error ? error.message : "accepted events request failed" };
+    try {
+      const rawText = await response.text();
+      return { ok: true, envelope: parseAcceptedStationEventsEnvelopeJson(rawText) };
+    } catch {
+      return { ok: false, kind: "error", message: "Accepted events response was invalid." };
+    }
+  } catch {
+    return { ok: false, kind: "error", message: "Accepted events request failed." };
   }
 }

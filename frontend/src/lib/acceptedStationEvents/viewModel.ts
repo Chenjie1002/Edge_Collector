@@ -1,21 +1,34 @@
-import type { AcceptedStationEventItem, AcceptedStationEventsEnvelope } from "./schema";
+import type {
+  AcceptedProductionResult,
+  AcceptedStationEventItem,
+  AcceptedStationEventType,
+  AcceptedStationEventsEnvelope
+} from "./schema";
 
-export type TimestampDisplay = {
+export type DisplayKind = "value" | "empty-string" | "null" | "not-applicable";
+
+export type DisplayValue<T extends string | number | null> = {
+  raw: T;
+  text: string;
+  kind: DisplayKind;
+};
+
+export type TimestampDisplay = DisplayValue<string> & {
   label: "Event time" | "Accepted fact timestamp";
-  value: string;
 };
 
 export type AcceptedEventRow = {
+  sourceItem: AcceptedStationEventItem;
   factKey: string;
-  lineId: string;
-  stationId: string;
-  stationType: string;
-  eventType: string;
-  productionResult: string;
+  lineId: DisplayValue<string>;
+  stationId: DisplayValue<string>;
+  stationType: DisplayValue<string>;
+  eventType: DisplayValue<AcceptedStationEventType>;
+  productionResult: DisplayValue<AcceptedProductionResult | null>;
   eventTs: TimestampDisplay;
   acceptedAt: TimestampDisplay;
-  unitId: string | null;
-  dmc: string | null;
+  unitId: DisplayValue<string | null>;
+  dmc: DisplayValue<string | null>;
 };
 
 export type PageSummary = {
@@ -25,32 +38,39 @@ export type PageSummary = {
   byStation: Record<string, number>;
 };
 
+export type AcceptedEventRowRole = "station_result outcome" | "station_nok detail companion" | "cycle event";
+
 export type NokDetailEvidence = {
-  productionResult: string;
-  nokCode: string | null;
-  nokOrigin: string | null;
-  nokDetailCode: string | null;
-  nokDetailSourceEventId: string | null;
-  nokDetailEvidenceFactKey: string | null;
+  sourceItem: AcceptedStationEventItem;
+  rowRole: AcceptedEventRowRole;
+  eventType: DisplayValue<AcceptedStationEventType>;
+  productionResult: DisplayValue<AcceptedProductionResult | null>;
+  nokCode: DisplayValue<number | null>;
+  nokOrigin: DisplayValue<string | null>;
+  nokDetailCode: DisplayValue<number | null>;
+  nokDetailSourceEventId: DisplayValue<string | null>;
+  nokDetailEvidenceFactKey: DisplayValue<string | null>;
   factKey: string;
-  sourceEventId: string;
+  sourceEventId: DisplayValue<string>;
 };
 
 export type TraceReference = {
-  unitId: string | null;
-  dmc: string | null;
-  cycleCounter: number | null;
-  sourceEventId: string;
-  eventTs: string;
-  acceptedAt: string;
+  sourceItem: AcceptedStationEventItem;
+  unitId: DisplayValue<string | null>;
+  dmc: DisplayValue<string | null>;
+  cycleCounter: DisplayValue<number>;
+  sourceEventId: DisplayValue<string>;
+  eventTs: TimestampDisplay;
+  acceptedAt: TimestampDisplay;
   factKey: string;
-  contentFingerprint: string;
-  lineId: string;
-  plcId: string;
-  stationId: string;
-  profileId: string;
-  configHash: string;
-  configVersion: string;
+  factKeyDisplay: DisplayValue<string>;
+  contentFingerprint: DisplayValue<string>;
+  lineId: DisplayValue<string>;
+  plcId: DisplayValue<string>;
+  stationId: DisplayValue<string>;
+  profileId: DisplayValue<string>;
+  configHash: DisplayValue<string>;
+  configVersion: DisplayValue<string>;
 };
 
 export type AcceptedEventsViewModel = {
@@ -62,54 +82,124 @@ export type AcceptedEventsViewModel = {
   nextCursor: string | null;
 };
 
-function stringOrUnknown(value: string | number | null): string {
-  if (value === null || value === "") return "unknown";
-  return String(value);
+function displayString<T extends string | null>(raw: T): DisplayValue<T> {
+  if (raw === null) return { raw, text: "—", kind: "null" };
+  if (raw === "") return { raw, text: "Empty string", kind: "empty-string" };
+  return { raw, text: raw, kind: "value" };
 }
 
-function nullableString(value: string | number | null): string | null {
-  if (value === null || value === "") return null;
-  return String(value);
+function displayNumber<T extends number | null>(raw: T): DisplayValue<T> {
+  if (raw === null) return { raw, text: "—", kind: "null" };
+  return { raw, text: String(raw), kind: "value" };
 }
 
-function nullableNumber(value: string | number | null): number | null {
-  if (typeof value === "number") return value;
-  if (typeof value === "string" && value.trim()) {
-    const parsed = Number(value);
-    return Number.isFinite(parsed) ? parsed : null;
+function displayTimestamp(raw: string, label: TimestampDisplay["label"]): TimestampDisplay {
+  return { ...displayString(raw), label };
+}
+
+function displayProductionResult(item: AcceptedStationEventItem): DisplayValue<AcceptedProductionResult | null> {
+  if (item.event_type === "station_nok") {
+    return {
+      raw: item.production_result,
+      text: "Not applicable — NOK detail companion",
+      kind: "not-applicable"
+    };
   }
-  return null;
+
+  if (item.event_type === "station_cycle_start" || item.event_type === "station_cycle_complete") {
+    return {
+      raw: item.production_result,
+      text: "Not applicable — cycle event",
+      kind: "not-applicable"
+    };
+  }
+
+  return displayString(item.production_result);
+}
+
+function rowRole(eventType: AcceptedStationEventType): AcceptedEventRowRole {
+  if (eventType === "station_result") return "station_result outcome";
+  if (eventType === "station_nok") return "station_nok detail companion";
+  return "cycle event";
+}
+
+function copyAcceptedItem(item: AcceptedStationEventItem): AcceptedStationEventItem {
+  return {
+    line_id: item.line_id,
+    plc_id: item.plc_id,
+    station_id: item.station_id,
+    station_type: item.station_type,
+    profile_id: item.profile_id,
+    config_hash: item.config_hash,
+    config_version: item.config_version,
+    event_type: item.event_type,
+    production_result: item.production_result,
+    unit_id: item.unit_id,
+    dmc: item.dmc,
+    cycle_counter: item.cycle_counter,
+    source_event_id: item.source_event_id,
+    event_ts: item.event_ts,
+    accepted_at: item.accepted_at,
+    fact_key: item.fact_key,
+    content_fingerprint: item.content_fingerprint,
+    nok_code: item.nok_code,
+    nok_origin: item.nok_origin,
+    nok_detail_code: item.nok_detail_code,
+    nok_detail_source_event_id: item.nok_detail_source_event_id,
+    nok_detail_evidence_fact_key: item.nok_detail_evidence_fact_key
+  };
+}
+
+function buildRow(item: AcceptedStationEventItem): AcceptedEventRow {
+  return {
+    sourceItem: item,
+    factKey: item.fact_key,
+    lineId: displayString(item.line_id),
+    stationId: displayString(item.station_id),
+    stationType: displayString(item.station_type),
+    eventType: displayString(item.event_type),
+    productionResult: displayProductionResult(item),
+    eventTs: displayTimestamp(item.event_ts, "Event time"),
+    acceptedAt: displayTimestamp(item.accepted_at, "Accepted fact timestamp"),
+    unitId: displayString(item.unit_id),
+    dmc: displayString(item.dmc)
+  };
 }
 
 function buildEvidence(item: AcceptedStationEventItem): NokDetailEvidence {
   return {
-    productionResult: stringOrUnknown(item.production_result),
-    nokCode: nullableString(item.nok_code),
-    nokOrigin: nullableString(item.nok_origin),
-    nokDetailCode: nullableString(item.nok_detail_code),
-    nokDetailSourceEventId: nullableString(item.nok_detail_source_event_id),
-    nokDetailEvidenceFactKey: nullableString(item.nok_detail_evidence_fact_key),
-    factKey: stringOrUnknown(item.fact_key),
-    sourceEventId: stringOrUnknown(item.source_event_id)
+    sourceItem: item,
+    rowRole: rowRole(item.event_type),
+    eventType: displayString(item.event_type),
+    productionResult: displayProductionResult(item),
+    nokCode: displayNumber(item.nok_code),
+    nokOrigin: displayString(item.nok_origin),
+    nokDetailCode: displayNumber(item.nok_detail_code),
+    nokDetailSourceEventId: displayString(item.nok_detail_source_event_id),
+    nokDetailEvidenceFactKey: displayString(item.nok_detail_evidence_fact_key),
+    factKey: item.fact_key,
+    sourceEventId: displayString(item.source_event_id)
   };
 }
 
 function buildReference(item: AcceptedStationEventItem): TraceReference {
   return {
-    unitId: nullableString(item.unit_id),
-    dmc: nullableString(item.dmc),
-    cycleCounter: nullableNumber(item.cycle_counter),
-    sourceEventId: stringOrUnknown(item.source_event_id),
-    eventTs: stringOrUnknown(item.event_ts),
-    acceptedAt: stringOrUnknown(item.accepted_at),
-    factKey: stringOrUnknown(item.fact_key),
-    contentFingerprint: stringOrUnknown(item.content_fingerprint),
-    lineId: stringOrUnknown(item.line_id),
-    plcId: stringOrUnknown(item.plc_id),
-    stationId: stringOrUnknown(item.station_id),
-    profileId: stringOrUnknown(item.profile_id),
-    configHash: stringOrUnknown(item.config_hash),
-    configVersion: stringOrUnknown(item.config_version)
+    sourceItem: item,
+    unitId: displayString(item.unit_id),
+    dmc: displayString(item.dmc),
+    cycleCounter: displayNumber(item.cycle_counter),
+    sourceEventId: displayString(item.source_event_id),
+    eventTs: displayTimestamp(item.event_ts, "Event time"),
+    acceptedAt: displayTimestamp(item.accepted_at, "Accepted fact timestamp"),
+    factKey: item.fact_key,
+    factKeyDisplay: displayString(item.fact_key),
+    contentFingerprint: displayString(item.content_fingerprint),
+    lineId: displayString(item.line_id),
+    plcId: displayString(item.plc_id),
+    stationId: displayString(item.station_id),
+    profileId: displayString(item.profile_id),
+    configHash: displayString(item.config_hash),
+    configVersion: displayString(item.config_version)
   };
 }
 
@@ -119,29 +209,17 @@ export function toAcceptedEventsViewModel(
 ): AcceptedEventsViewModel {
   const byResult: Record<string, number> = {};
   const byStation: Record<string, number> = {};
+  const sourceItems = envelope.items.map(copyAcceptedItem);
 
-  const rows: AcceptedEventRow[] = envelope.items.map((item) => {
-    const productionResult = stringOrUnknown(item.production_result);
-    const stationId = stringOrUnknown(item.station_id);
-    byResult[productionResult] = (byResult[productionResult] ?? 0) + 1;
-    byStation[stationId] = (byStation[stationId] ?? 0) + 1;
-
-    return {
-      factKey: stringOrUnknown(item.fact_key),
-      lineId: stringOrUnknown(item.line_id),
-      stationId,
-      stationType: stringOrUnknown(item.station_type),
-      eventType: stringOrUnknown(item.event_type),
-      productionResult,
-      eventTs: { label: "Event time" as const, value: stringOrUnknown(item.event_ts) },
-      acceptedAt: { label: "Accepted fact timestamp" as const, value: stringOrUnknown(item.accepted_at) },
-      unitId: nullableString(item.unit_id),
-      dmc: nullableString(item.dmc)
-    };
+  const rows = sourceItems.map((item) => {
+    byStation[item.station_id] = (byStation[item.station_id] ?? 0) + 1;
+    if (item.event_type === "station_result" && item.production_result !== null) {
+      byResult[item.production_result] = (byResult[item.production_result] ?? 0) + 1;
+    }
+    return buildRow(item);
   });
 
-  const selectedItem =
-    envelope.items.find((item) => stringOrUnknown(item.fact_key) === selectedFactKey) ?? envelope.items[0] ?? null;
+  const selectedItem = sourceItems.find((item) => item.fact_key === selectedFactKey) ?? sourceItems[0] ?? null;
 
   return {
     rows,

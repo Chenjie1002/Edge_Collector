@@ -25,23 +25,27 @@ export function AcceptedEventsTable({ rows, selectedFactKey }: Props) {
       </thead>
       <tbody>
         {rows.map((row) => (
-          <tr key={row.factKey} className={row.factKey === selectedFactKey ? "is-selected" : undefined}>
+          <tr
+            key={row.factKey}
+            className={row.factKey === selectedFactKey ? "is-selected" : undefined}
+            data-fact-key={row.factKey}
+          >
             <td>
-              <strong>{row.stationId}</strong>
+              <strong>{row.stationId.text}</strong>
             </td>
-            <td>{row.stationType}</td>
-            <td>{row.eventType}</td>
-            <td>{row.productionResult}</td>
+            <td>{row.stationType.text}</td>
+            <td>{row.eventType.text}</td>
+            <td>{row.productionResult.text}</td>
             <td>
               <span>{row.eventTs.label}</span>
-              <strong>{row.eventTs.value}</strong>
+              <strong>{row.eventTs.text}</strong>
             </td>
             <td>
               <span>{row.acceptedAt.label}</span>
-              <strong>{row.acceptedAt.value}</strong>
+              <strong>{row.acceptedAt.text}</strong>
             </td>
-            <td>{row.unitId ?? "unknown"}</td>
-            <td>{row.dmc ?? "unknown"}</td>
+            <td>{row.unitId.text}</td>
+            <td>{row.dmc.text}</td>
           </tr>
         ))}
       </tbody>

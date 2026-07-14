@@ -5,6 +5,7 @@ import { afterEach, describe, expect, it, vi } from "vitest";
 import AcceptedEventsPage, { AcceptedEventsPageView } from "../page";
 import { fetchAcceptedStationEvents } from "../../../lib/acceptedStationEvents/apiClient";
 import { resolveTrustedAcceptedEventsApiOrigin } from "../../../lib/acceptedStationEvents/apiOrigin";
+import type { AcceptedStationEventsEnvelope } from "../../../lib/acceptedStationEvents/schema";
 import { toAcceptedEventsViewModel } from "../../../lib/acceptedStationEvents/viewModel";
 
 vi.mock("../../../lib/acceptedStationEvents/apiClient", () => ({
@@ -38,7 +39,7 @@ const staleProductionValues = [
   "sha256:stale-fact",
   "DMC-STALE-001",
   "PLC_001:WS01:stale",
-  "STALE_DETAIL",
+  "stale-nok-origin",
   "stale-config-version"
 ];
 
@@ -54,7 +55,7 @@ async function trustedResolution(origin = "https://accepted-api.example", profil
   return resolution;
 }
 
-function readyEnvelope(profileId: string) {
+function readyEnvelope(profileId: string): AcceptedStationEventsEnvelope {
   return {
     items: [
       {
@@ -110,11 +111,71 @@ function staleReadyState() {
           accepted_at: "2026-07-05T10:00:01Z",
           fact_key: "sha256:stale-fact",
           content_fingerprint: "sha256:stale-content",
-          nok_code: "STALE_NOK",
-          nok_origin: "accepted-fact",
-          nok_detail_code: "STALE_DETAIL",
-          nok_detail_source_event_id: "PLC_001:WS01:stale-detail",
-          nok_detail_evidence_fact_key: "sha256:stale-detail-fact"
+          nok_code: 100,
+          nok_origin: "stale-nok-origin",
+          nok_detail_code: null,
+          nok_detail_source_event_id: null,
+          nok_detail_evidence_fact_key: null
+        }
+      ],
+      page: { next_cursor: null, limit: 50 }
+    })
+  };
+}
+
+function detailCompanionReadyState() {
+  return {
+    kind: "ready" as const,
+    query: readyQuery,
+    viewModel: toAcceptedEventsViewModel({
+      items: [
+        {
+          line_id: "LINE_001",
+          plc_id: "PLC_001",
+          station_id: "WS02",
+          station_type: "ASSEMBLY",
+          profile_id: "normal",
+          config_hash: "sha256:detail-config",
+          config_version: "detail-config-version",
+          event_type: "station_nok",
+          production_result: null,
+          unit_id: null,
+          dmc: "",
+          cycle_counter: 401,
+          source_event_id: "PLC_001:WS02:401-detail",
+          event_ts: "2026-07-05T12:00:00Z",
+          accepted_at: "2026-07-05T12:00:01Z",
+          fact_key: "sha256:first-detail-fact",
+          content_fingerprint: "sha256:first-detail-content",
+          nok_code: 200,
+          nok_origin: "station_nok",
+          nok_detail_code: 201,
+          nok_detail_source_event_id: "PLC_001:WS02:401",
+          nok_detail_evidence_fact_key: "sha256:upstream-outcome-fact"
+        },
+        {
+          line_id: "LINE_001",
+          plc_id: "PLC_001",
+          station_id: "WS02",
+          station_type: "ASSEMBLY",
+          profile_id: "normal",
+          config_hash: "sha256:detail-config",
+          config_version: "detail-config-version",
+          event_type: "station_result",
+          production_result: "nok",
+          unit_id: "U-SECOND",
+          dmc: "DMC-SECOND",
+          cycle_counter: 402,
+          source_event_id: "PLC_001:WS02:402",
+          event_ts: "2026-07-05T12:00:02Z",
+          accepted_at: "2026-07-05T12:00:03Z",
+          fact_key: "sha256:second-outcome-fact",
+          content_fingerprint: "sha256:second-outcome-content",
+          nok_code: 202,
+          nok_origin: "station_result",
+          nok_detail_code: null,
+          nok_detail_source_event_id: null,
+          nok_detail_evidence_fact_key: null
         }
       ],
       page: { next_cursor: null, limit: 50 }
@@ -208,7 +269,7 @@ describe("accepted events page", () => {
     const summary = screen.getByLabelText("Accepted events page summary");
     expect(summary.textContent).toContain("Current page only");
     expect(summary.textContent).toContain("0");
-    expect(summary.textContent).toContain("Result mixnone");
+    expect(summary.textContent).toContain("Production result mix (station_result only)none");
     expect(summary.textContent).toContain("Station mixnone");
     expect(summary.textContent).not.toMatch(/nok: 1|WS01: 1/);
     expect(screen.queryByRole("table")).toBeNull();
@@ -227,6 +288,29 @@ describe("accepted events page", () => {
     expect(trace.textContent).not.toContain("production");
     expect(trace.textContent).not.toContain("container");
     expect(trace.textContent).not.toContain("local");
+  });
+
+  it("binds table selection, NOK detail, and trace to the first response fact while result mix counts station_result only", () => {
+    const { container } = render(<AcceptedEventsPageView state={detailCompanionReadyState()} />);
+
+    const rows = container.querySelectorAll("tbody tr");
+    expect(rows).toHaveLength(2);
+    expect(rows[0]?.className).toBe("is-selected");
+    expect(rows[1]?.className).toBe("");
+
+    const evidence = screen.getByLabelText("Accepted NOK detail evidence");
+    const trace = screen.getByLabelText("Accepted fact trace references");
+    const summary = screen.getByLabelText("Accepted events page summary");
+
+    expect(screen.getAllByText("Not applicable — NOK detail companion").length).toBeGreaterThanOrEqual(1);
+    expect(evidence.textContent).toContain("station_nok detail companion");
+    expect(evidence.textContent).toContain("Fact reference sha256:first-detail-fact");
+    expect(evidence.textContent).toContain("sha256:upstream-outcome-fact");
+    expect(trace.textContent).toContain("sha256:first-detail-fact");
+    expect(trace.textContent).not.toContain("sha256:second-outcome-fact");
+    expect(summary.textContent).toContain("2accepted facts");
+    expect(summary.textContent).toContain("Production result mix (station_result only)nok: 1");
+    expect(summary.textContent).not.toContain("unknown");
   });
 
   it("renders a client error as a non-ready page without production surfaces", async () => {
