@@ -4,7 +4,57 @@
 工作目录：`/Users/chenjie/Documents/MES/edge-mes-demo`
 树莓派部署目录：`/opt/edge-mes-demo`
 
-## 0A. 2026-07-14 Dashboard URL runtime-evidence scope reset
+## 0A. 2026-07-14 Accepted-events Consumer Truth Hardening Gate A closeout
+
+当前 Gate A 状态：
+
+```text
+Accepted-events Consumer Truth Hardening planning: CLOSED / PASS WITH RECOMMENDATIONS
+DQ-DASH-D1: CLOSED
+DQ-DASH-D2: CLOSED
+DQ-DASH-D3: CLOSED
+Gate A implementation: CLOSED / PASS WITH RECOMMENDATIONS
+Architecture focused implementation review: CLOSED / PASS WITH RECOMMENDATIONS, no blocker
+Reliability focused implementation review: CLOSED / PASS WITH RECOMMENDATIONS, no blocker
+Data Quality focused implementation review: CLOSED / PASS WITH RECOMMENDATIONS, no blocker
+Verification focused implementation review: CLOSED / PASS WITH RECOMMENDATIONS, no blocker
+Gate A overall: CLOSED / PASS WITH RECOMMENDATIONS
+```
+
+Gate A implementation 已精确提交并 push：
+
+```text
+commit: a3cf64de31bf5eb12a1aa3eeed52aa3a451b8e79
+subject: Harden accepted-events consumer truth
+source allowlist: exact 15 frontend files
+```
+
+Gate A 关闭后的 consumer runtime authority：
+
+```text
+HTTP Response
+-> response.text()
+-> JSON.parse reviver context.source
+-> exact envelope / exact 22-field typed parser
+-> event/result/NOK/detail cross-field validation
+-> raw/display-separated view model
+```
+
+终局验证：frontend full suite `11 files / 237 tests` PASS；TypeScript typecheck PASS；
+Next production build PASS；`/accepted-events` 保持 dynamic server-rendered。Node runtime
+前提为 `v22.23.0`；缺少 `context.source` 时必须 fail closed，不得回退普通
+`JSON.parse` 或引入第三方 lossless JSON dependency。
+
+当前证据只属于 `synthetic / focused implementation evidence`。真实 DB-backed
+Case A/B/C、Raspberry Pi、Docker/Compose、DB/API/Dashboard 三层 runtime 对账均未执行、
+未声明 PASS。
+
+下一 eligible gate：PM 授权 Gate B 的 Verification planning review，复核原六文件
+Dashboard Raspberry Pi Docker Integration allowlist 与 runtime/rollback/evidence matrix。
+Gate B implementation、Docker/Compose、Raspberry Pi runtime、stage/commit/push 均不得从
+Gate A closure 自动推导授权。
+
+## 0B. 2026-07-14 Dashboard URL runtime-evidence scope reset
 
 当前最高优先级 authority：
 
