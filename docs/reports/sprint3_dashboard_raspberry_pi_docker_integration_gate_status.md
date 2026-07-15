@@ -2,7 +2,7 @@
 
 Updated: 2026-07-15
 
-Purpose: compact durable status source for Gate B Dashboard Raspberry Pi Docker Integration after the six-file implementation commit and focused implementation review closeout.
+Purpose: compact durable status source for Gate B Dashboard Raspberry Pi Docker Integration after the static implementation closeout and the committed Raspberry Pi runtime/deployment evidence planning gate.
 
 Read together with:
 
@@ -20,9 +20,9 @@ Read together with:
 branch:
 main
 
-HEAD == origin/main at authoring time:
-8ddba3bd547e9e9bd064b002c150b81324833636
-8ddba3b Add Dashboard Raspberry Pi Docker integration
+Last verified repository baseline before this status-sync commit:
+b41e1ab0611c55b4b9786d86e9874d4d644d2faf
+b41e1ab Close Gate B runtime deployment planning gates
 
 ahead/behind:
 0 0
@@ -62,6 +62,71 @@ commit:
 8ddba3bd547e9e9bd064b002c150b81324833636
 
 subject:
+Add Dashboard Raspberry Pi Docker integration
+```
+
+## 2A. Runtime/deployment planning gate closeout
+
+```text
+Architecture / Integration runtime/deployment planning:
+CLOSED / PASS WITH RECOMMENDATIONS
+
+Reliability planning:
+CLOSED / PASS
+
+B-R4-1:
+CLOSED
+
+Data Quality planning:
+CLOSED / PASS
+
+DQ-RUNTIME-EMPTY-1:
+CLOSED
+
+DQ-RUNTIME-CASE-C-REL-1:
+CLOSED
+
+Verification planning:
+CLOSED / PASS
+
+VER-RUNTIME-V7-RM-1:
+CLOSED
+
+VER-RUNTIME-V8-CORE-1:
+CLOSED
+
+Latest focused re-review recommendations:
+none
+```
+
+Runtime/deployment planning closeout commit:
+
+```text
+commit:
+b41e1ab0611c55b4b9786d86e9874d4d644d2faf
+
+subject:
+Close Gate B runtime deployment planning gates
+```
+
+Committed planning authority stack:
+
+```text
+docs/reports/sprint3_dashboard_raspberry_pi_runtime_deployment_evidence_plan.md
+docs/reports/sprint3_dashboard_raspberry_pi_runtime_deployment_evidence_reliability_review.md
+docs/reports/sprint3_dashboard_raspberry_pi_runtime_deployment_evidence_reliability_rereview.md
+docs/reports/sprint3_dashboard_raspberry_pi_runtime_deployment_evidence_data_quality_review.md
+docs/reports/sprint3_dashboard_raspberry_pi_runtime_deployment_evidence_data_quality_rereview.md
+docs/reports/sprint3_dashboard_raspberry_pi_runtime_deployment_evidence_verification_review.md
+docs/reports/sprint3_dashboard_raspberry_pi_runtime_deployment_evidence_verification_rereview.md
+```
+
+The planning stack closes the execution-planning gate only. It does not prove or authorize Docker image build, Compose startup, native ARM64, Raspberry Pi runtime, API/DB/browser execution, known-empty, pagination, real Case A/B/C, exact 22-field runtime reconciliation, rollback or cancellation.
+
+The static implementation commit remains:
+
+```text
+8ddba3bd547e9e9bd064b002c150b81324833636
 Add Dashboard Raspberry Pi Docker integration
 ```
 
@@ -163,15 +228,23 @@ DB/API/Dashboard exact 22-field three-layer closure:
 NOT EXECUTED / NOT CLAIMED
 ```
 
-## 7. Carry-forward recommendations
+## 7. Planning recommendation disposition
 
-1. Standardize startup failure wording to `RestartCount >= 5` while retaining the 120-second bounded health terminal gate.
-2. Add fixed command/result records for startup failure, rollback bounded request, known-empty, pagination page 2, port `3001` cancellation and core-service baseline comparison.
-3. Record disk, image, BuildKit cache and Swap pre/post values in bytes with explicit growth calculations.
-4. During a separately authorized Pi runtime gate, record the resolved Node base-image digest, final image identity/size, native `linux/arm64/v8`, runtime origin/profile, health result, `RestartCount` and bounded logs.
-5. Keep Case C conditional; when no real accepted `station_nok` detail row exists, report `NOT AVAILABLE / NOT VERIFIED` rather than substituting synthetic evidence.
+The historical static-implementation recommendations were consumed by the committed runtime/deployment planning gate and its Reliability, Data Quality and Verification review stack.
 
-These recommendations do not reopen the committed six-file implementation and do not authorize runtime changes.
+Current execution authority comes from:
+
+- `docs/reports/sprint3_dashboard_raspberry_pi_runtime_deployment_evidence_plan.md`
+- its committed Reliability/Data Quality/Verification reviews and focused re-reviews.
+
+The latest focused Data Quality and Verification re-reviews carry:
+
+```text
+Recommendations:
+none
+```
+
+Historical recommendation wording is not a new PM task, does not reopen the static implementation, and does not expand runtime scope beyond the committed planning authority.
 
 ## 8. Current working-tree exclusions
 
@@ -193,13 +266,14 @@ Do not delete, clean, stage or commit them by broad path.
 The immediate process sequence is:
 
 ```text
-exact-path commit/push of this post-push docs/status sync
+exact-path commit/push of this runtime/deployment planning status sync
 -> create and commit a new ChatGPT PM handoff
 -> next PM begins with read-only recovery
+-> PM may then authorize a separate runtime execution preparation task
 ```
 
-After handoff, the default next technical branch is a separately planned Level 2 Raspberry Pi runtime/deployment evidence gate. It must not be inferred from this static implementation closeout.
+Runtime execution preparation remains a separate PM authorization. Planning closure does not automatically authorize deployment or produce runtime evidence.
 
 A complete Dashboard product UI/UX branch—visual template, navigation, Overview, OEE, Quality and design system—remains separate from Gate B runtime/deployment and requires its own planning authorization.
 
-No Docker/Compose lifecycle, Raspberry Pi command, DB/API runtime, rollback, real Case A/B/C, deploy or tag is authorized by this status report.
+No Docker/Compose lifecycle, Raspberry Pi command, API/DB query, rollback/cancellation, real Case A/B/C, runtime execution, deploy or tag is authorized by this status sync.

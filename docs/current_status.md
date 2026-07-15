@@ -4,7 +4,7 @@
 工作目录：`/Users/chenjie/Documents/MES/edge-mes-demo`
 树莓派部署目录：`/opt/edge-mes-demo`
 
-## 0A. 2026-07-15 Dashboard Raspberry Pi Docker Integration Gate B post-push closeout
+## 0A. 2026-07-15 Dashboard Raspberry Pi Gate B static implementation and runtime/deployment planning closeout
 
 当前 Gate B 状态：
 
@@ -16,6 +16,44 @@ Data Quality focused implementation review: CLOSED / PASS WITH RECOMMENDATIONS, 
 Verification focused implementation review: CLOSED / PASS WITH RECOMMENDATIONS, no blocker
 Gate B static implementation overall: CLOSED / PASS WITH RECOMMENDATIONS
 ```
+
+后续 Raspberry Pi runtime/deployment evidence planning gate 也已关闭：
+
+```text
+Architecture / Integration runtime/deployment planning: CLOSED / PASS WITH RECOMMENDATIONS
+Reliability planning: CLOSED / PASS
+B-R4-1: CLOSED
+Data Quality planning: CLOSED / PASS
+DQ-RUNTIME-EMPTY-1: CLOSED
+DQ-RUNTIME-CASE-C-REL-1: CLOSED
+Verification planning: CLOSED / PASS
+VER-RUNTIME-V7-RM-1: CLOSED
+VER-RUNTIME-V8-CORE-1: CLOSED
+Latest focused re-review recommendations: none
+Runtime execution: NOT EXECUTED / NOT CLAIMED
+```
+
+Runtime/deployment planning 与 review stack 已精确提交并 push：
+
+```text
+commit: b41e1ab0611c55b4b9786d86e9874d4d644d2faf
+subject: Close Gate B runtime deployment planning gates
+committed paths: exact 7 runtime/deployment planning and review reports
+```
+
+七个 planning authority 路径：
+
+```text
+docs/reports/sprint3_dashboard_raspberry_pi_runtime_deployment_evidence_plan.md
+docs/reports/sprint3_dashboard_raspberry_pi_runtime_deployment_evidence_reliability_review.md
+docs/reports/sprint3_dashboard_raspberry_pi_runtime_deployment_evidence_reliability_rereview.md
+docs/reports/sprint3_dashboard_raspberry_pi_runtime_deployment_evidence_data_quality_review.md
+docs/reports/sprint3_dashboard_raspberry_pi_runtime_deployment_evidence_data_quality_rereview.md
+docs/reports/sprint3_dashboard_raspberry_pi_runtime_deployment_evidence_verification_review.md
+docs/reports/sprint3_dashboard_raspberry_pi_runtime_deployment_evidence_verification_rereview.md
+```
+
+该 commit 只关闭 execution planning gate。没有执行 Docker image build、Compose lifecycle、SSH、Raspberry Pi、API/DB/browser runtime、known-empty、pagination、真实 Case A/B/C、exact 22-field runtime reconciliation、rollback 或 cancellation；不得把 planning PASS 写成 deployment/runtime PASS。
 
 Gate B implementation 与 review stack 已精确提交并 push：
 
@@ -56,10 +94,10 @@ Durable compact status：
 
 - `docs/reports/sprint3_dashboard_raspberry_pi_docker_integration_gate_status.md`
 
-当前 immediate next step：先完成本次 post-push docs/status sync 的 exact-path
-commit/push，再创建新的 ChatGPT PM handoff。Handoff 后默认下一技术分支是独立的
-Raspberry Pi runtime/deployment evidence planning gate；完整 Dashboard 产品 UI/UX
-规划为另一条独立分支，不得混入 runtime gate。
+当前 immediate next step：先完成本次 runtime/deployment planning post-push docs/status
+sync 的 exact-path commit/push，再创建并提交新的 ChatGPT PM handoff；下一位 PM 必须先做
+read-only recovery，再由 PM 决定是否授权独立 runtime execution preparation。完整 Dashboard
+产品 UI/UX 规划仍是另一条独立分支，不得混入 runtime gate。
 
 ## 0B. 2026-07-14 Accepted-events Consumer Truth Hardening Gate A closeout
 
@@ -152,12 +190,16 @@ Level 2 子项目。
 
 ## 0. 当前 PM / Codex 协作状态
 
-当前主线：Phase-2 Sprint 3 Dashboard Raspberry Pi Docker Integration Gate B post-push docs/status sync，随后进入 ChatGPT PM handoff。
+当前主线：Phase-2 Sprint 3 Dashboard Raspberry Pi Runtime Deployment Planning post-push docs/status sync，随后进入 ChatGPT PM handoff。
 
 Last verified baseline before this docs/status sync:
 
 ```text
 live HEAD / origin/main at authoring time:
+b41e1ab0611c55b4b9786d86e9874d4d644d2faf
+b41e1ab Close Gate B runtime deployment planning gates
+
+preceding Gate B static implementation commit:
 8ddba3bd547e9e9bd064b002c150b81324833636
 8ddba3b Add Dashboard Raspberry Pi Docker integration
 
@@ -192,6 +234,10 @@ Dashboard Raspberry Pi Docker Integration Gate B static implementation: CLOSED /
 Gate B Reliability focused implementation review: CLOSED / PASS WITH RECOMMENDATIONS, no blocker
 Gate B Data Quality focused implementation review: CLOSED / PASS WITH RECOMMENDATIONS, no blocker
 Gate B Verification focused implementation review: CLOSED / PASS WITH RECOMMENDATIONS, no blocker
+Gate B Raspberry Pi runtime/deployment Architecture planning: CLOSED / PASS WITH RECOMMENDATIONS, commit b41e1ab
+Gate B runtime/deployment Reliability planning: CLOSED / PASS, B-R4-1 CLOSED
+Gate B runtime/deployment Data Quality planning: CLOSED / PASS, DQ-RUNTIME-EMPTY-1 and DQ-RUNTIME-CASE-C-REL-1 CLOSED
+Gate B runtime/deployment Verification planning: CLOSED / PASS, VER-RUNTIME-V7-RM-1 and VER-RUNTIME-V8-CORE-1 CLOSED
 Gate B Docker/Pi/runtime evidence: NOT EXECUTED / NOT CLAIMED
 Slice D2-B fixture/test-only decoder authority hardening: PASS WITH RECOMMENDATIONS
 Slice D2-B implementation: PASS WITH RECOMMENDATIONS
