@@ -190,6 +190,20 @@ PM default action is:
 7. issue the next minimal authorized task prompt only when continuing is clearly the right PM decision;
 8. never infer authorization for implementation, staging, commit, push, deploy, rollback, D2-C/D3 or any later phase from a `PASS` report alone.
 
+### Recommendation necessity and scope rule
+
+PM must not forward reviewer recommendations automatically. For every recommendation received during report intake, PM must evaluate whether it is necessary for the current authorized product claim and gate, and classify it as one of:
+
+- current-gate necessary repair;
+- next-review or Verification carry-forward;
+- runtime execution record requirement;
+- future independent task;
+- unnecessary, duplicate or scope expansion.
+
+A recommendation that merely repeats an already-mandatory planning or contract requirement is not a new task. A recommendation must not enlarge the product claim, threat model, authority fields, retention model, runtime topology, implementation allowlist or evidence burden without explicit user approval. Only an item that is necessary to prevent a credible false PASS, stale or invalid production truth, unsafe process ownership, protected-object mutation or synthetic/local evidence misclassification may be promoted into a blocker or current repair.
+
+PM should issue only the minimum accepted repair or next-gate scope. Rejected, duplicate or future-only recommendations must not become implicit requirements in later prompts. If no recommendation is necessary, PM should state `Recommendations: none` instead of inventing carry-forward work.
+
 After every Level 2 task closes, PM should pause before chaining the next task and check whether any process rule, allowlist habit, validation gap or recurring mistake should be added to this file. Complex-task lessons should be recorded here only when they are stable project rules, not one-off observations.
 
 ## 8. Subagent rules
