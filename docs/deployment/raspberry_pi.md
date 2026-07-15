@@ -377,3 +377,486 @@ docker compose logs --tail 100 s7-plc-sim collector api
 
 仓库中只允许记录非敏感信息，例如部署路径、服务名、端口和通用运维命令。SSH
 连接方式应通过仓库外的安全渠道单独提供，并只用于当前授权的远程操作。
+
+## 10. Gate B：Dashboard Raspberry Pi Docker 集成
+
+本节只定义未来获得 PM 明确授权后的 Dashboard Docker build、部署、回滚和真实
+accepted-fact 证据流程。它不表示本地实现阶段已经执行 Docker build、Linux ARM64、
+Raspberry Pi、Compose startup、rollback 或 Case A/B/C。
+
+### 10.1 部署拓扑与 process health 边界
+
+冻结拓扑：
+
+```text
+browser
+  -> http://<Raspberry-Pi-IP>:3001
+  -> edge-mes-dashboard (container port 3000)
+  -> Dashboard server-side http://api:8000
+  -> API
+  -> PostgreSQL
+
+Grafana
+  -> host port 3000 unchanged
+```
+
+浏览器只访问 Raspberry Pi 的 host port `3001`，不得解析或直接访问 Compose service
+DNS `api`。`http://api:8000` 只由 Dashboard server-side 使用。
+
+Dashboard 容器的 `/health` 只证明 Next HTTP process readiness。它不证明：
+
+```text
+API readiness
+PostgreSQL readiness
+accepted fact 存在
+Case A/B/C 闭环
+DB/API/Dashboard 三层闭环
+```
+
+API 停止、未 ready 或故障时，Dashboard process 仍应保持 `healthy`。accepted-events
+页面必须 fail closed；同一次 render 不 retry、不 fallback、不保留 stale production
+truth。API 恢复后，只能由新的 page request 重新请求。
+
+### 10.2 Gate B release changed-path scope 与发布保护
+
+本 Gate 的 changed-file scope 精确为：
+
+```text
+frontend/Dockerfile
+frontend/.dockerignore
+frontend/src/app/health/route.ts
+frontend/src/app/health/__tests__/route.test.ts
+docker-compose.yml
+docs/deployment/raspberry_pi.md
+```
+
+这六个路径只描述本 Gate 的变更集合，不表示远端构建可以删除、遗漏或忽略既有 tracked
+frontend baseline。发布包或版本目录必须仍包含 Docker build 所需的完整、经批准的
+tracked source baseline，例如 `frontend/package.json`、`frontend/package-lock.json`、
+`frontend/next.config.ts`、`frontend/tsconfig.json` 和 `frontend/src/`。
+
+发布 transport 必须保护并排除：
+
+```text
+data/
+remote .env
+.git/
+frontend/node_modules/
+frontend/.next/
+frontend/tsconfig.tsbuildinfo
+frontend/next-env.d.ts
+__pycache__/
+*.pyc
+```
+
+不得使用可能覆盖 `data/` 或远端 `.env` 的 destructive sync。不得把 host
+`node_modules`、host `.next`、macOS build artifacts 或本地 `.env` 复制到远端或镜像。
+
+### 10.3 Base image、架构与 image identity evidence
+
+未来 Docker/runtime gate 必须保存以下实际证据，不得用 tag 名称或静态计划替代：
+
+```text
+node:22.23.0-bookworm-slim resolved RepoDigest / base image ID
+actual linux/arm64/v8 architecture
+edge-mes-dashboard:local final image ID
+final image size
+source release ID / commit
+resolved Compose baseline
+```
+
+本地六文件实现阶段不得填写虚构 digest、image ID、size 或 ARM64 PASS。只有真实 Pi
+build/run 后才能声明相关结果。
+
+### 10.4 Host port 3001 listener 与 firewall preflight
+
+在复制 release 或 build 前，记录 bounded listener/firewall preflight：
+
+```bash
+cd /opt/edge-mes-demo
+
+date -Is
+ss -ltnp
+
+if command -v nft >/dev/null 2>&1; then
+  sudo nft list ruleset
+fi
+
+if command -v ufw >/dev/null 2>&1; then
+  sudo ufw status
+fi
+
+if command -v iptables >/dev/null 2>&1; then
+  sudo iptables -S
+fi
+```
+
+不假设 `nft`、`ufw`、`iptables` 全部存在；必须记录实际可用工具和命令结果。
+
+冻结终局：
+
+```text
+发现 host port 3001 已有 listener -> HOLD，回 PM
+无法确认 3001 listener/firewall 边界 -> HOLD
+不得现场改成其他 port
+不得停止、kill 或重配置未知 listener
+```
+
+Repository 中没有静态端口冲突不等于 Pi host preflight PASS。
+
+### 10.5 Build 前 resource preflight
+
+在任何 Dashboard build 前，记录 release 和 rollback identity，并运行：
+
+```bash
+cd /opt/edge-mes-demo
+
+release_id=<PM-approved-release-id>
+docker_root=$(docker info --format '{{.DockerRootDir}}')
+printf 'DockerRootDir=%s\n' "$docker_root"
+
+docker system df
+docker builder du
+
+if docker image inspect edge-mes-dashboard:local \
+  --format 'CURRENT {{.Id}} {{.Size}}'; then
+  :
+else
+  printf 'CURRENT_DASHBOARD_IMAGE ABSENT\n'
+fi
+
+if docker image inspect "edge-mes-dashboard:rollback-${release_id}" \
+  --format 'ROLLBACK {{.Id}} {{.Size}}'; then
+  :
+else
+  printf 'ROLLBACK_DASHBOARD_IMAGE ABSENT\n'
+fi
+
+df -h /opt/edge-mes-demo
+df -h "$docker_root"
+free -h
+swapon --show
+
+printf '%s\n' '--- memory/swap sample 1 ---'
+date -Is
+free -h
+swapon --show
+sleep 30
+printf '%s\n' '--- memory/swap sample 2 ---'
+date -Is
+free -h
+swapon --show
+```
+
+`swapon --show` 明确返回无已配置 Swap 时，应记录为 `none`；命令或 required metric
+无法读取时为 `HOLD`，不得把“未知”当作零。
+
+Build 前门禁：
+
+```text
+/opt/edge-mes-demo 所在 filesystem至少6 GiB free
+DockerRootDir所在filesystem至少6 GiB free
+
+存在rollback image时，DockerRootDir required free：
+max(6 GiB, 2 × rollback image size + 3 GiB)
+
+两个间隔30秒的preflight sample中Swap持续增长 -> HOLD
+required metric无法读取 -> HOLD
+需要旧Dashboard rollback但required rollback assets缺失 -> HOLD
+```
+
+若 Docker root 与 `/opt/edge-mes-demo` 位于同一 filesystem，只计算一次，但记录中必须
+明确二者相同。
+
+已有上一版 Dashboard 时，build 前还必须保存：
+
+```text
+source release ID / commit
+old release files
+old Dashboard image tag / ID
+resolved Compose baseline
+service / container baseline
+```
+
+### 10.6 Build fail-closed 与 deploy 前 postflight
+
+未来 build 使用 PM 授权的 Dashboard build 命令。发生任一情况：
+
+```text
+docker compose build dashboard失败
+timeout
+OOM kill
+incomplete image
+```
+
+必须立即停止，并遵守：
+
+```text
+不得docker compose up
+不得使用host node_modules
+不得使用host .next
+不得使用macOS artifact
+不得改变origin/profile
+不得更换Node image绕过
+不得取消non-root运行边界
+不得自动docker system prune或docker builder prune
+不得删除rollback image
+```
+
+Build 成功后、启动新 Dashboard 前，重新运行 Section 10.5 的资源命令，记录新
+Dashboard image ID/size 与 BuildKit cache 增量；再等待 120 秒并执行两个间隔 30 秒的
+memory/Swap samples。
+
+Postflight 必须同时满足：
+
+```text
+相关filesystem至少3 GiB free
+new Dashboard image + BuildKit cache增长不超过3 GiB
+Dashboard final image不超过1 GiB
+等待120秒后Swap相对build前baseline增长不超过256 MiB
+两个间隔30秒的postflight samples中Swap不继续增长
+```
+
+任一条件失败：
+
+```text
+不得启动新Dashboard
+保留旧release/image与rollback assets
+HOLD并回PM
+不得用自动cleanup绕过阈值
+```
+
+### 10.7 Dashboard-only update 与 startup/restart terminal gate
+
+唯一 Dashboard-only update 路径：
+
+```bash
+cd /opt/edge-mes-demo
+docker compose up -d --build --no-deps dashboard
+```
+
+以下命令不是 Dashboard-only update：
+
+```bash
+docker compose up -d --build
+docker compose down
+```
+
+Section 2、3、6 中保留的全量 Compose 命令属于既有通用运维流程，不得在 Gate B
+Dashboard-only release 中使用。Dashboard-only update 不得主动重建或重启：
+
+```text
+API
+PostgreSQL
+Collector
+Grafana
+V-PLC
+Simulator
+Prometheus
+其他core services
+```
+
+启动后最多等待 120 秒进入 `healthy`。在 bounded 观察窗口内记录：
+
+```bash
+docker compose ps dashboard
+docker inspect edge-mes-dashboard \
+  --format 'status={{.State.Status}} restart_count={{.RestartCount}} health={{if .State.Health}}{{.State.Health.Status}}{{else}}none{{end}} image={{.Image}}'
+docker compose logs --tail 200 dashboard
+```
+
+日志必须使用 bounded `--tail` 或 bounded `--since`，不得无界跟踪。
+
+任一条件为失败：
+
+```text
+超过5次restart
+持续restarting
+持续unhealthy
+120秒未healthy
+持续crash-loop、log-loop或request/retry storm
+```
+
+失败后执行：
+
+```bash
+docker compose stop dashboard
+```
+
+然后必须证明 Dashboard 不再处于：
+
+```text
+running
+restarting
+持续unhealthy
+```
+
+`depends_on: service_started` 只表示启动顺序，不是 API readiness 证明。Dashboard
+healthcheck 只能访问容器本地 `http://127.0.0.1:3000/health`，不得访问 API、DB 或
+accepted facts。
+
+### 10.8 Rollback 与首次部署取消
+
+#### 10.8.1 已有上一版 Dashboard
+
+部署前必须具有 Section 10.5 列出的完整 rollback assets。失败时先恢复上一版
+`docker-compose.yml` 与 frontend release files，再恢复旧 image identity：
+
+```bash
+cd /opt/edge-mes-demo
+docker image tag "edge-mes-dashboard:rollback-${release_id}" edge-mes-dashboard:local
+docker compose config --quiet
+docker compose up -d --no-deps --force-recreate dashboard
+docker compose ps dashboard
+curl -fsS http://127.0.0.1:3001/health
+```
+
+Rollback 后还必须执行一次 bounded accepted-events page request，并验证：
+
+```text
+Dashboard /health通过
+一次bounded accepted-events request符合fail-closed或ready合同
+API/PostgreSQL/Collector/V-PLC未被重建
+其他core services未被重建
+remote data/未被覆盖
+remote .env未被覆盖
+```
+
+缺少旧 release files、old image tag/ID、resolved Compose baseline、service/container
+baseline 或 post-rollback evidence 时为 `HOLD`，不得声明 rollback PASS。
+
+#### 10.8.2 首次部署且无上一版 Dashboard
+
+终局名称只能是：
+
+```text
+first-deployment cancellation / existing-core-services non-impact validation
+```
+
+失败后：
+
+```bash
+cd /opt/edge-mes-demo
+docker compose stop dashboard
+docker compose rm -sf dashboard
+```
+
+随后恢复部署前 Compose/release files，并验证：
+
+```bash
+docker compose config --quiet
+```
+
+必须证明：
+
+```text
+无edge-mes-dashboard container
+host port 3001不再监听
+core service/container/image状态与部署前baseline一致
+核心service health符合部署前基线
+API/PostgreSQL/Collector/Grafana/V-PLC未被重建
+其他core services未被重建
+remote data/未覆盖或重新初始化
+remote .env未覆盖或重新初始化
+```
+
+该路径不存在可恢复的旧 Dashboard，因此不得声称：
+
+```text
+Dashboard rollback PASS
+Dashboard /health PASS
+accepted-events page PASS
+```
+
+两条路径都禁止：
+
+```text
+docker compose down
+volume delete
+image prune
+data restore
+DB migration rollback
+其他service rebuild
+```
+
+### 10.9 Real Case A/B/C 三层 evidence boundary
+
+只有 PM 单独授权真实 Raspberry Pi runtime evidence 后，才能执行以下 case：
+
+```text
+Case A — mandatory:
+real accepted station_result / production_result=ok
+
+Case B — mandatory:
+real accepted station_result / production_result=nok
+
+Case C — conditional:
+real accepted station_nok detail companion
+```
+
+真实 Case C 不存在时，必须记录：
+
+```text
+NOT AVAILABLE / NOT VERIFIED
+```
+
+不得用 synthetic fixture、mock、API-only fixture、Case B 或 cycle event 替代 Case C。
+不得用 cycle event 替代 Case A，也不得用 `station_nok` 替代 Case B。
+
+每个 case 必须完成：
+
+```text
+PostgreSQL production_accepted_station_event_fact raw row
+-> API raw JSON exact 22 fields
+-> Dashboard visible/display rule
+```
+
+使用以下字段完成身份核对：
+
+```text
+fact_key
+source_event_id
+content_fingerprint
+event_ts
+accepted_at
+```
+
+每个 case 使用独立 bounded query，使目标 fact 成为 API response 的 `items[0]`。只可声明
+该目标第一项闭环，不得把第一项 evidence 扩大为整页全部 rows 的三层闭环。
+
+Exact 22 fields：
+
+```text
+line_id
+plc_id
+station_id
+station_type
+profile_id
+config_hash
+config_version
+event_type
+production_result
+unit_id
+dmc
+cycle_counter
+source_event_id
+event_ts
+accepted_at
+fact_key
+content_fingerprint
+nok_code
+nok_origin
+nok_detail_code
+nok_detail_source_event_id
+nok_detail_evidence_fact_key
+```
+
+每个 case 的逐字段表必须包含全部 22 行，并使用以下列：
+
+| field | DB raw value | API raw JSON value | display rule | Dashboard visible value | PASS/FAIL |
+| --- | --- | --- | --- | --- | --- |
+| `<one of the exact 22 fields>` | `<raw DB value>` | `<raw API value>` | `<frozen display rule>` | `<visible value>` | `<PASS or FAIL>` |
+
+Display placeholder 不得写入 API raw JSON value 列。Dashboard process `/health`、API
+`/health`、Docker image、截图、synthetic fixture、mock response 或 API-only evidence
+均不能替代真实三层 evidence。

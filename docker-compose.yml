@@ -89,6 +89,36 @@ services:
       postgres:
         condition: service_healthy
 
+  dashboard:
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile
+    image: edge-mes-dashboard:local
+    container_name: edge-mes-dashboard
+    restart: "on-failure:5"
+    environment:
+      TZ: Asia/Shanghai
+      NODE_ENV: production
+      HOSTNAME: 0.0.0.0
+      PORT: "3000"
+      EDGE_MES_DASHBOARD_API_ORIGIN: http://api:8000
+      EDGE_MES_DASHBOARD_API_ORIGIN_PROFILE: container
+    ports:
+      - "3001:3000"
+    depends_on:
+      api:
+        condition: service_started
+    healthcheck:
+      test:
+        - CMD
+        - node
+        - -e
+        - fetch('http://127.0.0.1:3000/health').then(r=>{if(!r.ok)process.exit(1)}).catch(()=>process.exit(1))
+      interval: 10s
+      timeout: 3s
+      retries: 10
+      start_period: 20s
+
   grafana:
     image: grafana/grafana:latest
     container_name: edge-mes-grafana
