@@ -57,7 +57,9 @@ services:
         condition: service_healthy
 
   collector:
-    build: ./collector
+    build:
+      context: .
+      dockerfile: collector/Dockerfile
     container_name: edge-mes-collector
     restart: unless-stopped
     environment:

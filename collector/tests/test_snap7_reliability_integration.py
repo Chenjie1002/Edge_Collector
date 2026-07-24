@@ -3,6 +3,7 @@ from __future__ import annotations
 import socket
 import time
 import unittest
+from contextlib import contextmanager
 from zoneinfo import ZoneInfo
 
 import snap7
@@ -23,8 +24,12 @@ BOOT_ID = "12345678-1234-1234-1234-123456789abc"
 class IntegrationStorage:
     def __init__(self) -> None:
         self.persisted: list[dict] = []
+        self.persist_calls = 0
+        self.accepted_facts: list[object] = []
+        self.accepted_fact_calls = 0
         self.ack_ok = 0
         self.errors: list[dict] = []
+        self.events: list[str] = []
 
     def upsert_collector_runtime_status(self, **kwargs) -> None:
         return None
@@ -32,12 +37,47 @@ class IntegrationStorage:
     def get_max_cycle_counter(self, **kwargs) -> int | None:
         return None
 
-    def persist_cycle(self, **kwargs) -> int:
+    def persist_cycle(self, **_kwargs) -> int:
+        raise AssertionError("internal-commit persist_cycle must not be called in atomic path")
+
+    def persist_cycle_no_commit(self, **kwargs) -> int:
+        self.persist_calls += 1
+        self.events.append("persist_cycle")
         self.persisted.append(kwargs)
         return 1
 
+    @contextmanager
+    def transaction(self):
+        accepted_snapshot = list(self.accepted_facts)
+        persisted_snapshot = list(self.persisted)
+        self.events.append("begin")
+        try:
+            yield
+        except Exception:
+            self.accepted_facts = accepted_snapshot
+            self.persisted = persisted_snapshot
+            self.events.append("rollback")
+            raise
+        self.events.append("commit")
+
+    def insert_accepted_station_event_fact_no_commit(self, fact) -> str:
+        self.accepted_fact_calls += 1
+        self.events.append("accepted_fact")
+        for existing in self.accepted_facts:
+            if existing.fact_key == fact.fact_key:
+                if existing.content_fingerprint != fact.content_fingerprint:
+                    raise ValueError("accepted station-event fact conflict: fact_key content differs")
+                return "existing"
+            if existing.source_identity == fact.source_identity:
+                if existing.content_fingerprint != fact.content_fingerprint:
+                    raise ValueError("accepted station-event fact conflict: source identity content differs")
+                return "existing"
+        self.accepted_facts.append(fact)
+        return "inserted"
+
     def mark_cycle_ack_ok(self, **kwargs) -> None:
         self.ack_ok += 1
+        self.events.append("ack_ok")
 
     def mark_cycle_ack_failed(self, **kwargs) -> None:
         raise AssertionError("ACK write should not fail")
@@ -60,6 +100,32 @@ def set_s7_string(db: bytearray, offset: int, value: str, max_length: int) -> No
     db[offset] = max_length
     db[offset + 1] = len(encoded)
     db[offset + 2 : offset + 2 + len(encoded)] = encoded
+
+
+class TrackingSnap7Client:
+    def __init__(self, events: list[str]) -> None:
+        self.client = snap7.client.Client()
+        self.events = events
+        self.reads: list[tuple[int, int, int]] = []
+        self.writes: list[tuple[int, int, bytes]] = []
+
+    def get_connected(self) -> bool:
+        return self.client.get_connected()
+
+    def connect(self, *args, **kwargs) -> None:
+        self.client.connect(*args, **kwargs)
+
+    def db_read(self, db_number: int, start: int, size: int) -> bytearray:
+        self.reads.append((db_number, start, size))
+        return self.client.db_read(db_number, start, size)
+
+    def db_write(self, db_number: int, start: int, data: bytearray) -> None:
+        self.client.db_write(db_number, start, data)
+        self.writes.append((db_number, start, bytes(data)))
+        self.events.append("ack_write")
+
+    def disconnect(self) -> None:
+        self.client.disconnect()
 
 
 class Snap7ReliabilityIntegrationTest(unittest.TestCase):
@@ -108,7 +174,8 @@ class Snap7ReliabilityIntegrationTest(unittest.TestCase):
         worker.resolved_config_registry = InMemoryResolvedConfigRegistry(
             {worker.resolved_config_snapshot.config_hash: worker.resolved_config_snapshot}
         )
-        worker.client = snap7.client.Client()
+        client = TrackingSnap7Client(storage.events)
+        worker.client = client
         worker.line_plan = plans["line"]
         worker.station_runtimes = [
             StationRuntime(station=station, plan=plans[station.station_id])
@@ -117,17 +184,35 @@ class Snap7ReliabilityIntegrationTest(unittest.TestCase):
 
         try:
             worker.poll_once()
-            handshake = worker.client.db_read(101, 6, 1)
+            handshake = client.db_read(101, 6, 1)
         finally:
             worker._disconnect()
             server.stop()
             server.destroy()
 
         self.assertEqual(1, len(storage.persisted))
+        self.assertEqual(1, storage.persist_calls)
+        self.assertEqual(1, storage.accepted_fact_calls)
+        self.assertEqual(1, len(storage.accepted_facts))
+        fact = storage.accepted_facts[0]
+        self.assertEqual("LINE_001", fact.line_id)
+        self.assertEqual("PLC_001", fact.plc_id)
+        self.assertEqual("WS01", fact.station_id)
+        self.assertEqual(1, fact.cycle_counter)
+        self.assertEqual("station_result", fact.event_type)
+        self.assertEqual("ok", fact.production_result)
+        self.assertTrue(fact.fact_key)
+        self.assertTrue(fact.content_fingerprint)
         self.assertEqual(BOOT_ID, storage.persisted[0]["plc_boot_id"])
         self.assertEqual(1, storage.ack_ok)
+        self.assertEqual([104, 101, 102, 103, 101], [db_number for db_number, _, _ in client.reads])
+        self.assertEqual(1, len(client.writes))
         self.assertTrue(util.get_bool(handshake, 0, 1))
         self.assertEqual([], storage.errors)
+        self.assertEqual(
+            ["begin", "accepted_fact", "persist_cycle", "commit", "ack_write", "ack_ok"],
+            storage.events,
+        )
 
 
 if __name__ == "__main__":
