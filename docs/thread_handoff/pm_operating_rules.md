@@ -1,6 +1,6 @@
 # ChatGPT PM Operating Rules
 
-Updated: 2026-06-29
+Updated: 2026-07-24
 
 Applies to: Edge MES Demo ChatGPT PM / Codex Thread workflow.
 
@@ -76,6 +76,28 @@ Uncertainty handling follows the same tiering:
 
 - If uncertainty affects safety, authority, PLC/V-PLC/runtime behavior, DB write path, ACK/read_done, deployment, or irreversible Git actions, stop and ask PM.
 - If uncertainty only affects low-risk wording or mechanical docs, make a conservative best effort and report assumptions.
+
+### Remote config deployment and runtime activation separation
+
+Remote config deployment is a Level 2 mutation even when the file content is already committed and
+its change is small. It must not be combined with Collector restart, Collector activation, Compose
+lifecycle, production data generation or D3 by convenience.
+
+Before authorizing any remote config mutation, PM must freeze and record:
+
+- the exact remote host and authority source;
+- the exact read-only config mount source path and the container-visible target path;
+- the current remote file identity, ownership and permissions;
+- the exact local source identity, including Git baseline and file hash;
+- the backup or rollback source and the conditions under which rollback may be executed;
+- transport and privilege requirements;
+- verification commands and stop conditions;
+- explicit confirmation that config deployment does not authorize restart or activation.
+
+Remote read authority, remote mutation authority, Docker/Compose authority, restart authority,
+activation authority and rollback authority are separate grants. A planning report may recommend
+one of them but cannot grant it. A successful config copy proves only deployment and identity; it
+does not prove runtime load, Collector health, accepted-fact generation or production readiness.
 
 ## 4. Git safety rules
 
@@ -340,6 +362,13 @@ Next gate:
 - eligible for:
 - PM approval required before:
 
+MVP 路径一致性：
+- 当前任务是否仍直接服务于已批准 MVP：yes / no
+- 对应的 MVP 交付物或验收声明：
+- 是否引入超出 MVP 的产品能力、威胁模型、证据体系或基础设施：no / yes（列出）
+- 是否出现任务膨胀或验证框架替代产品交付：no / yes
+- 若为 no/yes 异常，PM 处理建议：scope reset / backlog / 独立 Level 2 项目 / 其他
+
 Thread 输出 / 上下文评估:
 - 本次输出长度：短 / 中 / 长
 - 当前 Thread 是否建议继续：yes / no
@@ -417,3 +446,101 @@ credible false-PASS or safety-boundary violation remains, new diagnostic complet
 move to backlog or recommendations. A reviewer may not require proof of every theoretically
 possible state combination when those combinations cannot change the authorized PASS/HOLD
 claim.
+
+## 13. Mandatory MVP-path alignment check
+
+At the end of every Architecture / Integration, Reliability, Data Quality or Verification task,
+the executing Thread must explicitly reassess whether the completed work and the proposed next
+gate still directly serve the currently approved MVP. This is a mandatory completion gate, not
+an optional recommendation.
+
+The reassessment must identify:
+
+- the approved MVP deliverable or product claim that the task directly supports;
+- the minimum terminal, safety or truth invariant that justified the work;
+- any newly introduced product capability, threat model, evidence/retention framework,
+  infrastructure, operational topology or review requirement;
+- whether task or candidate size, number of repair rounds, number of blocker classes, report
+  volume or validation complexity is growing faster than the MVP product claim;
+- whether the work is still advancing the product, or whether the validation/governance
+  mechanism has become the primary deliverable.
+
+A task remains on the MVP path only when all of the following are true:
+
+- it is necessary to implement or credibly validate an already approved MVP behavior;
+- it prevents a concrete false PASS, stale production truth, unsafe mutation, foreign-object
+  termination, unowned process contamination or synthetic/production evidence confusion;
+- it does not silently add a broader product claim, threat model, audit/forensics subsystem,
+  retention model, infrastructure layer or runtime topology;
+- the assurance effort is proportional to the user-visible or operational MVP claim;
+- the next proposed task is the smallest action that materially advances the MVP.
+
+The following are warning signs of scope drift and task inflation:
+
+- repeated repair/re-review cycles introduce new blocker classes instead of closing the original
+  product risk;
+- executable candidates, reports, matrices or evidence schemas grow substantially while the MVP
+  behavior being proved remains unchanged;
+- diagnostic completeness, archive uniqueness, full failure self-containment or theoretical state
+  coverage becomes blocker authority without a direct false-PASS or safety consequence;
+- a validation framework, governance process or evidence protocol becomes more complex than the
+  product change it exists to validate;
+- the next task mainly improves the review system rather than the MVP product or its minimum safe
+  execution boundary.
+
+If any warning sign is present, the Thread must report it and may not silently recommend another
+repair. PM intake must independently classify the result as one of:
+
+```text
+MVP-ALIGNED
+MVP-ALIGNED WITH BACKLOG ITEMS
+SCOPE RESET REQUIRED
+SEPARATE LEVEL 2 PROJECT REQUIRED
+```
+
+When the classification is `SCOPE RESET REQUIRED`, the current repair chain is paused. PM must
+restate the MVP claim, retain only requirements that directly prevent the blocker outcomes in
+Section 12, downgrade other findings to recommendations/backlog, and issue a narrower task.
+When the classification is `SEPARATE LEVEL 2 PROJECT REQUIRED`, that work must receive an
+independent objective, scope, allowlist, risk assessment and authorization; it must not block the
+existing MVP by conversational momentum.
+
+Every task window report and every PM intake must include an `MVP 路径一致性` section. A task
+may not conclude `PASS` or `PASS WITH RECOMMENDATIONS` without this section. If the Thread omits
+it, PM must treat the completion report as incomplete and request only the missing alignment
+assessment before authorizing the next gate.
+
+## 14. Data-first MVP and deferred UI acceptance policy
+
+The approved Phase-2 execution order is data-first. Collector acceptance, production-fact
+persistence, bounded API contracts and OEE / Quality / Trace data semantics may continue while a
+Dashboard-only browser-rendering or visual acceptance gap remains open.
+
+A UI-only gap is `DEFERRED / NON-BLOCKING` when all of the following are true:
+
+- the authoritative DB and API data path has independent, production-relevant evidence;
+- no evidence shows that the UI is displaying stale, false or cross-scope production truth;
+- the UI cannot mutate production data, equipment control state or authority boundaries;
+- the gap is limited to rendering proof, layout, empty-state presentation, interaction polish,
+  screenshots or browser automation;
+- the current gate does not explicitly define a demonstrable UI as its primary deliverable.
+
+A UI issue becomes a current blocker only when it can:
+
+- display stale, incorrect or synthetic data as fresh production truth;
+- write or mutate production data, equipment state or security authority;
+- conceal a DB/API contract, data-quality or failure-state defect;
+- make the product unavailable for an explicitly authorized demonstration or UI delivery gate;
+- prevent final integration, release acceptance or a committed operational workflow.
+
+A deferred UI acceptance debt must remain visible in `docs/current_status.md` and the active PM
+handoff. It must not be reported as `PASS`, silently dropped or used to claim a complete
+DB/API/Dashboard runtime gate. It may coexist with continued MVP development and with an archived
+Full Runtime `HOLD`.
+
+Repeated browser-evidence or harness failures that do not establish a product defect must not
+create an unlimited repair chain. After the PM stopping rule is reached, the branch is archived
+and additional retries require a new product-level objective, not merely another evidence-tool
+repair. Final UI acceptance should prefer the minimum proportional evidence: real runtime, fixed
+test data, human browser inspection, key screenshots and a small focused smoke test. Building a
+generic browser evidence or forensics platform is outside the MVP unless separately authorized.

@@ -1,8 +1,119 @@
 # 当前状态 / Codex 恢复上下文
 
-更新时间：2026-07-15
+更新时间：2026-07-24
 工作目录：`/Users/chenjie/Documents/MES/edge-mes-demo`
 树莓派部署目录：`/opt/edge-mes-demo`
+
+## 0E. 2026-07-24 D2-R7A closeout 与 D2-R7B planning boundary
+
+当前 live repository baseline：
+
+```text
+branch: main
+HEAD: 34d625ca89bd7fa7fce4c54691b3838c20f77150
+origin/main: 34d625ca89bd7fa7fce4c54691b3838c20f77150
+ahead / behind: 0 / 0
+cached set: empty
+latest commit: 34d625c Add PM handoff after D2-R7A closeout
+```
+
+D2-R7A 当前权威状态：
+
+```text
+D2-R7A Collector package closure:
+CLOSED / VERIFIED / COMMITTED / PUSHED
+
+implementation closeout commit:
+ddf55be6d1f33f37235789aa28dbdc441ec313a4
+Close D2-R7A collector package closure gate
+
+final independent Verification:
+D2-R7A-R4-R1 PASS
+```
+
+D2-R7A 已建立本地 package closure、non-DB regression、Compose render、validation
+image、container import、static mapping、host/container identity consistency 和 cleanup
+证据。该证据不等于远程部署、Collector 激活、生产 accepted-fact 生成或 D3。
+
+当前 next-gate authority：
+
+```text
+D2-R7B:
+ELIGIBLE FOR PM PLANNING ONLY
+NOT STARTED
+NOT AUTHORIZED FOR IMPLEMENTATION
+
+recovered intended objective:
+deploy the exact-HEAD config/mapping.yaml to the remote Collector
+read-only config mount source and verify file identity
+
+strict boundary:
+config deployment only
+no Collector activation
+no Collector restart
+no production data generation
+no DB/API mutation
+no D3
+```
+
+D2-R7B planning 必须先恢复并冻结 remote host、mount source、current remote identity、
+exact-HEAD mapping identity、backup/rollback source、ownership/permissions、transport and
+privilege requirements，以及 deployment/activation separation。SSH、远程读取、远程复制、
+Docker lifecycle、restart、activation 和 Git mutation 均需要新的显式 authority，不能从
+本状态文件自动推断。
+
+本文件下方较早的 Sprint 3 / Dashboard / runtime ledger 继续作为历史证据保留；当前 gate
+和 next authority 以本节、最新已提交 gate report、最新 PM handoff 与 live repository 为准。
+
+## 0D. 2026-07-23 MVP 目标重排：数据链路优先，UI 验收后置
+
+当前批准的 MVP 主目标是先完成并持续验证真实生产数据链路：
+
+```text
+PLC / V-PLC event truth
+-> Collector acceptance and persistence
+-> production_accepted_station_event_fact
+-> bounded API contracts
+-> OEE / Quality / Trace data semantics
+```
+
+Dashboard/UI 仍属于最终 MVP 展示面，但不再作为数据、Collector、DB、API、OEE、
+Quality 或 Trace 主线继续推进的前置阻塞条件。UI 视觉完善、浏览器渲染证据、空状态、
+布局和交互一致性统一后置到最终集成阶段。
+
+当前可信运行证据：
+
+```text
+LPD-API4 API deployment repair: CLOSED / PASS WITH RECOMMENDATIONS
+LPD-L2D PostgreSQL known-empty: CLOSED / PASS
+LPD-L2D accepted-events API known-empty: CLOSED / PASS
+DB/API same-scope known-empty gate: CLOSED / PASS
+Dashboard explicit-empty browser evidence: NOT ESTABLISHED / DEFERRED ACCEPTANCE DEBT
+Known-empty three-layer DB/API/UI gate: OPEN / NON-BLOCKING FOR MVP DEVELOPMENT
+Full Runtime Attempt-3: HOLD / ARCHIVED / NOT A DEVELOPMENT BLOCKER
+```
+
+Attempt-3 的 L3、L3B、L3C 和 L3D 连续 HOLD 均未建立 Dashboard 产品缺陷；最后的
+L3D blocker 已定位为 remote `docker inspect` Go-template 被 shell 提前展开的取证命令
+缺陷。`LPD-L3E` 与 Attempt-3 browser retry 均禁止。不得把 UI runtime evidence 写成
+PASS，也不得让该证据债务继续触发新的 browser harness、通用证据平台或重复修复链。
+
+UI 只有在以下情况才重新升级为当前 blocker：
+
+- 显示错误、陈旧或伪造的生产数据；
+- UI 操作可能修改生产数据、控制状态或权限边界；
+- UI 错误掩盖 DB/API 合同或数据质量失败；
+- 页面完全不可访问，且当前 gate 明确以可演示 UI 为交付物；
+- 最终发布或最终集成验收明确要求真实浏览器证据。
+
+当前允许的项目方向：
+
+1. 继续推进数据模型、Collector、持久化、bounded API、OEE、Quality 与 Trace 真值能力；
+2. 每个后续 gate 继续保持 exact scope、数据真实性和无诊断字段泄漏；
+3. UI acceptance debt 保留在 durable status 中，但不阻塞上述主线；
+4. 最终集成阶段采用真实 runtime、固定测试数据、人工浏览器检查、关键截图和少量
+   focused smoke test，一次性完成 UI 验收；
+5. 未经新的 PM 目标重评，不再打开 Attempt-3 browser evidence 分支。
 
 ## 0A. 2026-07-15 Dashboard Raspberry Pi Gate B static implementation and runtime/deployment planning closeout
 
@@ -190,30 +301,18 @@ Level 2 子项目。
 
 ## 0. 当前 PM / Codex 协作状态
 
-当前主线：Phase-2 Sprint 3 Dashboard Raspberry Pi Runtime Deployment Planning post-push docs/status sync，随后进入 ChatGPT PM handoff。
+当前主线：D2-R7A 已完成本地 package closure 全闭环。当前只允许先完成本次 Level 0 governance/status reconciliation；随后 D2-R7B 仅可进入独立 Architecture / Integration planning，不得直接部署、restart、activation、生成生产数据或进入 D3。Dashboard/UI runtime 验收继续作为最终集成阶段的非阻塞 acceptance debt。
 
-Last verified baseline before this docs/status sync:
+Last verified baseline before this governance/status reconciliation:
 
 ```text
 live HEAD / origin/main at authoring time:
-b41e1ab0611c55b4b9786d86e9874d4d644d2faf
-b41e1ab Close Gate B runtime deployment planning gates
+34d625ca89bd7fa7fce4c54691b3838c20f77150
+34d625c Add PM handoff after D2-R7A closeout
 
-preceding Gate B static implementation commit:
-8ddba3bd547e9e9bd064b002c150b81324833636
-8ddba3b Add Dashboard Raspberry Pi Docker integration
-
-preceding Gate A handoff commit:
-683a8a0eb9f901dbc5c53c9bef5c4e68acf95ffb
-683a8a0 Add PM handoff after Gate A closeout
-
-preceding Gate A docs/status sync commit:
-40c95bda9aafcba0aa38e2d1467c5ddcbcae5dbf
-40c95bd Sync Gate A consumer truth status
-
-preceding Gate A implementation commit:
-a3cf64de31bf5eb12a1aa3eeed52aa3a451b8e79
-a3cf64d Harden accepted-events consumer truth
+D2-R7A implementation closeout:
+ddf55be6d1f33f37235789aa28dbdc441ec313a4
+ddf55be Close D2-R7A collector package closure gate
 
 branch:
 main
