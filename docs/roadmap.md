@@ -1,7 +1,7 @@
 # Edge MES Phase-2 Roadmap
 
-更新时间：2026-07-24
-状态：Phase-2 MVP Execution — D2-R7A closed / D2-R7B planning only
+更新时间：2026-07-28
+状态：Phase-2 MVP Execution — D2-R7B local contract gate closed / Git and remote gates pending
 Phase-1 基线：最终验收 PASS，GitHub freeze/tag 已完成
 
 ## 1. 当前里程碑
@@ -61,6 +61,27 @@ D2-R7B 的 recovered objective 是将 exact-HEAD `config/mapping.yaml` 部署到
 Collector 的只读 config mount source 并验证文件身份。该 gate 必须保持 config deployment
 与 Collector restart/activation 分离；planning、professional review、implementation、
 independent Verification、PM intake 和 explicit Git closeout 不得合并或自动继承 authority。
+
+### 1C. 2026-07-28 D2-R7B-I1 R27 local contract closeout and remote re-entry boundary
+
+R27 local implementation、Reliability 与 Verification 已闭环：R27-R3 implementation、
+R27-R4 Reliability re-review 与 R27-R5 Verification 均为 PASS，R27 local contract gate
+为 `CLOSED / PM-VERIFIED`。R27-R2 scope reset 下批准的 threat model 是：
+
+```text
+one authorized orchestrator
+one owned SSH child per phase
+persisted manifest-bound helpers
+no concurrent untrusted same-directory writer
+postflight remains final deployed-identity authority
+```
+
+`REL-R27-R2-UPLOAD-001` 与 `REL-R27-R2-DEPLOY-001` 是 deferred、non-blocking
+hardening backlog；`REL-R27-R2-ORCH-001` 已 closed。source、tests、manifests 与 R27
+reports 仍未 committed，D2-R7B remote deployment 尚未关闭。R26 仅为 historical evidence，
+current remote state 未观察；当前不存在 cleanup、eligibility、deployment、restart 或
+activation authority。Git closeout 必须先于任何新的 remote execution authority，且上述
+authority 不能从 R27 的 PASS 或本 roadmap 自动继承。
 
 ## 2. Phase-2 定位
 
@@ -178,22 +199,17 @@ flowchart LR
 
 ## 8. 当前下一步
 
-当前第一个产品推进动作不是远程部署，而是独立的 D2-R7B Architecture / Integration
-planning gate。该 planning 应只恢复和冻结：
+当前下一步为：
 
-1. 目标远程节点及其 authority 来源；
-2. 当前 Collector read-only config mount source；
-3. exact-HEAD `config/mapping.yaml` 的 bytes、SHA-256、解析后 config hash 与关键身份字段；
-4. 远端现有 mapping 的身份、ownership、permissions 和 drift；
-5. backup/rollback source、失败停止条件和恢复边界；
-6. transport、privilege、SSH 和 remote Docker authority 是否可用；
-7. config deployment 与 Collector restart/activation 的严格分离；
-8. 是否需要 Reliability、Data Quality 或 Verification preflight。
-
-该 planning gate 不得执行 SSH mutation、remote file copy、Docker/Compose lifecycle、
-Collector restart/activation、DB/API mutation、生产数据生成、D3 或 Git stage/commit/push。
-任何 remote read、remote mutation、implementation 或 deployment 都需要后续新的显式 PM
-和用户授权。
+1. 完成 R27-R6 status sync 与 ChatGPT PM durable intake；
+2. 建立 exact Git candidate set；
+3. 获得用户明确的 stage/commit/push authority；
+4. committed local closure 后，单独授权 current remote state refresh；
+5. 仅在 retained R26 staged object 仍存在且 task ownership 被证明时，另行授权
+   cleanup-only Level 2 mutation；
+6. cleanup 后执行 fresh read-only remote eligibility；
+7. eligibility PASS 后才考虑新的 one-shot config-only execution；
+8. restart、activation、runtime loading 与 D3 继续排除。
 
 D2-R7B 关闭后，项目再根据真实数据主线选择 OEE、Quality/Pareto 或 Trace relation 的最小
 数据语义切片；Dashboard/UI acceptance debt 继续保留到最终集成阶段，不重新打开

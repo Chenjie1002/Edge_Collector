@@ -1,8 +1,244 @@
 # 当前状态 / Codex 恢复上下文
 
-更新时间：2026-07-24
+更新时间：2026-07-28
 工作目录：`/Users/chenjie/Documents/MES/edge-mes-demo`
 树莓派部署目录：`/opt/edge-mes-demo`
+
+## 0G. 2026-07-28 D2-R7B-I1 R27 local contract gate closeout
+
+本节记录 R27 本地 contract gate 的 durable closeout 与当前 Git/remote re-entry
+boundary。Authority ID：`PM-R27-R6-260728-STATUS-01`。本 authority 为
+`AUTHORIZED ONCE / DOCS-ONLY / ISSUED NOW TO ARCHITECTURE / INTEGRATION / NOT REUSABLE`；
+在本节、roadmap 或 R27-R6 report 的第一次写入时消费，不能因结果为 PASS、HOLD 或
+partial write 而重试或复用。
+
+Fresh live Git baseline：
+
+```text
+project: /Users/chenjie/Documents/MES/edge-mes-demo
+branch: main
+HEAD: 8de5edbb504538a233abbcc80102cb714c9cee65
+origin/main: 8de5edbb504538a233abbcc80102cb714c9cee65
+ahead/behind: 0/0
+cached set: empty
+git diff --check: PASS
+config/mapping.yaml relative to HEAD: clean
+```
+
+R27 accepted durable reports：
+
+```text
+R27-R1 PASS / PM-VERIFIED / PM-ACCEPTED
+docs/reports/sprint4_d2_r7b_i1_r27_r1_mutation_helper_json_contract_repair.md
+10155 bytes / SHA-256 8a5a92f09e5c405331a68c4bb2d97f9999a175a0b6bf1a17b9590fe5dcd8968f
+
+R27-R2 HOLD / PM-REVIEWED / PM-ACCEPTED WITH SCOPE RESET
+docs/reports/sprint4_d2_r7b_i1_r27_r2_mutation_helper_json_contract_reliability_review.md
+25557 bytes / SHA-256 565cd2b26728b17e731d1cefd744a970f4b7e2606af0b704932a17cdceec1d13
+
+R27-R3 PASS / PM-VERIFIED / PM-ACCEPTED
+docs/reports/sprint4_d2_r7b_i1_r27_r3_orchestrator_phase_evidence_contract_repair.md
+15809 bytes / SHA-256 808effe132648e641dd3264c82c7bad7a987352ab0936a8a2a94e14abf23b0aa
+
+R27-R4 PASS / PM-REVIEWED / PM-ACCEPTED
+docs/reports/sprint4_d2_r7b_i1_r27_r4_orchestrator_phase_evidence_focused_reliability_rereview.md
+11745 bytes / SHA-256 440ea1aefe2b32946fb241fb999cc2bbc6065c28d0df0f044a261659af3407b4
+
+R27-R5 PASS / PM-VERIFIED / PM-ACCEPTED
+docs/reports/sprint4_d2_r7b_i1_r27_r5_orchestrator_phase_evidence_focused_verification.md
+24146 bytes / SHA-256 4680a9e92464a23ade01bfba5dacaf76520802c382d1677008695b2b6a3d9259
+```
+
+Active package identities and historical evidence：
+
+```text
+P2-R2 manifest:
+docs/reports/evidence/d2_r7b_p2_r2/manifest.sha256
+528 bytes / SHA-256 2ae13bd6dc17167f98d2d59efd882e8a568d5c0ae6f36cbbb9ecb6f2d21086dd
+verification: 6/6 PASS
+
+P2-R3 manifest:
+docs/reports/evidence/d2_r7b_p2_r3/manifest.sha256
+1122 bytes / SHA-256 8e5e99f5e52e87a6945b692ca8808b518e6cd360c84191f08aa9bf1d992f95c8
+verification: 9/9 PASS
+
+final orchestrator:
+docs/reports/evidence/d2_r7b_p2_r3/remote_i1_orchestrator.py
+63505 bytes / SHA-256 daa4b5056aeacdaf3781c3ccd6c7306dd728876d334ab59af244ebd35f08ee64
+
+final execution test:
+docs/reports/evidence/d2_r7b_p2_r3/test_d2_r7b_execution_contract.py
+102372 bytes / SHA-256 f19f4d0f19e6e21bfeb51931fa903cbf84eee107922be817ace9090050a5414c
+
+R26 historical report:
+docs/reports/sprint4_d2_r7b_i1_r26_exact_config_only_remote_execution.md
+10314 bytes / SHA-256 dd25adf90cd4c11f3e2611321b3ed4642785021c81e859f31b229f082936f3b2
+
+R26 final terminal:
+docs/reports/evidence/d2_r7b_i1_r26_exact_config_only_remote_execution/final_terminal.json
+12872 bytes / SHA-256 4799fc7e9cf27212cd9f696afa40f24c48cf69320bf0700b3ee39b5e7c5be600
+
+R26 raw terminal:
+docs/reports/evidence/d2_r7b_i1_r26_exact_config_only_remote_execution/raw_terminal.ndjson
+12872 bytes / SHA-256 4799fc7e9cf27212cd9f696afa40f24c48cf69320bf0700b3ee39b5e7c5be600
+
+R26 manifest:
+docs/reports/evidence/d2_r7b_i1_r26_exact_config_only_remote_execution/manifest.sha256
+453 bytes / SHA-256 257fb2945155d49e40638ea1dfedd4cc95aee127dca6a38fc7d72a8e8f362670
+verification: 3/3 PASS
+```
+
+R27 local gate classification：
+
+```text
+D2-R7B-I1 R27 local contract gate: CLOSED / PM-VERIFIED
+R27 artifacts: WRITTEN / UNSTAGED / UNCOMMITTED / UNPUSHED
+REL-R27-R2-ORCH-001: CLOSED / RELIABILITY CONFIRMED / VERIFICATION CONFIRMED
+REL-R27-R2-UPLOAD-001: DEFERRED / NON-BLOCKING HARDENING BACKLOG
+REL-R27-R2-DEPLOY-001: DEFERRED / NON-BLOCKING HARDENING BACKLOG
+```
+
+Approved scope-reset threat model：
+
+```text
+one authorized orchestrator
+one owned SSH child per phase
+persisted manifest-bound helpers
+no concurrent untrusted same-directory writer
+postflight remains final deployed-identity authority
+```
+
+R26 remains the retained historical terminal `HOLD_UPLOAD_INTERRUPTED /
+UPLOAD_STAGED_NO_REPLACEMENT`, with authority consumed/terminal; it is not current remote
+evidence. Current remote state is `NOT OBSERVED`. This local closeout makes no remote,
+runtime-load, restart, activation, deployment or production claim.
+
+Retained R26 local stage root was observed read-only and remained untouched：
+
+```text
+root: /private/var/folders/tk/bv85b0cs00v5x5x04n5816240000gn/T/d2-r7b-p2-r2.0mW7V5
+regular non-symlink directory / chenjie / uid 501 / mode 0700
+config/mapping.yaml: regular non-symlink / chenjie / uid 501 / mode 0600 / 7112 bytes
+SHA-256: d9bb5fcb017e6ab491e8643077c793bb018011d1cbe0698172e4c08823080c9d
+entries: config; config/mapping.yaml
+```
+
+Local closeout、Git closeout 与 remote authority 严格分离。R27-R6 只写入本地
+status/roadmap/report；Git index 仍 empty，未执行 stage、commit、push 或 tag；remote
+calls 为 0，未刷新 current remote state，也未执行 cleanup、eligibility、deployment、
+restart、activation、runtime loading 或 production acceptance。
+
+Bounded next sequence：
+
+```text
+R27-R6 status sync WRITTEN
+→ ChatGPT PM durable intake
+→ explicit exact-path Git closeout decision
+→ user authorization required before stage/commit/push
+→ after committed local closure, separately authorized current remote state refresh
+→ if the exact retained R26 upload object still exists and its task-owned identity is proven,
+  separately authorized cleanup-only mutation
+→ fresh read-only remote eligibility after cleanup
+→ a new one-shot config-only execution authority only if eligibility passes
+```
+
+上述序列中 PM intake 之后的任何动作均不由本 status 文件本身授权；每一项都必须
+获得新的、明确的 authority。唯一 next gate：`R27-R6 closeout/status artifacts
+WRITTEN → ChatGPT PM durable status-sync intake`。
+
+## 0F. 2026-07-27 D2-R7B-I1 R17-R4 authority reconciliation
+
+本节是当前 durable PM authority/status reconciliation。旧的 0E section 及其历史
+baseline、gate wording 和 planning boundary 保留不变；本节只 supersede 当前授权解释，
+不删除、覆盖或重写历史内容。
+
+Fresh live Git baseline：
+
+```text
+project: /Users/chenjie/Documents/MES/edge-mes-demo
+branch: main
+HEAD: 8de5edbb504538a233abbcc80102cb714c9cee65
+origin/main: 8de5edbb504538a233abbcc80102cb714c9cee65
+ahead/behind: 0/0
+cached set: empty
+git diff --check: PASS
+```
+
+当前 gate：
+
+```text
+R17-R3 Reliability:
+HOLD / PM-ACCEPTED
+
+R17-R4 first repair attempt:
+HOLD / NO TASK WRITE
+reason: docs/current_status.md authority conflict
+
+R17-R4 first status-reconciliation attempt:
+HOLD / NO TASK WRITE
+reason: chatgpt_pm_handoff_260727-1138.md authority conflict
+
+PM authority handoff refresh:
+docs/thread_handoff/chatgpt_pm_handoff_260727-1207.md
+WRITTEN / PM-ACCEPTED AS CURRENT AUTHORITY
+NOT STAGED
+NOT COMMITTED
+NOT PUSHED
+
+Architecture / Integration status reconciliation:
+AUTHORIZED
+Level: Level 0
+
+R17-R4 status reconciliation:
+AUTHORIZED
+
+R17-R4 source/test/manifest repair:
+PM-PLANNED
+NOT YET AUTHORIZED FOR EXECUTION
+
+Verification:
+BLOCKED
+
+Remote:
+NOT AUTHORIZED
+
+Third I1:
+NOT AUTHORIZED
+
+Git closeout:
+NOT AUTHORIZED
+```
+
+本轮明确的 authority separation：
+
+```text
+status reconciliation authorization
+!=
+R17-R4 implementation authorization
+!=
+Reliability approval
+!=
+Verification approval
+!=
+Git approval
+!=
+Remote/deployment/runtime authority
+```
+
+本轮 next sequence：
+
+```text
+status reconciliation WRITTEN
+→ PM durable report intake
+→ PM explicit acceptance
+→ PM may issue a fresh R17-R4 Level 2 Architecture / Integration repair Prompt
+→ repair package WRITTEN
+→ PM intake
+→ fresh independent Reliability re-review
+```
+
+不得由本节自动进入 R17-R4 implementation、Reliability、Verification、Remote、Third
+I1 或 Git closeout。R17-R4 source/test/manifest repair 仍必须等待新的、独立的 PM 明确授权。
 
 ## 0E. 2026-07-24 D2-R7A closeout 与 D2-R7B planning boundary
 
