@@ -1,7 +1,7 @@
 # Edge MES Phase-2 Roadmap
 
 更新时间：2026-07-28
-状态：Phase-2 MVP Execution — D2-R7B local contract gate closed / Git and remote gates pending
+状态：Phase-2 MVP Execution — D2-R7B R29-R2-R1 docs-only repair PASS / WRITTEN / Git closeout pending / fresh remote eligibility pending
 Phase-1 基线：最终验收 PASS，GitHub freeze/tag 已完成
 
 ## 1. 当前里程碑
@@ -83,6 +83,15 @@ current remote state 未观察；当前不存在 cleanup、eligibility、deploym
 activation authority。Git closeout 必须先于任何新的 remote execution authority，且上述
 authority 不能从 R27 的 PASS 或本 roadmap 自动继承。
 
+### 1D. 2026-07-28 D2-R7B-I1 R29-R2 / R29-R2-R1 docs-only closeout repair
+
+R28-R1 与 R28-R1-R1 的 read-only remote re-entry 均为 `HOLD / SSH 0 / remote NOT_OBSERVED`，属于 fail-closed gate/tooling history，不是 Raspberry Pi 或 Collector failure。R28-R2 为 `PASS / PM-VERIFIED / PM-ACCEPTED / RETAINED_R26_UPLOAD_IDENTITY_PROVEN`，R29-R1 为 `PASS / PM-VERIFIED / PM-ACCEPTED / EXACT_R26_UPLOAD_SIDECAR_REMOVED`。
+
+原始 R29-R2 attempt 为 `HOLD / PM-VERIFIED / PM-ACCEPTED AS FAIL-CLOSED DOCS WRITE`，原因包括两个 literal plus headings、report conclusion/hash inconsistency 与 roadmap Section 8 未更新。R29-R2-R1 是使用新独立 authority 的 docs-only repair；其 PASS 仅表示 docs consistency restored，不代表 Git closeout、fresh eligibility、deployment、restart 或 activation。R29-R2-R1 artifacts 仅建立 `WRITTEN`。
+
+接受的 cleanup boundary 保持不变：remote target 仍为 `OLD_EXACT`，5935 bytes，SHA-256 `86af360ae3aeae603a97add4150245dcfe9b58dbcf9c44fe3a79a62ba82604c3`；R26 upload sidecar 已删除；matching D2-R7B sidecars `0`；backup 与 rollback temp 均 `ABSENT`；Collector identity、running state、image、restart count、started_at 与 read-only bind mount unchanged。没有 fresh eligibility、new config deployment、restart、activation、runtime-loaded validation 或 production acceptance。
+
+该 section 保留 data-first MVP 与 deferred UI acceptance policy；status、roadmap 与 report 都不授予下一阶段 authority。
 ## 2. Phase-2 定位
 
 将单线三工站 Demo 演进为：
@@ -201,15 +210,14 @@ flowchart LR
 
 当前下一步为：
 
-1. 完成 R27-R6 status sync 与 ChatGPT PM durable intake；
-2. 建立 exact Git candidate set；
-3. 获得用户明确的 stage/commit/push authority；
-4. committed local closure 后，单独授权 current remote state refresh；
-5. 仅在 retained R26 staged object 仍存在且 task ownership 被证明时，另行授权
-   cleanup-only Level 2 mutation；
-6. cleanup 后执行 fresh read-only remote eligibility；
+1. 完成 R29-R2-R1 docs-only repair；
+2. ChatGPT PM durable intake；
+3. exact eight-path Git candidate review；
+4. 用户单独授权 exact-path stage/commit/push；
+5. Git closeout；
+6. 用户单独授权 fresh read-only remote eligibility；
 7. eligibility PASS 后才考虑新的 one-shot config-only execution；
-8. restart、activation、runtime loading 与 D3 继续排除。
+8. restart、activation、runtime-loaded validation 和 production acceptance 继续独立。
 
 D2-R7B 关闭后，项目再根据真实数据主线选择 OEE、Quality/Pareto 或 Trace relation 的最小
 数据语义切片；Dashboard/UI acceptance debt 继续保留到最终集成阶段，不重新打开

@@ -4,6 +4,94 @@
 工作目录：`/Users/chenjie/Documents/MES/edge-mes-demo`
 树莓派部署目录：`/opt/edge-mes-demo`
 
+## 0H. 2026-07-28 D2-R7B-I1 R29-R2 / R29-R2-R1 remote cleanup closeout and docs repair
+
+本节保留原始 R29-R2 attempt 的失败闭合历史，并记录独立 R29-R2-R1 docs-only repair。原始 R29-R2 只允许修复三份 durable docs artifacts；其第一次写入 authority 已消费，结果不是 PASS。
+
+```text
+R29-R2 original attempt:
+HOLD / PM-VERIFIED / PM-ACCEPTED AS FAIL-CLOSED DOCS WRITE
+artifacts: WRITTEN
+closeout: NOT CLOSED
+
+R29-R2-R1 repair:
+PASS only after all listed local repair validations pass
+WRITTEN only
+PM-ACCEPTED / VERIFIED / STAGED / COMMITTED / PUSHED: not established
+```
+
+原始 R29-R2 blockers：`docs/current_status.md` 有 literal `+## 0H...` heading；`docs/roadmap.md` 有 literal `+### 1D...` heading；report 曾记录错误的 `PASS`、`Blockers: none`、`本轮未触发 HOLD`，并记录错误的 status/roadmap final hashes；roadmap Section 8 仍保留 R27-era current-next sequence。原始 R29-R2 未被本节改写为 PASS。
+
+R29-R2-R1 只修复以下三份现有文件：
+
+```text
+docs/reports/sprint4_d2_r7b_i1_r29_r2_remote_cleanup_closeout_and_status_sync.md
+docs/current_status.md
+docs/roadmap.md
+```
+
+修复内容：移除两个 literal `+` heading markers；将 0H、1D 和 Section 8 的 durable sequence 与 authority boundary 改为 R29-R2 original HOLD、R29-R2-R1 独立 docs-only repair PASS（仅表示 docs consistency restored）；修正 report 中的 original HOLD、blockers、final status/roadmap hashes 与 WRITTEN-only delivery state。0G 与 lower historical sections 不变。
+
+Fresh local baseline：
+
+```text
+project: /Users/chenjie/Documents/MES/edge-mes-demo
+branch: main
+HEAD: 5fe72282d1b1bcbf602712982e814ef488368122
+origin/main: 5fe72282d1b1bcbf602712982e814ef488368122
+ahead/behind: 0/0
+cached index: empty
+git diff --check: PASS
+git diff --cached --check: PASS
+config/mapping.yaml relative HEAD: clean
+task-owned process count: 0
+tracked dirty: .gitignore; docs/current_status.md; docs/roadmap.md; docs/thread_handoff/pm_operating_rules.md
+R29-R2-R1 network / SSH / remote calls: 0
+```
+
+历史 fail-closed 与 accepted remote boundary：
+
+```text
+R28-R1: HOLD / SSH 0 / remote NOT_OBSERVED
+R28-R1-R1: HOLD / SSH 0 / remote NOT_OBSERVED
+R28-R2: PASS / PM-VERIFIED / PM-ACCEPTED / RETAINED_R26_UPLOAD_IDENTITY_PROVEN
+R29-R1: PASS / PM-VERIFIED / PM-ACCEPTED / EXACT_R26_UPLOAD_SIDECAR_REMOVED
+```
+
+R28-R1 与 R28-R1-R1 保留为 fail-closed history，不是 Raspberry Pi、target、Collector 或 remote failure 证据。R28-R2 与 R29-R1 的 accepted facts 来自既有 durable evidence 与 cleanup transaction，不是 R29-R2-R1 fresh remote observation。
+
+Accepted remote/cleanup facts：
+
+```text
+remote target: /opt/edge-mes-demo/config/mapping.yaml
+remote target: OLD_EXACT / 5935 bytes / SHA-256 86af360ae3aeae603a97add4150245dcfe9b58dbcf9c44fe3a79a62ba82604c3
+R26 upload sidecar: REMOVED / ENOENT
+matching D2-R7B sidecars: 0
+backup: ABSENT
+rollback temp: ABSENT
+Collector: unchanged / running / restart count 0
+```
+
+Local exact-HEAD mapping：`config/mapping.yaml` remains regular non-symlink, 7112 bytes, SHA-256 `d9bb5fcb017e6ab491e8643077c793bb018011d1cbe0698172e4c08823080c9d`，且 relative to `HEAD` clean。
+
+本轮未执行或未建立：fresh remote eligibility、new config deployment、restart、activation、runtime-loaded config identity、production acceptance。R29-R2-R1 不执行 network、SSH、remote read、cleanup、upload、deployment 或 Collector lifecycle。
+
+四份 R28/R29 source reports 与本 report/status/roadmap 当前均保持 `untracked / unstaged / uncommitted / unpushed`；本 repair 不自动进入 Git candidate acceptance。
+
+当前 next sequence：
+
+```text
+R29-R2-R1 docs-only repair WRITTEN
+→ ChatGPT PM durable intake
+→ exact eight-path Git candidate review
+→ 用户单独授权 exact-path stage/commit/push
+→ Git closeout
+→ 用户单独授权 fresh read-only remote eligibility
+→ eligibility PASS 后才考虑新的 one-shot config-only execution
+→ restart、activation、runtime-loaded validation 和 production acceptance 继续独立
+```
+
+Status 文件、roadmap 与本 report 均不授权下一阶段；前序 PASS 或本次 WRITTEN 不得推断 Git candidate acceptance、stage/commit/push、fresh eligibility、SSH、cleanup、upload、deployment、restart、activation、runtime-loaded validation 或 production acceptance。
 ## 0G. 2026-07-28 D2-R7B-I1 R27 local contract gate closeout
 
 本节记录 R27 本地 contract gate 的 durable closeout 与当前 Git/remote re-entry
