@@ -1,7 +1,7 @@
 # Edge MES Phase-2 Roadmap
 
-更新时间：2026-07-28
-状态：Phase-2 MVP Execution — D2-R7B R29-R2-R1 docs-only repair PASS / WRITTEN / Git closeout pending / fresh remote eligibility pending
+更新时间：2026-07-29
+状态：Phase-2 MVP Execution — D2-R7B-I1 scope reset PASS / IMAGE_LOADED_EXACT PM-ACCEPTED / docs sync WRITTEN / Git closeout pending / activation preflight not authorized
 Phase-1 基线：最终验收 PASS，GitHub freeze/tag 已完成
 
 ## 1. 当前里程碑
@@ -92,6 +92,45 @@ R28-R1 与 R28-R1-R1 的 read-only remote re-entry 均为 `HOLD / SSH 0 / remote
 接受的 cleanup boundary 保持不变：remote target 仍为 `OLD_EXACT`，5935 bytes，SHA-256 `86af360ae3aeae603a97add4150245dcfe9b58dbcf9c44fe3a79a62ba82604c3`；R26 upload sidecar 已删除；matching D2-R7B sidecars `0`；backup 与 rollback temp 均 `ABSENT`；Collector identity、running state、image、restart count、started_at 与 read-only bind mount unchanged。没有 fresh eligibility、new config deployment、restart、activation、runtime-loaded validation 或 production acceptance。
 
 该 section 保留 data-first MVP 与 deferred UI acceptance policy；status、roadmap 与 report 都不授予下一阶段 authority。
+
+### 1E. 2026-07-29 D2-R7B-I1 package-closed image load scope-reset acceptance
+
+ChatGPT PM 已完成独立 scope-reset governance decision：
+
+```text
+docs/reports/sprint4_d2_r7b_i1_pm_scope_reset_governance_decision_image_loaded_exact.md
+
+PASS
+PM_SCOPE_RESET_ACCEPTS_R32_R5_R2_IMAGE_LOADED_EXACT
+```
+
+当前接受的最小产品事实：冻结源码生成并完成本地 package-closure 验证的 Linux/arm64 Collector image，已通过 archive transport/load，以与 archive config、ordered Env 和九项 ordered RootFS 完全一致的 Docker object存在于远端。Descriptive tag 指向该 object；compatibility tag 仍指向旧安全 image；known-bad image不持有 descriptive tag；reconciliation mutation为零。
+
+现接受：
+
+```text
+LOCAL_PACKAGE_CLOSED_IMAGE_VALIDATION_PASS
+IMAGE_ARCHIVE_IDENTITY_VERIFIED
+IMAGE_TRANSPORT_IDENTITY_VERIFIED
+REMOTE_DOCKER_LOAD_COMMAND_PASS
+DESCRIPTIVE_TAG_READY
+REMOTE_LOADED_OBJECT_CONTENT_RECONCILED
+IMAGE_LOADED_EXACT
+```
+
+仍未建立：
+
+```text
+ACTIVATION_ELIGIBLE
+ACTIVATED
+RUNTIME-LOADED
+PRODUCTION-ACCEPTED
+```
+
+R32-R5-R2 原始 terminal schema HOLD 与 R32-R5-R3/R4/R5 normalization HOLD 均保留为历史过程事实，但不再阻塞 `IMAGE_LOADED_EXACT`。依据 PM Rule Sections 12–13，normalization runner repair chain 已 `CLOSED / SUPERSEDED`；新的 R32-R5-R6 runner repair不授权。Generic evidence-normalization/audit framework移出当前 MVP，未来如有需要必须作为独立 Level 2 项目。
+
+本 scope reset 没有新的 remote observation，也不授权 network、SSH、tag mutation、Collector lifecycle、rollback、cleanup 或 Git action。R31 activation phase separation继续有效：必须先完成 exact-path Git closeout，随后由用户单独授权 fresh read-only remote activation preflight。
+
 ## 2. Phase-2 定位
 
 将单线三工站 Demo 演进为：
@@ -210,15 +249,14 @@ flowchart LR
 
 当前下一步为：
 
-1. 完成 R29-R2-R1 docs-only repair；
-2. ChatGPT PM durable intake；
-3. exact eight-path Git candidate review；
-4. 用户单独授权 exact-path stage/commit/push；
-5. Git closeout；
-6. 用户单独授权 fresh read-only remote eligibility；
-7. eligibility PASS 后才考虑新的 one-shot config-only execution；
-8. restart、activation、runtime-loaded validation 和 production acceptance 继续独立。
+1. scope-reset governance decision、`docs/current_status.md` 与本 roadmap 已完成本地同步，状态为 `WRITTEN / UNSTAGED`；
+2. ChatGPT PM 执行 exact-path Git candidate review，明确本次三份 sync 文件与必须随附的 R32-R5-R2 durable source evidence 的最小提交集合；
+3. 用户单独授权后，才执行 exact-path stage/commit/push；不得 broad-stage `docs/` 或历史 untracked reports；
+4. Git closeout 后，用户可单独授权 fresh read-only remote activation preflight；
+5. preflight 必须重新观察当时的 loaded object、active Collector、compatibility alias、protected services和rollback identity；
+6. 只有 preflight 建立 `ACTIVATION_ELIGIBLE` 后，才可独立考虑 compatibility-tag mutation 与一次 Collector-only activation；
+7. post-activation validation、conditional rollback、runtime-loaded identity 和 production accepted-fact validation继续独立。
 
-D2-R7B 关闭后，项目再根据真实数据主线选择 OEE、Quality/Pareto 或 Trace relation 的最小
-数据语义切片；Dashboard/UI acceptance debt 继续保留到最终集成阶段，不重新打开
-Attempt-3 browser evidence 分支。
+`IMAGE_LOADED_EXACT` 不自动授予 network、SSH、tag mutation、restart、recreate、activation、rollback、cleanup 或 Git authority。
+
+D2-R7B 关闭后，项目再根据真实数据主线选择 OEE、Quality/Pareto 或 Trace relation 的最小数据语义切片；Dashboard/UI acceptance debt继续保留到最终集成阶段，不重新打开 Attempt-3 browser evidence 分支。

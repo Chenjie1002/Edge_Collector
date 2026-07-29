@@ -1,8 +1,124 @@
 # 当前状态 / Codex 恢复上下文
 
-更新时间：2026-07-28
+更新时间：2026-07-29
 工作目录：`/Users/chenjie/Documents/MES/edge-mes-demo`
 树莓派部署目录：`/opt/edge-mes-demo`
+
+## 0I. 2026-07-29 D2-R7B-I1 package-closed image load scope-reset acceptance
+
+ChatGPT PM 已完成独立 scope-reset governance decision。Authority：`PM-D2-R7B-I1-SCOPE-RESET-IMAGE-LOADED-EXACT-260729-1932`。Durable decision：
+
+```text
+docs/reports/sprint4_d2_r7b_i1_pm_scope_reset_governance_decision_image_loaded_exact.md
+```
+
+正式结论：
+
+```text
+PASS
+PM_SCOPE_RESET_ACCEPTS_R32_R5_R2_IMAGE_LOADED_EXACT
+```
+
+本 gate 的最小 MVP 声明是：一个由冻结源码生成并完成本地 package-closure 验证的 Linux/arm64 Collector image，已经通过完整 archive transport/load 流程，以内容与 archive config 完全一致的 Docker image object 存在于远端；该 image 尚未激活。
+
+PM 只读交叉复核 R32-R5-R2 durable payload 与 retained archive 后确认：
+
+```text
+archive config digest == remote Docker object ID:
+sha256:168bd07db0a427f003d1733a62354d3356b8ef6b362a15fed88d48728392f734
+
+OS / architecture / Created / Cmd / WorkingDir:
+MATCH
+
+ordered Env:
+MATCH
+
+canonical / remote RootFS count:
+9 / 9
+
+ordered RootFS equality:
+PASS
+
+RootFS mismatch indices:
+[]
+
+descriptive tag:
+edge-mes-demo-collector:r32-pkg-closed-ca68dd4
+-> sha256:168bd07db0a427f003d1733a62354d3356b8ef6b362a15fed88d48728392f734
+
+compatibility tag:
+edge-mes-demo-collector:latest
+-> sha256:0bfcbad5baa26db15642136c847ddccc210784a625767a9aa3b9c4104757ab4a
+
+known-bad descriptive-tag relation:
+ABSENT
+
+source reconciliation mutations:
+all zero
+```
+
+因此现接受：
+
+```text
+LOCAL_PACKAGE_CLOSED_IMAGE_VALIDATION_PASS
+IMAGE_ARCHIVE_IDENTITY_VERIFIED
+IMAGE_TRANSPORT_IDENTITY_VERIFIED
+REMOTE_DOCKER_LOAD_COMMAND_PASS
+DESCRIPTIVE_TAG_READY
+REMOTE_LOADED_OBJECT_CONTENT_RECONCILED
+IMAGE_LOADED_EXACT
+```
+
+继续保持：
+
+```text
+NOT ACTIVATION-ELIGIBLE
+NOT ACTIVATED
+NOT RUNTIME-LOADED
+NOT PRODUCTION-ACCEPTED
+```
+
+R32-R5-R2 原始 durable schema 的 `HOLD / TERMINAL_JSON_OBSERVED_ASSERTIONS_CONTRACT_HOLD` 仍作为历史 delivery defect 保留。R32-R5-R3、R4、R5 的 normalization attempts 也保留各自的 HOLD 过程记录；这些缺陷没有造成错误 remote identity、错误 tag relation、remote mutation、synthetic/remote evidence confusion 或 activation/runtime/production false PASS。
+
+依据 `docs/thread_handoff/pm_operating_rules.md` Sections 12–13，连续 normalization runner repair 已构成 task inflation。处理结果：
+
+```text
+R32-R5 normalization runner repair chain:
+CLOSED / SUPERSEDED
+
+new R32-R5-R6 runner repair:
+NOT AUTHORIZED
+
+terminal JSON key-order/schema defect:
+NON-BLOCKING HISTORICAL DIAGNOSTIC
+
+generic evidence-normalization framework:
+OUT OF CURRENT MVP SCOPE
+```
+
+本次 scope-reset decision 与 docs/status sync 没有执行 network、SSH、Docker、remote filesystem、Collector lifecycle、cleanup 或 Git mutation。当前 live baseline：
+
+```text
+branch: main
+HEAD: ca68dd4a4913238fc62e9621f1ac632c709a3149
+origin/main: ca68dd4a4913238fc62e9621f1ac632c709a3149
+ahead / behind: 0 / 0
+cached index: empty
+```
+
+当前 next sequence：
+
+```text
+scope-reset decision + docs/status sync WRITTEN
+-> ChatGPT PM exact-path Git candidate review
+-> 用户单独授权 exact-path stage/commit/push
+-> Git closeout
+-> 用户单独授权 fresh read-only remote activation preflight
+-> preflight PASS 后才可单独考虑 compatibility-tag mutation 与 Collector-only activation
+-> post-activation、rollback、runtime-loaded validation 和 production acceptance继续独立
+```
+
+本节、roadmap 和 scope-reset report 不授权 SSH、remote read、tag mutation、restart、recreate、activation、rollback、cleanup、Git stage/commit/push/tag 或 production claim。
 
 ## 0H. 2026-07-28 D2-R7B-I1 R29-R2 / R29-R2-R1 remote cleanup closeout and docs repair
 
@@ -2027,30 +2143,32 @@ edge-mes-demo/
 
 ## 7. 下一步建议
 
-可靠性代码闭环已完成；建议下一步按以下顺序推进：
+当前主线先关闭 D2-R7B-I1 package-closed image load 的 governance/Git 边界：
 
-1. 部署迁移与容器验收
-   - 在树莓派执行 `db/migrations/005_reliability_schema.sql`。
-   - 重建 V-PLC / Collector，执行断线、重启、ACK timeout 和 reset 验收。
+1. 对以下 scope-reset sync 执行 ChatGPT PM exact-path Git candidate review：
+   - `docs/reports/sprint4_d2_r7b_i1_pm_scope_reset_governance_decision_image_loaded_exact.md`
+   - `docs/current_status.md`
+   - `docs/roadmap.md`
+   - 以及 candidate review 明确认定必须与其一起提交的 R32-R5-R2 durable source evidence。
+2. 仅在用户明确授权后执行 exact-path stage/commit/push；不得 broad-stage `docs/` 或历史 untracked reports。
+3. Git closeout 后，用户可另行授权 fresh read-only remote activation preflight。
+4. 只有 fresh preflight 建立 `ACTIVATION_ELIGIBLE` 后，才可独立考虑 compatibility-tag mutation 与一次 Collector-only activation。
+5. Post-activation validation、conditional rollback、runtime-loaded identity 和 production accepted-fact validation继续保持独立 authority。
 
-2. Ignore Edge / data gap
-   - 正式启用整线 `ignore_edge` bit。
-   - 数据缺口写入 `data_gap_event`。
-   - 按 WS03 label_code 序号计算缺件。
+后续数据主线仍保留：
 
-3. 验证与回归
-   - 建立可靠性、数据缺口和端到端验证矩阵。
-   - 保存每个 Thread 的验证报告。
+- 树莓派 PostgreSQL migration/container-level reliability acceptance；
+- Ignore Edge / `data_gap_event`；
+- 追溯缺站边界、OEE/Quality/Trace 数据语义；
+- 最终 Dashboard/UI integration acceptance。
 
-4. 自研 dashboard 初版
-   - 不替代 Grafana 工程看板。
-   - 面向操作员/管理层。
-   - 为后续 3D 数字孪生做入口。
+这些后续事项不得绕过当前 Git/activation authority separation，也不得从 `IMAGE_LOADED_EXACT` 自动继承执行权限。
 
 Phase-2 Out of Scope：
 
-- Oracle schema、真实连接、主动 push、重试和幂等。
-- `sync-worker` 只保留现有 mock 行为，不作为本阶段验收项。
+- Oracle schema、真实连接、主动 push、重试和幂等；
+- `sync-worker` 只保留现有 mock 行为，不作为本阶段验收项；
+- generic evidence-normalization、audit 或 forensics framework，除非作为独立 Level 2 项目重新授权。
 
 ## 8. 常用命令
 

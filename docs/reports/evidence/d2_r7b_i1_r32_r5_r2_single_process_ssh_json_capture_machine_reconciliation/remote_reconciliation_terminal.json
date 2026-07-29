@@ -1,0 +1,755 @@
+{
+  "authority_id": "PM-D2-R7B-I1-R32-R5-R2-SINGLE-PROCESS-SSH-JSON-MACHINE-RECONCILIATION-260729-1759",
+  "classification": "REMOTE_LOADED_OBJECT_CONTENT_RECONCILED",
+  "evidence_classification": [
+    "LOCAL_PACKAGE_CLOSED_IMAGE_VALIDATION_PASS",
+    "IMAGE_ARCHIVE_IDENTITY_VERIFIED",
+    "IMAGE_TRANSPORT_IDENTITY_VERIFIED",
+    "REMOTE_DOCKER_LOAD_COMMAND_PASS",
+    "DESCRIPTIVE_TAG_READY",
+    "REMOTE_LOADED_OBJECT_CONTENT_RECONCILED",
+    "IMAGE_LOADED_EXACT",
+    "NOT ACTIVATION-ELIGIBLE",
+    "NOT ACTIVATED",
+    "NOT RUNTIME-LOADED",
+    "NOT PRODUCTION-ACCEPTED"
+  ],
+  "local_comparison_process": {
+    "executable": "/Users/chenjie/Documents/MES/edge-mes-demo/.venv/bin/python",
+    "invocation_count": 1,
+    "pid": 95912,
+    "working_directory": "/Users/chenjie/Documents/MES/edge-mes-demo"
+  },
+  "local_docker_mutations": {
+    "build": 0,
+    "cleanup": 0,
+    "image_removal": 0,
+    "load": 0,
+    "pull": 0,
+    "run": 0,
+    "save": 0,
+    "tag_retag": 0
+  },
+  "machine_comparison": {
+    "assertions": {
+      "compatibility_tag_is_safe_old_identity": true,
+      "config_matrix_all_equal": true,
+      "descriptive_tag_points_to_remote_object": true,
+      "known_bad_has_no_descriptive_tag": true,
+      "mutation_counters_all_zero": true,
+      "remote_object_id_matches_config_digest": true,
+      "rootfs_count_equal": true,
+      "rootfs_mismatch_count_zero": true,
+      "rootfs_ordered_equal": true
+    },
+    "canonical_env": [
+      "PATH=/usr/local/bin:/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin",
+      "LANG=C.UTF-8",
+      "GPG_KEY=7169605F62C751356D054A26A821E680E5FA6305",
+      "PYTHON_VERSION=3.12.13",
+      "PYTHON_SHA256=c08bc65a81971c1dd5783182826503369466c7e67374d1646519adf05207b684"
+    ],
+    "canonical_rootfs_layers": [
+      "sha256:4e6fee325600a0377566ca159a4da9833f6e35e04eaa4194c47dd3b2fe901717",
+      "sha256:1f6945ab3a1b6c4a2410d7a0a7384e91af9b5356cdbd63d725454651b14b2818",
+      "sha256:92e43e3934d11abe153198ffb0401027d24a6aa365d456f65b8c070caef41156",
+      "sha256:f52241bd08541c775533109caf6be52a9160f5000537b8dd0148bbce15dee151",
+      "sha256:379854df596ff562274bd82d0d2d11e90be551cffddb0a0d9b157446a2dcbda7",
+      "sha256:670be73767e6cd7502c4f716a33b1674adb8c24a7d9054a22d5ea2f6c64039f6",
+      "sha256:849842e564547162d7cd5e641bd25005d3025907b6efedc89350f08148c7ba00",
+      "sha256:f4f2a4337fdf6be5e391e35e85ea2d6d37a65efec8a2cfb8154b182bfefcb4c7",
+      "sha256:24077d2455892d3e67b12d31a673138baa19b5fa7174c3330e7a0233c8883846"
+    ],
+    "config_comparison_matrix": [
+      {
+        "canonical_value": "sha256:168bd07db0a427f003d1733a62354d3356b8ef6b362a15fed88d48728392f734",
+        "equal": true,
+        "field": "Id",
+        "remote_value": "sha256:168bd07db0a427f003d1733a62354d3356b8ef6b362a15fed88d48728392f734"
+      },
+      {
+        "canonical_value": "linux",
+        "equal": true,
+        "field": "Os",
+        "remote_value": "linux"
+      },
+      {
+        "canonical_value": "arm64",
+        "equal": true,
+        "field": "Architecture",
+        "remote_value": "arm64"
+      },
+      {
+        "canonical_value": "2026-07-29T15:43:02.675492291+08:00",
+        "equal": true,
+        "field": "Created",
+        "remote_value": "2026-07-29T15:43:02.675492291+08:00"
+      },
+      {
+        "canonical_value": [
+          "python",
+          "-m",
+          "app.main"
+        ],
+        "equal": true,
+        "field": "Config.Cmd",
+        "remote_value": [
+          "python",
+          "-m",
+          "app.main"
+        ]
+      },
+      {
+        "canonical_value": "/app",
+        "equal": true,
+        "field": "Config.WorkingDir",
+        "remote_value": "/app"
+      },
+      {
+        "canonical_value": 5,
+        "equal": true,
+        "field": "Config.Env.count",
+        "remote_value": 5
+      },
+      {
+        "canonical_value": [
+          "PATH=/usr/local/bin:/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin",
+          "LANG=C.UTF-8",
+          "GPG_KEY=7169605F62C751356D054A26A821E680E5FA6305",
+          "PYTHON_VERSION=3.12.13",
+          "PYTHON_SHA256=c08bc65a81971c1dd5783182826503369466c7e67374d1646519adf05207b684"
+        ],
+        "equal": true,
+        "field": "Config.Env.ordered",
+        "remote_value": [
+          "PATH=/usr/local/bin:/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin",
+          "LANG=C.UTF-8",
+          "GPG_KEY=7169605F62C751356D054A26A821E680E5FA6305",
+          "PYTHON_VERSION=3.12.13",
+          "PYTHON_SHA256=c08bc65a81971c1dd5783182826503369466c7e67374d1646519adf05207b684"
+        ]
+      },
+      {
+        "canonical_value": "layers",
+        "equal": true,
+        "field": "RootFS.Type",
+        "remote_value": "layers"
+      },
+      {
+        "canonical_value": 9,
+        "equal": true,
+        "field": "RootFS.count",
+        "remote_value": 9
+      },
+      {
+        "canonical_value": [
+          "sha256:4e6fee325600a0377566ca159a4da9833f6e35e04eaa4194c47dd3b2fe901717",
+          "sha256:1f6945ab3a1b6c4a2410d7a0a7384e91af9b5356cdbd63d725454651b14b2818",
+          "sha256:92e43e3934d11abe153198ffb0401027d24a6aa365d456f65b8c070caef41156",
+          "sha256:f52241bd08541c775533109caf6be52a9160f5000537b8dd0148bbce15dee151",
+          "sha256:379854df596ff562274bd82d0d2d11e90be551cffddb0a0d9b157446a2dcbda7",
+          "sha256:670be73767e6cd7502c4f716a33b1674adb8c24a7d9054a22d5ea2f6c64039f6",
+          "sha256:849842e564547162d7cd5e641bd25005d3025907b6efedc89350f08148c7ba00",
+          "sha256:f4f2a4337fdf6be5e391e35e85ea2d6d37a65efec8a2cfb8154b182bfefcb4c7",
+          "sha256:24077d2455892d3e67b12d31a673138baa19b5fa7174c3330e7a0233c8883846"
+        ],
+        "equal": true,
+        "field": "RootFS.ordered",
+        "remote_value": [
+          "sha256:4e6fee325600a0377566ca159a4da9833f6e35e04eaa4194c47dd3b2fe901717",
+          "sha256:1f6945ab3a1b6c4a2410d7a0a7384e91af9b5356cdbd63d725454651b14b2818",
+          "sha256:92e43e3934d11abe153198ffb0401027d24a6aa365d456f65b8c070caef41156",
+          "sha256:f52241bd08541c775533109caf6be52a9160f5000537b8dd0148bbce15dee151",
+          "sha256:379854df596ff562274bd82d0d2d11e90be551cffddb0a0d9b157446a2dcbda7",
+          "sha256:670be73767e6cd7502c4f716a33b1674adb8c24a7d9054a22d5ea2f6c64039f6",
+          "sha256:849842e564547162d7cd5e641bd25005d3025907b6efedc89350f08148c7ba00",
+          "sha256:f4f2a4337fdf6be5e391e35e85ea2d6d37a65efec8a2cfb8154b182bfefcb4c7",
+          "sha256:24077d2455892d3e67b12d31a673138baa19b5fa7174c3330e7a0233c8883846"
+        ]
+      }
+    ],
+    "remote_env_directly_from_parsed_payload": [
+      "PATH=/usr/local/bin:/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin",
+      "LANG=C.UTF-8",
+      "GPG_KEY=7169605F62C751356D054A26A821E680E5FA6305",
+      "PYTHON_VERSION=3.12.13",
+      "PYTHON_SHA256=c08bc65a81971c1dd5783182826503369466c7e67374d1646519adf05207b684"
+    ],
+    "remote_rootfs_layers_directly_from_parsed_payload": [
+      "sha256:4e6fee325600a0377566ca159a4da9833f6e35e04eaa4194c47dd3b2fe901717",
+      "sha256:1f6945ab3a1b6c4a2410d7a0a7384e91af9b5356cdbd63d725454651b14b2818",
+      "sha256:92e43e3934d11abe153198ffb0401027d24a6aa365d456f65b8c070caef41156",
+      "sha256:f52241bd08541c775533109caf6be52a9160f5000537b8dd0148bbce15dee151",
+      "sha256:379854df596ff562274bd82d0d2d11e90be551cffddb0a0d9b157446a2dcbda7",
+      "sha256:670be73767e6cd7502c4f716a33b1674adb8c24a7d9054a22d5ea2f6c64039f6",
+      "sha256:849842e564547162d7cd5e641bd25005d3025907b6efedc89350f08148c7ba00",
+      "sha256:f4f2a4337fdf6be5e391e35e85ea2d6d37a65efec8a2cfb8154b182bfefcb4c7",
+      "sha256:24077d2455892d3e67b12d31a673138baa19b5fa7174c3330e7a0233c8883846"
+    ],
+    "rootfs": {
+      "canonical_count": 9,
+      "count_equal": true,
+      "mismatch_count": 0,
+      "mismatch_indices": [],
+      "ordered_list_equal": true,
+      "per_index_matrix": [
+        {
+          "canonical_format_valid": true,
+          "canonical_length": 71,
+          "canonical_value": "sha256:4e6fee325600a0377566ca159a4da9833f6e35e04eaa4194c47dd3b2fe901717",
+          "equal": true,
+          "index": 1,
+          "remote_format_valid": true,
+          "remote_length": 71,
+          "remote_value": "sha256:4e6fee325600a0377566ca159a4da9833f6e35e04eaa4194c47dd3b2fe901717"
+        },
+        {
+          "canonical_format_valid": true,
+          "canonical_length": 71,
+          "canonical_value": "sha256:1f6945ab3a1b6c4a2410d7a0a7384e91af9b5356cdbd63d725454651b14b2818",
+          "equal": true,
+          "index": 2,
+          "remote_format_valid": true,
+          "remote_length": 71,
+          "remote_value": "sha256:1f6945ab3a1b6c4a2410d7a0a7384e91af9b5356cdbd63d725454651b14b2818"
+        },
+        {
+          "canonical_format_valid": true,
+          "canonical_length": 71,
+          "canonical_value": "sha256:92e43e3934d11abe153198ffb0401027d24a6aa365d456f65b8c070caef41156",
+          "equal": true,
+          "index": 3,
+          "remote_format_valid": true,
+          "remote_length": 71,
+          "remote_value": "sha256:92e43e3934d11abe153198ffb0401027d24a6aa365d456f65b8c070caef41156"
+        },
+        {
+          "canonical_format_valid": true,
+          "canonical_length": 71,
+          "canonical_value": "sha256:f52241bd08541c775533109caf6be52a9160f5000537b8dd0148bbce15dee151",
+          "equal": true,
+          "index": 4,
+          "remote_format_valid": true,
+          "remote_length": 71,
+          "remote_value": "sha256:f52241bd08541c775533109caf6be52a9160f5000537b8dd0148bbce15dee151"
+        },
+        {
+          "canonical_format_valid": true,
+          "canonical_length": 71,
+          "canonical_value": "sha256:379854df596ff562274bd82d0d2d11e90be551cffddb0a0d9b157446a2dcbda7",
+          "equal": true,
+          "index": 5,
+          "remote_format_valid": true,
+          "remote_length": 71,
+          "remote_value": "sha256:379854df596ff562274bd82d0d2d11e90be551cffddb0a0d9b157446a2dcbda7"
+        },
+        {
+          "canonical_format_valid": true,
+          "canonical_length": 71,
+          "canonical_value": "sha256:670be73767e6cd7502c4f716a33b1674adb8c24a7d9054a22d5ea2f6c64039f6",
+          "equal": true,
+          "index": 6,
+          "remote_format_valid": true,
+          "remote_length": 71,
+          "remote_value": "sha256:670be73767e6cd7502c4f716a33b1674adb8c24a7d9054a22d5ea2f6c64039f6"
+        },
+        {
+          "canonical_format_valid": true,
+          "canonical_length": 71,
+          "canonical_value": "sha256:849842e564547162d7cd5e641bd25005d3025907b6efedc89350f08148c7ba00",
+          "equal": true,
+          "index": 7,
+          "remote_format_valid": true,
+          "remote_length": 71,
+          "remote_value": "sha256:849842e564547162d7cd5e641bd25005d3025907b6efedc89350f08148c7ba00"
+        },
+        {
+          "canonical_format_valid": true,
+          "canonical_length": 71,
+          "canonical_value": "sha256:f4f2a4337fdf6be5e391e35e85ea2d6d37a65efec8a2cfb8154b182bfefcb4c7",
+          "equal": true,
+          "index": 8,
+          "remote_format_valid": true,
+          "remote_length": 71,
+          "remote_value": "sha256:f4f2a4337fdf6be5e391e35e85ea2d6d37a65efec8a2cfb8154b182bfefcb4c7"
+        },
+        {
+          "canonical_format_valid": true,
+          "canonical_length": 71,
+          "canonical_value": "sha256:24077d2455892d3e67b12d31a673138baa19b5fa7174c3330e7a0233c8883846",
+          "equal": true,
+          "index": 9,
+          "remote_format_valid": true,
+          "remote_length": 71,
+          "remote_value": "sha256:24077d2455892d3e67b12d31a673138baa19b5fa7174c3330e7a0233c8883846"
+        }
+      ],
+      "remote_count": 9,
+      "remote_digest_validation": [
+        {
+          "format_valid": true,
+          "index": 1,
+          "length": 71,
+          "value": "sha256:4e6fee325600a0377566ca159a4da9833f6e35e04eaa4194c47dd3b2fe901717"
+        },
+        {
+          "format_valid": true,
+          "index": 2,
+          "length": 71,
+          "value": "sha256:1f6945ab3a1b6c4a2410d7a0a7384e91af9b5356cdbd63d725454651b14b2818"
+        },
+        {
+          "format_valid": true,
+          "index": 3,
+          "length": 71,
+          "value": "sha256:92e43e3934d11abe153198ffb0401027d24a6aa365d456f65b8c070caef41156"
+        },
+        {
+          "format_valid": true,
+          "index": 4,
+          "length": 71,
+          "value": "sha256:f52241bd08541c775533109caf6be52a9160f5000537b8dd0148bbce15dee151"
+        },
+        {
+          "format_valid": true,
+          "index": 5,
+          "length": 71,
+          "value": "sha256:379854df596ff562274bd82d0d2d11e90be551cffddb0a0d9b157446a2dcbda7"
+        },
+        {
+          "format_valid": true,
+          "index": 6,
+          "length": 71,
+          "value": "sha256:670be73767e6cd7502c4f716a33b1674adb8c24a7d9054a22d5ea2f6c64039f6"
+        },
+        {
+          "format_valid": true,
+          "index": 7,
+          "length": 71,
+          "value": "sha256:849842e564547162d7cd5e641bd25005d3025907b6efedc89350f08148c7ba00"
+        },
+        {
+          "format_valid": true,
+          "index": 8,
+          "length": 71,
+          "value": "sha256:f4f2a4337fdf6be5e391e35e85ea2d6d37a65efec8a2cfb8154b182bfefcb4c7"
+        },
+        {
+          "format_valid": true,
+          "index": 9,
+          "length": 71,
+          "value": "sha256:24077d2455892d3e67b12d31a673138baa19b5fa7174c3330e7a0233c8883846"
+        }
+      ]
+    },
+    "tag_state": {
+      "compatibility_tag": {
+        "expected_id": "sha256:0bfcbad5baa26db15642136c847ddccc210784a625767a9aa3b9c4104757ab4a",
+        "id": "sha256:0bfcbad5baa26db15642136c847ddccc210784a625767a9aa3b9c4104757ab4a",
+        "inspect_valid": true
+      },
+      "descriptive_tag": {
+        "expected_id": "sha256:168bd07db0a427f003d1733a62354d3356b8ef6b362a15fed88d48728392f734",
+        "id": "sha256:168bd07db0a427f003d1733a62354d3356b8ef6b362a15fed88d48728392f734",
+        "inspect_valid": true
+      },
+      "known_bad_image": {
+        "descriptive_tag_absent": true,
+        "inspect_valid": true,
+        "repo_tags": []
+      }
+    }
+  },
+  "manual_transcription_used": false,
+  "mutation_audit": {
+    "cleanup": 0,
+    "compose": 0,
+    "container_lifecycle": 0,
+    "docker_load": 0,
+    "docker_tag_retag": 0,
+    "filesystem_mutation": 0
+  },
+  "network_calls": {
+    "retry_resume": 0,
+    "structured_ssh_capture": 1,
+    "supplemental_ssh": 0,
+    "total": 1
+  },
+  "parsed_remote_payload": {
+    "inspections": {
+      "compatibility_tag": {
+        "reference": "edge-mes-demo-collector:latest",
+        "returncode": 0,
+        "stderr": "",
+        "stdout_json": [
+          {
+            "Architecture": "arm64",
+            "Author": "",
+            "Comment": "buildkit.dockerfile.v0",
+            "Config": {
+              "ArgsEscaped": true,
+              "AttachStderr": false,
+              "AttachStdin": false,
+              "AttachStdout": false,
+              "Cmd": [
+                "python",
+                "-m",
+                "app.main"
+              ],
+              "Domainname": "",
+              "Entrypoint": null,
+              "Env": [
+                "PATH=/usr/local/bin:/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin",
+                "LANG=C.UTF-8",
+                "GPG_KEY=7169605F62C751356D054A26A821E680E5FA6305",
+                "PYTHON_VERSION=3.12.13",
+                "PYTHON_SHA256=c08bc65a81971c1dd5783182826503369466c7e67374d1646519adf05207b684"
+              ],
+              "Hostname": "",
+              "Image": "",
+              "Labels": {
+                "com.docker.compose.project": "edge-mes-demo",
+                "com.docker.compose.service": "collector",
+                "com.docker.compose.version": "2.26.1"
+              },
+              "OnBuild": null,
+              "OpenStdin": false,
+              "StdinOnce": false,
+              "Tty": false,
+              "User": "",
+              "Volumes": null,
+              "WorkingDir": "/app"
+            },
+            "Created": "2026-06-19T10:00:44.777946422+08:00",
+            "DockerVersion": "",
+            "GraphDriver": {
+              "Data": {
+                "LowerDir": "/var/lib/docker/overlay2/yu6hbowqlzgyd8jp6bi128jwk/diff:/var/lib/docker/overlay2/yfithtwxyb9v1vmneuvt65sbw/diff:/var/lib/docker/overlay2/7jj6lsp1mn20g2wct225vgzlr/diff:/var/lib/docker/overlay2/a0de37a6ac31c6d573f58fc691aa2698f5664aa67466f89c4d741bbf2f15c9a8/diff:/var/lib/docker/overlay2/7aa0b3b48c88736b4e0fb24fb7c2a30258c36d366a17e9ce59e112b3a6db4b40/diff:/var/lib/docker/overlay2/090da82f14067f1964c30f5a2f92f133673f0c75d21545613973f4d5ecbfa8f8/diff:/var/lib/docker/overlay2/e30b609152a9702de6b13b02479947e76a3466623c76178f4feb82679b2efa4a/diff",
+                "MergedDir": "/var/lib/docker/overlay2/qgtu6rzodv4y2as4abhd8lcr8/merged",
+                "UpperDir": "/var/lib/docker/overlay2/qgtu6rzodv4y2as4abhd8lcr8/diff",
+                "WorkDir": "/var/lib/docker/overlay2/qgtu6rzodv4y2as4abhd8lcr8/work"
+              },
+              "Name": "overlay2"
+            },
+            "Id": "sha256:0bfcbad5baa26db15642136c847ddccc210784a625767a9aa3b9c4104757ab4a",
+            "Metadata": {
+              "LastTagTime": "2026-07-23T20:23:25.022788101+08:00"
+            },
+            "Os": "linux",
+            "Parent": "",
+            "RepoDigests": [],
+            "RepoTags": [
+              "edge-mes-demo-collector:latest"
+            ],
+            "RootFS": {
+              "Layers": [
+                "sha256:4b8111b4e6ad158181261ce88d55e4eb7e53d66a754d6b67498b94f4d03697b0",
+                "sha256:e39b360c6de48cbc28063dd8d510dd162685edefa460fa85e5e3750ff4428cc1",
+                "sha256:0e8d67283b739fdf152ddc4a08da2040ed9867739769154539957e6354bdc3c3",
+                "sha256:e08e77e4dc029e6027dc9ee7c00e74bf1a5c41aed0ae34bc926c86ce3bebb19e",
+                "sha256:f364304400fdb1a525a44b700a593f4697822d5ca8c70649946b7df0f1bcb1d1",
+                "sha256:09fdffe620594b3059db3bd0d66e4a37101f4b12e5736d0d1a1fde7719a38ae8",
+                "sha256:f98637aec4f0fdab860dcd0b5d534f22233e54b933e7bb4ca480d898f48fbd72",
+                "sha256:31cafc5968228a645fbbf7f4e044bcc1cc319cf53f8cd69e32433f08dc99be8f"
+              ],
+              "Type": "layers"
+            },
+            "Size": 174177688,
+            "Variant": "v8"
+          }
+        ],
+        "stdout_json_parse_error": null
+      },
+      "descriptive_tag": {
+        "reference": "edge-mes-demo-collector:r32-pkg-closed-ca68dd4",
+        "returncode": 0,
+        "stderr": "",
+        "stdout_json": [
+          {
+            "Architecture": "arm64",
+            "Author": "",
+            "Comment": "",
+            "Config": {
+              "AttachStderr": false,
+              "AttachStdin": false,
+              "AttachStdout": false,
+              "Cmd": [
+                "python",
+                "-m",
+                "app.main"
+              ],
+              "Domainname": "",
+              "Entrypoint": null,
+              "Env": [
+                "PATH=/usr/local/bin:/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin",
+                "LANG=C.UTF-8",
+                "GPG_KEY=7169605F62C751356D054A26A821E680E5FA6305",
+                "PYTHON_VERSION=3.12.13",
+                "PYTHON_SHA256=c08bc65a81971c1dd5783182826503369466c7e67374d1646519adf05207b684"
+              ],
+              "Hostname": "",
+              "Image": "",
+              "Labels": null,
+              "OnBuild": null,
+              "OpenStdin": false,
+              "StdinOnce": false,
+              "Tty": false,
+              "User": "",
+              "Volumes": null,
+              "WorkingDir": "/app"
+            },
+            "Created": "2026-07-29T15:43:02.675492291+08:00",
+            "DockerVersion": "",
+            "GraphDriver": {
+              "Data": {
+                "LowerDir": "/var/lib/docker/overlay2/8fc8b56b7b2d1581dc49ecd5033f1d534a926742c137d59dd2a5758fc2c2d684/diff:/var/lib/docker/overlay2/4231c54f596fa90e7afaa9f4c6a341729693b5cfd37437bbeef8fcd4fbd9e2b6/diff:/var/lib/docker/overlay2/226657d6627ead2c6aa86306909720ea3f47830a6d4e2501747c2d66c2c13aff/diff:/var/lib/docker/overlay2/b52706ba865da2d97c3886303337a18846cb6bf1faa6d739f75648643bcf350d/diff:/var/lib/docker/overlay2/0d2ace1fe4b4b1702bc039fd055f10c4fa232e7d839ad17c3c1ea121b7ff595b/diff:/var/lib/docker/overlay2/e0dcb62e63991f0e1ee73d763dbd6c2d056d7d62aa4e0fd46c788444619b3e20/diff:/var/lib/docker/overlay2/82920bd3bf97bf018021bbba953c6621968dff74ad2b20311bd32fb196e1f039/diff:/var/lib/docker/overlay2/e84cb0c5736f01069b53be8ae69680627a7597273c7f7d0304cefbe84dec77b0/diff",
+                "MergedDir": "/var/lib/docker/overlay2/74f3e2d388f8d67efba1ae57f993257292d7f81b95ef8110ffab74c7eed7a9b2/merged",
+                "UpperDir": "/var/lib/docker/overlay2/74f3e2d388f8d67efba1ae57f993257292d7f81b95ef8110ffab74c7eed7a9b2/diff",
+                "WorkDir": "/var/lib/docker/overlay2/74f3e2d388f8d67efba1ae57f993257292d7f81b95ef8110ffab74c7eed7a9b2/work"
+              },
+              "Name": "overlay2"
+            },
+            "Id": "sha256:168bd07db0a427f003d1733a62354d3356b8ef6b362a15fed88d48728392f734",
+            "Metadata": {
+              "LastTagTime": "2026-07-29T17:35:39.802154818+08:00"
+            },
+            "Os": "linux",
+            "Parent": "",
+            "RepoDigests": [],
+            "RepoTags": [
+              "edge-mes-demo-collector:r32-pkg-closed-ca68dd4"
+            ],
+            "RootFS": {
+              "Layers": [
+                "sha256:4e6fee325600a0377566ca159a4da9833f6e35e04eaa4194c47dd3b2fe901717",
+                "sha256:1f6945ab3a1b6c4a2410d7a0a7384e91af9b5356cdbd63d725454651b14b2818",
+                "sha256:92e43e3934d11abe153198ffb0401027d24a6aa365d456f65b8c070caef41156",
+                "sha256:f52241bd08541c775533109caf6be52a9160f5000537b8dd0148bbce15dee151",
+                "sha256:379854df596ff562274bd82d0d2d11e90be551cffddb0a0d9b157446a2dcbda7",
+                "sha256:670be73767e6cd7502c4f716a33b1674adb8c24a7d9054a22d5ea2f6c64039f6",
+                "sha256:849842e564547162d7cd5e641bd25005d3025907b6efedc89350f08148c7ba00",
+                "sha256:f4f2a4337fdf6be5e391e35e85ea2d6d37a65efec8a2cfb8154b182bfefcb4c7",
+                "sha256:24077d2455892d3e67b12d31a673138baa19b5fa7174c3330e7a0233c8883846"
+              ],
+              "Type": "layers"
+            },
+            "Size": 174436937
+          }
+        ],
+        "stdout_json_parse_error": null
+      },
+      "known_bad_image": {
+        "reference": "sha256:7b94217f509619d1bdd63a786cabc3d2632ec84cca455de6dcecd80a6879c55c",
+        "returncode": 0,
+        "stderr": "",
+        "stdout_json": [
+          {
+            "Architecture": "arm64",
+            "Author": "",
+            "Comment": "buildkit.dockerfile.v0",
+            "Config": {
+              "ArgsEscaped": true,
+              "AttachStderr": false,
+              "AttachStdin": false,
+              "AttachStdout": false,
+              "Cmd": [
+                "python",
+                "-m",
+                "app.main"
+              ],
+              "Domainname": "",
+              "Entrypoint": null,
+              "Env": [
+                "PATH=/usr/local/bin:/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin",
+                "LANG=C.UTF-8",
+                "GPG_KEY=7169605F62C751356D054A26A821E680E5FA6305",
+                "PYTHON_VERSION=3.12.13",
+                "PYTHON_SHA256=c08bc65a81971c1dd5783182826503369466c7e67374d1646519adf05207b684"
+              ],
+              "Hostname": "",
+              "Image": "",
+              "Labels": null,
+              "OnBuild": null,
+              "OpenStdin": false,
+              "StdinOnce": false,
+              "Tty": false,
+              "User": "",
+              "Volumes": null,
+              "WorkingDir": "/app"
+            },
+            "Created": "2026-07-23T19:31:58.324014381+08:00",
+            "DockerVersion": "",
+            "GraphDriver": {
+              "Data": {
+                "LowerDir": "/var/lib/docker/overlay2/yq2dbmsbep8trsr4hhc14xpxo/diff:/var/lib/docker/overlay2/p88epuuwuz8entti84epaa72z/diff:/var/lib/docker/overlay2/krkmxl4ijzt1628vvg0mjd0j5/diff:/var/lib/docker/overlay2/0d2ace1fe4b4b1702bc039fd055f10c4fa232e7d839ad17c3c1ea121b7ff595b/diff:/var/lib/docker/overlay2/e0dcb62e63991f0e1ee73d763dbd6c2d056d7d62aa4e0fd46c788444619b3e20/diff:/var/lib/docker/overlay2/82920bd3bf97bf018021bbba953c6621968dff74ad2b20311bd32fb196e1f039/diff:/var/lib/docker/overlay2/e84cb0c5736f01069b53be8ae69680627a7597273c7f7d0304cefbe84dec77b0/diff",
+                "MergedDir": "/var/lib/docker/overlay2/m0ieiqr69axh8l5u6buy9q8l8/merged",
+                "UpperDir": "/var/lib/docker/overlay2/m0ieiqr69axh8l5u6buy9q8l8/diff",
+                "WorkDir": "/var/lib/docker/overlay2/m0ieiqr69axh8l5u6buy9q8l8/work"
+              },
+              "Name": "overlay2"
+            },
+            "Id": "sha256:7b94217f509619d1bdd63a786cabc3d2632ec84cca455de6dcecd80a6879c55c",
+            "Metadata": {
+              "LastTagTime": "2026-07-23T20:23:10.785055048+08:00"
+            },
+            "Os": "linux",
+            "Parent": "",
+            "RepoDigests": [],
+            "RepoTags": [],
+            "RootFS": {
+              "Layers": [
+                "sha256:4e6fee325600a0377566ca159a4da9833f6e35e04eaa4194c47dd3b2fe901717",
+                "sha256:1f6945ab3a1b6c4a2410d7a0a7384e91af9b5356cdbd63d725454651b14b2818",
+                "sha256:92e43e3934d11abe153198ffb0401027d24a6aa365d456f65b8c070caef41156",
+                "sha256:f52241bd08541c775533109caf6be52a9160f5000537b8dd0148bbce15dee151",
+                "sha256:0bc99e3b043d2aebd827225a13336ed013d317b00b3f141b90c6e61eaf28421a",
+                "sha256:128acf4c3c4d6903ad5f4f65b716b90f7be349a84ed3724ba4b0e5ed008deb91",
+                "sha256:6221856340727f022e6afe874151be6f1380117ed42b186cde9720884ecfd17b",
+                "sha256:cbe596342e98ee375c19f64f25e13e7c57430044376126a48d47a885dec913fe"
+              ],
+              "Type": "layers"
+            },
+            "Size": 174329249,
+            "Variant": "v8"
+          }
+        ],
+        "stdout_json_parse_error": null
+      },
+      "remote_object": {
+        "reference": "sha256:168bd07db0a427f003d1733a62354d3356b8ef6b362a15fed88d48728392f734",
+        "returncode": 0,
+        "stderr": "",
+        "stdout_json": [
+          {
+            "Architecture": "arm64",
+            "Author": "",
+            "Comment": "",
+            "Config": {
+              "AttachStderr": false,
+              "AttachStdin": false,
+              "AttachStdout": false,
+              "Cmd": [
+                "python",
+                "-m",
+                "app.main"
+              ],
+              "Domainname": "",
+              "Entrypoint": null,
+              "Env": [
+                "PATH=/usr/local/bin:/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin",
+                "LANG=C.UTF-8",
+                "GPG_KEY=7169605F62C751356D054A26A821E680E5FA6305",
+                "PYTHON_VERSION=3.12.13",
+                "PYTHON_SHA256=c08bc65a81971c1dd5783182826503369466c7e67374d1646519adf05207b684"
+              ],
+              "Hostname": "",
+              "Image": "",
+              "Labels": null,
+              "OnBuild": null,
+              "OpenStdin": false,
+              "StdinOnce": false,
+              "Tty": false,
+              "User": "",
+              "Volumes": null,
+              "WorkingDir": "/app"
+            },
+            "Created": "2026-07-29T15:43:02.675492291+08:00",
+            "DockerVersion": "",
+            "GraphDriver": {
+              "Data": {
+                "LowerDir": "/var/lib/docker/overlay2/8fc8b56b7b2d1581dc49ecd5033f1d534a926742c137d59dd2a5758fc2c2d684/diff:/var/lib/docker/overlay2/4231c54f596fa90e7afaa9f4c6a341729693b5cfd37437bbeef8fcd4fbd9e2b6/diff:/var/lib/docker/overlay2/226657d6627ead2c6aa86306909720ea3f47830a6d4e2501747c2d66c2c13aff/diff:/var/lib/docker/overlay2/b52706ba865da2d97c3886303337a18846cb6bf1faa6d739f75648643bcf350d/diff:/var/lib/docker/overlay2/0d2ace1fe4b4b1702bc039fd055f10c4fa232e7d839ad17c3c1ea121b7ff595b/diff:/var/lib/docker/overlay2/e0dcb62e63991f0e1ee73d763dbd6c2d056d7d62aa4e0fd46c788444619b3e20/diff:/var/lib/docker/overlay2/82920bd3bf97bf018021bbba953c6621968dff74ad2b20311bd32fb196e1f039/diff:/var/lib/docker/overlay2/e84cb0c5736f01069b53be8ae69680627a7597273c7f7d0304cefbe84dec77b0/diff",
+                "MergedDir": "/var/lib/docker/overlay2/74f3e2d388f8d67efba1ae57f993257292d7f81b95ef8110ffab74c7eed7a9b2/merged",
+                "UpperDir": "/var/lib/docker/overlay2/74f3e2d388f8d67efba1ae57f993257292d7f81b95ef8110ffab74c7eed7a9b2/diff",
+                "WorkDir": "/var/lib/docker/overlay2/74f3e2d388f8d67efba1ae57f993257292d7f81b95ef8110ffab74c7eed7a9b2/work"
+              },
+              "Name": "overlay2"
+            },
+            "Id": "sha256:168bd07db0a427f003d1733a62354d3356b8ef6b362a15fed88d48728392f734",
+            "Metadata": {
+              "LastTagTime": "2026-07-29T17:35:39.802154818+08:00"
+            },
+            "Os": "linux",
+            "Parent": "",
+            "RepoDigests": [],
+            "RepoTags": [
+              "edge-mes-demo-collector:r32-pkg-closed-ca68dd4"
+            ],
+            "RootFS": {
+              "Layers": [
+                "sha256:4e6fee325600a0377566ca159a4da9833f6e35e04eaa4194c47dd3b2fe901717",
+                "sha256:1f6945ab3a1b6c4a2410d7a0a7384e91af9b5356cdbd63d725454651b14b2818",
+                "sha256:92e43e3934d11abe153198ffb0401027d24a6aa365d456f65b8c070caef41156",
+                "sha256:f52241bd08541c775533109caf6be52a9160f5000537b8dd0148bbce15dee151",
+                "sha256:379854df596ff562274bd82d0d2d11e90be551cffddb0a0d9b157446a2dcbda7",
+                "sha256:670be73767e6cd7502c4f716a33b1674adb8c24a7d9054a22d5ea2f6c64039f6",
+                "sha256:849842e564547162d7cd5e641bd25005d3025907b6efedc89350f08148c7ba00",
+                "sha256:f4f2a4337fdf6be5e391e35e85ea2d6d37a65efec8a2cfb8154b182bfefcb4c7",
+                "sha256:24077d2455892d3e67b12d31a673138baa19b5fa7174c3330e7a0233c8883846"
+              ],
+              "Type": "layers"
+            },
+            "Size": 174436937
+          }
+        ],
+        "stdout_json_parse_error": null
+      }
+    },
+    "mutation_audit": {
+      "cleanup": 0,
+      "compose": 0,
+      "container_lifecycle": 0,
+      "docker_load": 0,
+      "docker_tag_retag": 0,
+      "filesystem_mutation": 0
+    },
+    "remote_effective_user": "mari",
+    "remote_effective_user_returncode": 0,
+    "remote_effective_user_stderr": "",
+    "requested_references": [
+      "sha256:168bd07db0a427f003d1733a62354d3356b8ef6b362a15fed88d48728392f734",
+      "edge-mes-demo-collector:r32-pkg-closed-ca68dd4",
+      "edge-mes-demo-collector:latest",
+      "sha256:7b94217f509619d1bdd63a786cabc3d2632ec84cca455de6dcecd80a6879c55c"
+    ],
+    "schema_version": "edge-mes-r32-r5-r2-remote-inspect/v1"
+  },
+  "phase": "REMOTE_SINGLE_PROCESS_SSH_CAPTURE_AND_MACHINE_RECONCILIATION",
+  "project_root": "/Users/chenjie/Documents/MES/edge-mes-demo",
+  "raw_capture_file_created": false,
+  "same_process_archive_parse_ssh_capture_compare": true,
+  "second_process_comparison_used": false,
+  "ssh_capture": {
+    "argument_array": [
+      "ssh",
+      "-T",
+      "-p",
+      "22",
+      "-o",
+      "BatchMode=yes",
+      "-o",
+      "IdentitiesOnly=yes",
+      "-i",
+      "/Users/chenjie/.ssh/edge_pi_codex",
+      "mari@10.0.0.217",
+      "/usr/bin/python3",
+      "-"
+    ],
+    "remote_schema_version": "edge-mes-r32-r5-r2-remote-inspect/v1",
+    "returncode": 0,
+    "stderr_byte_count": 0,
+    "stderr_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+    "stdout_byte_count": 11688,
+    "stdout_sha256": "088b142f82badde45e0e274b334a3d2a5db3340827b92c2e898fb07bb90ea887",
+    "strict_json_parse_result": {
+      "parser": "json.loads",
+      "root_type": "dict",
+      "status": "PASS"
+    },
+    "strict_utf8_decode_result": {
+      "errors": "strict",
+      "status": "PASS"
+    },
+    "subprocess_invocation_count": 1
+  },
+  "status": "PASS"
+}

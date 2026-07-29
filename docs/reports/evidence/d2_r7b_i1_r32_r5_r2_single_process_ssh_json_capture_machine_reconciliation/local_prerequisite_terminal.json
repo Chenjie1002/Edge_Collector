@@ -1,0 +1,208 @@
+{
+  "RootFS.validation": [
+    {
+      "format_valid": true,
+      "index": 1,
+      "length": 71,
+      "value": "sha256:4e6fee325600a0377566ca159a4da9833f6e35e04eaa4194c47dd3b2fe901717"
+    },
+    {
+      "format_valid": true,
+      "index": 2,
+      "length": 71,
+      "value": "sha256:1f6945ab3a1b6c4a2410d7a0a7384e91af9b5356cdbd63d725454651b14b2818"
+    },
+    {
+      "format_valid": true,
+      "index": 3,
+      "length": 71,
+      "value": "sha256:92e43e3934d11abe153198ffb0401027d24a6aa365d456f65b8c070caef41156"
+    },
+    {
+      "format_valid": true,
+      "index": 4,
+      "length": 71,
+      "value": "sha256:f52241bd08541c775533109caf6be52a9160f5000537b8dd0148bbce15dee151"
+    },
+    {
+      "format_valid": true,
+      "index": 5,
+      "length": 71,
+      "value": "sha256:379854df596ff562274bd82d0d2d11e90be551cffddb0a0d9b157446a2dcbda7"
+    },
+    {
+      "format_valid": true,
+      "index": 6,
+      "length": 71,
+      "value": "sha256:670be73767e6cd7502c4f716a33b1674adb8c24a7d9054a22d5ea2f6c64039f6"
+    },
+    {
+      "format_valid": true,
+      "index": 7,
+      "length": 71,
+      "value": "sha256:849842e564547162d7cd5e641bd25005d3025907b6efedc89350f08148c7ba00"
+    },
+    {
+      "format_valid": true,
+      "index": 8,
+      "length": 71,
+      "value": "sha256:f4f2a4337fdf6be5e391e35e85ea2d6d37a65efec8a2cfb8154b182bfefcb4c7"
+    },
+    {
+      "format_valid": true,
+      "index": 9,
+      "length": 71,
+      "value": "sha256:24077d2455892d3e67b12d31a673138baa19b5fa7174c3330e7a0233c8883846"
+    }
+  ],
+  "archive": {
+    "absolute_path": "/private/var/tmp/edge-mes-d2-r7b-i1-r32-ca68dd4/edge-mes-demo-collector-r32-ca68dd4-linux-arm64.tar",
+    "bytes": 54313984,
+    "mode": "0600",
+    "non_symlink": true,
+    "owner_uid": 501,
+    "regular": true,
+    "sha256": "b0fc3d6e4c511cfc1782d5ce15ef3d9cd053ce99a3571622daf165422d65ce2e"
+  },
+  "archive_streaming_parse": {
+    "config_blob_sha256": "sha256:168bd07db0a427f003d1733a62354d3356b8ef6b362a15fed88d48728392f734",
+    "docker_save_manifest_config_path": "blobs/sha256/168bd07db0a427f003d1733a62354d3356b8ef6b362a15fed88d48728392f734",
+    "docker_save_manifest_config_path_matches_oci_config_digest": true,
+    "manifest_blob_sha256": "sha256:899082388afebab65844cbc0e49fb69a0f19f8bf23c3c4c989f6533f2f2ce401",
+    "members_read": [
+      "blobs/sha256/168bd07db0a427f003d1733a62354d3356b8ef6b362a15fed88d48728392f734",
+      "blobs/sha256/899082388afebab65844cbc0e49fb69a0f19f8bf23c3c4c989f6533f2f2ce401",
+      "index.json",
+      "manifest.json"
+    ],
+    "method": "Python standard-library tarfile streaming read; no disk extraction or temporary file",
+    "oci_config_digest": "sha256:168bd07db0a427f003d1733a62354d3356b8ef6b362a15fed88d48728392f734",
+    "oci_manifest_digest": "sha256:899082388afebab65844cbc0e49fb69a0f19f8bf23c3c4c989f6533f2f2ce401"
+  },
+  "authority_id": "PM-D2-R7B-I1-R32-R5-R2-SINGLE-PROCESS-SSH-JSON-MACHINE-RECONCILIATION-260729-1759",
+  "canonical_config": {
+    "Config.Cmd": [
+      "python",
+      "-m",
+      "app.main"
+    ],
+    "Config.Env": [
+      "PATH=/usr/local/bin:/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin",
+      "LANG=C.UTF-8",
+      "GPG_KEY=7169605F62C751356D054A26A821E680E5FA6305",
+      "PYTHON_VERSION=3.12.13",
+      "PYTHON_SHA256=c08bc65a81971c1dd5783182826503369466c7e67374d1646519adf05207b684"
+    ],
+    "Config.WorkingDir": "/app",
+    "RootFS.Type": "layers",
+    "RootFS.diff_ids": [
+      "sha256:4e6fee325600a0377566ca159a4da9833f6e35e04eaa4194c47dd3b2fe901717",
+      "sha256:1f6945ab3a1b6c4a2410d7a0a7384e91af9b5356cdbd63d725454651b14b2818",
+      "sha256:92e43e3934d11abe153198ffb0401027d24a6aa365d456f65b8c070caef41156",
+      "sha256:f52241bd08541c775533109caf6be52a9160f5000537b8dd0148bbce15dee151",
+      "sha256:379854df596ff562274bd82d0d2d11e90be551cffddb0a0d9b157446a2dcbda7",
+      "sha256:670be73767e6cd7502c4f716a33b1674adb8c24a7d9054a22d5ea2f6c64039f6",
+      "sha256:849842e564547162d7cd5e641bd25005d3025907b6efedc89350f08148c7ba00",
+      "sha256:f4f2a4337fdf6be5e391e35e85ea2d6d37a65efec8a2cfb8154b182bfefcb4c7",
+      "sha256:24077d2455892d3e67b12d31a673138baa19b5fa7174c3330e7a0233c8883846"
+    ],
+    "architecture": "arm64",
+    "created": "2026-07-29T15:43:02.675492291+08:00",
+    "os": "linux"
+  },
+  "classification": "SINGLE_PROCESS_CANONICAL_ARCHIVE_PREREQUISITE_PASS",
+  "comparison_process_continues_to_ssh": true,
+  "fresh_git_baseline": {
+    "ahead_behind": "0\t0",
+    "branch": "main",
+    "cached_diff_check": "PASS",
+    "cached_index": "empty",
+    "diff_check": "PASS",
+    "head": "ca68dd4a4913238fc62e9621f1ac632c709a3149",
+    "head_parent": "1fac3ee567f1108e5a18b155e4133e1fecd50246",
+    "origin_main": "ca68dd4a4913238fc62e9621f1ac632c709a3149",
+    "tracked_dirty_paths": [
+      ".gitignore",
+      "docs/reports/evidence/d2_r7b_p2_r2/local_materialization.sh",
+      "docs/reports/evidence/d2_r7b_p2_r2/manifest.sha256",
+      "docs/reports/evidence/d2_r7b_p2_r3/manifest.sha256",
+      "docs/reports/evidence/d2_r7b_p2_r3/remote_i1_orchestrator.py",
+      "docs/thread_handoff/pm_operating_rules.md"
+    ]
+  },
+  "local_comparison_process": {
+    "executable": "/Users/chenjie/Documents/MES/edge-mes-demo/.venv/bin/python",
+    "invocation_count": 1,
+    "pid": 95912,
+    "working_directory": "/Users/chenjie/Documents/MES/edge-mes-demo"
+  },
+  "manual_transcription_used": false,
+  "network_call_count_before_ssh": 0,
+  "new_output_preconditions_before_first_write": {
+    "artifact_parent": {
+      "non_symlink": true,
+      "path": "docs/reports/evidence/d2_r7b_i1_r32_r5_r2_single_process_ssh_json_capture_machine_reconciliation",
+      "state": "ABSENT"
+    },
+    "report": {
+      "non_symlink": true,
+      "path": "docs/reports/sprint4_d2_r7b_i1_r32_r5_r2_single_process_ssh_json_capture_machine_reconciliation.md",
+      "state": "ABSENT",
+      "unstaged": true
+    }
+  },
+  "phase": "LOCAL_PREREQUISITE_AND_CANONICAL_ARCHIVE_CONFIG_EXTRACTION",
+  "project_root": "/Users/chenjie/Documents/MES/edge-mes-demo",
+  "r32_r5_r1_durable_identity_verification": {
+    "local_prerequisite_terminal": {
+      "absolute_path": "/Users/chenjie/Documents/MES/edge-mes-demo/docs/reports/evidence/d2_r7b_i1_r32_r5_r1_focused_readonly_loaded_object_reconciliation_correction/local_prerequisite_terminal.json",
+      "bytes": 6396,
+      "matches_frozen": true,
+      "mode": "0644",
+      "non_symlink": true,
+      "owner_uid": 501,
+      "regular": true,
+      "sha256": "5bd8b9cca189a7d98924726ba10a2a9619fb1dd21cbd810683257878afa40c03"
+    },
+    "manifest": {
+      "absolute_path": "/Users/chenjie/Documents/MES/edge-mes-demo/docs/reports/evidence/d2_r7b_i1_r32_r5_r1_focused_readonly_loaded_object_reconciliation_correction/manifest.sha256",
+      "bytes": 566,
+      "matches_frozen": true,
+      "mode": "0644",
+      "non_symlink": true,
+      "owner_uid": 501,
+      "regular": true,
+      "sha256": "7a439f873c580206686828654e9e7daeefd88d7bc7c25b57d36b12ce617828bc"
+    },
+    "remote_reconciliation_terminal": {
+      "absolute_path": "/Users/chenjie/Documents/MES/edge-mes-demo/docs/reports/evidence/d2_r7b_i1_r32_r5_r1_focused_readonly_loaded_object_reconciliation_correction/remote_reconciliation_terminal.json",
+      "bytes": 3261,
+      "matches_frozen": true,
+      "mode": "0644",
+      "non_symlink": true,
+      "owner_uid": 501,
+      "regular": true,
+      "sha256": "843b169109114005010beb8eeca4fdfe7c2a2cc828bf2c1f7d35f142dec7a395"
+    },
+    "report": {
+      "absolute_path": "/Users/chenjie/Documents/MES/edge-mes-demo/docs/reports/sprint4_d2_r7b_i1_r32_r5_r1_focused_readonly_loaded_object_reconciliation_correction.md",
+      "bytes": 6494,
+      "matches_frozen": true,
+      "mode": "0644",
+      "non_symlink": true,
+      "owner_uid": 501,
+      "regular": true,
+      "sha256": "b4dbf47b709724711cf5bc2b074f7a9230491e3aaad26634dc93603c188e84fe"
+    }
+  },
+  "r32_r5_r1_manifest_verification": {
+    "absolute_manifest_argument": "/Users/chenjie/Documents/MES/edge-mes-demo/docs/reports/evidence/d2_r7b_i1_r32_r5_r1_focused_readonly_loaded_object_reconciliation_correction/manifest.sha256",
+    "cwd": "/Users/chenjie/Documents/MES/edge-mes-demo",
+    "invocation_count": 1,
+    "performed_before_comparison_process": true,
+    "result": "3/3 OK"
+  },
+  "raw_capture_file_created": false,
+  "second_process_comparison_used": false,
+  "status": "PASS"
+}
