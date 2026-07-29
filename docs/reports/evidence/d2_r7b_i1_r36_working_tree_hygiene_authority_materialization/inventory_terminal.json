@@ -1,0 +1,378 @@
+{
+  "schema_version": "edge-mes/r36-inventory-terminal/v1",
+  "authority_id": "PM-D2-R7B-I1-R36-WORKTREE-HYGIENE-AUTHORITY-MATERIALIZATION-260729-2221",
+  "status": "PASS",
+  "classification": "HYGIENE_INVENTORY_READY_FOR_PM_GIT_CLOSEOUT",
+  "pre_task_live_facts": {
+    "root": "/Users/chenjie/Documents/MES/edge-mes-demo",
+    "branch": "main",
+    "head": "ac33e6bae449ecdd9b77a53daaf7271f14133000",
+    "origin_main": "ac33e6bae449ecdd9b77a53daaf7271f14133000",
+    "head_parent": "66563677d3d1129fbc79c2c284b5f6d8b62f1932",
+    "ahead": 0,
+    "behind": 0,
+    "tracked_dirty": [
+      ".gitignore",
+      "docs/reports/evidence/d2_r7b_p2_r2/local_materialization.sh",
+      "docs/reports/evidence/d2_r7b_p2_r2/manifest.sha256",
+      "docs/reports/evidence/d2_r7b_p2_r3/manifest.sha256",
+      "docs/reports/evidence/d2_r7b_p2_r3/remote_i1_orchestrator.py",
+      "docs/thread_handoff/pm_operating_rules.md"
+    ],
+    "cached": [],
+    "diff_check": "PASS",
+    "cached_diff_check": "PASS"
+  },
+  "pre_ignore_capture": {
+    "all_untracked": 13877,
+    "frontend_node_modules": 12252,
+    "frontend_next": 1277,
+    "docs_reports": 307,
+    "docs_thread_handoff": 38,
+    "remaining_frontend": 2,
+    "remaining_frontend_paths": [
+      "frontend/next-env.d.ts",
+      "frontend/tsconfig.tsbuildinfo"
+    ],
+    "remaining_top_level_docs": 1,
+    "remaining_top_level_docs_paths": [
+      "docs/Edge MES Demo — ChatGPT PM Handoff - 20260623.md"
+    ],
+    "status_entry_counts": {
+      " M": 6,
+      "??": 13877
+    },
+    "raw_porcelain_bytes": 1046501,
+    "raw_porcelain_sha256": "286424545a431a0baf8900e39c1fdc4c9cfe4e587ab3e5c63856048463571085",
+    "sorted_untracked_nul_sha256": "3e5469c0f5f44cb642c222ef7f4744fc4d8d8f60b79db72b7f187cf94b6f5fb4"
+  },
+  "gitignore_identities": {
+    "before": {
+      "bytes": 891,
+      "sha256": "a302455543639fa197b725008240dc24c460505b9f09a0a4cd662bb6ba0bb442"
+    },
+    "after": {
+      "bytes": 1002,
+      "sha256": "b23d176a4e84628fd1afdb849fa6b8761c291664610c8cff35c60175852f133c"
+    },
+    "ignore_rules_added": [
+      "# Frontend dependencies and build output",
+      "frontend/node_modules/",
+      "frontend/.next/",
+      "frontend/tsconfig.tsbuildinfo"
+    ],
+    "exact_block_occurrences": 1,
+    "broad_ignore_rule_absent": true,
+    "next_env_d_ts_ignored": false
+  },
+  "post_ignore_pre_output_capture": {
+    "all_untracked": 347,
+    "status_entry_counts": {
+      " M": 6,
+      "??": 347
+    },
+    "raw_porcelain_bytes": 32278,
+    "raw_porcelain_sha256": "93c94ab4033eb8d6425118672537daf35d5ddfbdcffeb3aee2a390d9abb49520",
+    "sorted_untracked_nul_sha256": "1c36f320808fd7585089cd116ee45cff9f2bc8f9736900f8212fdc21560656d7"
+  },
+  "r35_acceptance_revalidation": {
+    "status": "PASS",
+    "classification": "ACTIVATED",
+    "static_mapping_initialized": true,
+    "runtime_loaded": false,
+    "production_accepted": false,
+    "manifest_verification": "6/6 OK",
+    "report": {
+      "bytes": 3002,
+      "sha256": "133c303e6a556b4be9e2c9535a10ff3b5a9dd06bf5b6f3fca1f272d707b75ee0"
+    },
+    "local_terminal": {
+      "bytes": 52496,
+      "sha256": "41c28d5c22e9c934c4edfeea0b07a1a84ec893b2ce9918d2bb17f2808afc7ce7"
+    },
+    "post_terminal": {
+      "bytes": 72307,
+      "sha256": "135e66854fc032ceddc81ce6fa0cf28b51c90efd081f7f6c15e9e9299295e618"
+    },
+    "manifest": {
+      "bytes": 973,
+      "sha256": "51e172a2c5bc3f9671187dc560565c9423368741fd67281b57329edd2795d244"
+    }
+  },
+  "runner_identities": {
+    "preliminary": {
+      "path": "docs/reports/evidence/d2_r7b_i1_r36_working_tree_hygiene_authority_materialization/run_inventory.py",
+      "bytes": 40359,
+      "sha256": "079d21f3d463e9edd176580467e048d1ed06f67f5ac083c71452fc378ad3c7a1",
+      "file_type": "regular",
+      "symlink": false
+    },
+    "locked": {
+      "path": "docs/reports/evidence/d2_r7b_i1_r36_working_tree_hygiene_authority_materialization/run_inventory.py",
+      "bytes": 40359,
+      "sha256": "079d21f3d463e9edd176580467e048d1ed06f67f5ac083c71452fc378ad3c7a1",
+      "file_type": "regular",
+      "symlink": false
+    },
+    "final": {
+      "path": "docs/reports/evidence/d2_r7b_i1_r36_working_tree_hygiene_authority_materialization/run_inventory.py",
+      "bytes": 40359,
+      "sha256": "079d21f3d463e9edd176580467e048d1ed06f67f5ac083c71452fc378ad3c7a1",
+      "file_type": "regular",
+      "symlink": false
+    }
+  },
+  "classification_rules": [
+    {
+      "classification": "CURRENT_AUTHORITY_KEEP_AND_COMMIT",
+      "rule": "exact authority seed or verified member of a seed manifest"
+    },
+    {
+      "classification": "HISTORICAL_DOC_ARCHIVE_REVIEW",
+      "rule": "docs report, PM handoff, or top-level durable doc outside the verified current authority closure"
+    },
+    {
+      "classification": "GENERATED_FILE_REVIEW",
+      "rule": "frontend/next-env.d.ts remains untracked and unignored"
+    },
+    {
+      "classification": "UNCLASSIFIED_BLOCKER",
+      "rule": "any remaining path or unsupported file type with no frozen rule"
+    }
+  ],
+  "authority_seeds": [
+    ".gitignore",
+    "docs/thread_handoff/pm_operating_rules.md",
+    "docs/reports/sprint4_d2_r7b_i1_r31_package_closed_collector_image_materialization_deployment_plan.md",
+    "docs/reports/evidence/d2_r7b_i1_r32_phase1_phase2/manifest.sha256",
+    "docs/reports/evidence/d2_r7b_i1_r32_phase1_phase2/build_input_manifest.sha256",
+    "docs/reports/evidence/d2_r7b_i1_r32_r1_phase1_validation_phase2_transport_load_continuation/manifest.sha256",
+    "docs/reports/evidence/d2_r7b_i1_r32_r1_phase1_validation_phase2_transport_load_continuation/phase1_validation_terminal.json",
+    "docs/reports/sprint4_d2_r7b_i1_pm_scope_reset_governance_decision_image_loaded_exact.md",
+    "docs/reports/evidence/d2_r7b_i1_r32_r5_r2_single_process_ssh_json_capture_machine_reconciliation/manifest.sha256",
+    "docs/reports/sprint4_d2_r7b_i1_r32_r5_r2_single_process_ssh_json_capture_machine_reconciliation.md",
+    "docs/reports/sprint4_d2_r7b_i1_r33_fresh_readonly_remote_activation_preflight.md",
+    "docs/reports/evidence/d2_r7b_i1_r33_fresh_readonly_remote_activation_preflight/manifest.sha256",
+    "docs/reports/sprint4_d2_r7b_i1_r34_collector_only_activation.md",
+    "docs/reports/evidence/d2_r7b_i1_r34_collector_only_activation/manifest.sha256",
+    "docs/reports/sprint4_d2_r7b_i1_r34_r1_collector_only_activation_retry.md",
+    "docs/reports/evidence/d2_r7b_i1_r34_r1_collector_only_activation_retry/manifest.sha256",
+    "docs/reports/sprint4_d2_r7b_i1_r34_r2_corrected_activation_validator_collector_only_activation.md",
+    "docs/reports/evidence/d2_r7b_i1_r34_r2_corrected_activation_validator_collector_only_activation/manifest.sha256",
+    "docs/reports/sprint4_d2_r7b_i1_r35_phase5_post_activation_validation.md",
+    "docs/reports/evidence/d2_r7b_i1_r35_phase5_post_activation_validation/manifest.sha256"
+  ],
+  "repair_cycles": {
+    "maximum": 2,
+    "consumed": 1,
+    "summary": [
+      {
+        "cycle": 1,
+        "classification": "MECHANICAL_HARNESS_CORRECTION",
+        "change": "Treat live git ls-files --ignored node_modules count as diagnostic because it includes package-internal paths already ignored before the new root rule; retain frozen pre/post Git status counts as visibility authority.",
+        "semantic_changes": false,
+        "authority_seed_changes": false,
+        "batch_boundary_changes": false
+      }
+    ]
+  },
+  "execution_budget": {
+    "network_calls": 0,
+    "remote_calls": 0,
+    "docker_calls": 0,
+    "db_api_plc_calls": 0,
+    "git_stage": 0,
+    "git_commit": 0,
+    "git_push": 0,
+    "git_tag": 0,
+    "git_clean": 0,
+    "git_stash": 0,
+    "file_delete": 0,
+    "file_move": 0,
+    "final_inventory_executions_maximum": 1
+  },
+  "exact_allowlist": [
+    ".gitignore",
+    "docs/reports/sprint4_d2_r7b_i1_r36_working_tree_hygiene_authority_materialization_plan.md",
+    "docs/reports/evidence/d2_r7b_i1_r36_working_tree_hygiene_authority_materialization/run_inventory.py",
+    "docs/reports/evidence/d2_r7b_i1_r36_working_tree_hygiene_authority_materialization/inventory_terminal.json",
+    "docs/reports/evidence/d2_r7b_i1_r36_working_tree_hygiene_authority_materialization/untracked_durable_inventory.tsv",
+    "docs/reports/evidence/d2_r7b_i1_r36_working_tree_hygiene_authority_materialization/generated_noise_summary.json",
+    "docs/reports/evidence/d2_r7b_i1_r36_working_tree_hygiene_authority_materialization/authority_materialization_plan.json",
+    "docs/reports/evidence/d2_r7b_i1_r36_working_tree_hygiene_authority_materialization/manifest.sha256"
+  ],
+  "local_validation": {
+    "state": "PASS",
+    "runner_strict_utf8": true,
+    "runner_ast": true,
+    "subprocess_argument_arrays": true,
+    "shell_true_absent": true,
+    "no_bytecode": true,
+    "self_check_invocations": 2,
+    "self_check_status": "PASS_AFTER_REPAIR_CYCLE_1",
+    "first_self_check_terminal": "HOLD / FINAL_GIT_DRIFT",
+    "first_self_check_diagnostic": "git ls-files --ignored includes package-internal paths already ignored before the new root node_modules rule",
+    "inventory_rows": 347,
+    "unique_paths": 347,
+    "classification_counts": {
+      "CURRENT_AUTHORITY_KEEP_AND_COMMIT": 46,
+      "GENERATED_FILE_REVIEW": 1,
+      "HISTORICAL_DOC_ARCHIVE_REVIEW": 300
+    },
+    "unclassified": 0,
+    "authority_closure": {
+      "path_count": 91,
+      "manifest_count": 9,
+      "verified_members": 79
+    },
+    "batch_path_counts": {
+      "A": 2,
+      "B": 89,
+      "C": 4,
+      "D": 300,
+      "E": 1
+    },
+    "batch_overlap": 0,
+    "inventory_coverage": "347/347",
+    "preliminary_payload_identities": {
+      "untracked_durable_inventory.tsv": {
+        "bytes": 132983,
+        "sha256": "32959bde73c53076d4908f392c6b3f3f785f5413274018da862a8794c64ca9f9"
+      },
+      "generated_noise_summary.json": {
+        "bytes": 4571,
+        "sha256": "18c257937e98bb70e00e6c23dd1bbea7ebc4955c0f79445bd5f53b2f3841c10f"
+      },
+      "authority_materialization_plan.json": {
+        "bytes": 122377,
+        "sha256": "4d73092bb058ff2643ce9092327846ec41e2c12b10468e86ff6739cb514f8705"
+      }
+    }
+  },
+  "execution_lock": {
+    "state": "SEALED",
+    "authority_id": "PM-D2-R7B-I1-R36-WORKTREE-HYGIENE-AUTHORITY-MATERIALIZATION-260729-2221",
+    "sealed_at_utc": "2026-07-29T14:46:55Z",
+    "sealed_after_complete_local_validation": true,
+    "runner_and_classification_rules_immutable_after_seal": true,
+    "runner_identity": {
+      "path": "docs/reports/evidence/d2_r7b_i1_r36_working_tree_hygiene_authority_materialization/run_inventory.py",
+      "bytes": 40359,
+      "sha256": "079d21f3d463e9edd176580467e048d1ed06f67f5ac083c71452fc378ad3c7a1",
+      "file_type": "regular",
+      "symlink": false
+    },
+    "captured_pre_task_facts": "pre_task_live_facts + pre_ignore_capture",
+    "gitignore_identity_boundary": "gitignore_identities",
+    "post_ignore_count": 347,
+    "classification_rules": "top-level classification_rules immutable",
+    "authority_seeds": "top-level authority_seeds immutable",
+    "repair_cycles_consumed": 1,
+    "repair_cycles_maximum": 2,
+    "exact_allowlist_count": 8,
+    "external_remote_command_budget": 0,
+    "network_budget": 0,
+    "git_mutation_budget": 0,
+    "delete_move_budget": 0,
+    "final_inventory_execution_budget": 1
+  },
+  "final_inventory": {
+    "execution_count": 1,
+    "execution_budget": 1,
+    "runner_post_lock_identity_match": true,
+    "row_count": 347,
+    "unique_path_count": 347,
+    "coverage": "347/347",
+    "classification_counts": {
+      "CURRENT_AUTHORITY_KEEP_AND_COMMIT": 46,
+      "GENERATED_FILE_REVIEW": 1,
+      "HISTORICAL_DOC_ARCHIVE_REVIEW": 300
+    },
+    "duplicate_classification_count": 0,
+    "unclassified_count": 0,
+    "authority_closure": {
+      "path_count": 91,
+      "manifest_count": 9,
+      "verified_members": 79,
+      "all_members_exist_and_match": true
+    },
+    "batch_path_counts": {
+      "A": 2,
+      "B": 89,
+      "C": 4,
+      "D": 300,
+      "E": 1
+    },
+    "batch_overlap_count": 0,
+    "safe_to_delete_claims": 0,
+    "artifact_identities": {
+      "untracked_durable_inventory.tsv": {
+        "bytes": 132983,
+        "sha256": "32959bde73c53076d4908f392c6b3f3f785f5413274018da862a8794c64ca9f9"
+      },
+      "generated_noise_summary.json": {
+        "bytes": 4571,
+        "sha256": "18c257937e98bb70e00e6c23dd1bbea7ebc4955c0f79445bd5f53b2f3841c10f"
+      },
+      "authority_materialization_plan.json": {
+        "bytes": 122377,
+        "sha256": "4d73092bb058ff2643ce9092327846ec41e2c12b10468e86ff6739cb514f8705"
+      },
+      "report": {
+        "bytes": 12643,
+        "sha256": "56ee171f9639ad36a8f4dc23f3098c89047bc3f58932b1b3b0a893df55ee1ecd"
+      }
+    }
+  },
+  "final_git_process_audit": {
+    "root": "/Users/chenjie/Documents/MES/edge-mes-demo",
+    "branch": "main",
+    "head": "ac33e6bae449ecdd9b77a53daaf7271f14133000",
+    "origin_main": "ac33e6bae449ecdd9b77a53daaf7271f14133000",
+    "ahead": 0,
+    "behind": 0,
+    "tracked_dirty": [
+      ".gitignore",
+      "docs/reports/evidence/d2_r7b_p2_r2/local_materialization.sh",
+      "docs/reports/evidence/d2_r7b_p2_r2/manifest.sha256",
+      "docs/reports/evidence/d2_r7b_p2_r3/manifest.sha256",
+      "docs/reports/evidence/d2_r7b_p2_r3/remote_i1_orchestrator.py",
+      "docs/thread_handoff/pm_operating_rules.md"
+    ],
+    "cached": [],
+    "diff_check": "PASS",
+    "cached_diff_check": "PASS",
+    "non_task_untracked_count": 347,
+    "non_task_sorted_untracked_nul_sha256": "1c36f320808fd7585089cd116ee45cff9f2bc8f9736900f8212fdc21560656d7",
+    "exact_task_output_count_after_manifest": 7,
+    "task_owned_process_count": 0,
+    "allowlist_pass": true,
+    "forbidden_file_mutation_count": 0,
+    "forbidden_git_action_count": 0
+  },
+  "manifest_verification": {
+    "expected": "6/6 OK",
+    "verification": "6/6 OK",
+    "repository_root_relative": true,
+    "sorted": true,
+    "unique": true,
+    "self_excluded": true,
+    "expected_paths": [
+      "docs/reports/evidence/d2_r7b_i1_r36_working_tree_hygiene_authority_materialization/authority_materialization_plan.json",
+      "docs/reports/evidence/d2_r7b_i1_r36_working_tree_hygiene_authority_materialization/generated_noise_summary.json",
+      "docs/reports/evidence/d2_r7b_i1_r36_working_tree_hygiene_authority_materialization/inventory_terminal.json",
+      "docs/reports/evidence/d2_r7b_i1_r36_working_tree_hygiene_authority_materialization/run_inventory.py",
+      "docs/reports/evidence/d2_r7b_i1_r36_working_tree_hygiene_authority_materialization/untracked_durable_inventory.tsv",
+      "docs/reports/sprint4_d2_r7b_i1_r36_working_tree_hygiene_authority_materialization_plan.md"
+    ]
+  },
+  "forbidden_counters": {
+    "network": 0,
+    "remote": 0,
+    "docker": 0,
+    "db_api_plc": 0,
+    "git_mutation": 0,
+    "delete": 0,
+    "move": 0
+  }
+}

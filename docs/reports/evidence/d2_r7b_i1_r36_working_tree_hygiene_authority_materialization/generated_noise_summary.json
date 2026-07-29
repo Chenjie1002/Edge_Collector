@@ -1,0 +1,122 @@
+{
+  "authority_id": "PM-D2-R7B-I1-R36-WORKTREE-HYGIENE-AUTHORITY-MATERIALIZATION-260729-2221",
+  "broad_ignore_rule_absent": true,
+  "captured_after_ignore_before_outputs": {
+    "all_untracked": 347,
+    "raw_porcelain_bytes": 32278,
+    "raw_porcelain_sha256": "93c94ab4033eb8d6425118672537daf35d5ddfbdcffeb3aee2a390d9abb49520",
+    "sorted_untracked_nul_sha256": "1c36f320808fd7585089cd116ee45cff9f2bc8f9736900f8212fdc21560656d7",
+    "status_entry_counts": {
+      " M": 6,
+      "??": 347
+    }
+  },
+  "captured_before_ignore": {
+    "all_untracked": 13877,
+    "docs_reports": 307,
+    "docs_thread_handoff": 38,
+    "frontend_next": 1277,
+    "frontend_node_modules": 12252,
+    "raw_porcelain_bytes": 1046501,
+    "raw_porcelain_sha256": "286424545a431a0baf8900e39c1fdc4c9cfe4e587ab3e5c63856048463571085",
+    "remaining_frontend": 2,
+    "remaining_top_level_docs": 1,
+    "sorted_untracked_nul_sha256": "3e5469c0f5f44cb642c222ef7f4744fc4d8d8f60b79db72b7f187cf94b6f5fb4",
+    "status_entry_counts": {
+      " M": 6,
+      "??": 13877
+    }
+  },
+  "classification_counts_for_remaining_untracked": {
+    "CURRENT_AUTHORITY_KEEP_AND_COMMIT": 46,
+    "GENERATED_FILE_REVIEW": 1,
+    "HISTORICAL_DOC_ARCHIVE_REVIEW": 300
+  },
+  "delete_move_actions": 0,
+  "exact_ignore_block_once": true,
+  "file_counts": {
+    "after_ignore_before_outputs": 347,
+    "before_ignore": 13877,
+    "live_ignored_generated_group_count": 14368,
+    "live_non_task_untracked": 347,
+    "removed_from_status_visibility": 13530
+  },
+  "generated_groups": {
+    "frontend/.next": {
+      "captured_visible_file_count_before_rule": 1277,
+      "classification": "GENERATED_NOISE_IGNORED",
+      "discovery_note": "Live git ls-files --ignored may also include package-internal paths that were already ignored before the new root rule; the frozen before/after status captures are visibility-reduction authority.",
+      "live_ignored_discovery_file_count": 1277,
+      "path_prefix": "frontend/.next"
+    },
+    "frontend/node_modules": {
+      "captured_visible_file_count_before_rule": 12252,
+      "classification": "GENERATED_NOISE_IGNORED",
+      "discovery_note": "Live git ls-files --ignored may also include package-internal paths that were already ignored before the new root rule; the frozen before/after status captures are visibility-reduction authority.",
+      "live_ignored_discovery_file_count": 13090,
+      "path_prefix": "frontend/node_modules"
+    },
+    "frontend/tsconfig.tsbuildinfo": {
+      "captured_visible_file_count_before_rule": 1,
+      "classification": "GENERATED_NOISE_IGNORED",
+      "discovery_note": "Live git ls-files --ignored may also include package-internal paths that were already ignored before the new root rule; the frozen before/after status captures are visibility-reduction authority.",
+      "live_ignored_discovery_file_count": 1,
+      "path_prefix": "frontend/tsconfig.tsbuildinfo"
+    }
+  },
+  "generated_noise_conclusion": "frontend/node_modules and frontend/.next are generated dependency/build noise; frontend/tsconfig.tsbuildinfo is generated compiler state. Exactly 13,530 files were removed from Git status visibility by the narrow rules.",
+  "git_check_ignore_results": {
+    "frontend/.next": {
+      "ignored": true,
+      "returncode": 0,
+      "rule": ".gitignore:68:frontend/.next/\tfrontend/.next",
+      "stderr_bytes": 0
+    },
+    "frontend/next-env.d.ts": {
+      "ignored": false,
+      "returncode": 1,
+      "rule": "",
+      "stderr_bytes": 0
+    },
+    "frontend/node_modules": {
+      "ignored": true,
+      "returncode": 0,
+      "rule": ".gitignore:67:frontend/node_modules/\tfrontend/node_modules",
+      "stderr_bytes": 0
+    },
+    "frontend/tsconfig.tsbuildinfo": {
+      "ignored": true,
+      "returncode": 0,
+      "rule": ".gitignore:69:frontend/tsconfig.tsbuildinfo\tfrontend/tsconfig.tsbuildinfo",
+      "stderr_bytes": 0
+    }
+  },
+  "ignore_rules_added": [
+    "# Frontend dependencies and build output",
+    "frontend/node_modules/",
+    "frontend/.next/",
+    "frontend/tsconfig.tsbuildinfo"
+  ],
+  "next_env_d_ts_result": {
+    "classification": "GENERATED_FILE_REVIEW",
+    "ignored": false,
+    "path": "frontend/next-env.d.ts",
+    "remains_untracked": true
+  },
+  "no_delete_or_move": true,
+  "schema_version": "edge-mes/r36-authority-materialization/v1",
+  "status_entry_counts": {
+    "after_ignore_before_outputs": {
+      " M": 6,
+      "??": 347
+    },
+    "before_ignore": {
+      " M": 6,
+      "??": 13877
+    },
+    "live_with_task_outputs": {
+      " M": 6,
+      "??": 349
+    }
+  }
+}

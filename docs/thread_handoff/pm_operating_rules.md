@@ -99,6 +99,115 @@ activation authority and rollback authority are separate grants. A planning repo
 one of them but cannot grant it. A successful config copy proves only deployment and identity; it
 does not prove runtime load, Collector health, accepted-fact generation or production readiness.
 
+### Pre-authority local repair window
+
+PM may explicitly delegate a bounded `PRE_AUTHORITY_LOCAL_REPAIR_WINDOW` to the executing Thread.
+This delegation exists to close mechanical local defects without returning every syntax or artifact-
+format mistake to PM. It never delegates remote, mutation, lifecycle, rollback, Git or phase-change
+authority.
+
+The repair window is valid only before any external or irreversible authority is consumed, including
+SSH/network access, remote read or mutation, Docker/Compose lifecycle, deployment, activation,
+rollback, DB/API/PLC/V-PLC interaction, production-data generation, Git stage/commit/push/tag or
+cleanup outside the task-owned output paths.
+
+The Prompt must state whether the window is authorized and must freeze a maximum repair-cycle
+budget. The default is `not authorized`; when authorized, the normal maximum is two cycles. A cycle
+means one bounded local edit set followed by the complete required local validation set. Exhausting
+the budget without a clean local gate is `HOLD`; the Thread must not invent another cycle.
+
+Eligible automatic repairs are limited to task-owned exact output paths and mechanical defects that
+do not change product, runtime or authority semantics, such as:
+
+- syntax, indentation, quoting, bracket or missing-import errors;
+- local JSON/schema shape or required-field mistakes;
+- incorrect references between the task's own exact artifacts;
+- manifest sorting, duplication, self-exclusion or path-format defects;
+- report/window formatting defects;
+- local harness defects whose repair does not change the behavior or claim under test.
+
+The Thread must stop and return PM instead of auto-repairing any change to:
+
+- authority IDs, endpoint/user/credential identity or remote-call budget;
+- image IDs, tags, service names, command categories or mutation counts;
+- target, backup, sidecar, config or rollback paths and frozen hashes;
+- write/read allowlists, PASS/HOLD semantics, stop conditions or next-gate meaning;
+- rollback, cleanup, lifecycle or protected-object boundaries;
+- source/product/runtime behavior, production-truth semantics or evidence authority fields.
+
+Before the first task-owned write, the Thread must capture the fresh pre-task live facts. Those facts
+may be held in memory initially, but they must be persisted in the declared local prerequisite
+artifact before any external or remote authority is consumed. A separate pre-snapshot artifact is
+required only when the Prompt explicitly declares one.
+
+During the repair window, newly created exact helper/artifact paths are `TASK-OWNED MUTABLE DRAFTS`.
+Their existence does not trigger `OUTPUT_PATH_PREEXISTS` within the same non-terminal task.
+`OUTPUT_PATH_PREEXISTS` applies at initial task entry, or when a later authority attempts to reuse a
+path terminalized by an earlier PASS/HOLD report, unless PM explicitly grants exact-path in-place
+repair.
+
+After all local checks pass, the Thread must create an `EXECUTION_LOCK` in its declared local
+evidence. The lock must record at minimum:
+
+- captured pre-task live facts and authority-input identities;
+- final helper/artifact byte lengths and SHA-256 identities;
+- local validation results and repair-cycle count with a concise repair summary;
+- exact external/remote command, call budget and mutation authority to be consumed.
+
+After `EXECUTION_LOCK`, execution helpers and authority-bearing fields are immutable. Any later local
+failure is `HOLD`; no further repair, retry or authority-budget increase is allowed. A remote or
+post-mutation failure can never reopen the local repair window.
+
+### Canonical comparison for unordered discovery
+
+Remote and runtime discovery commands often return sets in a non-authoritative order. A Thread must
+not classify drift by directly comparing raw list order when the product claim concerns membership or
+per-object identity rather than ordering.
+
+Before comparing set-valued observations, the Thread must normalize them with a stable identity key
+and deterministic field representation. Examples include:
+
+- Compose containers and services: key by Compose service, then full container ID;
+- container-ID discovery: compare as a sorted unique set when order has no authority;
+- mounts: sort by type, source and destination, while retaining the read/write flag;
+- image tags, sidecars and path sets: compare as sorted unique strings;
+- dictionaries or JSON objects: compare after deterministic key ordering without dropping fields.
+
+The raw observation and the normalized comparison input must both remain in durable evidence. A raw
+ordering difference alone is diagnostic-only and must not become a `HOLD` blocker. Duplicate stable
+keys, missing objects, additional objects or field differences after normalization remain real drift
+and must fail closed when they affect the authorized invariant.
+
+Within an authorized pre-authority local repair window, a Thread may mechanically correct missing or
+incorrect canonicalization and rerun the full local validation set when the stable key and comparison
+semantics are already frozen by the Prompt or accepted durable authority. It must return PM when
+choosing a new authority key, dropping compared fields or otherwise weakening PASS/HOLD semantics
+would be required.
+
+### Local and remote identity authority separation
+
+A local repository path and a remote deployed path with the same filename are separate objects. Their
+byte length, hash, ownership, mode, topology role and update history must not be assumed equal.
+
+Every Prompt that compares or mutates a remote file must name separately:
+
+- the local source identity, when relevant;
+- the remote deployed identity and the durable or fresh-remote authority that established it;
+- whether local-to-remote byte equality has actually been established by an accepted deployment gate;
+- which identity is terminal for the current remote prerequisite.
+
+A committed or current local file hash is not a valid expected remote hash merely because the paths
+share a basename. Remote expected identity must come from accepted remote evidence or from a fresh
+read-only observation in the current authority. When accepted remote evidence and the local checkout
+differ, that difference is not drift unless the current gate explicitly requires and has already
+established local-to-remote equality.
+
+Within an authorized pre-authority local repair window, a Thread may correct a local/remote authority
+reference mechanically only when the intended remote identity is explicit in PM-named, accepted
+durable evidence and the correction does not broaden the remote object, command or PASS claim. If
+multiple plausible remote identities exist, the evidence conflicts, or a new identity must be
+selected, the Thread must return `HOLD` to PM rather than choosing one.
+
 ## 4. Git safety rules
 
 Never use broad staging unless PM explicitly authorizes it for a specific exceptional case.
@@ -288,11 +397,34 @@ Before assigning a task, PM must record:
 - whether a new Thread is needed;
 - the reason for continuing the current Thread or opening a new one.
 
-Future Codex prompts should prefer this short pattern.
+Future Thread prompts must use the fixed outer template in this section. This is a mandatory governance format, not a preferred example.
+
+Before issuing any Architecture / Integration、Reliability、Data Quality or Verification Prompt, PM must re-read this section and audit the completed Prompt against the mandatory field checklist below. Correct task content does not excuse a non-conforming Prompt structure.
 
 When PM issues a task prompt for another Thread, the Thread prompt body must be returned as one complete copyable Markdown block. Do not split the Thread prompt body across multiple separate code fences. PM may write intake, judgment or explanation before or after the prompt, but the Thread prompt itself must remain a single copyable Markdown block so the user can copy it directly into the target Thread. Inside the copyable prompt, nested command, file and path examples may still use indented blocks or fenced examples when useful, provided the prompt body remains one copyable block.
 
-Future Codex prompts should use this pattern:
+The required outer order is:
+
+1. report identity;
+2. task identity;
+3. executing Thread;
+4. PM workload / Thread-routing assessment;
+5. report delivery mode and exact output authority;
+6. project path and authority source;
+7. required reading order;
+8. fresh recovery / live-fact checks;
+9. current gate and authority boundary;
+10. exact task scope and execution steps;
+11. exact write / command / remote / Git allowlist;
+12. explicitly excluded and forbidden operations;
+13. PASS / HOLD criteria and stop conditions;
+14. required validation and evidence;
+15. required window-report format;
+16. next gate and non-inheritance statement.
+
+A section may be short when it does not apply, but it must remain visible and state `none`、`not applicable` or `not authorized`; PM must not silently omit authority-bearing sections.
+
+Future Thread prompts must use this template:
 
 ```text
 报告名称：
@@ -311,15 +443,96 @@ PM 任务前工作量评估：
 - 是否需要新开 Thread：yes / no
 - 理由：<context capacity / scope isolation reason>
 
-请先读取：
-- docs/thread_handoff/pm_operating_rules.md
-- docs/current_status.md
-- <task-specific gate/status doc>
-- <task-specific contract/report files>
+Report delivery mode：
+<CHAT_ONLY | CONVERSATION_ATTACHMENT | REPOSITORY_DURABLE_REPORT | REPOSITORY_REPORT_WITH_ARTIFACTS>
 
-按照上述文件中的 current gate、allowlist、excluded files 和报告格式执行。
-不要扩大范围。
+Exact report path：
+<none or one exact path>
+
+Exact artifact paths：
+<none or one exact path per artifact>
+
+Docs / artifact write authority：
+<not authorized | granted for the exact paths above only>
+
+项目绝对路径：
+/Users/chenjie/Documents/MES/edge-mes-demo
+
+Authority source / ID：
+<exact PM handoff, report, authority ID or current user instruction>
+
+请先按顺序读取：
+1. docs/thread_handoff/pm_operating_rules.md
+2. docs/current_status.md
+3. <current PM handoff or authority file>
+4. <task-specific gate/status docs>
+5. <task-specific source/contract/report/evidence files>
+
+Fresh recovery / live facts：
+- <exact read-only commands or checks required before work>
+- <expected baseline, dirty/cached state and process/output absence checks>
+- live facts override historical document snapshots
+
+Current gate / authority boundary：
+- <accepted prior gates>
+- <current task authority>
+- <authorities explicitly not granted>
+- prior PASS does not authorize the next phase
+
+本轮任务：
+1. <exact required action>
+2. <exact required action>
+3. <stop point and delivery requirement>
+
+Exact allowlist：
+- files that may be read:
+- files that may be created or modified:
+- commands/tests that may be run:
+- pre-authority local repair window: not authorized | authorized, with exact cycle budget and eligible repair classes
+- execution lock: required fields and the point after which helpers become immutable
+- unordered discovery: stable canonicalization keys and raw-versus-normalized evidence requirements
+- local/remote identities: separate expected identities and the authority source for each
+- remote calls, if any:
+- Git actions, if any:
+
+明确排除 / 禁止：
+- <pre-existing dirty and external artifacts>
+- <out-of-scope source, runtime, DB, API, frontend, V-PLC, deploy or lifecycle surfaces>
+- <stage/commit/push/tag/cleanup/reset/stash rules>
+
+PASS / HOLD criteria and stop conditions：
+- PASS only when: <exact terminal conditions>
+- HOLD when: <drift, ambiguity, failed checks, allowlist violation or unauthorized action>
+- on HOLD: <stop immediately; no repair/retry/cleanup unless separately authorized>
+
+Required validation / evidence：
+- <tests, manifests, hashes, process audit, Git audit and evidence boundaries>
+- distinguish local/synthetic/static evidence from remote/runtime/production evidence
+
+窗口返回格式：
+- use the report format required by Section 11
+- keep the Chat report concise when durable output is required
+- include conclusion, changed files, checks, allowlist, Git state, blockers, recommendations, next gate, MVP alignment and Thread context assessment
+
+Next gate：
+- <single next PM intake or review gate>
+- do not infer implementation, remote, Git, deploy, restart, activation or later-phase authority from this task result
 ```
+
+Mandatory pre-dispatch audit：
+
+- the Prompt is one complete copyable Markdown block;
+- every heading above is present in the required order;
+- task-specific authority, allowlist and prohibited operations are explicit;
+- report delivery mode and exact output paths are declared before execution;
+- remote-call budget and consumption rules are explicit when remote access is involved;
+- the Prompt explicitly states whether a pre-authority local repair window is authorized, its cycle budget, eligible repair classes and forbidden authority-bearing changes;
+- when repair is authorized, the Prompt defines the execution-lock evidence and helper immutability point;
+- Git stage、commit、push and tag authority are independently stated;
+- PASS、HOLD、stop behavior and next gate are explicit;
+- no wording implies that an earlier PASS automatically grants a later phase;
+- the Prompt does not depend on another Thread's implicit memory or a conversation-only attachment;
+- the Prompt does not repeat or reissue a task when PM has explicitly accepted the current task and only requested future template correction.
 
 If task-specific docs are incomplete or inconsistent with the working tree on
 gate state, allowlist, scope, authorization boundary, excluded files or
@@ -327,11 +540,230 @@ out-of-scope surfaces, stop and report `HOLD`. A durable baseline hash that
 names the last verified docs/status sync baseline is not by itself a blocker
 when live `git rev-parse` output shows only later authorized docs-only commits.
 
-## 11. Window report vs repository report
+## 11. Window report, durable report and cross-Thread handoff
 
-Future Codex Threads should keep the chat-window report short and put durable detail in repository documents when the task is important enough to preserve.
+This section is effective immediately for every new PM task, repair, review and Verification gate.
 
-Default window report requirements:
+Future Codex Threads must keep the chat-window report short and put durable detail in repository documents when the result must be preserved, independently reviewed or reused by another Thread.
+
+### 11.1 Report delivery classification
+
+Every task Prompt must classify its intended report delivery as one of:
+
+```text
+CHAT_ONLY
+CONVERSATION_ATTACHMENT
+REPOSITORY_DURABLE_REPORT
+REPOSITORY_REPORT_WITH_ARTIFACTS
+```
+
+The meanings are:
+
+- `CHAT_ONLY`: a short conclusion, blocker list or temporary read-only summary. It is not durable cross-Thread authority.
+- `CONVERSATION_ATTACHMENT`: a file supplied through the current chat. It is external conversation evidence, not a repository file, and must not be assumed accessible from another Thread, Codex session or workspace.
+- `REPOSITORY_DURABLE_REPORT`: a report written to one exact repository path under explicit docs-write authority.
+- `REPOSITORY_REPORT_WITH_ARTIFACTS`: a durable report plus exact source, helper, fixture, test, manifest or log artifact paths required for later independent review.
+
+A chat attachment, `/mnt/data/...` path, downloaded file or prior window transcript must never be represented as an existing path under the project checkout.
+
+Conversation attachments must be classified as:
+
+```text
+EXTERNAL CONVERSATION EVIDENCE
+NOT A REPOSITORY FILE
+NOT DURABLE CROSS-THREAD AUTHORITY
+```
+
+If attachment content is needed by another Thread, PM must either:
+
+1. authorize materialization to exact repository paths; or
+2. restate every required fact and requirement completely in the next Prompt.
+
+The next Thread must not depend on implicit attachment access.
+
+### 11.2 Mandatory durable-delivery triggers
+
+A task must use `REPOSITORY_DURABLE_REPORT` or `REPOSITORY_REPORT_WITH_ARTIFACTS` when any of the following is true:
+
+- the report is expected to exceed approximately 200 lines;
+- it includes more than approximately 50 lines of code;
+- it includes an executable helper, deployment command, rollback command or test harness;
+- it contains extensive logs, matrices, test results or evidence terminals;
+- a later Architecture / Integration, Reliability, Data Quality or Verification Thread must reuse or independently inspect it;
+- source-evidence identity must prove that displayed source, tested source and future execution source are the same bytes;
+- the result changes or supports a durable gate, deployment, activation, rollback or production-truth claim.
+
+A task matching these conditions must not return its complete report only in Chat and must not delete the only tested source after reporting its hash.
+
+Small, temporary and read-only tasks may remain `CHAT_ONLY` when no later Thread needs the full detail.
+
+### 11.3 Prompt-time output authority
+
+For durable delivery, PM must declare all output paths before execution. The Prompt must include:
+
+```text
+report delivery mode:
+REPOSITORY_DURABLE_REPORT | REPOSITORY_REPORT_WITH_ARTIFACTS
+
+exact report path:
+docs/reports/<exact-name>.md
+
+exact artifact paths:
+<none or one explicit path per artifact>
+
+docs/artifact write authority:
+granted for exact paths only
+
+Git stage / commit / push:
+not authorized unless separately granted
+```
+
+The Thread may create or modify only those exact output paths. It must not choose additional report, helper, fixture, log or manifest paths by convenience.
+
+Docs/artifact write authority does not authorize source changes, staging, commit, push, tag, cleanup outside authorized paths or remote mutation.
+
+### 11.4 Durable artifact layout and source-evidence binding
+
+Code-heavy evidence should use a bounded layout such as:
+
+```text
+docs/reports/<task-report>.md
+docs/reports/evidence/<task-id>/<helper-or-fixture-1>
+docs/reports/evidence/<task-id>/<helper-or-fixture-2>
+docs/reports/evidence/<task-id>/manifest.sha256
+```
+
+Every persisted artifact must have a declared responsibility and exact path.
+
+When executable source or a test harness is part of the evidence, the required order is:
+
+```text
+capture fresh pre-task live facts before the first task-owned write
+→ generate exact artifact files
+→ when explicitly authorized, repair only eligible mechanical defects within the frozen cycle budget
+→ after every repair cycle, rerun the complete required local validation set
+→ compute preliminary identities
+→ run syntax/compile checks on those exact files
+→ run all tests by importing or executing those exact files
+→ compute final byte lengths and SHA-256 values
+→ verify no artifact changed after the final test
+→ persist the local prerequisite evidence and EXECUTION_LOCK before external/remote authority consumption
+→ consume the separately authorized execution authority, if any
+→ write the final report and manifest
+→ remove only separately authorized synthetic temporary files
+```
+
+The pre-task facts may be captured in memory before helper creation and persisted later in the
+exact declared local prerequisite artifact. Do not require a separate pre-snapshot file unless the
+Prompt grants that exact output path. Once the task emits a terminal PASS/HOLD report and manifest,
+its output paths are terminalized and cannot be reused by a later authority without explicit PM
+in-place-repair authorization.
+
+The following are prohibited:
+
+- testing an embedded or temporary copy while reporting a different repository artifact;
+- modifying a helper after its final test without rerunning the full suite;
+- deleting the only exact source and retaining only its hash;
+- placing a second helper implementation inside the test harness;
+- representing synthetic PASS as remote, deployed, activated or production evidence;
+- using a temporary path as future cross-Thread authority.
+
+A hash proves identity only when the corresponding bytes remain available to the reviewer.
+
+### 11.5 Chat-window manifest
+
+For durable tasks, the Thread must return a concise manifest rather than pasting the full report or helper source into Chat.
+
+Default durable window manifest:
+
+```text
+报告名称：
+任务名称：
+执行 Thread：
+结论：PASS / PASS WITH RECOMMENDATIONS / HOLD
+
+Report delivery mode:
+Report path:
+Report bytes:
+Report SHA-256:
+
+Artifacts:
+- path:
+  bytes:
+  SHA-256:
+  role:
+
+Changed files:
+Tests/checks:
+Allowlist compliance:
+Git staged:
+Git committed:
+Git pushed:
+Blockers:
+Recommendations:
+Next gate:
+MVP 路径一致性:
+Thread 输出 / 上下文评估:
+```
+
+The manifest must distinguish:
+
+```text
+WRITTEN
+REVIEWED
+ACCEPTED
+VERIFIED
+STAGED
+COMMITTED
+PUSHED
+DEPLOYED
+ACTIVATED
+```
+
+None of these states implies another.
+
+Do not paste full command output into the chat window unless a command fails, a gate is `HOLD`, PM explicitly asks for raw output, or the raw fragment is necessary to explain a blocker. Even on `HOLD`, prefer the minimum failing excerpt and keep the complete evidence in the durable report when a report path is authorized.
+
+### 11.6 PM intake requirements
+
+PM intake for a durable task must read the actual repository files from their exact paths and must verify:
+
+- changed-file allowlist;
+- report existence, byte length and SHA-256;
+- artifact existence, byte lengths and SHA-256 values;
+- manifest consistency with repository content;
+- tests executed against the persisted exact artifacts;
+- final Git state and authority boundaries;
+- whether the report is merely written or has also been reviewed, accepted, verified, committed or pushed.
+
+A Chat summary, attachment title, reported path or reported hash must not substitute for reading the actual durable files.
+
+If PM cannot access the declared durable report or artifact, intake must report `HOLD / DURABLE EVIDENCE NOT ACCESSIBLE`. PM must not infer PASS from the Chat manifest alone.
+
+### 11.7 Cross-Thread authority
+
+A later Thread may rely only on:
+
+- committed repository authority files;
+- exact-path durable reports and artifacts that PM has explicitly accepted in the current checkout;
+- facts and authority fully restated in its own Prompt.
+
+A later Thread must not rely on:
+
+- content that was only pasted into a previous chat window;
+- a conversation attachment that was not materialized;
+- `/mnt/data/...` or other temporary conversation paths;
+- deleted synthetic files;
+- another Thread's implicit memory;
+- an unverified path mentioned in a prior report.
+
+Uncommitted durable reports may be used only when PM explicitly names the exact paths and confirms they exist in the current checkout. Their uncommitted status must remain visible and they must not be mistaken for committed authority.
+
+### 11.8 Default report content
+
+Every Thread report, whether Chat-only or durable, must include the report name, task name, executing Thread, conclusion, Scope, Evidence, Blockers, Recommendations, Next gate, MVP-path alignment and Thread output/context assessment.
+
+Default short window report requirements:
 
 ```text
 报告名称：
@@ -376,8 +808,6 @@ Thread 输出 / 上下文评估:
 - 理由：
 ```
 
-Every Thread report must include the report name, task name, executing Thread, conclusion, Scope, Evidence, Blockers, Recommendations, Next gate, and Thread output/context assessment.
-
 When returning a report, the Thread must reassess context capacity after completing the task. This reassessment must state:
 
 - the current output length;
@@ -385,32 +815,42 @@ When returning a report, the Thread must reassess context capacity after complet
 - whether the next round should start a new Thread;
 - the reason for that recommendation.
 
-Do not paste full command output into the chat window unless a command fails, a gate is `HOLD`, or PM explicitly asks for raw output.
+Do not repeat long-term background already stored in project docs. Reference the relevant durable paths instead.
 
-Do not repeat long-term background already stored in project docs. Reference the relevant paths instead.
+When a repository report/status file is updated, the window manifest must include:
 
-For important phase results, long review details should be written to or summarized in an appropriate repository file, for example:
-
-```text
-docs/reports/<sprint_or_task>_<thread>_review.md
-docs/reports/<sprint_or_task>_implementation_report.md
-docs/reports/<sprint_or_task>_gate_status.md
-docs/current_status.md
-docs/thread_handoff/<thread>.md
-```
-
-When a repository report/status file is updated, the chat-window report should include:
-
-- the path updated;
+- the exact path updated;
+- the report and artifact identities;
 - the final conclusion;
 - changed files;
 - tests or checks run;
 - blockers/recommendations;
-- next gate.
+- next gate;
+- Git staged/committed/pushed state.
 
-If the task is small, read-only, or temporary, a repository report file is optional. The Thread should still return a short window report.
+If a task changes current gate status, update the relevant gate/status document under explicit authority or explicitly state why it was not updated.
 
-If the task changes current gate status, update the relevant gate/status document or explicitly state why it was not updated.
+### 11.9 Git authority separation
+
+Writing a durable report or artifact establishes only:
+
+```text
+WRITTEN
+```
+
+It does not establish:
+
+```text
+ACCEPTED
+VERIFIED
+STAGED
+COMMITTED
+PUSHED
+DEPLOYED
+ACTIVATED
+```
+
+Stage, commit, push and tag remain separate PM authorities with exact changed-file allowlists. A report-writing Thread must stop after its manifest unless further Git authority was explicitly included in the same Prompt.
 
 ## 12. Evidence-gate scope control
 

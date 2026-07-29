@@ -60,4 +60,10 @@ backups/
 # These are useful for local ChatGPT/Codex handoff, but must not be committed.
 docs/20260620_03_Edge MES Demo — ChatGPT PM Handoff.md
 docs/Edge MES Demo 当前进度报告.md
+docs/reports/phase1_to_sprint2_progress_keynote_plan.md
 docs/superpowers/
+
+# Frontend dependencies and build output
+frontend/node_modules/
+frontend/.next/
+frontend/tsconfig.tsbuildinfo
