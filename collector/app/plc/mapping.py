@@ -2,7 +2,7 @@ from __future__ import annotations
 
 import hashlib
 import json
-from dataclasses import dataclass
+from dataclasses import dataclass, replace
 from pathlib import Path
 from typing import Any, Mapping
 
@@ -13,6 +13,26 @@ from app.plc.address import S7Address, parse_s7_address
 
 class RuntimeMappingContractError(ValueError):
     pass
+
+
+class _UniqueKeySafeLoader(yaml.SafeLoader):
+    pass
+
+
+def _construct_unique_mapping(loader: yaml.SafeLoader, node: yaml.MappingNode, deep: bool = False) -> dict[Any, Any]:
+    mapping: dict[Any, Any] = {}
+    for key_node, value_node in node.value:
+        key = loader.construct_object(key_node, deep=deep)
+        if key in mapping:
+            raise RuntimeMappingContractError(f"duplicate YAML mapping key: {key}")
+        mapping[key] = loader.construct_object(value_node, deep=deep)
+    return mapping
+
+
+_UniqueKeySafeLoader.add_constructor(
+    yaml.resolver.BaseResolver.DEFAULT_MAPPING_TAG,
+    _construct_unique_mapping,
+)
 
 
 @dataclass(frozen=True)
@@ -116,11 +136,28 @@ class EdgeMapping:
     decoder_registry_snapshot_id: str | None = None
     decoder_registry_content_hash: str | None = None
     runtime_snapshot: RuntimeMappingSnapshot | None = None
+    mapping_path: str = ""
+    mapping_content_sha256: str = ""
 
 
 def load_edge_mapping(path: str | Path = "/app/config/mapping.yaml") -> EdgeMapping:
-    raw = yaml.safe_load(Path(path).read_text()) or {}
-    return parse_edge_mapping(raw)
+    source_path = Path(path)
+    if source_path.is_symlink():
+        raise RuntimeMappingContractError("mapping path must not be a symlink")
+    canonical_path = source_path.resolve(strict=True)
+    if not canonical_path.is_file():
+        raise RuntimeMappingContractError(f"mapping path is not a regular file: {canonical_path}")
+    raw_bytes = canonical_path.read_bytes()
+    mapping_content_sha256 = hashlib.sha256(raw_bytes).hexdigest()
+    decoded_text = raw_bytes.decode("utf-8")
+    raw = yaml.load(decoded_text, Loader=_UniqueKeySafeLoader) or {}
+    if not isinstance(raw, dict):
+        raise RuntimeMappingContractError("mapping root must be a mapping")
+    return replace(
+        parse_edge_mapping(raw),
+        mapping_path=str(canonical_path),
+        mapping_content_sha256=mapping_content_sha256,
+    )
 
 
 def parse_edge_mapping(raw: dict[str, Any]) -> EdgeMapping:

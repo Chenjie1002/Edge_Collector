@@ -1,9 +1,15 @@
 from __future__ import annotations
 
+import json
 import logging
+import os
+import re
 import time
-from dataclasses import dataclass
+from collections import Counter
+from collections.abc import Mapping
+from dataclasses import dataclass, field
 from datetime import datetime, timezone
+from pathlib import Path
 from zoneinfo import ZoneInfo
 
 import snap7
@@ -14,6 +20,7 @@ from app.services.reliability import CounterDecision, classify_counter, validate
 from app.services.accepted_station_event_fact import build_accepted_station_event_fact
 from app.services.resolved_config_registry import (
     InMemoryResolvedConfigRegistry,
+    ResolvedConfigSnapshot,
     build_resolved_config_snapshot_from_mapping,
 )
 from app.services.station_event_adapter import adapt_source_payload
@@ -23,11 +30,48 @@ from app.services.storage import Storage
 
 logger = logging.getLogger("edge-collector.event")
 
+RUNTIME_LOADED_EVIDENCE_SCHEMA_VERSION = "edge-mes/collector-runtime-loaded/v1"
+RUNTIME_LOADED_EVENT_TYPE = "collector_runtime_loaded"
+SHA256_HEX_RE = re.compile(r"^[0-9a-f]{64}$")
+
 
 @dataclass(frozen=True)
 class StationRuntime:
     station: StationMapping
     plan: ReadPlan
+
+
+@dataclass
+class CollectorStartupContext:
+    collector_main_started_at_utc: str
+    process_pid: int
+    _consumed: bool = field(default=False, init=False, repr=False)
+
+    def consume(self) -> tuple[str, int]:
+        if self._consumed:
+            raise ValueError("startup context has already been consumed")
+        self._consumed = True
+        if not isinstance(self.collector_main_started_at_utc, str):
+            raise ValueError("collector_main_started_at_utc must be a string")
+        if not self.collector_main_started_at_utc.endswith("Z"):
+            raise ValueError("collector_main_started_at_utc must use UTC Z suffix")
+        try:
+            parsed_started_at = datetime.fromisoformat(
+                self.collector_main_started_at_utc[:-1] + "+00:00"
+            )
+        except ValueError as exc:
+            raise ValueError("collector_main_started_at_utc must be RFC3339 UTC") from exc
+        if parsed_started_at.tzinfo != timezone.utc:
+            raise ValueError("collector_main_started_at_utc must be UTC")
+        if (
+            isinstance(self.process_pid, bool)
+            or not isinstance(self.process_pid, int)
+            or self.process_pid <= 0
+        ):
+            raise ValueError("process_pid must be a positive integer")
+        if self.process_pid != os.getpid():
+            raise ValueError("startup context PID does not match current process")
+        return self.collector_main_started_at_utc, self.process_pid
 
 
 class EventCollectorWorker:
@@ -37,32 +81,144 @@ class EventCollectorWorker:
         dsn: str,
         host: str,
         port: int,
+        startup_context: CollectorStartupContext,
         mapping_path: str = "/app/config/mapping.yaml",
     ) -> None:
-        self.storage = Storage(dsn)
+        if not isinstance(startup_context, CollectorStartupContext):
+            raise ValueError("mandatory startup context is missing")
+        self.collector_main_started_at_utc, self.process_pid = startup_context.consume()
+        self.dsn = dsn
         self.host = host
         self.port = port
         self.mapping: EdgeMapping = load_edge_mapping(mapping_path)
-        self.plc = self.mapping.plcs[0] if self.mapping.plcs else {"plc_id": "PLC_001", "line_id": self.mapping.line_id}
+        self._validate_loaded_mapping_identity()
+        if len(self.mapping.plcs) != 1:
+            raise ValueError("PLC selection is missing or ambiguous")
+        self.plc = self.mapping.plcs[0]
+        if not isinstance(self.plc, Mapping):
+            raise ValueError("selected PLC entry is not a mapping")
+        selected_routing_line = self.plc.get("line_id")
+        if not isinstance(selected_routing_line, str) or not selected_routing_line.strip():
+            raise ValueError("selected PLC routing line_id is missing or empty")
+        self.routing_line_id = selected_routing_line
         self.plc_id = str(self.plc.get("plc_id", "PLC_001"))
-        self.line_id = str(self.plc.get("line_id", self.mapping.line_id))
+        self.line_id = self.resolved_config_snapshot.line_id
+        if self.routing_line_id != self.line_id:
+            raise ValueError("selected PLC routing line_id does not match canonical line_id")
         self.rack = int(self.plc.get("rack", 0))
         self.slot = int(self.plc.get("slot", 1))
         self.timezone = ZoneInfo(self.mapping.timezone)
-        self.resolved_config_snapshot = build_resolved_config_snapshot_from_mapping(self.mapping.runtime_snapshot)
         self.resolved_config_registry = InMemoryResolvedConfigRegistry(
             {self.resolved_config_snapshot.config_hash: self.resolved_config_snapshot}
         )
+        resolved_lookup = self.resolved_config_registry.lookup_resolved_config(
+            self.resolved_config_snapshot.config_hash
+        )
+        if not isinstance(resolved_lookup, ResolvedConfigSnapshot):
+            raise ValueError("resolved config registry lookup failed")
         self.client = snap7.client.Client()
-        plans = {plan.scope: plan for plan in build_read_plans(self.mapping)}
-        self.line_plan = plans.get("line")
+        plans_list = build_read_plans(self.mapping)
+        self._validate_complete_read_plans(plans_list)
+        plans = {plan.scope: plan for plan in plans_list}
+        self.line_plan = plans["line"]
         self.station_runtimes = [
             StationRuntime(station=station, plan=plans[station.station_id])
             for station in self.mapping.stations
-            if station.station_id in plans
         ]
+        if len(self.station_runtimes) != len(self.mapping.stations):
+            raise ValueError("station runtime cardinality mismatch")
+        self._emit_runtime_loaded_record(read_plan_count=len(plans_list))
+
+    def _validate_loaded_mapping_identity(self) -> None:
+        runtime_snapshot = self.mapping.runtime_snapshot
+        if runtime_snapshot is None:
+            raise ValueError("runtime mapping snapshot is missing")
+        if not SHA256_HEX_RE.fullmatch(self.mapping.mapping_content_sha256):
+            raise ValueError("mapping_content_sha256 is not a canonical SHA-256")
+        if not runtime_snapshot.content_hash_matches():
+            raise ValueError("runtime mapping snapshot hash mismatch")
+        if not SHA256_HEX_RE.fullmatch(runtime_snapshot.config_hash):
+            raise ValueError("runtime mapping config hash is not canonical")
+        self.resolved_config_snapshot = build_resolved_config_snapshot_from_mapping(runtime_snapshot)
+        if not isinstance(self.resolved_config_snapshot, ResolvedConfigSnapshot):
+            raise ValueError("resolved config snapshot is missing")
+        if self.resolved_config_snapshot.config_hash != runtime_snapshot.config_hash:
+            raise ValueError("resolved/runtime config hash mismatch")
+        if not self.resolved_config_snapshot.content_hash_matches():
+            raise ValueError("resolved config snapshot hash mismatch")
+        for attribute in (
+            "schema_version",
+            "config_version",
+            "line_id",
+            "authoritative_source",
+            "timezone",
+            "hash_algorithm",
+            "plc_identity_namespace",
+        ):
+            mapping_value = getattr(self.mapping, attribute)
+            runtime_value = getattr(runtime_snapshot, attribute)
+            resolved_value = getattr(self.resolved_config_snapshot, attribute)
+            if mapping_value != runtime_value or runtime_value != resolved_value:
+                raise ValueError(f"mapping snapshot projection mismatch: {attribute}")
+        if not self.mapping.mapping_path:
+            raise ValueError("mapping path identity is missing")
+        mapping_path = Path(self.mapping.mapping_path)
+        if (
+            not mapping_path.is_absolute()
+            or mapping_path.is_symlink()
+            or not mapping_path.is_file()
+            or str(mapping_path.resolve(strict=True)) != self.mapping.mapping_path
+        ):
+            raise ValueError("mapping path identity is not canonical")
+
+    def _validate_complete_read_plans(self, plans_list: list[ReadPlan]) -> None:
+        configured_station_ids = [station.station_id for station in self.mapping.stations]
+        expected_scopes = ["line", *configured_station_ids]
+        generated_scopes = [plan.scope for plan in plans_list]
+        if "line" in configured_station_ids:
+            raise ValueError("configured station ID collides with reserved line scope")
+        if len(configured_station_ids) != len(set(configured_station_ids)):
+            raise ValueError("duplicate configured station ID")
+        if len(generated_scopes) != len(set(generated_scopes)):
+            raise ValueError("duplicate generated read-plan scope")
+        if len(generated_scopes) != len(expected_scopes):
+            raise ValueError("read-plan cardinality mismatch")
+        if Counter(generated_scopes) != Counter(expected_scopes):
+            raise ValueError("read-plan scope mismatch")
+        if generated_scopes.count("line") != 1:
+            raise ValueError("read-plan must contain exactly one line scope")
+        if len(plans_list) <= 0:
+            raise ValueError("read-plan list must be positive")
+
+    def _emit_runtime_loaded_record(self, *, read_plan_count: int) -> None:
+        if isinstance(read_plan_count, bool) or not isinstance(read_plan_count, int) or read_plan_count <= 0:
+            raise ValueError("read_plan_count must be a positive integer")
+        record = {
+            "evidence_schema_version": RUNTIME_LOADED_EVIDENCE_SCHEMA_VERSION,
+            "event_type": RUNTIME_LOADED_EVENT_TYPE,
+            "mapping_path": self.mapping.mapping_path,
+            "mapping_content_sha256": self.mapping.mapping_content_sha256,
+            "mapping_schema_version": self.mapping.schema_version,
+            "config_version": self.mapping.config_version,
+            "line_id": self.resolved_config_snapshot.line_id,
+            "read_plan_count": read_plan_count,
+            "resolved_config_hash": self.resolved_config_snapshot.config_hash,
+            "collector_main_started_at_utc": self.collector_main_started_at_utc,
+            "process_pid": self.process_pid,
+        }
+        serialized = json.dumps(
+            record,
+            ensure_ascii=False,
+            sort_keys=True,
+            separators=(",", ":"),
+            allow_nan=False,
+        )
+        if "\r" in serialized or "\n" in serialized:
+            raise ValueError("runtime-loaded record must be one line")
+        logger.info(f"collector_runtime_loaded_json={serialized}")
 
     def run_forever(self, poll_interval_ms: int = 500) -> None:
+        self.storage = Storage(self.dsn)
         logger.info(
             "event collector started host=%s port=%s stations=%s",
             self.host,

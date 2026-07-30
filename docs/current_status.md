@@ -1,8 +1,62 @@
 # 当前状态 / Codex 恢复上下文
 
-更新时间：2026-07-29
+更新时间：2026-07-30
 工作目录：`/Users/chenjie/Documents/MES/edge-mes-demo`
 树莓派部署目录：`/opt/edge-mes-demo`
+
+## 0J. 2026-07-30 D2-R7B-I1 R55 final implementation-package status sync
+
+本节是当前 control block。前置 `0I` package-closed image-load scope-reset 内容及其
+旧的 image-load / activation Git 建议继续作为历史状态保留，不删除、不重写；当前
+唯一 next gate 由本节定义。Authority：
+`PM-D2-R7B-I1-R55-FINAL-PACKAGE-STATUS-SYNC-GIT-CANDIDATE-260730-1621`。
+
+R40–R54 authority chain 的当前终态如下：
+
+```text
+R40  PASS / process-bound observability plan ready for review
+R41  HOLD / Reliability blockers require Architecture repair
+R42  PASS / consolidated Architecture repair ready for Reliability re-review
+R43  PASS / Reliability re-review accepts R42 consolidated contract
+R44  HOLD / historical Data Quality blocker origin
+R45  PASS / bounded runtime-loaded evidence scope-reset contract
+R46  PASS / focused Data Quality re-review accepts R42 + R45
+R47  PASS / Verification planning accepts R42 + R45 combined contract
+R48  WRITTEN / TESTED / PM-ACCEPTED implementation
+R49  WRITTEN / TESTED / PM-ACCEPTED pre-record DB ordering repair
+R50  PASS WITH RECOMMENDATIONS / PM-ACCEPTED Reliability implementation review
+R51  PASS WITH RECOMMENDATIONS / PM-ACCEPTED Data Quality implementation review
+R52  HOLD / PM-ACCEPTED AS HISTORICAL VERIFICATION HOLD
+R53  WRITTEN / TESTED / PM-ACCEPTED focused Verification oracle closure repair
+R54  PASS WITH RECOMMENDATIONS / PM-ACCEPTED Verification re-review; no current blocker
+```
+
+R52 的 HOLD 原因是 V-B1–V-B4 focused oracle 不足；R53 已在两个 authorized focused
+test files 中完成 oracle closure，R54 对 R52→R53→R54 closure 独立复核并确认无当前
+Verification blocker。R54 仍不等于 Git、build、Docker、deployment、runtime 或
+production authority。
+
+ChatGPT PM final implementation-package acceptance：`YES`。因此当前本地 package
+状态为：
+
+```text
+GIT-CANDIDATE-ELIGIBLE = YES
+GIT-CANDIDATE-ACCEPTED = NO
+STAGED                  = NO
+COMMITTED               = NO
+PUSHED                  = NO
+
+ACTIVATED               = YES
+STATIC_MAPPING_INITIALIZED = YES
+RUNTIME-LOADED          = NO
+PRODUCTION-ACCEPTED     = NO
+```
+
+当前唯一下一步是本地 implementation package 的 exact-path Git closeout：先由下一
+个 ChatGPT PM Thread durable-intake 并单独接受 R55 candidate；只有用户随后明确授权
+exact-path stage、commit、push，才可执行 Git closeout。R55 不自动授权 build、Docker、
+remote、deployment、lifecycle、runtime-loaded A–H evidence、`RUNTIME-LOADED` 或
+`PRODUCTION-ACCEPTED`。Oracle/ERP 真实同步与 `sync-worker` 仍为 Phase-2 Out of Scope。
 
 ## 0I. 2026-07-29 D2-R7B-I1 package-closed image load scope-reset acceptance
 
@@ -741,7 +795,11 @@ Level 2 子项目。
 
 ## 0. 当前 PM / Codex 协作状态
 
-当前主线：D2-R7A 已完成本地 package closure 全闭环。当前只允许先完成本次 Level 0 governance/status reconciliation；随后 D2-R7B 仅可进入独立 Architecture / Integration planning，不得直接部署、restart、activation、生成生产数据或进入 D3。Dashboard/UI runtime 验收继续作为最终集成阶段的非阻塞 acceptance debt。
+当前主线：D2-R7B-I1 runtime-loaded observability implementation package 已完成 R48–R54
+authority chain、R55 final PM acceptance 与 Git-candidate eligibility sync；当前只允许
+沿 exact-path Git closeout 前进。旧 image-load/activation 建议保留为历史审计状态，不再
+作为当前唯一 next step。Dashboard/UI runtime 验收继续作为最终集成阶段的非阻塞
+acceptance debt。
 
 Last verified baseline before this governance/status reconciliation:
 
@@ -2143,17 +2201,17 @@ edge-mes-demo/
 
 ## 7. 下一步建议
 
-当前主线先关闭 D2-R7B-I1 package-closed image load 的 governance/Git 边界：
+当前主线先关闭 D2-R7B-I1 runtime-loaded observability implementation package 的
+exact-path Git 边界：
 
 1. 对以下 scope-reset sync 执行 ChatGPT PM exact-path Git candidate review：
-   - `docs/reports/sprint4_d2_r7b_i1_pm_scope_reset_governance_decision_image_loaded_exact.md`
    - `docs/current_status.md`
    - `docs/roadmap.md`
-   - 以及 candidate review 明确认定必须与其一起提交的 R32-R5-R2 durable source evidence。
-2. 仅在用户明确授权后执行 exact-path stage/commit/push；不得 broad-stage `docs/` 或历史 untracked reports。
-3. Git closeout 后，用户可另行授权 fresh read-only remote activation preflight。
-4. 只有 fresh preflight 建立 `ACTIVATION_ELIGIBLE` 后，才可独立考虑 compatibility-tag mutation 与一次 Collector-only activation。
-5. Post-activation validation、conditional rollback、runtime-loaded identity 和 production accepted-fact validation继续保持独立 authority。
+   - `docs/thread_handoff/chatgpt_pm_handoff_260730-1621.md`
+   - R40–R55 exact implementation-package reports。
+2. 仅在 ChatGPT PM 接受 R55 且用户明确授权后，执行 exact-path stage/commit/push；不得 broad-stage `docs/` 或历史 untracked reports。
+3. Git closeout 后，按独立 authority 顺序进入 accepted build/image gate、deployment/lifecycle gate、bounded runtime-loaded A–H validation、PM `RUNTIME-LOADED` acceptance，最后才可另行开展 production accepted-fact work。
+4. 本状态同步不授权 build、Docker、remote、deployment、restart、activation、runtime validation 或 production acceptance。
 
 后续数据主线仍保留：
 

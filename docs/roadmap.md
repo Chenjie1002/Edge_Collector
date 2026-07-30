@@ -1,7 +1,7 @@
 # Edge MES Phase-2 Roadmap
 
-更新时间：2026-07-29
-状态：Phase-2 MVP Execution — D2-R7B-I1 scope reset PASS / IMAGE_LOADED_EXACT PM-ACCEPTED / docs sync WRITTEN / Git closeout pending / activation preflight not authorized
+更新时间：2026-07-30
+状态：Phase-2 MVP Execution — D2-R7B-I1 R55 implementation package PM-ACCEPTED / GIT-CANDIDATE-ELIGIBLE / exact-path Git closeout pending / runtime-loaded and production acceptance not authorized
 Phase-1 基线：最终验收 PASS，GitHub freeze/tag 已完成
 
 ## 1. 当前里程碑
@@ -131,6 +131,45 @@ R32-R5-R2 原始 terminal schema HOLD 与 R32-R5-R3/R4/R5 normalization HOLD 均
 
 本 scope reset 没有新的 remote observation，也不授权 network、SSH、tag mutation、Collector lifecycle、rollback、cleanup 或 Git action。R31 activation phase separation继续有效：必须先完成 exact-path Git closeout，随后由用户单独授权 fresh read-only remote activation preflight。
 
+### 1F. 2026-07-30 D2-R7B-I1 runtime-loaded observability implementation package acceptance
+
+R40–R47 已完成 process-bound runtime-loaded observability 的 planning、Reliability、
+Architecture、Data Quality 与 Verification planning chain；R41 与 R44 的历史 HOLD
+分别由 R42/R43 与 R45/R46 的 bounded closure supersede，不删除历史 blocker origin。
+R48 implementation、R49 pre-record DB ordering repair、R50 Reliability review、R51
+Data Quality review、R52 historical Verification HOLD、R53 oracle closure repair 与
+R54 independent Verification re-review 的状态为：
+
+```text
+R48  WRITTEN / TESTED / PM-ACCEPTED
+R49  WRITTEN / TESTED / PM-ACCEPTED
+R50  PASS WITH RECOMMENDATIONS / PM-ACCEPTED
+R51  PASS WITH RECOMMENDATIONS / PM-ACCEPTED
+R52  HOLD / PM-ACCEPTED AS HISTORICAL HOLD
+R53  WRITTEN / TESTED / PM-ACCEPTED
+R54  PASS WITH RECOMMENDATIONS / PM-ACCEPTED; no current Verification blocker
+```
+
+R52→R53→R54 closure 已完成：R52 的 V-B1–V-B4 oracle blocker 由 R53 test-only
+closure repair 补强，并由 R54 独立复核关闭。ChatGPT PM final
+implementation-package acceptance 为 `YES`，故本地 package 为
+`GIT-CANDIDATE-ELIGIBLE = YES`；但 `GIT-CANDIDATE-ACCEPTED`、`STAGED`、
+`COMMITTED`、`PUSHED` 均仍为 `NO`。
+
+产品/evidence 边界保持：
+
+```text
+ACTIVATED                  = YES
+STATIC_MAPPING_INITIALIZED = YES
+RUNTIME-LOADED             = NO
+PRODUCTION-ACCEPTED        = NO
+```
+
+本节不把 runtime evidence、A–H、deployment、lifecycle 或 production acceptance
+描述为已完成；strict RFC3339 与 direct line-plan/station-runtime fixture 仍是
+bounded non-blocking backlog。Oracle/ERP 真实同步与 `sync-worker` 仍保留在延后范围，
+不改变 Phase-2 功能优先级。
+
 ## 2. Phase-2 定位
 
 将单线三工站 Demo 演进为：
@@ -247,16 +286,13 @@ flowchart LR
 
 ## 8. 当前下一步
 
-当前下一步为：
+当前下一步唯一为本地 implementation package exact-path Git candidate intake / closeout：
 
-1. scope-reset governance decision、`docs/current_status.md` 与本 roadmap 已完成本地同步，状态为 `WRITTEN / UNSTAGED`；
-2. ChatGPT PM 执行 exact-path Git candidate review，明确本次三份 sync 文件与必须随附的 R32-R5-R2 durable source evidence 的最小提交集合；
-3. 用户单独授权后，才执行 exact-path stage/commit/push；不得 broad-stage `docs/` 或历史 untracked reports；
-4. Git closeout 后，用户可单独授权 fresh read-only remote activation preflight；
-5. preflight 必须重新观察当时的 loaded object、active Collector、compatibility alias、protected services和rollback identity；
-6. 只有 preflight 建立 `ACTIVATION_ELIGIBLE` 后，才可独立考虑 compatibility-tag mutation 与一次 Collector-only activation；
-7. post-activation validation、conditional rollback、runtime-loaded identity 和 production accepted-fact validation继续独立。
+1. ChatGPT PM durable-intake 复核并接受 R55 的 exact 24-path candidate；
+2. 只有用户明确授权后，才执行 exact-path stage、commit、push；不得 `git add .`、`git add -A`、`git add docs/` 或吸收 Batch D/E；
+3. Git closeout 后依次进入 accepted source commit → accepted build/image gate → deployment/lifecycle gate → bounded runtime-loaded A–H validation → PM `RUNTIME-LOADED` acceptance → separate production accepted-fact work；
+4. 不得从 R55 自动推断 build、Docker、remote、deployment、lifecycle、runtime validation、`RUNTIME-LOADED` 或 `PRODUCTION-ACCEPTED`。
 
-`IMAGE_LOADED_EXACT` 不自动授予 network、SSH、tag mutation、restart、recreate、activation、rollback、cleanup 或 Git authority。
+旧的 `IMAGE_LOADED_EXACT` / activation 建议在 1E 及历史 status 段落中保留，作为历史边界；不改变本节当前 next gate。
 
 D2-R7B 关闭后，项目再根据真实数据主线选择 OEE、Quality/Pareto 或 Trace relation 的最小数据语义切片；Dashboard/UI acceptance debt继续保留到最终集成阶段，不重新打开 Attempt-3 browser evidence 分支。

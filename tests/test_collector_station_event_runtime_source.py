@@ -1,7 +1,9 @@
 from __future__ import annotations
 
+import hashlib
 from dataclasses import replace
 from pathlib import Path
+from unittest.mock import patch
 from uuid import UUID
 
 import pytest
@@ -13,6 +15,7 @@ from collector.app.plc.mapping import (
     load_edge_mapping,
     parse_edge_mapping,
 )
+from collector.app.plc import mapping as mapping_module
 from collector.app.services.decoder_registry import (
     DecoderBinding,
     DecoderRegistrySnapshot,
@@ -151,6 +154,171 @@ def test_mapping_loader_accepts_explicit_contract_fields_and_freezes_computed_ha
     assert mapping.runtime_snapshot.stations[0].decoder_id == "collector.app.plc.decoder.decode_read_plan"
     assert mapping.runtime_snapshot.stations[0].decoder_version == "1.0.0"
     assert mapping.runtime_snapshot.stations[1].direct_predecessor_station_id == "WS01"
+
+
+def test_mapping_loader_reads_exact_raw_bytes_once_and_binds_raw_identity(tmp_path: Path) -> None:
+    raw_bytes = yaml.safe_dump(mapping_doc(), sort_keys=False, allow_unicode=True).encode("utf-8")
+    mapping_path = tmp_path / "mapping.yaml"
+    mapping_path.write_bytes(raw_bytes)
+    original_read_bytes = Path.read_bytes
+    original_read_text = Path.read_text
+    read_bytes_count = 0
+    read_text_count = 0
+
+    def counted_read(path: Path) -> bytes:
+        nonlocal read_bytes_count
+        read_bytes_count += 1
+        return original_read_bytes(path)
+
+    def counted_text_read(path: Path, *args, **kwargs) -> str:
+        nonlocal read_text_count
+        read_text_count += 1
+        return original_read_text(path, *args, **kwargs)
+
+    with patch.object(Path, "read_bytes", counted_read), patch.object(
+        Path,
+        "read_text",
+        counted_text_read,
+    ), patch.object(
+        mapping_module.yaml,
+        "load",
+        wraps=mapping_module.yaml.load,
+    ) as yaml_load:
+        mapping = load_edge_mapping(mapping_path)
+
+    assert read_bytes_count == 1
+    assert read_text_count == 0
+    assert yaml_load.call_count == 1
+    assert yaml_load.call_args.args[0] == raw_bytes.decode("utf-8")
+    assert mapping.mapping_path == str(mapping_path.resolve())
+    assert mapping.mapping_content_sha256 == hashlib.sha256(raw_bytes).hexdigest()
+    assert mapping.mapping_content_sha256 == mapping.mapping_content_sha256.lower()
+    assert len(mapping.mapping_content_sha256) == 64
+
+
+def test_semantically_same_mapping_bytes_have_distinct_raw_sha_but_same_resolved_hash(tmp_path: Path) -> None:
+    raw_bytes = yaml.safe_dump(mapping_doc(), sort_keys=False, allow_unicode=True).encode("utf-8")
+    first_path = tmp_path / "first.yaml"
+    second_path = tmp_path / "second.yaml"
+    first_path.write_bytes(raw_bytes)
+    second_path.write_bytes(raw_bytes + b"\n")
+
+    first = load_edge_mapping(first_path)
+    second = load_edge_mapping(second_path)
+
+    assert first.mapping_content_sha256 != second.mapping_content_sha256
+    assert first.runtime_snapshot.config_hash == second.runtime_snapshot.config_hash
+
+
+@pytest.mark.parametrize(
+    ("filename", "raw_bytes", "exception", "match"),
+    [
+        ("invalid.yaml", b"line_id: \xff\n", UnicodeDecodeError, None),
+        ("malformed.yaml", b"line_id: [\n", yaml.YAMLError, None),
+        (
+            "duplicate.yaml",
+            b"line_id: LINE_001\nline_id: LINE_002\n",
+            RuntimeMappingContractError,
+            "duplicate YAML mapping key",
+        ),
+    ],
+)
+def test_mapping_loader_failure_paths_read_raw_bytes_once_without_alternate_text_read(
+    tmp_path: Path,
+    filename: str,
+    raw_bytes: bytes,
+    exception: type[Exception],
+    match: str | None,
+) -> None:
+    mapping_path = tmp_path / filename
+    mapping_path.write_bytes(raw_bytes)
+    original_read_bytes = Path.read_bytes
+    original_read_text = Path.read_text
+    read_bytes_count = 0
+    read_text_count = 0
+
+    def counted_read(path: Path) -> bytes:
+        nonlocal read_bytes_count
+        read_bytes_count += 1
+        return original_read_bytes(path)
+
+    def counted_text_read(path: Path, *args, **kwargs) -> str:
+        nonlocal read_text_count
+        read_text_count += 1
+        return original_read_text(path, *args, **kwargs)
+
+    with patch.object(Path, "read_bytes", counted_read), patch.object(
+        Path,
+        "read_text",
+        counted_text_read,
+    ):
+        with pytest.raises(exception, match=match):
+            load_edge_mapping(mapping_path)
+
+    assert read_bytes_count == 1
+    assert read_text_count == 0
+
+
+def test_mapping_loader_rejects_final_symlink_without_any_content_read(tmp_path: Path) -> None:
+    target_path = tmp_path / "target.yaml"
+    target_path.write_bytes(yaml.safe_dump(mapping_doc(), sort_keys=False).encode("utf-8"))
+    symlink_path = tmp_path / "mapping-link.yaml"
+    symlink_path.symlink_to(target_path)
+    original_read_bytes = Path.read_bytes
+    original_read_text = Path.read_text
+    read_bytes_count = 0
+    read_text_count = 0
+
+    def counted_read(path: Path) -> bytes:
+        nonlocal read_bytes_count
+        read_bytes_count += 1
+        return original_read_bytes(path)
+
+    def counted_text_read(path: Path, *args, **kwargs) -> str:
+        nonlocal read_text_count
+        read_text_count += 1
+        return original_read_text(path, *args, **kwargs)
+
+    with patch.object(Path, "read_bytes", counted_read), patch.object(
+        Path,
+        "read_text",
+        counted_text_read,
+    ):
+        with pytest.raises(RuntimeMappingContractError, match="must not be a symlink"):
+            load_edge_mapping(symlink_path)
+
+    assert read_bytes_count == 0
+    assert read_text_count == 0
+
+
+def test_mapping_loader_rejects_non_regular_directory_without_any_content_read(tmp_path: Path) -> None:
+    directory_path = tmp_path / "mapping-directory"
+    directory_path.mkdir()
+    original_read_bytes = Path.read_bytes
+    original_read_text = Path.read_text
+    read_bytes_count = 0
+    read_text_count = 0
+
+    def counted_read(path: Path) -> bytes:
+        nonlocal read_bytes_count
+        read_bytes_count += 1
+        return original_read_bytes(path)
+
+    def counted_text_read(path: Path, *args, **kwargs) -> str:
+        nonlocal read_text_count
+        read_text_count += 1
+        return original_read_text(path, *args, **kwargs)
+
+    with patch.object(Path, "read_bytes", counted_read), patch.object(
+        Path,
+        "read_text",
+        counted_text_read,
+    ):
+        with pytest.raises(RuntimeMappingContractError, match="not a regular file"):
+            load_edge_mapping(directory_path)
+
+    assert read_bytes_count == 0
+    assert read_text_count == 0
 
 
 @pytest.mark.parametrize(

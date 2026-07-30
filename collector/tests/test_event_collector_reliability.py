@@ -1,19 +1,34 @@
 from __future__ import annotations
 
+import json
+import hashlib
+import os
+import tempfile
+import threading
 import unittest
-from dataclasses import dataclass
+from contextlib import nullcontext
+from dataclasses import dataclass, replace
 from datetime import datetime
+from pathlib import Path
 from types import SimpleNamespace
+from unittest.mock import patch
 from zoneinfo import ZoneInfo
 
 from snap7 import util
+import yaml
 
-from app.plc.mapping import StationMapping, load_edge_mapping
+from app import main as collector_main
+from app.plc.mapping import RuntimeMappingContractError, StationMapping, load_edge_mapping
 from app.plc.read_plan import ReadPlan, build_read_plans
+from app.services import event_collector as event_collector_module
 from app.services.event_collector import EventCollectorWorker, StationRuntime
 
 
 BOOT_ID = "12345678-1234-1234-1234-123456789abc"
+DEFAULT_CONTEXT = object()
+DEFAULT_MAPPING = object()
+FROZEN_MAPPING_CONTENT_SHA256 = "d9bb5fcb017e6ab491e8643077c793bb018011d1cbe0698172e4c08823080c9d"
+FROZEN_RESOLVED_CONFIG_HASH = "0038c05d5cf74ff3b8c508a3222ebb426658ad8e657c5034ac88c4ff32efae38"
 
 
 class FakeClient:
@@ -337,6 +352,548 @@ class EventCollectorReliabilityTest(unittest.TestCase):
             ["begin", "accepted_fact", "persist_cycle", "commit", "ack_ok"],
             storage.events,
         )
+
+
+class RuntimeLoadedObservabilityTest(unittest.TestCase):
+    def startup_context(self, *, pid: int | None = None):
+        from app.services.event_collector import CollectorStartupContext
+
+        return CollectorStartupContext(
+            collector_main_started_at_utc="2026-07-30T04:56:00Z",
+            process_pid=os.getpid() if pid is None else pid,
+        )
+
+    def construct_worker(
+        self,
+        *,
+        context=DEFAULT_CONTEXT,
+        mapping=DEFAULT_MAPPING,
+        logger=None,
+        mapping_path: str = "config/mapping.yaml",
+    ):
+        if mapping is DEFAULT_MAPPING:
+            mapping = load_edge_mapping("config/mapping.yaml")
+        if context is DEFAULT_CONTEXT:
+            context = self.startup_context()
+        storage = FakeStorage()
+        client = FakeClient()
+        storage_constructor_calls: list[str] = []
+        client_constructor_calls: list[str] = []
+
+        def storage_factory(_dsn: str) -> FakeStorage:
+            storage_constructor_calls.append("storage_construct")
+            return storage
+
+        def client_factory() -> FakeClient:
+            client_constructor_calls.append("snap7_client_construct")
+            return client
+
+        self._storage_constructor_calls = storage_constructor_calls
+        self._snap7_client_constructor_calls = client_constructor_calls
+        logger_patch = patch.object(event_collector_module.logger, "info")
+        logger_mock = logger_patch.start() if logger is None else logger
+        self._runtime_logger = logger_mock
+        self._constructor_storage = storage
+        try:
+            loader_patch = (
+                patch.object(event_collector_module, "load_edge_mapping", return_value=mapping)
+                if mapping is not None
+                else nullcontext()
+            )
+            with patch.object(event_collector_module, "Storage", side_effect=storage_factory), patch.object(
+                event_collector_module.snap7.client,
+                "Client",
+                side_effect=client_factory,
+            ), patch.object(
+                event_collector_module,
+                "build_accepted_station_event_fact",
+            ) as accepted_fact_builder, loader_patch:
+                self._accepted_fact_builder = accepted_fact_builder
+                worker = EventCollectorWorker(
+                    dsn="postgresql://unused",
+                    host="unused-host",
+                    port=1102,
+                    mapping_path=mapping_path,
+                    startup_context=context,
+                )
+        finally:
+            if logger is None:
+                logger_patch.stop()
+        return worker, logger_mock, storage, client
+
+    def independent_expected_runtime_record(self, mapping) -> dict[str, object]:
+        raw_mapping_bytes = Path("config/mapping.yaml").read_bytes()
+        raw_mapping_sha256 = hashlib.sha256(raw_mapping_bytes).hexdigest()
+        self.assertEqual(FROZEN_MAPPING_CONTENT_SHA256, raw_mapping_sha256)
+        self.assertNotEqual(FROZEN_MAPPING_CONTENT_SHA256, FROZEN_RESOLVED_CONFIG_HASH)
+        return {
+            "evidence_schema_version": "edge-mes/collector-runtime-loaded/v1",
+            "event_type": "collector_runtime_loaded",
+            "mapping_path": str(Path("config/mapping.yaml").resolve()),
+            "mapping_content_sha256": raw_mapping_sha256,
+            "mapping_schema_version": "runtime-mapping/v1",
+            "config_version": "2026.06.26-slice-a",
+            "line_id": "LINE_001",
+            "read_plan_count": 1 + len(mapping.stations),
+            "resolved_config_hash": FROZEN_RESOLVED_CONFIG_HASH,
+            "collector_main_started_at_utc": "2026-07-30T04:56:00Z",
+            "process_pid": os.getpid(),
+        }
+
+    def assert_worker_constructor_failure_has_no_runtime_side_effects(
+        self,
+        *,
+        exception: type[Exception],
+        mapping=DEFAULT_MAPPING,
+        mapping_path: str = "config/mapping.yaml",
+    ) -> None:
+        with patch.object(EventCollectorWorker, "run_forever") as run_forever, patch.object(
+            threading,
+            "Thread",
+        ) as thread_constructor:
+            with self.assertRaises(exception):
+                self.construct_worker(mapping=mapping, mapping_path=mapping_path)
+
+        runtime_loaded_messages = [
+            call.args[0]
+            for call in self._runtime_logger.call_args_list
+            if call.args
+            and isinstance(call.args[0], str)
+            and call.args[0].startswith("collector_runtime_loaded_json=")
+        ]
+        self.assertEqual([], runtime_loaded_messages)
+        self.assertEqual([], self._storage_constructor_calls)
+        self.assertEqual([], self._snap7_client_constructor_calls)
+        self.assertEqual(0, self._accepted_fact_builder.call_count)
+        self.assertEqual([], self._constructor_storage.events)
+        self.assertEqual(0, run_forever.call_count)
+        self.assertEqual(0, thread_constructor.call_count)
+
+    def test_worker_emits_one_exact_record_before_constructor_returns(self) -> None:
+        mapping = load_edge_mapping("config/mapping.yaml")
+        expected_record = self.independent_expected_runtime_record(mapping)
+        worker, logger, _storage, _client = self.construct_worker(mapping=mapping)
+
+        self.assertIsNotNone(worker)
+        self.assertEqual([], self._storage_constructor_calls)
+        self.assertEqual(1, logger.call_count)
+        self.assertEqual(1, len(logger.call_args.args))
+        application_message = logger.call_args.args[0]
+        prefix = "collector_runtime_loaded_json="
+        self.assertTrue(application_message.startswith(prefix))
+        payload = application_message[len(prefix) :]
+        self.assertEqual(application_message, prefix + payload)
+        decoder = json.JSONDecoder()
+        record, end = decoder.raw_decode(payload)
+        self.assertEqual(len(payload), end)
+        self.assertEqual(record, json.loads(payload))
+        self.assertEqual(
+            {
+                "evidence_schema_version",
+                "event_type",
+                "mapping_path",
+                "mapping_content_sha256",
+                "mapping_schema_version",
+                "config_version",
+                "line_id",
+                "read_plan_count",
+                "resolved_config_hash",
+                "collector_main_started_at_utc",
+                "process_pid",
+            },
+            set(record),
+        )
+        self.assertEqual(expected_record, record)
+        expected_payload = json.dumps(
+            expected_record,
+            ensure_ascii=False,
+            sort_keys=True,
+            separators=(",", ":"),
+            allow_nan=False,
+        )
+        self.assertEqual(expected_payload, payload)
+        self.assertEqual(prefix + expected_payload, application_message)
+        self.assertIsInstance(record["read_plan_count"], int)
+        self.assertNotIsInstance(record["read_plan_count"], bool)
+        self.assertGreater(record["read_plan_count"], 0)
+        self.assertEqual(1 + len(mapping.stations), record["read_plan_count"])
+        self.assertEqual(4, record["read_plan_count"])
+        self.assertIsInstance(record["process_pid"], int)
+        self.assertNotIsInstance(record["process_pid"], bool)
+        self.assertGreater(record["process_pid"], 0)
+        self.assertEqual(os.getpid(), record["process_pid"])
+        self.assertEqual(FROZEN_MAPPING_CONTENT_SHA256, record["mapping_content_sha256"])
+        self.assertEqual(FROZEN_RESOLVED_CONFIG_HASH, record["resolved_config_hash"])
+        swapped_expected = dict(expected_record)
+        swapped_expected["mapping_content_sha256"] = FROZEN_RESOLVED_CONFIG_HASH
+        swapped_expected["resolved_config_hash"] = FROZEN_MAPPING_CONTENT_SHA256
+        constant_expected = dict(expected_record)
+        constant_expected["mapping_content_sha256"] = "0" * 64
+        constant_expected["resolved_config_hash"] = "0" * 64
+        self.assertNotEqual(expected_record, swapped_expected)
+        self.assertNotEqual(expected_record, constant_expected)
+        self.assertNotEqual(record, swapped_expected)
+        self.assertNotEqual(record, constant_expected)
+        self.assertNotIn("production", application_message.lower())
+        self.assertNotIn("ack", application_message.lower())
+        self.assertNotIn("read_done", application_message.lower())
+
+    def test_disabled_configured_station_remains_in_read_plan_count(self) -> None:
+        mapping = load_edge_mapping("config/mapping.yaml")
+        disabled_station = replace(mapping.stations[0], station_enabled=False)
+        mapping = replace(mapping, stations=(disabled_station, *mapping.stations[1:]))
+
+        _worker, logger, _storage, _client = self.construct_worker(mapping=mapping)
+
+        record = json.loads(logger.call_args.args[0].split("=", 1)[1])
+        self.assertEqual(len(build_read_plans(mapping)), record["read_plan_count"])
+
+    def test_duplicate_plan_scope_fails_before_success_emission(self) -> None:
+        mapping = load_edge_mapping("config/mapping.yaml")
+        plans = build_read_plans(mapping)
+
+        with patch.object(event_collector_module, "build_read_plans", return_value=[plans[0], *plans]):
+            with self.assertRaises(ValueError):
+                self.construct_worker(mapping=mapping)
+
+    def test_missing_plan_scope_fails_before_success_emission(self) -> None:
+        mapping = load_edge_mapping("config/mapping.yaml")
+        plans = build_read_plans(mapping)
+
+        with patch.object(
+            event_collector_module,
+            "build_read_plans",
+            return_value=[plan for plan in plans if plan.scope != "WS02"],
+        ):
+            with self.assertRaises(ValueError):
+                self.construct_worker(mapping=mapping)
+
+    def test_extra_plan_scope_and_scope_multiset_mismatch_fail_closed(self) -> None:
+        mapping = load_edge_mapping("config/mapping.yaml")
+        plans = build_read_plans(mapping)
+        cases = [
+            [*plans, replace(plans[-1], scope="EXTRA")],
+            [plans[0], replace(plans[1], scope="EXTRA"), *plans[2:]],
+        ]
+
+        for generated_plans in cases:
+            with self.subTest(scopes=[plan.scope for plan in generated_plans]):
+                with patch.object(
+                    event_collector_module,
+                    "build_read_plans",
+                    return_value=generated_plans,
+                ):
+                    with self.assertRaises(ValueError):
+                        self.construct_worker(mapping=mapping)
+
+    def test_duplicate_configured_station_id_fails_before_dict_conversion(self) -> None:
+        mapping = load_edge_mapping("config/mapping.yaml")
+        duplicate_station = replace(mapping.stations[1], station_id=mapping.stations[0].station_id)
+        mapping = replace(mapping, stations=(mapping.stations[0], duplicate_station, *mapping.stations[2:]))
+
+        with self.assertRaises(ValueError):
+            self.construct_worker(mapping=mapping)
+
+    def test_constructor_validation_failure_has_no_plc_db_ack_or_read_done_side_effect(self) -> None:
+        mapping = load_edge_mapping("config/mapping.yaml")
+        plans = build_read_plans(mapping)
+        storage = FakeStorage()
+        client = FakeClient()
+
+        with patch.object(event_collector_module, "Storage", return_value=storage), patch.object(
+            event_collector_module.snap7.client,
+            "Client",
+            return_value=client,
+        ), patch.object(event_collector_module, "load_edge_mapping", return_value=mapping), patch.object(
+            event_collector_module,
+            "build_read_plans",
+            return_value=[plans[0], *plans],
+        ):
+            with self.assertRaises(ValueError):
+                EventCollectorWorker(
+                    dsn="postgresql://unused",
+                    host="unused-host",
+                    port=1102,
+                    mapping_path="config/mapping.yaml",
+                    startup_context=self.startup_context(),
+                )
+
+        self.assertEqual([], storage.events)
+        self.assertEqual([], client.writes)
+        self.assertEqual(0, client.write_attempts)
+
+    def test_constructor_failure_paths_make_zero_storage_constructor_calls(self) -> None:
+        mapping = load_edge_mapping("config/mapping.yaml")
+        plans = build_read_plans(mapping)
+        cases = [
+            ("scope", patch.object(event_collector_module, "build_read_plans", return_value=[plans[0], *plans])),
+            ("line", None),
+        ]
+        mismatched_plc = dict(mapping.plcs[0])
+        mismatched_plc["line_id"] = "LINE_OTHER"
+
+        for name, plan_patch in cases:
+            with self.subTest(name=name):
+                failing_mapping = (
+                    replace(mapping, plcs=(mismatched_plc,)) if name == "line" else mapping
+                )
+                context_manager = plan_patch if plan_patch is not None else nullcontext()
+                with context_manager, self.assertRaises(ValueError):
+                    self.construct_worker(mapping=failing_mapping)
+                self.assertEqual([], self._storage_constructor_calls)
+
+    def test_loader_and_resolved_identity_failures_have_no_worker_runtime_side_effects(self) -> None:
+        with tempfile.TemporaryDirectory() as temp_dir:
+            temp_path = Path(temp_dir)
+            invalid_utf8 = temp_path / "invalid.yaml"
+            invalid_utf8.write_bytes(b"line_id: \xff\n")
+            malformed_yaml = temp_path / "malformed.yaml"
+            malformed_yaml.write_bytes(b"line_id: [\n")
+            duplicate_key = temp_path / "duplicate.yaml"
+            duplicate_key.write_bytes(b"line_id: LINE_001\nline_id: LINE_002\n")
+
+            for mapping_path, exception in (
+                (invalid_utf8, UnicodeDecodeError),
+                (malformed_yaml, yaml.YAMLError),
+                (duplicate_key, RuntimeMappingContractError),
+            ):
+                with self.subTest(mapping_path=mapping_path.name):
+                    self.assert_worker_constructor_failure_has_no_runtime_side_effects(
+                        exception=exception,
+                        mapping=None,
+                        mapping_path=str(mapping_path),
+                    )
+
+        valid_mapping = load_edge_mapping("config/mapping.yaml")
+        tampered_runtime_snapshot = replace(
+            valid_mapping.runtime_snapshot,
+            config_hash="0" * 64,
+        )
+        tampered_mapping = replace(valid_mapping, runtime_snapshot=tampered_runtime_snapshot)
+        self.assert_worker_constructor_failure_has_no_runtime_side_effects(
+            exception=ValueError,
+            mapping=tampered_mapping,
+        )
+
+    def test_canonical_snapshot_line_and_selected_routing_line_must_match(self) -> None:
+        mapping = load_edge_mapping("config/mapping.yaml")
+        mismatched_plc = dict(mapping.plcs[0])
+        mismatched_plc["line_id"] = "LINE_OTHER"
+        mapping = replace(mapping, plcs=(mismatched_plc,))
+
+        with self.assertRaises(ValueError):
+            self.construct_worker(mapping=mapping)
+
+    def test_missing_or_ambiguous_routing_selection_fails_closed(self) -> None:
+        mapping = load_edge_mapping("config/mapping.yaml")
+        missing_line = dict(mapping.plcs[0])
+        missing_line.pop("line_id")
+        empty_line = dict(mapping.plcs[0])
+        empty_line["line_id"] = ""
+        for plcs in ((), (mapping.plcs[0], mapping.plcs[0]), (missing_line,), (empty_line,)):
+            with self.subTest(plcs=len(plcs)):
+                with self.assertRaises(ValueError):
+                    self.construct_worker(mapping=replace(mapping, plcs=plcs))
+
+    def test_startup_context_is_mandatory_pid_bound_and_single_use(self) -> None:
+        mapping = load_edge_mapping("config/mapping.yaml")
+
+        with self.assertRaises(ValueError):
+            self.construct_worker(context=None, mapping=mapping)
+        self.assertEqual([], self._storage_constructor_calls)
+        with self.assertRaises(ValueError):
+            self.construct_worker(context=self.startup_context(pid=os.getpid() + 1), mapping=mapping)
+        self.assertEqual([], self._storage_constructor_calls)
+
+        context = self.startup_context()
+        self.construct_worker(context=context, mapping=mapping)
+        self.assertEqual([], self._storage_constructor_calls)
+        with self.assertRaises(ValueError):
+            self.construct_worker(context=context, mapping=mapping)
+        self.assertEqual([], self._storage_constructor_calls)
+
+    def test_constructor_failure_consumes_context_and_prevents_retry(self) -> None:
+        mapping = load_edge_mapping("config/mapping.yaml")
+        mismatched_plc = dict(mapping.plcs[0])
+        mismatched_plc["line_id"] = "LINE_OTHER"
+        failing_mapping = replace(mapping, plcs=(mismatched_plc,))
+        context = self.startup_context()
+
+        with self.assertRaises(ValueError):
+            self.construct_worker(context=context, mapping=failing_mapping)
+        self.assertEqual([], self._storage_constructor_calls)
+        with self.assertRaises(ValueError):
+            self.construct_worker(context=context, mapping=mapping)
+        self.assertEqual([], self._storage_constructor_calls)
+
+    def test_serialization_or_logger_failure_propagates_without_success_record(self) -> None:
+        context = self.startup_context()
+        mapping = load_edge_mapping("config/mapping.yaml")
+        with patch.object(event_collector_module.json, "dumps", side_effect=RuntimeError("serialize")):
+            with self.assertRaises(RuntimeError):
+                self.construct_worker(context=context, mapping=mapping)
+        self.assertEqual([], self._storage_constructor_calls)
+
+        context = self.startup_context()
+        with patch.object(event_collector_module.logger, "info", side_effect=RuntimeError("log")):
+            with self.assertRaises(RuntimeError):
+                self.construct_worker(context=context, logger=event_collector_module.logger.info)
+        self.assertEqual([], self._storage_constructor_calls)
+
+    def test_main_passes_one_context_and_emits_before_thread_start(self) -> None:
+        events: list[str] = []
+
+        class FakeEventWorker:
+            def __init__(self, **kwargs) -> None:
+                context = kwargs["startup_context"]
+                self.assert_context(context)
+                events.append("record")
+
+            @staticmethod
+            def assert_context(context) -> None:
+                assert context.process_pid == os.getpid()
+                assert context.collector_main_started_at_utc.endswith("Z")
+
+            def run_forever(self) -> None:
+                raise AssertionError("run_forever must not run in this test")
+
+        class FakeThread:
+            def __init__(self, **_kwargs) -> None:
+                events.append("thread_construct")
+
+            def start(self) -> None:
+                events.append("thread_start")
+
+        class StopSource:
+            def read(self):
+                raise SystemExit()
+
+        def storage_factory(_dsn: str) -> FakeStorage:
+            events.append("legacy_storage_construct")
+            return FakeStorage()
+
+        with patch.object(collector_main, "load_config", return_value={"collector": {}}), patch.object(
+            collector_main, "event_collector_enabled", return_value=True
+        ), patch.object(collector_main, "EventCollectorWorker", FakeEventWorker), patch.object(
+            collector_main, "threading"
+        ) as threading_module, patch.object(collector_main, "SimulatorSource", return_value=StopSource()), patch.object(
+            collector_main, "Storage", side_effect=storage_factory
+        ), patch.object(collector_main, "EventDetector", return_value=object()), patch.object(
+            collector_main, "database_url", return_value="unused"
+        ), patch.object(collector_main, "snap7_host", return_value="unused"), patch.object(
+            collector_main, "snap7_port", return_value=1102
+        ), patch.object(collector_main.logger, "info"):
+            threading_module.Thread = FakeThread
+            with self.assertRaises(SystemExit):
+                collector_main.main()
+
+        self.assertEqual(
+            ["record", "thread_construct", "thread_start", "legacy_storage_construct"],
+            events,
+        )
+
+    def test_constructor_failure_prevents_main_thread_start(self) -> None:
+        class FailingEventWorker:
+            def __init__(self, **_kwargs) -> None:
+                raise RuntimeError("constructor failed")
+
+        class FakeThread:
+            started = False
+
+            def __init__(self, **_kwargs) -> None:
+                pass
+
+            def start(self) -> None:
+                FakeThread.started = True
+
+        storage_constructor_calls: list[str] = []
+
+        def storage_factory(_dsn: str) -> FakeStorage:
+            storage_constructor_calls.append("legacy_storage_construct")
+            return FakeStorage()
+
+        with patch.object(collector_main, "load_config", return_value={"collector": {}}), patch.object(
+            collector_main, "event_collector_enabled", return_value=True
+        ), patch.object(collector_main, "EventCollectorWorker", FailingEventWorker), patch.object(
+            collector_main.threading, "Thread", FakeThread
+        ), patch.object(collector_main, "SimulatorSource", return_value=object()), patch.object(
+            collector_main, "Storage", side_effect=storage_factory
+        ), patch.object(collector_main, "EventDetector", return_value=object()), patch.object(
+            collector_main, "database_url", return_value="unused"
+        ), patch.object(collector_main, "snap7_host", return_value="unused"), patch.object(
+            collector_main, "snap7_port", return_value=1102
+        ):
+            with self.assertRaises(RuntimeError):
+                collector_main.main()
+
+        self.assertFalse(FakeThread.started)
+        self.assertEqual([], storage_constructor_calls)
+
+    def test_run_forever_constructs_storage_once_before_first_poll(self) -> None:
+        worker = EventCollectorWorker.__new__(EventCollectorWorker)
+        worker.dsn = "postgresql://unused"
+        worker.host = "unused-host"
+        worker.port = 1102
+        worker.station_runtimes = []
+        events: list[str] = []
+
+        def storage_factory(_dsn: str) -> FakeStorage:
+            events.append("storage_construct")
+            return FakeStorage()
+
+        def poll_once() -> None:
+            events.append("poll_once")
+            raise KeyboardInterrupt()
+
+        worker.poll_once = poll_once
+        with patch.object(event_collector_module, "Storage", side_effect=storage_factory), patch.object(
+            event_collector_module.logger, "info"
+        ):
+            with self.assertRaises(KeyboardInterrupt):
+                worker.run_forever()
+
+        self.assertEqual(["storage_construct", "poll_once"], events)
+
+    def test_run_forever_storage_failure_is_not_retried_or_reemitted(self) -> None:
+        worker, _logger, _storage, _client = self.construct_worker()
+        storage_constructor_calls: list[str] = []
+
+        def failing_storage_factory(_dsn: str) -> FakeStorage:
+            storage_constructor_calls.append("storage_construct")
+            raise RuntimeError("storage initialization failed")
+
+        with patch.object(event_collector_module, "Storage", side_effect=failing_storage_factory), patch.object(
+            event_collector_module.logger, "info"
+        ) as logger:
+            with self.assertRaisesRegex(RuntimeError, "storage initialization failed"):
+                worker.run_forever()
+
+        self.assertEqual(["storage_construct"], storage_constructor_calls)
+        runtime_loaded_messages = [
+            call.args[0]
+            for call in logger.call_args_list
+            if call.args and isinstance(call.args[0], str) and call.args[0].startswith("collector_runtime_loaded_json=")
+        ]
+        self.assertEqual([], runtime_loaded_messages)
+
+    def test_disabled_event_collector_does_not_receive_startup_context(self) -> None:
+        class UnexpectedEventWorker:
+            def __init__(self, **_kwargs) -> None:
+                raise AssertionError("disabled collector must not construct worker")
+
+        class StopSource:
+            def read(self):
+                raise SystemExit()
+
+        with patch.object(collector_main, "load_config", return_value={"collector": {}}), patch.object(
+            collector_main, "event_collector_enabled", return_value=False
+        ), patch.object(collector_main, "EventCollectorWorker", UnexpectedEventWorker), patch.object(
+            collector_main, "SimulatorSource", return_value=StopSource()
+        ), patch.object(collector_main, "Storage", return_value=FakeStorage()), patch.object(
+            collector_main, "EventDetector", return_value=object()
+        ), patch.object(collector_main, "database_url", return_value="unused"):
+            with self.assertRaises(SystemExit):
+                collector_main.main()
 
 
 if __name__ == "__main__":
