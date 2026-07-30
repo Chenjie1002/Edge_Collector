@@ -4,6 +4,67 @@
 工作目录：`/Users/chenjie/Documents/MES/edge-mes-demo`
 树莓派部署目录：`/opt/edge-mes-demo`
 
+## 0K. 2026-07-30 D2-R7B-I1 post-closeout status sync
+
+本节是当前 control block，覆盖 `0J` 中仍停留在 Git closeout 前的状态词，但不删除或
+重写 `0J` 的历史快照。Authority：用户于 2026-07-30 17:13（UTC+8）授权 ChatGPT PM
+执行小型 post-closeout 状态同步。
+
+R55 冻结的 exact 24-path candidate 已完成 PM exact-path Git closeout：
+
+```text
+commit:
+934ced7b9659cb566628b1709cf6d73463a534d8
+
+message:
+Accept runtime-loaded observability implementation
+
+branch / remote:
+main / origin/main
+
+HEAD == origin/main:
+YES
+
+ahead / behind:
+0 / 0
+
+committed path count:
+24 exact paths
+```
+
+提交前 fresh validation：`py_compile` PASS；Reliability focused tests
+`25 passed, 11 subtests passed`；runtime-source focused tests `59 passed`；
+`git diff --cached --check` PASS。提交后 tracked 与 cached diff 均为空。保留的未跟踪集合
+严格为 `301 = Batch D 300 + Batch E 1`，unknown/missing 为 `0/0`。
+
+当前状态：
+
+```text
+FINAL-IMPLEMENTATION-PACKAGE-ACCEPTED = YES
+GIT-CANDIDATE-ACCEPTED                = YES
+STAGED                                = NO
+COMMITTED                             = YES
+PUSHED                                = YES
+
+BUILT                                 = NO
+DEPLOYED                              = NO
+ACTIVATED                             = YES
+STATIC_MAPPING_INITIALIZED            = YES
+RUNTIME-LOADED                        = NO
+PRODUCTION-ACCEPTED                   = NO
+```
+
+`ACTIVATED = YES` 与 `STATIC_MAPPING_INITIALIZED = YES` 是既有远端 Collector 状态，不能
+被解释为新提交 `934ced7...` 已构建、部署或加载。旧 `IMAGE_LOADED_EXACT` 也不证明该新
+commit 对应的新 image 已存在。
+
+当前最小下一 Gate 是一个新的 Level 2 **accepted build/image gate planning**：先以
+`934ced7...` 为唯一 source authority，冻结 Docker build context、Linux/arm64 目标、
+Dockerfile/依赖输入、image/tag/archive identity、local build validation、remote load 与
+activation 分离边界，再决定是否授权实际 build。当前没有 build、Docker、network、
+remote load、deployment、restart、activation、runtime A–H 或 production authority。
+Oracle/ERP 真实同步与 `sync-worker` 继续属于 Phase-2 Out of Scope。
+
 ## 0J. 2026-07-30 D2-R7B-I1 R55 final implementation-package status sync
 
 本节是当前 control block。前置 `0I` package-closed image-load scope-reset 内容及其
@@ -795,11 +856,12 @@ Level 2 子项目。
 
 ## 0. 当前 PM / Codex 协作状态
 
-当前主线：D2-R7B-I1 runtime-loaded observability implementation package 已完成 R48–R54
-authority chain、R55 final PM acceptance 与 Git-candidate eligibility sync；当前只允许
-沿 exact-path Git closeout 前进。旧 image-load/activation 建议保留为历史审计状态，不再
-作为当前唯一 next step。Dashboard/UI runtime 验收继续作为最终集成阶段的非阻塞
-acceptance debt。
+当前主线：D2-R7B-I1 runtime-loaded observability implementation package 已完成 R48–R55
+authority chain及exact-path Git closeout；commit `934ced7...` 已推送到 `origin/main`。
+当前应先完成本post-closeout状态同步并生成新的ChatGPT PM handoff，再由新PM窗口以
+read-only recovery开始独立的accepted build/image gate planning。旧image-load/activation
+记录继续作为历史审计状态，不得作为新commit已构建或已部署的证明。Dashboard/UI runtime
+验收继续作为最终集成阶段的非阻塞acceptance debt。
 
 Last verified baseline before this governance/status reconciliation:
 
@@ -2201,17 +2263,15 @@ edge-mes-demo/
 
 ## 7. 下一步建议
 
-当前主线先关闭 D2-R7B-I1 runtime-loaded observability implementation package 的
-exact-path Git 边界：
+D2-R7B-I1 runtime-loaded observability implementation package 的exact-path Git边界已关闭。
+当前下一步：
 
-1. 对以下 scope-reset sync 执行 ChatGPT PM exact-path Git candidate review：
-   - `docs/current_status.md`
-   - `docs/roadmap.md`
-   - `docs/thread_handoff/chatgpt_pm_handoff_260730-1621.md`
-   - R40–R55 exact implementation-package reports。
-2. 仅在 ChatGPT PM 接受 R55 且用户明确授权后，执行 exact-path stage/commit/push；不得 broad-stage `docs/` 或历史 untracked reports。
-3. Git closeout 后，按独立 authority 顺序进入 accepted build/image gate、deployment/lifecycle gate、bounded runtime-loaded A–H validation、PM `RUNTIME-LOADED` acceptance，最后才可另行开展 production accepted-fact work。
-4. 本状态同步不授权 build、Docker、remote、deployment、restart、activation、runtime validation 或 production acceptance。
+1. 完成本次post-closeout状态同步；该同步仅为`WRITTEN / UNSTAGED / UNCOMMITTED / UNPUSHED`。
+2. 立即生成新的ChatGPT PM handoff，冻结commit `934ced7...`、301项已分类untracked集合、当前产品状态和下一Level 2 gate边界。
+3. 用户单独授权后，仅对本次状态同步与新handoff执行exact-path docs-only stage/commit/push；不得broad-stage `docs/`或吸收Batch D/E。
+4. 新PM窗口先执行read-only recovery，然后发布最小accepted build/image gate planning；不得直接build或访问remote。
+5. 后续仍按独立authority顺序进入actual build/image gate、deployment/lifecycle gate、bounded runtime-loaded A–H validation、PM `RUNTIME-LOADED` acceptance，最后才可另行开展production accepted-fact work。
+6. 本状态同步不授权build、Docker、network、remote、deployment、restart、activation、runtime validation或production acceptance。
 
 后续数据主线仍保留：
 

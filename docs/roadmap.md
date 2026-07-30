@@ -1,7 +1,7 @@
 # Edge MES Phase-2 Roadmap
 
 更新时间：2026-07-30
-状态：Phase-2 MVP Execution — D2-R7B-I1 R55 implementation package PM-ACCEPTED / GIT-CANDIDATE-ELIGIBLE / exact-path Git closeout pending / runtime-loaded and production acceptance not authorized
+状态：Phase-2 MVP Execution — D2-R7B-I1 implementation package committed and pushed at `934ced7...` / post-closeout status sync WRITTEN / accepted build-image planning next / runtime-loaded and production acceptance not authorized
 Phase-1 基线：最终验收 PASS，GitHub freeze/tag 已完成
 
 ## 1. 当前里程碑
@@ -170,6 +170,65 @@ PRODUCTION-ACCEPTED        = NO
 bounded non-blocking backlog。Oracle/ERP 真实同步与 `sync-worker` 仍保留在延后范围，
 不改变 Phase-2 功能优先级。
 
+### 1G. 2026-07-30 D2-R7B-I1 exact Git closeout and next-gate reset
+
+R55冻结的exact 24-path candidate已由ChatGPT PM在用户明确授权下完成stage、commit与
+push。当前Git authority为：
+
+```text
+commit:
+934ced7b9659cb566628b1709cf6d73463a534d8
+
+message:
+Accept runtime-loaded observability implementation
+
+HEAD == origin/main:
+YES
+
+ahead / behind:
+0 / 0
+
+committed path count:
+24 exact paths
+```
+
+提交前`py_compile`、Reliability focused tests（`25 passed, 11 subtests passed`）、
+runtime-source focused tests（`59 passed`）和cached diff check均PASS。提交后tracked与
+cached diff为空；保留未跟踪集合为`301 = Batch D 300 + Batch E 1`，unknown/missing
+为`0/0`。
+
+当前状态：
+
+```text
+FINAL-IMPLEMENTATION-PACKAGE-ACCEPTED = YES
+GIT-CANDIDATE-ACCEPTED                = YES
+COMMITTED                             = YES
+PUSHED                                = YES
+
+BUILT                                 = NO
+DEPLOYED                              = NO
+ACTIVATED                             = YES
+STATIC_MAPPING_INITIALIZED            = YES
+RUNTIME-LOADED                        = NO
+PRODUCTION-ACCEPTED                   = NO
+```
+
+既有`ACTIVATED`和`IMAGE_LOADED_EXACT`不能作为新commit `934ced7...`已构建、部署或加载
+的证据。下一Gate必须重新从该commit建立source-to-image authority。
+
+最小下一Gate是独立Level 2 accepted build/image gate planning。Planning必须冻结：
+
+- exact source commit和clean tracked baseline；
+- Docker build context、Dockerfile、requirements及其它输入身份；
+- Linux/arm64目标和builder环境边界；
+- image tag、config digest、archive digest及provenance；
+- local build/package validation；
+- build、archive transport、remote load、deployment、activation的authority分离；
+- 失败停止、rollback与禁止继承规则。
+
+本post-closeout同步只建立`WRITTEN`，不授权actual build、Docker、network、remote load、
+deployment、restart、activation、runtime A–H或production acceptance。
+
 ## 2. Phase-2 定位
 
 将单线三工站 Demo 演进为：
@@ -286,13 +345,13 @@ flowchart LR
 
 ## 8. 当前下一步
 
-当前下一步唯一为本地 implementation package exact-path Git candidate intake / closeout：
+当前下一步唯一为post-closeout治理交接与accepted build/image gate planning：
 
-1. ChatGPT PM durable-intake 复核并接受 R55 的 exact 24-path candidate；
-2. 只有用户明确授权后，才执行 exact-path stage、commit、push；不得 `git add .`、`git add -A`、`git add docs/` 或吸收 Batch D/E；
-3. Git closeout 后依次进入 accepted source commit → accepted build/image gate → deployment/lifecycle gate → bounded runtime-loaded A–H validation → PM `RUNTIME-LOADED` acceptance → separate production accepted-fact work；
-4. 不得从 R55 自动推断 build、Docker、remote、deployment、lifecycle、runtime validation、`RUNTIME-LOADED` 或 `PRODUCTION-ACCEPTED`。
-
-旧的 `IMAGE_LOADED_EXACT` / activation 建议在 1E 及历史 status 段落中保留，作为历史边界；不改变本节当前 next gate。
+1. 本次`docs/current_status.md`与`docs/roadmap.md`小型同步保持`WRITTEN / UNSTAGED / UNCOMMITTED / UNPUSHED`。
+2. 立即生成新的ChatGPT PM handoff，冻结commit `934ced7...`、301项已分类untracked集合、当前状态边界和下一Gate的Level 2风险。
+3. 用户单独授权后，只对本次状态同步与新handoff执行exact-path docs-only Git closeout；不得`git add .`、`git add -A`、`git add docs/`或吸收Batch D/E。
+4. 新PM窗口先执行read-only recovery，再发布独立accepted build/image gate planning；不得从本roadmap直接执行build、Docker或remote操作。
+5. Planning被PM接受后，后续仍依次为actual build/image gate → deployment/lifecycle gate → bounded runtime-loaded A–H validation → PM `RUNTIME-LOADED` acceptance → separate production accepted-fact work。
+6. 旧的`IMAGE_LOADED_EXACT`/activation建议在1E及历史status段落中保留，但不能证明新commit已构建或已部署。
 
 D2-R7B 关闭后，项目再根据真实数据主线选择 OEE、Quality/Pareto 或 Trace relation 的最小数据语义切片；Dashboard/UI acceptance debt继续保留到最终集成阶段，不重新打开 Attempt-3 browser evidence 分支。
