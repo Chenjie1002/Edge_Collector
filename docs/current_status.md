@@ -4,6 +4,104 @@
 工作目录：`/Users/chenjie/Documents/MES/edge-mes-demo`
 树莓派部署目录：`/opt/edge-mes-demo`
 
+## 0L. 2026-07-30 D2-R7B-I1 final build/image planning acceptance
+
+本节是当前最高优先级 control block，覆盖 `0K` 中“accepted build/image planning next”的
+旧状态词，但保留 `0K` 及更早段落作为历史快照。Authority：用户于
+2026-07-30 20:20（UTC+8）授权 ChatGPT PM 执行 docs-only final planning
+acceptance/status sync；durable decision：
+
+```text
+docs/reports/sprint4_d2_r7b_i1_r64_final_planning_acceptance_and_status_sync.md
+
+PASS / FINAL PLANNING ACCEPTANCE STATUS SYNC WRITTEN
+PM FINAL PLANNING ACCEPTED = YES
+```
+
+当前 accepted build/image planning contract 为：
+
+```text
+R56 retained clauses
++ R60 explicitly superseding clauses
++ R61 focused Reliability PASS
++ R62 focused Data Quality PASS WITH RECOMMENDATIONS
++ R63 focused Verification PASS WITH RECOMMENDATIONS
++ PM-mandated future execution record grammar
+```
+
+R60 只替换 R56 中 dependency expected/actual、Config/RootFS oracle、attempt/builder/
+candidate ownership、archive/extraction ownership、evidence-root publication/integrity 及其
+更具体 HOLD rows。R56 未被明确替换的 exact source、clean-context exclusion、
+`linux/arm64`、base/tag/candidate identity、COPY closure、phase separation 与一般
+fail-closed intent 继续有效；future executor 不得在 retained R56 与 superseding R60
+之间选择更宽松的双重 PASS 路径。
+
+历史状态保持：
+
+```text
+R57 = execution-invalid historical attempt
+R58 = execution-invalid historical attempt
+R59 = valid historical substantive Reliability HOLD against unsuperseded R56
+```
+
+R59 的五项有效最小风险已由 R60 scope reset 修复并由 R61 独立关闭，因此历史 HOLD
+origin 继续保留，但不再构成 active blocker。当前 review chain：
+
+```text
+Architecture / Integration planning = PASS
+Reliability review                   = PASS
+Data Quality review                  = PASS WITH RECOMMENDATIONS
+Verification review                  = PASS WITH RECOMMENDATIONS
+PM final planning acceptance         = YES
+active planning blockers             = NONE
+static review stopping rule          = REACHED
+MVP alignment                        = MVP-ALIGNED WITH BACKLOG ITEMS
+```
+
+R62/R63 的 non-blocking carry-forward 只在 future execution-preparation Prompt 中冻结：
+
+- ordinary file SHA-256 使用完整 lowercase 64-hex；OCI digest 使用
+  `sha256:<64 lowercase hex>`；Git ID、file SHA、OCI digest 与 candidate image ID
+  使用不同字段，candidate full ID 不得缩写；
+- path domain 明确分为 `repository_relative_path`、`container_absolute_path`、
+  `evidence_root_relative_path`；`host_absolute_path` 仅在后续 Prompt 明确授权时使用；
+- timestamp 使用可解析 RFC3339 UTC `YYYY-MM-DDTHH:MM:SS[.fraction]Z`，同一 attempt
+  且 `start <= end`；不建立 production-time 或 anti-tamper 声明。
+
+这些规则不要求再次修改 R60，也不得扩大为 generic schema registry、SBOM、
+supply-chain、audit、forensics 或 retention platform。
+
+当前 authority/state：
+
+```text
+FINAL PLANNING ACCEPTED                 = YES
+EXECUTION PREPARED                      = NO
+FIXTURE IMPLEMENTED                     = NO
+TESTS EXECUTED                          = NO
+BUILD READY                             = NO
+BUILD AUTHORIZED                        = NO
+BUILT                                   = NO
+LOCAL IMAGE ACCEPTED                    = NO
+ARCHIVED                                = NO
+TRANSPORTED                             = NO
+REMOTE LOADED                           = NO
+DEPLOYED                                = NO
+ACTIVATED BY 934ced7                    = NO
+RUNTIME-LOADED                          = NO
+PRODUCTION-ACCEPTED                     = NO
+```
+
+本次同步时 live `HEAD == origin/main == c3acb33bd089eae4d67aec3be64c97fd128aa178`，
+ahead/behind `0/0`；写入前 tracked/cached diff 为空，未跟踪集合为
+`309 = Batch D 300 + Batch E 1 + R56–R63 8`，unknown/missing/duplicate `0/0/0`。
+本同步只允许创建 R64 并修改本文件与 `docs/roadmap.md`；不执行 stage、commit、push、
+tag、Docker、network、build、remote 或 runtime 操作。
+
+下一 eligible branch 是单独授权的 future execution-preparation planning，必须冻结 concrete
+attempt ID、local roots、builder/candidate names、source materialization argv、base resolution、
+Docker/network budgets、terminal paths、isolated validation commands、stop conditions、
+retry/cleanup 与 Git authority。不得从本 control block 直接开始 build。
+
 ## 0K. 2026-07-30 D2-R7B-I1 post-closeout status sync
 
 本节是当前 control block，覆盖 `0J` 中仍停留在 Git closeout 前的状态词，但不删除或
@@ -856,12 +954,13 @@ Level 2 子项目。
 
 ## 0. 当前 PM / Codex 协作状态
 
-当前主线：D2-R7B-I1 runtime-loaded observability implementation package 已完成 R48–R55
-authority chain及exact-path Git closeout；commit `934ced7...` 已推送到 `origin/main`。
-当前应先完成本post-closeout状态同步并生成新的ChatGPT PM handoff，再由新PM窗口以
-read-only recovery开始独立的accepted build/image gate planning。旧image-load/activation
-记录继续作为历史审计状态，不得作为新commit已构建或已部署的证明。Dashboard/UI runtime
-验收继续作为最终集成阶段的非阻塞acceptance debt。
+当前主线：D2-R7B-I1 runtime-loaded observability implementation package 已完成 exact-path
+Git closeout，accepted build/image planning 已完成 scope reset、Reliability、Data Quality、
+Verification review 及 ChatGPT PM final planning acceptance。当前 authority 以 Section 0L
+为准；static review stopping rule 已达到，不应继续追加同类静态 review。下一 eligible
+branch 仅为单独授权的 future execution-preparation planning，不是直接 build。旧
+image-load/activation 记录继续作为历史审计状态，不得作为 commit `934ced7...` 已构建、
+部署或加载的证明。Dashboard/UI runtime 验收继续作为最终集成阶段的非阻塞 acceptance debt。
 
 Last verified baseline before this governance/status reconciliation:
 
@@ -2266,12 +2365,20 @@ edge-mes-demo/
 D2-R7B-I1 runtime-loaded observability implementation package 的exact-path Git边界已关闭。
 当前下一步：
 
-1. 完成本次post-closeout状态同步；该同步仅为`WRITTEN / UNSTAGED / UNCOMMITTED / UNPUSHED`。
-2. 立即生成新的ChatGPT PM handoff，冻结commit `934ced7...`、301项已分类untracked集合、当前产品状态和下一Level 2 gate边界。
-3. 用户单独授权后，仅对本次状态同步与新handoff执行exact-path docs-only stage/commit/push；不得broad-stage `docs/`或吸收Batch D/E。
-4. 新PM窗口先执行read-only recovery，然后发布最小accepted build/image gate planning；不得直接build或访问remote。
-5. 后续仍按独立authority顺序进入actual build/image gate、deployment/lifecycle gate、bounded runtime-loaded A–H validation、PM `RUNTIME-LOADED` acceptance，最后才可另行开展production accepted-fact work。
-6. 本状态同步不授权build、Docker、network、remote、deployment、restart、activation、runtime validation或production acceptance。
+1. 本次 R64 final planning acceptance/status sync 只建立 durable docs 状态；当前为
+   `WRITTEN / UNSTAGED / UNCOMMITTED / UNPUSHED`。
+2. Static planning review chain 已关闭；不得自动追加 Architecture、Reliability、Data Quality
+   或 Verification review。
+3. 下一 eligible branch 是单独授权的 future execution-preparation planning，必须冻结
+   attempt、roots、builder/candidate、materialization、base resolution、Docker/network
+   budget、terminal paths、isolated validation、stop/retry/cleanup 与 Git authority。
+4. execution-preparation planning 被 PM 接受后，才可由用户单独授权 actual local
+   build/image acceptance；该授权不得自动包含 archive、transport、remote load、deployment、
+   activation、runtime A–H 或 production accepted-fact。
+5. 用户单独授权后，可仅对 `docs/current_status.md`、`docs/roadmap.md` 与 R64 执行
+   exact-path docs-only stage/commit/push；不得 broad-stage `docs/`、R56–R63 或 Batch D/E。
+6. 本状态同步不授权 fixture implementation、tests、build、Docker、network、remote、Git、
+   deployment、restart、activation、runtime validation 或 production acceptance。
 
 后续数据主线仍保留：
 
