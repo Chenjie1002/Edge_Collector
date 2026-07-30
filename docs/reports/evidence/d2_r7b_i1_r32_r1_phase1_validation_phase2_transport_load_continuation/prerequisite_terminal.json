@@ -1,0 +1,23 @@
+{
+  "authority_id": "PM-D2-R7B-I1-R32-R1-HOST-INTERPRETER-CORRECTION-CONTINUATION-01",
+  "classification": "HOST_VALIDATION_INTERPRETER_PREREQUISITE_PASS",
+  "dependency_installation": false,
+  "bytecode_write": false,
+  "network_connections": 0,
+  "prerequisite_invocation_count": 1,
+  "python_started": true,
+  "sys_executable": "/Users/chenjie/Documents/MES/edge-mes-demo/.venv/bin/python",
+  "snap7_version": "3.0.0",
+  "pyyaml_version": "6.0.2",
+  "required_mapping_modules": [
+    "app.plc.mapping",
+    "app.plc.read_plan",
+    "app.services.resolved_config_registry",
+    "app.services.station_event_adapter",
+    "common.station_event"
+  ],
+  "storage_constructed": false,
+  "snap7_client_constructed": false,
+  "system_python3_used": false,
+  "status": "PASS"
+}

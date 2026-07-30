@@ -1,0 +1,558 @@
+{
+  "assertions": {
+    "authority_identities": true,
+    "baseline": true,
+    "cached_empty": true,
+    "diff_checks": true,
+    "docker_plan_exact_9": true,
+    "helpers_utf8_ast": true,
+    "local_output_preconditions": true,
+    "mapping_clean_relative_head": true,
+    "no_forbidden_controller_paths": true,
+    "no_pycache_or_pyc": true,
+    "process_audit": true,
+    "r33_activation_eligible": true,
+    "r33_manifest_5_5": true,
+    "r33_snapshot_b_semantic_equal": true,
+    "r34_historical_hold_not_observed": true,
+    "r34_manifest_5_5": true,
+    "ssh_key_metadata": true,
+    "tracked_dirty_exact": true
+  },
+  "authority_id": "PM-D2-R7B-I1-R34-R1-COLLECTOR-ONLY-ACTIVATION-260729-2057",
+  "classification": "PRE_MUTATION_REMOTE_DRIFT",
+  "execution_lock": {
+    "authority_id": "PM-D2-R7B-I1-R34-R1-COLLECTOR-ONLY-ACTIVATION-260729-2057",
+    "docker_command_plan": [
+      "aggregate_image_inspect",
+      "pre_project_ps",
+      "pre_aggregate_inspect",
+      "fresh_ancestor_lookup",
+      "tag",
+      "alias_inspect",
+      "collector_only_compose",
+      "post_project_ps",
+      "post_aggregate_inspect"
+    ],
+    "helpers": {
+      "controller": {
+        "bytes": 13887,
+        "path": "docs/reports/evidence/d2_r7b_i1_r34_r1_collector_only_activation_retry/remote_activation_controller.py",
+        "regular": true,
+        "sha256": "f272f8eb4ab27dd5b4315c1e97d5272f5c0aac5b78e6bd3e41b50b27d9b95e09",
+        "symlink": false
+      },
+      "runner": {
+        "bytes": 17049,
+        "path": "docs/reports/evidence/d2_r7b_i1_r34_r1_collector_only_activation_retry/run_activation.py",
+        "regular": true,
+        "sha256": "b383f5f320c57b68fd444767972926bd8a5d8c6752fde7b09802cedf8fb8d285",
+        "symlink": false
+      }
+    },
+    "mutation_budget": {
+      "cleanup": 0,
+      "compose": 1,
+      "rollback": 0,
+      "tag": 1
+    },
+    "pre_facts": {
+      "ahead_behind": {
+        "argv": [
+          "git",
+          "rev-list",
+          "--left-right",
+          "--count",
+          "HEAD...origin/main"
+        ],
+        "returncode": 0,
+        "stderr": "",
+        "stdout": "0\t0"
+      },
+      "branch": {
+        "argv": [
+          "git",
+          "rev-parse",
+          "--abbrev-ref",
+          "HEAD"
+        ],
+        "returncode": 0,
+        "stderr": "",
+        "stdout": "main"
+      },
+      "cached": {
+        "argv": [
+          "git",
+          "diff",
+          "--cached",
+          "--name-only"
+        ],
+        "returncode": 0,
+        "stderr": "",
+        "stdout": ""
+      },
+      "cached_check": {
+        "argv": [
+          "git",
+          "diff",
+          "--cached",
+          "--check"
+        ],
+        "returncode": 0,
+        "stderr": "",
+        "stdout": ""
+      },
+      "diff_check": {
+        "argv": [
+          "git",
+          "diff",
+          "--check"
+        ],
+        "returncode": 0,
+        "stderr": "",
+        "stdout": ""
+      },
+      "dirty": {
+        "argv": [
+          "git",
+          "diff",
+          "--name-only"
+        ],
+        "returncode": 0,
+        "stderr": "",
+        "stdout": ".gitignore\ndocs/reports/evidence/d2_r7b_p2_r2/local_materialization.sh\ndocs/reports/evidence/d2_r7b_p2_r2/manifest.sha256\ndocs/reports/evidence/d2_r7b_p2_r3/manifest.sha256\ndocs/reports/evidence/d2_r7b_p2_r3/remote_i1_orchestrator.py\ndocs/thread_handoff/pm_operating_rules.md"
+      },
+      "head": {
+        "argv": [
+          "git",
+          "rev-parse",
+          "HEAD"
+        ],
+        "returncode": 0,
+        "stderr": "",
+        "stdout": "ac33e6bae449ecdd9b77a53daaf7271f14133000"
+      },
+      "origin_main": {
+        "argv": [
+          "git",
+          "rev-parse",
+          "origin/main"
+        ],
+        "returncode": 0,
+        "stderr": "",
+        "stdout": "ac33e6bae449ecdd9b77a53daaf7271f14133000"
+      },
+      "parent": {
+        "argv": [
+          "git",
+          "rev-parse",
+          "HEAD^"
+        ],
+        "returncode": 0,
+        "stderr": "",
+        "stdout": "66563677d3d1129fbc79c2c284b5f6d8b62f1932"
+      },
+      "root": {
+        "argv": [
+          "git",
+          "rev-parse",
+          "--show-toplevel"
+        ],
+        "returncode": 0,
+        "stderr": "",
+        "stdout": "/Users/chenjie/Documents/MES/edge-mes-demo"
+      },
+      "status": {
+        "argv": [
+          "git",
+          "status",
+          "-sb"
+        ],
+        "returncode": 0,
+        "stderr": "",
+        "stdout": "## main...origin/main\n M .gitignore\n M docs/reports/evidence/d2_r7b_p2_r2/local_materialization.sh\n M docs/reports/evidence/d2_r7b_p2_r2/manifest.sha256\n M docs/reports/evidence/d2_r7b_p2_r3/manifest.sha256\n M docs/reports/evidence/d2_r7b_p2_r3/remote_i1_orchestrator.py\n M docs/thread_handoff/pm_operating_rules.md\n?? \"docs/Edge MES Demo \\342\\200\\224 ChatGPT PM Handoff - 20260623.md\"\n?? docs/reports/evidence/d2_r7b_i1/\n?? docs/reports/evidence/d2_r7b_i1_attempt2/\n?? docs/reports/evidence/d2_r7b_i1_attempt2_readonly_remote_diagnostic/\n?? docs/reports/evidence/d2_r7b_i1_attempt2_remote_filesystem_identity_diagnostic/\n?? docs/reports/evidence/d2_r7b_i1_r15_filesystem_contract_repair/\n?? docs/reports/evidence/d2_r7b_i1_r16_r1_c1_contract_closeout_correction/\n?? docs/reports/evidence/d2_r7b_i1_r16_r1_upload_parent_fd_race_synthetic_bypass_repair/\n?? docs/reports/evidence/d2_r7b_i1_r17_r1_cleanup_foreign_inode_repair/\n?? docs/reports/evidence/d2_r7b_i1_r17_r2_cleanup_ownership_repair/\n?? docs/reports/evidence/d2_r7b_i1_r17_r3_minimal_cleanup_boundary_evidence_closure_repair/\n?? docs/reports/evidence/d2_r7b_i1_r17_r4_fail_closed_retained_artifact_contract_repair/\n?? docs/reports/evidence/d2_r7b_i1_r19_remote_eligibility_refresh/\n?? docs/reports/evidence/d2_r7b_i1_r22_remote_eligibility_refresh/\n?? docs/reports/evidence/d2_r7b_i1_r23_remote_config_only_execution/\n?? docs/reports/evidence/d2_r7b_i1_r24_r1_parent_fd_findmnt_inheritance_repair/\n?? docs/reports/evidence/d2_r7b_i1_r25_remote_eligibility_refresh/\n?? docs/reports/evidence/d2_r7b_i1_r30_i1_r10_r1_corrected_controlled_collector_restart_runtime_validation/\n?? docs/reports/evidence/d2_r7b_i1_r30_i1_r10_r2_r1_focused_restartcount_schema_correction/\n?? docs/reports/evidence/d2_r7b_i1_r30_i1_r10_r2_readonly_remote_lifecycle_observation/\n?? docs/reports/evidence/d2_r7b_i1_r30_i1_r7_fresh_readonly_remote_eligibility/\n?? docs/reports/evidence/d2_r7b_i1_r30_i1_r8_one_shot_exact_config_only_remote_execution/\n?? docs/reports/evidence/d2_r7b_i1_r32_phase1_phase2/\n?? docs/reports/evidence/d2_r7b_i1_r32_r1_phase1_validation_phase2_transport_load_continuation/\n?? docs/reports/evidence/d2_r7b_i1_r32_r2_remote_transport_load_continuation/\n?? docs/reports/evidence/d2_r7b_i1_r32_r3_remote_stage_parent_transport_load_continuation/\n?? docs/reports/evidence/d2_r7b_i1_r32_r4_remote_stage_parent_transport_load_continuation/\n?? docs/reports/evidence/d2_r7b_i1_r32_r5_r1_focused_readonly_loaded_object_reconciliation_correction/\n?? docs/reports/evidence/d2_r7b_i1_r32_r5_r4_local_only_evidence_normalization_retry/\n?? docs/reports/evidence/d2_r7b_i1_r32_r5_r5_corrected_local_only_evidence_normalization_execution/\n?? docs/reports/evidence/d2_r7b_i1_r32_r5_remote_loaded_object_identity_reconciliation_descriptive_tag_repair/\n?? docs/reports/evidence/d2_r7b_i1_r33_fresh_readonly_remote_activation_preflight/\n?? docs/reports/evidence/d2_r7b_i1_r34_collector_only_activation/\n?? docs/reports/evidence/d2_r7b_i1_r34_r1_collector_only_activation_retry/\n?? docs/reports/phase1_to_sprint2_management_keynote_10p.html\n?? docs/reports/sprint3_dashboard_production_url_resolution_runtime_evidence_data_quality_rereview.md\n?? docs/reports/sprint3_dashboard_production_url_resolution_runtime_evidence_data_quality_review.md\n?? docs/reports/sprint3_dashboard_production_url_resolution_runtime_evidence_execution_report.md\n?? docs/reports/sprint3_dashboard_production_url_resolution_runtime_evidence_option_c_data_quality_repair.md\n?? docs/reports/sprint3_dashboard_production_url_resolution_runtime_evidence_option_c_data_quality_rereview.md\n?? docs/reports/sprint3_dashboard_production_url_resolution_runtime_evidence_option_c_manifest_data_quality_review.md\n?? docs/reports/sprint3_dashboard_production_url_resolution_runtime_evidence_option_c_manifest_reliability_rereview.md\n?? docs/reports/sprint3_dashboard_production_url_resolution_runtime_evidence_option_c_manifest_repair.md\n?? docs/reports/sprint3_dashboard_production_url_resolution_runtime_evidence_option_c_reliability_review.md\n?? docs/reports/sprint3_dashboard_production_url_resolution_runtime_evidence_option_c_value_validation_data_quality_rereview.md\n?? docs/reports/sprint3_dashboard_production_url_resolution_runtime_evidence_option_c_value_validation_repair.md\n?? docs/reports/sprint3_dashboard_production_url_resolution_runtime_evidence_private_root_update.md\n?? docs/reports/sprint3_dashboard_production_url_resolution_runtime_evidence_reliability_rereview.md\n?? docs/reports/sprint3_dashboard_production_url_resolution_runtime_evidence_reliability_rereview_round2.md\n?? docs/reports/sprint3_dashboard_production_url_resolution_runtime_evidence_reliability_rereview_round3.md\n?? docs/reports/sprint3_dashboard_production_url_resolution_runtime_evidence_reliability_rereview_round4.md\n?? docs/reports/sprint3_dashboard_production_url_resolution_runtime_evidence_reliability_rereview_round5.md\n?? docs/reports/sprint3_dashboard_production_url_resolution_runtime_evidence_reliability_rereview_round6.md\n?? docs/reports/sprint3_dashboard_production_url_resolution_runtime_evidence_reliability_review.md\n?? docs/reports/sprint3_dashboard_production_url_resolution_runtime_evidence_root_identity_primitive_feasibility.md\n?? docs/reports/sprint3_dashboard_production_url_resolution_runtime_evidence_root_identity_reliability_rereview_round2.md\n?? docs/reports/sprint3_dashboard_production_url_resolution_runtime_evidence_root_identity_reliability_review.md\n?? docs/reports/sprint3_dashboard_production_url_resolution_runtime_evidence_root_identity_repair.md\n?? docs/reports/sprint3_dashboard_production_url_resolution_runtime_evidence_root_identity_repair_round2.md\n?? docs/reports/sprint3_dashboard_production_url_resolution_runtime_evidence_root_identity_repair_round3.md\n?? docs/reports/sprint3_dashboard_production_url_resolution_runtime_evidence_verification_review.md\n?? docs/reports/sprint3_dashboard_raspberry_pi_runtime_attempt_2_execution_report.md\n?? docs/reports/sprint3_dashboard_raspberry_pi_runtime_attempt_3_lpd_api1_active_route_deployment_diagnostic.md\n?? docs/reports/sprint3_dashboard_raspberry_pi_runtime_attempt_3_lpd_api2_minimal_api_only_deployment_repair.md\n?? docs/reports/sprint3_dashboard_raspberry_pi_runtime_attempt_3_lpd_api3_scope_reset_api_only_deployment_repair.md\n?? docs/reports/sprint3_dashboard_raspberry_pi_runtime_attempt_3_lpd_api4_minimal_direct_api_only_deployment_repair.md\n?? docs/reports/sprint3_dashboard_raspberry_pi_runtime_attempt_3_lpd_db1_migration_007_materialization.md\n?? docs/reports/sprint3_dashboard_raspberry_pi_runtime_attempt_3_lpd_db2_minimal_direct_migration_007.md\n?? docs/reports/sprint3_dashboard_raspberry_pi_runtime_attempt_3_lpd_db3_direct_stream_migration_007.md\n?? docs/reports/sprint3_dashboard_raspberry_pi_runtime_attempt_3_lpd_k1_readiness_separation.md\n?? docs/reports/sprint3_dashboard_raspberry_pi_runtime_attempt_3_lpd_l1_known_empty_three_layer.md\n?? docs/reports/sprint3_dashboard_raspberry_pi_runtime_attempt_3_lpd_l2a_known_empty_db_api.md\n?? docs/reports/sprint3_dashboard_raspberry_pi_runtime_attempt_3_lpd_l2b_known_empty_db_api.md\n?? docs/reports/sprint3_dashboard_raspberry_pi_runtime_attempt_3_lpd_l2c_post_repair_same_scope_known_empty_db_api.md\n?? docs/reports/sprint3_dashboard_raspberry_pi_runtime_attempt_3_lpd_l2d_minimal_direct_same_scope_known_empty_db_api.md\n?? docs/reports/sprint3_dashboard_raspberry_pi_runtime_attempt_3_lpd_l3_dashboard_explicit_empty_render.md\n?? docs/reports/sprint3_dashboard_raspberry_pi_runtime_attempt_3_lpd_l3b_diagnostic_preserving_dashboard_explicit_empty_render.md\n?? docs/reports/sprint3_dashboard_raspberry_pi_runtime_attempt_3_lpd_l3c_local_execution_harness_validation.md\n?? docs/reports/sprint3_dashboard_raspberry_pi_runtime_attempt_3_lpd_l3c_r1_contract_reconciliation_and_exact_cleanup.md\n?? docs/reports/sprint3_dashboard_raspberry_pi_runtime_attempt_3_lpd_l3d_final_dashboard_explicit_empty_evidence.md\n?? docs/reports/sprint3_dashboard_raspberry_pi_runtime_attempt_3_o2_remote_readonly_eligibility.md\n?? docs/reports/sprint3_dashboard_raspberry_pi_runtime_attempt_3_o3_release_materialization.md\n?? docs/reports/sprint3_dashboard_raspberry_pi_runtime_attempt_3_o4_attempt_2_transport_failure_diagnostic.md\n?? docs/reports/sprint3_dashboard_raspberry_pi_runtime_attempt_3_o4_base_config_drift_diagnostic.md\n?? docs/reports/sprint3_dashboard_raspberry_pi_runtime_attempt_3_o4_overlay_validation.md\n?? docs/reports/sprint3_dashboard_raspberry_pi_runtime_attempt_3_o4_overlay_validation_attempt_2.md\n?? docs/reports/sprint3_dashboard_raspberry_pi_runtime_attempt_3_o4_overlay_validation_attempt_3.md\n?? docs/reports/sprint3_dashboard_raspberry_pi_runtime_attempt_3_o4_overlay_validation_attempt_4.md\n?? docs/reports/sprint3_dashboard_raspberry_pi_runtime_attempt_3_o4_overlay_validation_attempt_5.md\n?? docs/reports/sprint3_dashboard_raspberry_pi_runtime_attempt_3_o5_client_state_authority_reset.md\n?? docs/reports/sprint3_dashboard_raspberry_pi_runtime_attempt_3_o5_dashboard_image_build.md\n?? docs/reports/sprint3_dashboard_raspberry_pi_runtime_attempt_3_o5_dashboard_image_build_attempt_2.md\n?? docs/reports/sprint3_dashboard_raspberry_pi_runtime_attempt_3_o5_dashboard_image_build_attempt_3.md\n?? docs/reports/sprint3_dashboard_raspberry_pi_runtime_attempt_3_o5_dashboard_image_build_attempt_4.md\n?? docs/reports/sprint3_dashboard_raspberry_pi_runtime_attempt_3_o5_r1_minimal_direct_image_build.md\n?? docs/reports/sprint3_dashboard_raspberry_pi_runtime_attempt_3_o6_r1_dashboard_startup_ownership_freeze.md\n?? docs/reports/sprint3_dashboard_raspberry_pi_runtime_attempt_3_o6_r2_dashboard_startup_ownership_freeze.md\n?? docs/reports/sprint3_dashboard_raspberry_pi_runtime_attempt_3_o6_s1_minimal_direct_dashboard_startup.md\n?? docs/reports/sprint3_dashboard_raspberry_pi_runtime_attempt_3_o7_p1_minimal_direct_process_terminal.md\n?? docs/reports/sprint3_dashboard_raspberry_pi_runtime_attempt_3_o7_s1_process_terminal_bounded_logs.md\n?? docs/reports/sprint3_dashboard_raspberry_pi_runtime_attempt_3_o8_p1_overlay_process_success_closeout.md\n?? docs/reports/sprint3_dashboard_raspberry_pi_runtime_attempt_3_preparation.md\n?? docs/reports/sprint3_dashboard_raspberry_pi_runtime_attempt_3_preparation_reliability_review.md\n?? docs/reports/sprint3_dashboard_raspberry_pi_runtime_attempt_3_preparation_verification_review.md\n?? docs/reports/sprint3_dashboard_raspberry_pi_runtime_attempt_3_release_materialization.md\n?? docs/reports/sprint3_dashboard_raspberry_pi_runtime_attempt_3_release_materialization_attempt_2.md\n?? docs/reports/sprint3_dashboard_raspberry_pi_runtime_b2_p2_diagnostic_attempt_1_execution_report.md\n?? docs/reports/sprint3_dashboard_raspberry_pi_runtime_b2_p2_diagnostic_attempt_1_preparation.md\n?? docs/reports/sprint3_dashboard_raspberry_pi_runtime_b2_p2_diagnostic_attempt_1_reliability_review.md\n?? docs/reports/sprint3_dashboard_raspberry_pi_runtime_b2_p2_diagnostic_attempt_2_execution_report.md\n?? docs/reports/sprint3_dashboard_raspberry_pi_runtime_b2_p2_diagnostic_attempt_2_preparation.md\n?? docs/reports/sprint3_dashboard_raspberry_pi_runtime_b2_p2_diagnostic_attempt_3_execution_report.md\n?? docs/reports/sprint3_dashboard_raspberry_pi_runtime_b2_p2_diagnostic_attempt_3_preparation.md\n?? docs/reports/sprint3_dashboard_raspberry_pi_runtime_b2_prerequisite_attempt_2_execution_report.md\n?? docs/reports/sprint3_dashboard_raspberry_pi_runtime_b2_prerequisite_attempt_2_preparation.md\n?? docs/reports/sprint3_dashboard_raspberry_pi_runtime_b2_prerequisite_attempt_2_reliability_rereview.md\n?? docs/reports/sprint3_dashboard_raspberry_pi_runtime_b2_prerequisite_attempt_2_verification_audit.md\n?? docs/reports/sprint3_dashboard_raspberry_pi_runtime_b2_prerequisite_execution_preparation.md\n?? docs/reports/sprint3_dashboard_raspberry_pi_runtime_b2_prerequisite_execution_reliability_rereview.md\n?? docs/reports/sprint3_dashboard_raspberry_pi_runtime_b2_prerequisite_execution_reliability_review.md\n?? docs/reports/sprint3_dashboard_raspberry_pi_runtime_b2_prerequisite_execution_report.md\n?? docs/reports/sprint3_dashboard_raspberry_pi_runtime_b2_prerequisite_execution_verification_audit.md\n?? docs/reports/sprint3_dashboard_raspberry_pi_runtime_b2_privilege_contract_plan.md\n?? docs/reports/sprint3_dashboard_raspberry_pi_runtime_b2_privilege_contract_reliability_rereview.md\n?? docs/reports/sprint3_dashboard_raspberry_pi_runtime_b2_privilege_contract_reliability_review.md\n?? docs/reports/sprint3_dashboard_raspberry_pi_runtime_execution_preparation.md\n?? docs/reports/sprint3_dashboard_raspberry_pi_runtime_execution_preparation_data_quality_rereview.md\n?? docs/reports/sprint3_dashboard_raspberry_pi_runtime_execution_preparation_data_quality_review.md\n?? docs/reports/sprint3_dashboard_raspberry_pi_runtime_execution_preparation_reliability_rereview.md\n?? docs/reports/sprint3_dashboard_raspberry_pi_runtime_execution_preparation_reliability_review.md\n?? docs/reports/sprint3_dashboard_raspberry_pi_runtime_execution_preparation_runtime_b1_verification_rereview.md\n?? docs/reports/sprint3_dashboard_raspberry_pi_runtime_execution_preparation_verification_rereview.md\n?? docs/reports/sprint3_dashboard_raspberry_pi_runtime_execution_preparation_verification_review.md\n?? docs/reports/sprint3_dashboard_raspberry_pi_runtime_execution_report.md\n?? docs/reports/sprint3_db_backed_api_validation_reliability_review.md\n?? docs/reports/sprint4_d1_r1_minimal_runtime_identity_field_diagnostic.md\n?? docs/reports/sprint4_d1_r2_existing_accepted_production_fact_db_api_reconciliation.md\n?? docs/reports/sprint4_d2_collector_accepted_fact_write_path_deployment_repair.md\n?? docs/reports/sprint4_d2_r1_collector_accepted_fact_write_path_deployment_retry.md\n?? docs/reports/sprint4_d2_r2_deterministic_collector_accepted_fact_deployment.md\n?? docs/reports/sprint4_d2_r3_direct_dd_collector_accepted_fact_deployment.md\n?? docs/reports/sprint4_d2_r4_post_mutation_collector_live_state_recovery.md\n?? docs/reports/sprint4_d2_r5_existing_image_collector_activation.md\n?? docs/reports/sprint4_d2_r6_new_collector_remote_config_compatibility_diagnostic.md\n?? docs/reports/sprint4_d2_r6_r1_new_collector_remote_config_static_compatibility_retry.md\n?? docs/reports/sprint4_d2_r7b_i1_attempt2_readonly_remote_diagnostic.md\n?? docs/reports/sprint4_d2_r7b_i1_attempt2_remote_config_mutation_execution.md\n?? docs/reports/sprint4_d2_r7b_i1_attempt2_remote_filesystem_identity_diagnostic.md\n?? docs/reports/sprint4_d2_r7b_i1_r10_r1_required_path_correction_exact_bytecode_cleanup.md\n?? docs/reports/sprint4_d2_r7b_i1_r10_reliability_probe_bytecode_cleanup.md\n?? docs/reports/sprint4_d2_r7b_i1_r11_focused_reliability_rereview.md\n?? docs/reports/sprint4_d2_r7b_i1_r12_focused_verification_review.md\n?? docs/reports/sprint4_d2_r7b_i1_r13_exact_tmp_sidecar_cleanup.md\n?? docs/reports/sprint4_d2_r7b_i1_r14_verification_allowlist_closeout.md\n?? docs/reports/sprint4_d2_r7b_i1_r15_filesystem_contract_repair.md\n?? docs/reports/sprint4_d2_r7b_i1_r16_focused_reliability_rereview.md\n?? docs/reports/sprint4_d2_r7b_i1_r16_r1_c1_contract_closeout_correction.md\n?? docs/reports/sprint4_d2_r7b_i1_r16_r1_upload_parent_fd_race_synthetic_bypass_repair.md\n?? docs/reports/sprint4_d2_r7b_i1_r17_focused_reliability_rereview.md\n?? docs/reports/sprint4_d2_r7b_i1_r17_r1_cleanup_foreign_inode_repair.md\n?? docs/reports/sprint4_d2_r7b_i1_r17_r1_focused_reliability_rereview.md\n?? docs/reports/sprint4_d2_r7b_i1_r17_r2_cleanup_ownership_repair.md\n?? docs/reports/sprint4_d2_r7b_i1_r17_r2_focused_reliability_rereview.md\n?? docs/reports/sprint4_d2_r7b_i1_r17_r3_focused_reliability_rereview.md\n?? docs/reports/sprint4_d2_r7b_i1_r17_r3_minimal_cleanup_boundary_evidence_closure_repair.md\n?? docs/reports/sprint4_d2_r7b_i1_r17_r4_authority_status_reconciliation.md\n?? docs/reports/sprint4_d2_r7b_i1_r17_r4_fail_closed_retained_artifact_contract_repair.md\n?? docs/reports/sprint4_d2_r7b_i1_r17_r4_focused_reliability_rereview.md\n?? docs/reports/sprint4_d2_r7b_i1_r18_narrowed_mvp_safety_verification.md\n?? docs/reports/sprint4_d2_r7b_i1_r19_remote_eligibility_refresh.md\n?? docs/reports/sprint4_d2_r7b_i1_r1_reliability_interruption_incident_review.md\n?? docs/reports/sprint4_d2_r7b_i1_r22_remote_eligibility_refresh.md\n?? docs/reports/sprint4_d2_r7b_i1_r23_remote_config_only_execution.md\n?? docs/reports/sprint4_d2_r7b_i1_r24_r1_parent_fd_findmnt_inheritance_repair.md\n?? docs/reports/sprint4_d2_r7b_i1_r24_r2_focused_reliability_review.md\n?? docs/reports/sprint4_d2_r7b_i1_r24_r3_focused_verification_review.md\n?? docs/reports/sprint4_d2_r7b_i1_r25_remote_eligibility_refresh.md\n?? docs/reports/sprint4_d2_r7b_i1_r2_interruption_contract_repair.md\n?? docs/reports/sprint4_d2_r7b_i1_r30_i1_orchestrator_baseline_compatibility_implementation.md\n?? docs/reports/sprint4_d2_r7b_i1_r30_i1_r10_controlled_collector_restart_runtime_validation.md\n?? docs/reports/sprint4_d2_r7b_i1_r30_i1_r10_r1_corrected_controlled_collector_restart_runtime_validation.md\n?? docs/reports/sprint4_d2_r7b_i1_r30_i1_r10_r2_r1_focused_restartcount_schema_correction.md\n?? docs/reports/sprint4_d2_r7b_i1_r30_i1_r10_r2_readonly_remote_lifecycle_observation.md\n?? docs/reports/sprint4_d2_r7b_i1_r30_i1_r1_orchestrator_baseline_compatibility_implementation_retry.md\n?? docs/reports/sprint4_d2_r7b_i1_r30_i1_r2_orchestrator_baseline_compatibility_validation_retry.md\n?? docs/reports/sprint4_d2_r7b_i1_r30_i1_r3_p2_r3_validation_continuation.md\n?? docs/reports/sprint4_d2_r7b_i1_r30_i1_r4_independent_reliability_review.md\n?? docs/reports/sprint4_d2_r7b_i1_r30_i1_r4_r1_focused_reliability_cleanup_rereview.md\n?? docs/reports/sprint4_d2_r7b_i1_r30_i1_r4_r2_exact_retained_root_cleanup_reliability_closure.md\n?? docs/reports/sprint4_d2_r7b_i1_r30_i1_r4_r3_simplified_exact_retained_root_cleanup_reliability_closure.md\n?? docs/reports/sprint4_d2_r7b_i1_r30_i1_r4_r4_minimal_exact_retained_root_cleanup_reliability_closure.md\n?? docs/reports/sprint4_d2_r7b_i1_r30_i1_r5_live_head_baseline_reconciliation.md\n?? docs/reports/sprint4_d2_r7b_i1_r30_i1_r6_live_head_package_independent_verification.md\n?? docs/reports/sprint4_d2_r7b_i1_r30_i1_r7_fresh_readonly_remote_eligibility.md\n?? docs/reports/sprint4_d2_r7b_i1_r30_i1_r8_one_shot_exact_config_only_remote_execution.md\n?? docs/reports/sprint4_d2_r7b_i1_r30_i1_r9_focused_reliability_final_rereview.md\n?? docs/reports/sprint4_d2_r7b_i1_r30_p1_orchestrator_baseline_compatibility_plan.md\n?? docs/reports/sprint4_d2_r7b_i1_r31_package_closed_collector_image_materialization_deployment_plan.md\n?? docs/reports/sprint4_d2_r7b_i1_r32_phase1_phase2_package_closed_image_materialization_transport_load_execution.md\n?? docs/reports/sprint4_d2_r7b_i1_r32_r1_phase1_validation_phase2_transport_load_continuation.md\n?? docs/reports/sprint4_d2_r7b_i1_r32_r2_remote_transport_load_continuation.md\n?? docs/reports/sprint4_d2_r7b_i1_r32_r3_remote_stage_parent_transport_load_continuation.md\n?? docs/reports/sprint4_d2_r7b_i1_r32_r4_remote_stage_parent_transport_load_continuation.md\n?? docs/reports/sprint4_d2_r7b_i1_r32_r5_r1_focused_readonly_loaded_object_reconciliation_correction.md\n?? docs/reports/sprint4_d2_r7b_i1_r32_r5_r4_local_only_evidence_normalization_retry.md\n?? docs/reports/sprint4_d2_r7b_i1_r32_r5_r5_corrected_local_only_evidence_normalization_execution.md\n?? docs/reports/sprint4_d2_r7b_i1_r32_r5_remote_loaded_object_identity_reconciliation_descriptive_tag_repair.md\n?? docs/reports/sprint4_d2_r7b_i1_r33_fresh_readonly_remote_activation_preflight.md\n?? docs/reports/sprint4_d2_r7b_i1_r34_collector_only_activation.md\n?? docs/reports/sprint4_d2_r7b_i1_r3_normal_wait_terminal_count_repair.md\n?? docs/reports/sprint4_d2_r7b_i1_r4_shared_runner_preservation_repair.md\n?? docs/reports/sprint4_d2_r7b_i1_r5_phase_history_terminal_emission_repair.md\n?? docs/reports/sprint4_d2_r7b_i1_r6_terminal_framing_phase_observation_repair.md\n?? docs/reports/sprint4_d2_r7b_i1_r7_bytecode_free_loader_repair.md\n?? docs/reports/sprint4_d2_r7b_i1_r8_exact_bytecode_artifact_cleanup.md\n?? docs/reports/sprint4_d2_r7b_i1_r9_focused_reliability_rereview.md\n?? docs/reports/sprint4_d2_r7b_i1_remote_config_mutation_execution.md\n?? docs/reports/sprint4_d2_r7b_p2_r2_mutation_contract_source_evidence_repair.md\n?? docs/reports/sprint4_d2_r7b_p2_r3_reliability_remote_config_mutation_rereview.md\n?? docs/reports/sprint4_d2_r7b_p2_r4_execution_contract_repair.md\n?? docs/reports/sprint4_d2_r7b_p2_r4_r1_execution_contract_intake_repair.md\n?? docs/reports/sprint4_d2_r7b_p2_r5_reliability_final_execution_contract_rereview.md\n?? docs/reports/sprint4_d2_r7b_p2_r6_verification_pre_mutation_review.md\n?? docs/reports/sprint4_existing_real_accepted_production_fact_readonly_reconciliation.md\n?? docs/thread_handoff/chatgpt_pm_handoff_20260624.md\n?? docs/thread_handoff/chatgpt_pm_handoff_20260625.md\n?? docs/thread_handoff/chatgpt_pm_handoff_20260625_final.md\n?? docs/thread_handoff/chatgpt_pm_handoff_20260626_slice_a_commit.md\n?? docs/thread_handoff/chatgpt_pm_handoff_260712-1349.md\n?? docs/thread_handoff/chatgpt_pm_handoff_260713-1916.md\n?? docs/thread_handoff/chatgpt_pm_handoff_260714-1450.md\n?? docs/thread_handoff/chatgpt_pm_handoff_260716-1711.md\n?? docs/thread_handoff/chatgpt_pm_handoff_260717-0856.md\n?? docs/thread_handoff/chatgpt_pm_handoff_260719-0016.md\n?? docs/thread_handoff/chatgpt_pm_handoff_260721-1756.md\n?? docs/thread_handoff/chatgpt_pm_handoff_260722-1115.md\n?? docs/thread_handoff/chatgpt_pm_handoff_260722-2153.md\n?? docs/thread_handoff/chatgpt_pm_handoff_260723-1244.md\n?? docs/thread_handoff/chatgpt_pm_handoff_260724-2147.md\n?? docs/thread_handoff/chatgpt_pm_handoff_260725-1434.md\n?? docs/thread_handoff/chatgpt_pm_handoff_260726-1922.md\n?? docs/thread_handoff/chatgpt_pm_handoff_260727-1122.md\n?? docs/thread_handoff/chatgpt_pm_handoff_260727-1126.md\n?? docs/thread_handoff/chatgpt_pm_handoff_260727-1138.md\n?? docs/thread_handoff/chatgpt_pm_handoff_260727-1207.md\n?? docs/thread_handoff/chatgpt_pm_handoff_260727-1311.md\n?? docs/thread_handoff/chatgpt_pm_handoff_260727-1508.md\n?? docs/thread_handoff/chatgpt_pm_handoff_260727-1535.md\n?? docs/thread_handoff/chatgpt_pm_handoff_260727-1540.md\n?? docs/thread_handoff/chatgpt_pm_handoff_260727-1613.md\n?? docs/thread_handoff/chatgpt_pm_handoff_260727-1627.md\n?? docs/thread_handoff/chatgpt_pm_handoff_260727-1645.md\n?? docs/thread_handoff/chatgpt_pm_handoff_260727-1831.md\n?? docs/thread_handoff/chatgpt_pm_handoff_260727-1857.md\n?? docs/thread_handoff/chatgpt_pm_handoff_260727-1931.md\n?? docs/thread_handoff/chatgpt_pm_handoff_260727-2004.md\n?? docs/thread_handoff/chatgpt_pm_handoff_260727-2034.md\n?? docs/thread_handoff/chatgpt_pm_handoff_260727-2100.md\n?? docs/thread_handoff/chatgpt_pm_handoff_260727-2105.md\n?? docs/thread_handoff/chatgpt_pm_handoff_260727-2125.md\n?? docs/thread_handoff/chatgpt_pm_handoff_260727-2300.md\n?? docs/thread_handoff/chatgpt_pm_handoff_260728-1117.md\n?? frontend/.next/\n?? frontend/next-env.d.ts\n?? frontend/node_modules/\n?? frontend/tsconfig.tsbuildinfo"
+      }
+    },
+    "r33_manifest": {
+      "bytes": 842,
+      "path": "docs/reports/evidence/d2_r7b_i1_r33_fresh_readonly_remote_activation_preflight/manifest.sha256",
+      "regular": true,
+      "sha256": "5c52278d1a8585d8c19402546a2dd231f58f717ba6ef97e756ee19a9729bbaad",
+      "symlink": false
+    },
+    "r34_historical_manifest": {
+      "bytes": 750,
+      "path": "docs/reports/evidence/d2_r7b_i1_r34_collector_only_activation/manifest.sha256",
+      "regular": true,
+      "sha256": "9cba85ab282baa89ee6b9e4b7ad355385a45a3c3ad8878e933c0b8a34bbf4e65",
+      "symlink": false
+    },
+    "repair_cycles": 1,
+    "repair_summary": "Cycle 0 corrected only historical helper syntax/schema defects in new task-owned paths.",
+    "snapshot_b_sha256": "1aa3a638b22829fea317b913dd03068111ccc321497d7972fd32b52feaa6614c",
+    "ssh_argv": [
+      "ssh",
+      "-T",
+      "-p",
+      "22",
+      "-o",
+      "BatchMode=yes",
+      "-o",
+      "IdentitiesOnly=yes",
+      "-i",
+      "/Users/chenjie/.ssh/edge_pi_codex",
+      "-o",
+      "ControlMaster=no",
+      "-o",
+      "ControlPersist=no",
+      "-o",
+      "ForwardAgent=no",
+      "-o",
+      "StrictHostKeyChecking=yes",
+      "-o",
+      "ConnectTimeout=10",
+      "-o",
+      "ServerAliveInterval=5",
+      "-o",
+      "ServerAliveCountMax=2",
+      "-o",
+      "LogLevel=ERROR",
+      "mari@10.0.0.217",
+      "/usr/bin/python3",
+      "-"
+    ],
+    "state": "SEALED",
+    "timestamp_utc": "2026-07-29T13:17:49.027121+00:00",
+    "validation": {
+      "authority_identities": true,
+      "baseline": true,
+      "cached_empty": true,
+      "diff_checks": true,
+      "docker_plan_exact_9": true,
+      "helpers_utf8_ast": true,
+      "local_output_preconditions": true,
+      "mapping_clean_relative_head": true,
+      "no_forbidden_controller_paths": true,
+      "no_pycache_or_pyc": true,
+      "process_audit": true,
+      "r33_activation_eligible": true,
+      "r33_manifest_5_5": true,
+      "r33_snapshot_b_semantic_equal": true,
+      "r34_historical_hold_not_observed": true,
+      "r34_manifest_5_5": true,
+      "ssh_key_metadata": true,
+      "tracked_dirty_exact": true
+    }
+  },
+  "git": {
+    "ahead_behind": {
+      "argv": [
+        "git",
+        "rev-list",
+        "--left-right",
+        "--count",
+        "HEAD...origin/main"
+      ],
+      "returncode": 0,
+      "stderr": "",
+      "stdout": "0\t0"
+    },
+    "branch": {
+      "argv": [
+        "git",
+        "rev-parse",
+        "--abbrev-ref",
+        "HEAD"
+      ],
+      "returncode": 0,
+      "stderr": "",
+      "stdout": "main"
+    },
+    "cached": {
+      "argv": [
+        "git",
+        "diff",
+        "--cached",
+        "--name-only"
+      ],
+      "returncode": 0,
+      "stderr": "",
+      "stdout": ""
+    },
+    "cached_check": {
+      "argv": [
+        "git",
+        "diff",
+        "--cached",
+        "--check"
+      ],
+      "returncode": 0,
+      "stderr": "",
+      "stdout": ""
+    },
+    "diff_check": {
+      "argv": [
+        "git",
+        "diff",
+        "--check"
+      ],
+      "returncode": 0,
+      "stderr": "",
+      "stdout": ""
+    },
+    "dirty": {
+      "argv": [
+        "git",
+        "diff",
+        "--name-only"
+      ],
+      "returncode": 0,
+      "stderr": "",
+      "stdout": ".gitignore\ndocs/reports/evidence/d2_r7b_p2_r2/local_materialization.sh\ndocs/reports/evidence/d2_r7b_p2_r2/manifest.sha256\ndocs/reports/evidence/d2_r7b_p2_r3/manifest.sha256\ndocs/reports/evidence/d2_r7b_p2_r3/remote_i1_orchestrator.py\ndocs/thread_handoff/pm_operating_rules.md"
+    },
+    "head": {
+      "argv": [
+        "git",
+        "rev-parse",
+        "HEAD"
+      ],
+      "returncode": 0,
+      "stderr": "",
+      "stdout": "ac33e6bae449ecdd9b77a53daaf7271f14133000"
+    },
+    "origin_main": {
+      "argv": [
+        "git",
+        "rev-parse",
+        "origin/main"
+      ],
+      "returncode": 0,
+      "stderr": "",
+      "stdout": "ac33e6bae449ecdd9b77a53daaf7271f14133000"
+    },
+    "parent": {
+      "argv": [
+        "git",
+        "rev-parse",
+        "HEAD^"
+      ],
+      "returncode": 0,
+      "stderr": "",
+      "stdout": "66563677d3d1129fbc79c2c284b5f6d8b62f1932"
+    },
+    "root": {
+      "argv": [
+        "git",
+        "rev-parse",
+        "--show-toplevel"
+      ],
+      "returncode": 0,
+      "stderr": "",
+      "stdout": "/Users/chenjie/Documents/MES/edge-mes-demo"
+    },
+    "status": {
+      "argv": [
+        "git",
+        "status",
+        "-sb"
+      ],
+      "returncode": 0,
+      "stderr": "",
+      "stdout": "## main...origin/main\n M .gitignore\n M docs/reports/evidence/d2_r7b_p2_r2/local_materialization.sh\n M docs/reports/evidence/d2_r7b_p2_r2/manifest.sha256\n M docs/reports/evidence/d2_r7b_p2_r3/manifest.sha256\n M docs/reports/evidence/d2_r7b_p2_r3/remote_i1_orchestrator.py\n M docs/thread_handoff/pm_operating_rules.md\n?? \"docs/Edge MES Demo \\342\\200\\224 ChatGPT PM Handoff - 20260623.md\"\n?? docs/reports/evidence/d2_r7b_i1/\n?? docs/reports/evidence/d2_r7b_i1_attempt2/\n?? docs/reports/evidence/d2_r7b_i1_attempt2_readonly_remote_diagnostic/\n?? docs/reports/evidence/d2_r7b_i1_attempt2_remote_filesystem_identity_diagnostic/\n?? docs/reports/evidence/d2_r7b_i1_r15_filesystem_contract_repair/\n?? docs/reports/evidence/d2_r7b_i1_r16_r1_c1_contract_closeout_correction/\n?? docs/reports/evidence/d2_r7b_i1_r16_r1_upload_parent_fd_race_synthetic_bypass_repair/\n?? docs/reports/evidence/d2_r7b_i1_r17_r1_cleanup_foreign_inode_repair/\n?? docs/reports/evidence/d2_r7b_i1_r17_r2_cleanup_ownership_repair/\n?? docs/reports/evidence/d2_r7b_i1_r17_r3_minimal_cleanup_boundary_evidence_closure_repair/\n?? docs/reports/evidence/d2_r7b_i1_r17_r4_fail_closed_retained_artifact_contract_repair/\n?? docs/reports/evidence/d2_r7b_i1_r19_remote_eligibility_refresh/\n?? docs/reports/evidence/d2_r7b_i1_r22_remote_eligibility_refresh/\n?? docs/reports/evidence/d2_r7b_i1_r23_remote_config_only_execution/\n?? docs/reports/evidence/d2_r7b_i1_r24_r1_parent_fd_findmnt_inheritance_repair/\n?? docs/reports/evidence/d2_r7b_i1_r25_remote_eligibility_refresh/\n?? docs/reports/evidence/d2_r7b_i1_r30_i1_r10_r1_corrected_controlled_collector_restart_runtime_validation/\n?? docs/reports/evidence/d2_r7b_i1_r30_i1_r10_r2_r1_focused_restartcount_schema_correction/\n?? docs/reports/evidence/d2_r7b_i1_r30_i1_r10_r2_readonly_remote_lifecycle_observation/\n?? docs/reports/evidence/d2_r7b_i1_r30_i1_r7_fresh_readonly_remote_eligibility/\n?? docs/reports/evidence/d2_r7b_i1_r30_i1_r8_one_shot_exact_config_only_remote_execution/\n?? docs/reports/evidence/d2_r7b_i1_r32_phase1_phase2/\n?? docs/reports/evidence/d2_r7b_i1_r32_r1_phase1_validation_phase2_transport_load_continuation/\n?? docs/reports/evidence/d2_r7b_i1_r32_r2_remote_transport_load_continuation/\n?? docs/reports/evidence/d2_r7b_i1_r32_r3_remote_stage_parent_transport_load_continuation/\n?? docs/reports/evidence/d2_r7b_i1_r32_r4_remote_stage_parent_transport_load_continuation/\n?? docs/reports/evidence/d2_r7b_i1_r32_r5_r1_focused_readonly_loaded_object_reconciliation_correction/\n?? docs/reports/evidence/d2_r7b_i1_r32_r5_r4_local_only_evidence_normalization_retry/\n?? docs/reports/evidence/d2_r7b_i1_r32_r5_r5_corrected_local_only_evidence_normalization_execution/\n?? docs/reports/evidence/d2_r7b_i1_r32_r5_remote_loaded_object_identity_reconciliation_descriptive_tag_repair/\n?? docs/reports/evidence/d2_r7b_i1_r33_fresh_readonly_remote_activation_preflight/\n?? docs/reports/evidence/d2_r7b_i1_r34_collector_only_activation/\n?? docs/reports/evidence/d2_r7b_i1_r34_r1_collector_only_activation_retry/\n?? docs/reports/phase1_to_sprint2_management_keynote_10p.html\n?? docs/reports/sprint3_dashboard_production_url_resolution_runtime_evidence_data_quality_rereview.md\n?? docs/reports/sprint3_dashboard_production_url_resolution_runtime_evidence_data_quality_review.md\n?? docs/reports/sprint3_dashboard_production_url_resolution_runtime_evidence_execution_report.md\n?? docs/reports/sprint3_dashboard_production_url_resolution_runtime_evidence_option_c_data_quality_repair.md\n?? docs/reports/sprint3_dashboard_production_url_resolution_runtime_evidence_option_c_data_quality_rereview.md\n?? docs/reports/sprint3_dashboard_production_url_resolution_runtime_evidence_option_c_manifest_data_quality_review.md\n?? docs/reports/sprint3_dashboard_production_url_resolution_runtime_evidence_option_c_manifest_reliability_rereview.md\n?? docs/reports/sprint3_dashboard_production_url_resolution_runtime_evidence_option_c_manifest_repair.md\n?? docs/reports/sprint3_dashboard_production_url_resolution_runtime_evidence_option_c_reliability_review.md\n?? docs/reports/sprint3_dashboard_production_url_resolution_runtime_evidence_option_c_value_validation_data_quality_rereview.md\n?? docs/reports/sprint3_dashboard_production_url_resolution_runtime_evidence_option_c_value_validation_repair.md\n?? docs/reports/sprint3_dashboard_production_url_resolution_runtime_evidence_private_root_update.md\n?? docs/reports/sprint3_dashboard_production_url_resolution_runtime_evidence_reliability_rereview.md\n?? docs/reports/sprint3_dashboard_production_url_resolution_runtime_evidence_reliability_rereview_round2.md\n?? docs/reports/sprint3_dashboard_production_url_resolution_runtime_evidence_reliability_rereview_round3.md\n?? docs/reports/sprint3_dashboard_production_url_resolution_runtime_evidence_reliability_rereview_round4.md\n?? docs/reports/sprint3_dashboard_production_url_resolution_runtime_evidence_reliability_rereview_round5.md\n?? docs/reports/sprint3_dashboard_production_url_resolution_runtime_evidence_reliability_rereview_round6.md\n?? docs/reports/sprint3_dashboard_production_url_resolution_runtime_evidence_reliability_review.md\n?? docs/reports/sprint3_dashboard_production_url_resolution_runtime_evidence_root_identity_primitive_feasibility.md\n?? docs/reports/sprint3_dashboard_production_url_resolution_runtime_evidence_root_identity_reliability_rereview_round2.md\n?? docs/reports/sprint3_dashboard_production_url_resolution_runtime_evidence_root_identity_reliability_review.md\n?? docs/reports/sprint3_dashboard_production_url_resolution_runtime_evidence_root_identity_repair.md\n?? docs/reports/sprint3_dashboard_production_url_resolution_runtime_evidence_root_identity_repair_round2.md\n?? docs/reports/sprint3_dashboard_production_url_resolution_runtime_evidence_root_identity_repair_round3.md\n?? docs/reports/sprint3_dashboard_production_url_resolution_runtime_evidence_verification_review.md\n?? docs/reports/sprint3_dashboard_raspberry_pi_runtime_attempt_2_execution_report.md\n?? docs/reports/sprint3_dashboard_raspberry_pi_runtime_attempt_3_lpd_api1_active_route_deployment_diagnostic.md\n?? docs/reports/sprint3_dashboard_raspberry_pi_runtime_attempt_3_lpd_api2_minimal_api_only_deployment_repair.md\n?? docs/reports/sprint3_dashboard_raspberry_pi_runtime_attempt_3_lpd_api3_scope_reset_api_only_deployment_repair.md\n?? docs/reports/sprint3_dashboard_raspberry_pi_runtime_attempt_3_lpd_api4_minimal_direct_api_only_deployment_repair.md\n?? docs/reports/sprint3_dashboard_raspberry_pi_runtime_attempt_3_lpd_db1_migration_007_materialization.md\n?? docs/reports/sprint3_dashboard_raspberry_pi_runtime_attempt_3_lpd_db2_minimal_direct_migration_007.md\n?? docs/reports/sprint3_dashboard_raspberry_pi_runtime_attempt_3_lpd_db3_direct_stream_migration_007.md\n?? docs/reports/sprint3_dashboard_raspberry_pi_runtime_attempt_3_lpd_k1_readiness_separation.md\n?? docs/reports/sprint3_dashboard_raspberry_pi_runtime_attempt_3_lpd_l1_known_empty_three_layer.md\n?? docs/reports/sprint3_dashboard_raspberry_pi_runtime_attempt_3_lpd_l2a_known_empty_db_api.md\n?? docs/reports/sprint3_dashboard_raspberry_pi_runtime_attempt_3_lpd_l2b_known_empty_db_api.md\n?? docs/reports/sprint3_dashboard_raspberry_pi_runtime_attempt_3_lpd_l2c_post_repair_same_scope_known_empty_db_api.md\n?? docs/reports/sprint3_dashboard_raspberry_pi_runtime_attempt_3_lpd_l2d_minimal_direct_same_scope_known_empty_db_api.md\n?? docs/reports/sprint3_dashboard_raspberry_pi_runtime_attempt_3_lpd_l3_dashboard_explicit_empty_render.md\n?? docs/reports/sprint3_dashboard_raspberry_pi_runtime_attempt_3_lpd_l3b_diagnostic_preserving_dashboard_explicit_empty_render.md\n?? docs/reports/sprint3_dashboard_raspberry_pi_runtime_attempt_3_lpd_l3c_local_execution_harness_validation.md\n?? docs/reports/sprint3_dashboard_raspberry_pi_runtime_attempt_3_lpd_l3c_r1_contract_reconciliation_and_exact_cleanup.md\n?? docs/reports/sprint3_dashboard_raspberry_pi_runtime_attempt_3_lpd_l3d_final_dashboard_explicit_empty_evidence.md\n?? docs/reports/sprint3_dashboard_raspberry_pi_runtime_attempt_3_o2_remote_readonly_eligibility.md\n?? docs/reports/sprint3_dashboard_raspberry_pi_runtime_attempt_3_o3_release_materialization.md\n?? docs/reports/sprint3_dashboard_raspberry_pi_runtime_attempt_3_o4_attempt_2_transport_failure_diagnostic.md\n?? docs/reports/sprint3_dashboard_raspberry_pi_runtime_attempt_3_o4_base_config_drift_diagnostic.md\n?? docs/reports/sprint3_dashboard_raspberry_pi_runtime_attempt_3_o4_overlay_validation.md\n?? docs/reports/sprint3_dashboard_raspberry_pi_runtime_attempt_3_o4_overlay_validation_attempt_2.md\n?? docs/reports/sprint3_dashboard_raspberry_pi_runtime_attempt_3_o4_overlay_validation_attempt_3.md\n?? docs/reports/sprint3_dashboard_raspberry_pi_runtime_attempt_3_o4_overlay_validation_attempt_4.md\n?? docs/reports/sprint3_dashboard_raspberry_pi_runtime_attempt_3_o4_overlay_validation_attempt_5.md\n?? docs/reports/sprint3_dashboard_raspberry_pi_runtime_attempt_3_o5_client_state_authority_reset.md\n?? docs/reports/sprint3_dashboard_raspberry_pi_runtime_attempt_3_o5_dashboard_image_build.md\n?? docs/reports/sprint3_dashboard_raspberry_pi_runtime_attempt_3_o5_dashboard_image_build_attempt_2.md\n?? docs/reports/sprint3_dashboard_raspberry_pi_runtime_attempt_3_o5_dashboard_image_build_attempt_3.md\n?? docs/reports/sprint3_dashboard_raspberry_pi_runtime_attempt_3_o5_dashboard_image_build_attempt_4.md\n?? docs/reports/sprint3_dashboard_raspberry_pi_runtime_attempt_3_o5_r1_minimal_direct_image_build.md\n?? docs/reports/sprint3_dashboard_raspberry_pi_runtime_attempt_3_o6_r1_dashboard_startup_ownership_freeze.md\n?? docs/reports/sprint3_dashboard_raspberry_pi_runtime_attempt_3_o6_r2_dashboard_startup_ownership_freeze.md\n?? docs/reports/sprint3_dashboard_raspberry_pi_runtime_attempt_3_o6_s1_minimal_direct_dashboard_startup.md\n?? docs/reports/sprint3_dashboard_raspberry_pi_runtime_attempt_3_o7_p1_minimal_direct_process_terminal.md\n?? docs/reports/sprint3_dashboard_raspberry_pi_runtime_attempt_3_o7_s1_process_terminal_bounded_logs.md\n?? docs/reports/sprint3_dashboard_raspberry_pi_runtime_attempt_3_o8_p1_overlay_process_success_closeout.md\n?? docs/reports/sprint3_dashboard_raspberry_pi_runtime_attempt_3_preparation.md\n?? docs/reports/sprint3_dashboard_raspberry_pi_runtime_attempt_3_preparation_reliability_review.md\n?? docs/reports/sprint3_dashboard_raspberry_pi_runtime_attempt_3_preparation_verification_review.md\n?? docs/reports/sprint3_dashboard_raspberry_pi_runtime_attempt_3_release_materialization.md\n?? docs/reports/sprint3_dashboard_raspberry_pi_runtime_attempt_3_release_materialization_attempt_2.md\n?? docs/reports/sprint3_dashboard_raspberry_pi_runtime_b2_p2_diagnostic_attempt_1_execution_report.md\n?? docs/reports/sprint3_dashboard_raspberry_pi_runtime_b2_p2_diagnostic_attempt_1_preparation.md\n?? docs/reports/sprint3_dashboard_raspberry_pi_runtime_b2_p2_diagnostic_attempt_1_reliability_review.md\n?? docs/reports/sprint3_dashboard_raspberry_pi_runtime_b2_p2_diagnostic_attempt_2_execution_report.md\n?? docs/reports/sprint3_dashboard_raspberry_pi_runtime_b2_p2_diagnostic_attempt_2_preparation.md\n?? docs/reports/sprint3_dashboard_raspberry_pi_runtime_b2_p2_diagnostic_attempt_3_execution_report.md\n?? docs/reports/sprint3_dashboard_raspberry_pi_runtime_b2_p2_diagnostic_attempt_3_preparation.md\n?? docs/reports/sprint3_dashboard_raspberry_pi_runtime_b2_prerequisite_attempt_2_execution_report.md\n?? docs/reports/sprint3_dashboard_raspberry_pi_runtime_b2_prerequisite_attempt_2_preparation.md\n?? docs/reports/sprint3_dashboard_raspberry_pi_runtime_b2_prerequisite_attempt_2_reliability_rereview.md\n?? docs/reports/sprint3_dashboard_raspberry_pi_runtime_b2_prerequisite_attempt_2_verification_audit.md\n?? docs/reports/sprint3_dashboard_raspberry_pi_runtime_b2_prerequisite_execution_preparation.md\n?? docs/reports/sprint3_dashboard_raspberry_pi_runtime_b2_prerequisite_execution_reliability_rereview.md\n?? docs/reports/sprint3_dashboard_raspberry_pi_runtime_b2_prerequisite_execution_reliability_review.md\n?? docs/reports/sprint3_dashboard_raspberry_pi_runtime_b2_prerequisite_execution_report.md\n?? docs/reports/sprint3_dashboard_raspberry_pi_runtime_b2_prerequisite_execution_verification_audit.md\n?? docs/reports/sprint3_dashboard_raspberry_pi_runtime_b2_privilege_contract_plan.md\n?? docs/reports/sprint3_dashboard_raspberry_pi_runtime_b2_privilege_contract_reliability_rereview.md\n?? docs/reports/sprint3_dashboard_raspberry_pi_runtime_b2_privilege_contract_reliability_review.md\n?? docs/reports/sprint3_dashboard_raspberry_pi_runtime_execution_preparation.md\n?? docs/reports/sprint3_dashboard_raspberry_pi_runtime_execution_preparation_data_quality_rereview.md\n?? docs/reports/sprint3_dashboard_raspberry_pi_runtime_execution_preparation_data_quality_review.md\n?? docs/reports/sprint3_dashboard_raspberry_pi_runtime_execution_preparation_reliability_rereview.md\n?? docs/reports/sprint3_dashboard_raspberry_pi_runtime_execution_preparation_reliability_review.md\n?? docs/reports/sprint3_dashboard_raspberry_pi_runtime_execution_preparation_runtime_b1_verification_rereview.md\n?? docs/reports/sprint3_dashboard_raspberry_pi_runtime_execution_preparation_verification_rereview.md\n?? docs/reports/sprint3_dashboard_raspberry_pi_runtime_execution_preparation_verification_review.md\n?? docs/reports/sprint3_dashboard_raspberry_pi_runtime_execution_report.md\n?? docs/reports/sprint3_db_backed_api_validation_reliability_review.md\n?? docs/reports/sprint4_d1_r1_minimal_runtime_identity_field_diagnostic.md\n?? docs/reports/sprint4_d1_r2_existing_accepted_production_fact_db_api_reconciliation.md\n?? docs/reports/sprint4_d2_collector_accepted_fact_write_path_deployment_repair.md\n?? docs/reports/sprint4_d2_r1_collector_accepted_fact_write_path_deployment_retry.md\n?? docs/reports/sprint4_d2_r2_deterministic_collector_accepted_fact_deployment.md\n?? docs/reports/sprint4_d2_r3_direct_dd_collector_accepted_fact_deployment.md\n?? docs/reports/sprint4_d2_r4_post_mutation_collector_live_state_recovery.md\n?? docs/reports/sprint4_d2_r5_existing_image_collector_activation.md\n?? docs/reports/sprint4_d2_r6_new_collector_remote_config_compatibility_diagnostic.md\n?? docs/reports/sprint4_d2_r6_r1_new_collector_remote_config_static_compatibility_retry.md\n?? docs/reports/sprint4_d2_r7b_i1_attempt2_readonly_remote_diagnostic.md\n?? docs/reports/sprint4_d2_r7b_i1_attempt2_remote_config_mutation_execution.md\n?? docs/reports/sprint4_d2_r7b_i1_attempt2_remote_filesystem_identity_diagnostic.md\n?? docs/reports/sprint4_d2_r7b_i1_r10_r1_required_path_correction_exact_bytecode_cleanup.md\n?? docs/reports/sprint4_d2_r7b_i1_r10_reliability_probe_bytecode_cleanup.md\n?? docs/reports/sprint4_d2_r7b_i1_r11_focused_reliability_rereview.md\n?? docs/reports/sprint4_d2_r7b_i1_r12_focused_verification_review.md\n?? docs/reports/sprint4_d2_r7b_i1_r13_exact_tmp_sidecar_cleanup.md\n?? docs/reports/sprint4_d2_r7b_i1_r14_verification_allowlist_closeout.md\n?? docs/reports/sprint4_d2_r7b_i1_r15_filesystem_contract_repair.md\n?? docs/reports/sprint4_d2_r7b_i1_r16_focused_reliability_rereview.md\n?? docs/reports/sprint4_d2_r7b_i1_r16_r1_c1_contract_closeout_correction.md\n?? docs/reports/sprint4_d2_r7b_i1_r16_r1_upload_parent_fd_race_synthetic_bypass_repair.md\n?? docs/reports/sprint4_d2_r7b_i1_r17_focused_reliability_rereview.md\n?? docs/reports/sprint4_d2_r7b_i1_r17_r1_cleanup_foreign_inode_repair.md\n?? docs/reports/sprint4_d2_r7b_i1_r17_r1_focused_reliability_rereview.md\n?? docs/reports/sprint4_d2_r7b_i1_r17_r2_cleanup_ownership_repair.md\n?? docs/reports/sprint4_d2_r7b_i1_r17_r2_focused_reliability_rereview.md\n?? docs/reports/sprint4_d2_r7b_i1_r17_r3_focused_reliability_rereview.md\n?? docs/reports/sprint4_d2_r7b_i1_r17_r3_minimal_cleanup_boundary_evidence_closure_repair.md\n?? docs/reports/sprint4_d2_r7b_i1_r17_r4_authority_status_reconciliation.md\n?? docs/reports/sprint4_d2_r7b_i1_r17_r4_fail_closed_retained_artifact_contract_repair.md\n?? docs/reports/sprint4_d2_r7b_i1_r17_r4_focused_reliability_rereview.md\n?? docs/reports/sprint4_d2_r7b_i1_r18_narrowed_mvp_safety_verification.md\n?? docs/reports/sprint4_d2_r7b_i1_r19_remote_eligibility_refresh.md\n?? docs/reports/sprint4_d2_r7b_i1_r1_reliability_interruption_incident_review.md\n?? docs/reports/sprint4_d2_r7b_i1_r22_remote_eligibility_refresh.md\n?? docs/reports/sprint4_d2_r7b_i1_r23_remote_config_only_execution.md\n?? docs/reports/sprint4_d2_r7b_i1_r24_r1_parent_fd_findmnt_inheritance_repair.md\n?? docs/reports/sprint4_d2_r7b_i1_r24_r2_focused_reliability_review.md\n?? docs/reports/sprint4_d2_r7b_i1_r24_r3_focused_verification_review.md\n?? docs/reports/sprint4_d2_r7b_i1_r25_remote_eligibility_refresh.md\n?? docs/reports/sprint4_d2_r7b_i1_r2_interruption_contract_repair.md\n?? docs/reports/sprint4_d2_r7b_i1_r30_i1_orchestrator_baseline_compatibility_implementation.md\n?? docs/reports/sprint4_d2_r7b_i1_r30_i1_r10_controlled_collector_restart_runtime_validation.md\n?? docs/reports/sprint4_d2_r7b_i1_r30_i1_r10_r1_corrected_controlled_collector_restart_runtime_validation.md\n?? docs/reports/sprint4_d2_r7b_i1_r30_i1_r10_r2_r1_focused_restartcount_schema_correction.md\n?? docs/reports/sprint4_d2_r7b_i1_r30_i1_r10_r2_readonly_remote_lifecycle_observation.md\n?? docs/reports/sprint4_d2_r7b_i1_r30_i1_r1_orchestrator_baseline_compatibility_implementation_retry.md\n?? docs/reports/sprint4_d2_r7b_i1_r30_i1_r2_orchestrator_baseline_compatibility_validation_retry.md\n?? docs/reports/sprint4_d2_r7b_i1_r30_i1_r3_p2_r3_validation_continuation.md\n?? docs/reports/sprint4_d2_r7b_i1_r30_i1_r4_independent_reliability_review.md\n?? docs/reports/sprint4_d2_r7b_i1_r30_i1_r4_r1_focused_reliability_cleanup_rereview.md\n?? docs/reports/sprint4_d2_r7b_i1_r30_i1_r4_r2_exact_retained_root_cleanup_reliability_closure.md\n?? docs/reports/sprint4_d2_r7b_i1_r30_i1_r4_r3_simplified_exact_retained_root_cleanup_reliability_closure.md\n?? docs/reports/sprint4_d2_r7b_i1_r30_i1_r4_r4_minimal_exact_retained_root_cleanup_reliability_closure.md\n?? docs/reports/sprint4_d2_r7b_i1_r30_i1_r5_live_head_baseline_reconciliation.md\n?? docs/reports/sprint4_d2_r7b_i1_r30_i1_r6_live_head_package_independent_verification.md\n?? docs/reports/sprint4_d2_r7b_i1_r30_i1_r7_fresh_readonly_remote_eligibility.md\n?? docs/reports/sprint4_d2_r7b_i1_r30_i1_r8_one_shot_exact_config_only_remote_execution.md\n?? docs/reports/sprint4_d2_r7b_i1_r30_i1_r9_focused_reliability_final_rereview.md\n?? docs/reports/sprint4_d2_r7b_i1_r30_p1_orchestrator_baseline_compatibility_plan.md\n?? docs/reports/sprint4_d2_r7b_i1_r31_package_closed_collector_image_materialization_deployment_plan.md\n?? docs/reports/sprint4_d2_r7b_i1_r32_phase1_phase2_package_closed_image_materialization_transport_load_execution.md\n?? docs/reports/sprint4_d2_r7b_i1_r32_r1_phase1_validation_phase2_transport_load_continuation.md\n?? docs/reports/sprint4_d2_r7b_i1_r32_r2_remote_transport_load_continuation.md\n?? docs/reports/sprint4_d2_r7b_i1_r32_r3_remote_stage_parent_transport_load_continuation.md\n?? docs/reports/sprint4_d2_r7b_i1_r32_r4_remote_stage_parent_transport_load_continuation.md\n?? docs/reports/sprint4_d2_r7b_i1_r32_r5_r1_focused_readonly_loaded_object_reconciliation_correction.md\n?? docs/reports/sprint4_d2_r7b_i1_r32_r5_r4_local_only_evidence_normalization_retry.md\n?? docs/reports/sprint4_d2_r7b_i1_r32_r5_r5_corrected_local_only_evidence_normalization_execution.md\n?? docs/reports/sprint4_d2_r7b_i1_r32_r5_remote_loaded_object_identity_reconciliation_descriptive_tag_repair.md\n?? docs/reports/sprint4_d2_r7b_i1_r33_fresh_readonly_remote_activation_preflight.md\n?? docs/reports/sprint4_d2_r7b_i1_r34_collector_only_activation.md\n?? docs/reports/sprint4_d2_r7b_i1_r3_normal_wait_terminal_count_repair.md\n?? docs/reports/sprint4_d2_r7b_i1_r4_shared_runner_preservation_repair.md\n?? docs/reports/sprint4_d2_r7b_i1_r5_phase_history_terminal_emission_repair.md\n?? docs/reports/sprint4_d2_r7b_i1_r6_terminal_framing_phase_observation_repair.md\n?? docs/reports/sprint4_d2_r7b_i1_r7_bytecode_free_loader_repair.md\n?? docs/reports/sprint4_d2_r7b_i1_r8_exact_bytecode_artifact_cleanup.md\n?? docs/reports/sprint4_d2_r7b_i1_r9_focused_reliability_rereview.md\n?? docs/reports/sprint4_d2_r7b_i1_remote_config_mutation_execution.md\n?? docs/reports/sprint4_d2_r7b_p2_r2_mutation_contract_source_evidence_repair.md\n?? docs/reports/sprint4_d2_r7b_p2_r3_reliability_remote_config_mutation_rereview.md\n?? docs/reports/sprint4_d2_r7b_p2_r4_execution_contract_repair.md\n?? docs/reports/sprint4_d2_r7b_p2_r4_r1_execution_contract_intake_repair.md\n?? docs/reports/sprint4_d2_r7b_p2_r5_reliability_final_execution_contract_rereview.md\n?? docs/reports/sprint4_d2_r7b_p2_r6_verification_pre_mutation_review.md\n?? docs/reports/sprint4_existing_real_accepted_production_fact_readonly_reconciliation.md\n?? docs/thread_handoff/chatgpt_pm_handoff_20260624.md\n?? docs/thread_handoff/chatgpt_pm_handoff_20260625.md\n?? docs/thread_handoff/chatgpt_pm_handoff_20260625_final.md\n?? docs/thread_handoff/chatgpt_pm_handoff_20260626_slice_a_commit.md\n?? docs/thread_handoff/chatgpt_pm_handoff_260712-1349.md\n?? docs/thread_handoff/chatgpt_pm_handoff_260713-1916.md\n?? docs/thread_handoff/chatgpt_pm_handoff_260714-1450.md\n?? docs/thread_handoff/chatgpt_pm_handoff_260716-1711.md\n?? docs/thread_handoff/chatgpt_pm_handoff_260717-0856.md\n?? docs/thread_handoff/chatgpt_pm_handoff_260719-0016.md\n?? docs/thread_handoff/chatgpt_pm_handoff_260721-1756.md\n?? docs/thread_handoff/chatgpt_pm_handoff_260722-1115.md\n?? docs/thread_handoff/chatgpt_pm_handoff_260722-2153.md\n?? docs/thread_handoff/chatgpt_pm_handoff_260723-1244.md\n?? docs/thread_handoff/chatgpt_pm_handoff_260724-2147.md\n?? docs/thread_handoff/chatgpt_pm_handoff_260725-1434.md\n?? docs/thread_handoff/chatgpt_pm_handoff_260726-1922.md\n?? docs/thread_handoff/chatgpt_pm_handoff_260727-1122.md\n?? docs/thread_handoff/chatgpt_pm_handoff_260727-1126.md\n?? docs/thread_handoff/chatgpt_pm_handoff_260727-1138.md\n?? docs/thread_handoff/chatgpt_pm_handoff_260727-1207.md\n?? docs/thread_handoff/chatgpt_pm_handoff_260727-1311.md\n?? docs/thread_handoff/chatgpt_pm_handoff_260727-1508.md\n?? docs/thread_handoff/chatgpt_pm_handoff_260727-1535.md\n?? docs/thread_handoff/chatgpt_pm_handoff_260727-1540.md\n?? docs/thread_handoff/chatgpt_pm_handoff_260727-1613.md\n?? docs/thread_handoff/chatgpt_pm_handoff_260727-1627.md\n?? docs/thread_handoff/chatgpt_pm_handoff_260727-1645.md\n?? docs/thread_handoff/chatgpt_pm_handoff_260727-1831.md\n?? docs/thread_handoff/chatgpt_pm_handoff_260727-1857.md\n?? docs/thread_handoff/chatgpt_pm_handoff_260727-1931.md\n?? docs/thread_handoff/chatgpt_pm_handoff_260727-2004.md\n?? docs/thread_handoff/chatgpt_pm_handoff_260727-2034.md\n?? docs/thread_handoff/chatgpt_pm_handoff_260727-2100.md\n?? docs/thread_handoff/chatgpt_pm_handoff_260727-2105.md\n?? docs/thread_handoff/chatgpt_pm_handoff_260727-2125.md\n?? docs/thread_handoff/chatgpt_pm_handoff_260727-2300.md\n?? docs/thread_handoff/chatgpt_pm_handoff_260728-1117.md\n?? frontend/.next/\n?? frontend/next-env.d.ts\n?? frontend/node_modules/\n?? frontend/tsconfig.tsbuildinfo"
+    }
+  },
+  "helpers_final": {
+    "controller": {
+      "bytes": 13887,
+      "path": "docs/reports/evidence/d2_r7b_i1_r34_r1_collector_only_activation_retry/remote_activation_controller.py",
+      "regular": true,
+      "sha256": "f272f8eb4ab27dd5b4315c1e97d5272f5c0aac5b78e6bd3e41b50b27d9b95e09",
+      "symlink": false
+    },
+    "runner": {
+      "bytes": 17049,
+      "path": "docs/reports/evidence/d2_r7b_i1_r34_r1_collector_only_activation_retry/run_activation.py",
+      "regular": true,
+      "sha256": "b383f5f320c57b68fd444767972926bd8a5d8c6752fde7b09802cedf8fb8d285",
+      "symlink": false
+    }
+  },
+  "helpers_preliminary": {
+    "controller": {
+      "bytes": 13887,
+      "path": "docs/reports/evidence/d2_r7b_i1_r34_r1_collector_only_activation_retry/remote_activation_controller.py",
+      "regular": true,
+      "sha256": "f272f8eb4ab27dd5b4315c1e97d5272f5c0aac5b78e6bd3e41b50b27d9b95e09",
+      "symlink": false
+    },
+    "runner": {
+      "bytes": 17049,
+      "path": "docs/reports/evidence/d2_r7b_i1_r34_r1_collector_only_activation_retry/run_activation.py",
+      "regular": true,
+      "sha256": "b383f5f320c57b68fd444767972926bd8a5d8c6752fde7b09802cedf8fb8d285",
+      "symlink": false
+    }
+  },
+  "helpers_unchanged_after_execution": true,
+  "identities": {
+    "config/mapping.yaml": {
+      "bytes": 7112,
+      "path": "config/mapping.yaml",
+      "regular": true,
+      "sha256": "d9bb5fcb017e6ab491e8643077c793bb018011d1cbe0698172e4c08823080c9d",
+      "symlink": false
+    },
+    "docker-compose.yml": {
+      "bytes": 5698,
+      "path": "docker-compose.yml",
+      "regular": true,
+      "sha256": "c10dc292bce971ce857051e36268a3be9e9377e63d5e3cd58d2514e3e824ed66",
+      "symlink": false
+    },
+    "docs/reports/sprint4_d2_r7b_i1_pm_scope_reset_governance_decision_image_loaded_exact.md": {
+      "bytes": 8525,
+      "path": "docs/reports/sprint4_d2_r7b_i1_pm_scope_reset_governance_decision_image_loaded_exact.md",
+      "regular": true,
+      "sha256": "d4dcd835cf1152bd4585226f6bcb86533040e5481539dd669c53c170a7531df3",
+      "symlink": false
+    },
+    "docs/reports/sprint4_d2_r7b_i1_r31_package_closed_collector_image_materialization_deployment_plan.md": {
+      "bytes": 45360,
+      "path": "docs/reports/sprint4_d2_r7b_i1_r31_package_closed_collector_image_materialization_deployment_plan.md",
+      "regular": true,
+      "sha256": "bd5b65ac08dcacfd0fc14a639626d807f28d429f1038a99aa124cd6ce85db894",
+      "symlink": false
+    },
+    "docs/reports/sprint4_d2_r7b_i1_r33_fresh_readonly_remote_activation_preflight.md": {
+      "bytes": 6049,
+      "path": "docs/reports/sprint4_d2_r7b_i1_r33_fresh_readonly_remote_activation_preflight.md",
+      "regular": true,
+      "sha256": "daa0af5824d697ad12342fcaedf09330b082da78475f1351fec46c0892153c66",
+      "symlink": false
+    },
+    "docs/reports/sprint4_d2_r7b_i1_r34_collector_only_activation.md": {
+      "bytes": 1694,
+      "path": "docs/reports/sprint4_d2_r7b_i1_r34_collector_only_activation.md",
+      "regular": true,
+      "sha256": "182d58da5a132bd80da23d8a8bc14812732d7e37624b097be0f7535fe44ff1a0",
+      "symlink": false
+    },
+    "docs/thread_handoff/chatgpt_pm_handoff_260729-1945.md": {
+      "bytes": 13999,
+      "path": "docs/thread_handoff/chatgpt_pm_handoff_260729-1945.md",
+      "regular": true,
+      "sha256": "ad474117600b2f9444d6a5dfa96f9a719bbb03777b161fb40960c53ff45c4a89",
+      "symlink": false
+    },
+    "docs/thread_handoff/pm_operating_rules.md": {
+      "bytes": 45785,
+      "path": "docs/thread_handoff/pm_operating_rules.md",
+      "regular": true,
+      "sha256": "e9f9713c1845ad91edc147f2f82f2d104b22ad48759d7a50f74e0eb8bbfa149a",
+      "symlink": false
+    }
+  },
+  "initial_output_preconditions": {
+    "docs/reports/evidence/d2_r7b_i1_r34_r1_collector_only_activation_retry/activation_terminal.json": "ABSENT_NON_SYMLINK",
+    "docs/reports/evidence/d2_r7b_i1_r34_r1_collector_only_activation_retry/local_prerequisite_terminal.json": "ABSENT_NON_SYMLINK",
+    "docs/reports/evidence/d2_r7b_i1_r34_r1_collector_only_activation_retry/manifest.sha256": "ABSENT_NON_SYMLINK",
+    "docs/reports/evidence/d2_r7b_i1_r34_r1_collector_only_activation_retry/remote_activation_controller.py": "ABSENT_NON_SYMLINK",
+    "docs/reports/evidence/d2_r7b_i1_r34_r1_collector_only_activation_retry/run_activation.py": "ABSENT_NON_SYMLINK",
+    "docs/reports/sprint4_d2_r7b_i1_r34_r1_collector_only_activation_retry.md": "ABSENT_NON_SYMLINK"
+  },
+  "local_mutation_audit": {
+    "cleanup": 0,
+    "docker_commands": 0,
+    "git_mutations": 0
+  },
+  "manifest_5_5": true,
+  "r33_identities": {
+    "local_prerequisite_terminal.json": {
+      "bytes": 7796,
+      "path": "docs/reports/evidence/d2_r7b_i1_r33_fresh_readonly_remote_activation_preflight/local_prerequisite_terminal.json",
+      "regular": true,
+      "sha256": "2c0b342168195de98bd0dbda627a5e3231f2dd54cac57fcea850596449fa87de",
+      "symlink": false
+    },
+    "manifest.sha256": {
+      "bytes": 842,
+      "path": "docs/reports/evidence/d2_r7b_i1_r33_fresh_readonly_remote_activation_preflight/manifest.sha256",
+      "regular": true,
+      "sha256": "5c52278d1a8585d8c19402546a2dd231f58f717ba6ef97e756ee19a9729bbaad",
+      "symlink": false
+    },
+    "remote_preflight_terminal.json": {
+      "bytes": 50786,
+      "path": "docs/reports/evidence/d2_r7b_i1_r33_fresh_readonly_remote_activation_preflight/remote_preflight_terminal.json",
+      "regular": true,
+      "sha256": "d1cd628fdf6ffacf62c5ceb1e418284bf4663ac5d9642cfdeead51eec423a82e",
+      "symlink": false
+    },
+    "remote_readonly_probe.py": {
+      "bytes": 14245,
+      "path": "docs/reports/evidence/d2_r7b_i1_r33_fresh_readonly_remote_activation_preflight/remote_readonly_probe.py",
+      "regular": true,
+      "sha256": "9223c4cd7b63072a39936029681ee0b4b007e58838bba0626d4515d9e47a6430",
+      "symlink": false
+    },
+    "run_readonly_preflight.py": {
+      "bytes": 11422,
+      "path": "docs/reports/evidence/d2_r7b_i1_r33_fresh_readonly_remote_activation_preflight/run_readonly_preflight.py",
+      "regular": true,
+      "sha256": "3f3c34c0157b8fedc1a30acb0561c04203d390710a601a70dd9c0dc6cdc8bf97",
+      "symlink": false
+    }
+  },
+  "r34_historical_identities": {
+    "activation_terminal.json": {
+      "bytes": 688,
+      "path": "docs/reports/evidence/d2_r7b_i1_r34_collector_only_activation/activation_terminal.json",
+      "regular": true,
+      "sha256": "5e49305a81f5e7bd6447b04cad84b3c69125f5f22862f4a09bb721dfe964fe1d",
+      "symlink": false
+    },
+    "local_prerequisite_terminal.json": {
+      "bytes": 1274,
+      "path": "docs/reports/evidence/d2_r7b_i1_r34_collector_only_activation/local_prerequisite_terminal.json",
+      "regular": true,
+      "sha256": "c737eb8ae77f57410d2b502e6506c4d7a0155aef5d3fd4691472874180646fe3",
+      "symlink": false
+    },
+    "manifest.sha256": {
+      "bytes": 750,
+      "path": "docs/reports/evidence/d2_r7b_i1_r34_collector_only_activation/manifest.sha256",
+      "regular": true,
+      "sha256": "9cba85ab282baa89ee6b9e4b7ad355385a45a3c3ad8878e933c0b8a34bbf4e65",
+      "symlink": false
+    },
+    "remote_activation_controller.py": {
+      "bytes": 19124,
+      "path": "docs/reports/evidence/d2_r7b_i1_r34_collector_only_activation/remote_activation_controller.py",
+      "regular": true,
+      "sha256": "a893449f7872c9727db4c199336d05a56e0b70ab9e5479138170e616cb3852da",
+      "symlink": false
+    },
+    "run_activation.py": {
+      "bytes": 10043,
+      "path": "docs/reports/evidence/d2_r7b_i1_r34_collector_only_activation/run_activation.py",
+      "regular": true,
+      "sha256": "7b809f2b84de88a444a292022049d6a86ea32194a7161a763cc0d35962c8fde9",
+      "symlink": false
+    }
+  },
+  "remote_call_budget": {
+    "resume": 0,
+    "retry": 0,
+    "structured_ssh_calls": 1,
+    "supplemental_ssh": 0
+  },
+  "schema_version": "d2-r7b-i1-r34-r1-local-prerequisite/v1",
+  "ssh_capture": {
+    "returncode": 0,
+    "stderr_bytes": 0,
+    "stderr_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+    "stdout_bytes": 24847,
+    "stdout_sha256": "ecd08459357b294048f0235731d0f0b28b0510891ac16898ee181a55e34b3f21"
+  },
+  "status": "HOLD"
+}

@@ -1,0 +1,44 @@
+{
+  "schema_version": "d2-r7b-i1-r34-local/v1",
+  "authority_id": "PM-D2-R7B-I1-R34-COLLECTOR-ONLY-ACTIVATION-260729-2034",
+  "status": "HOLD",
+  "classification": "HELPER_SYNTAX_OR_SCHEMA_INVALID",
+  "project_root": "/Users/chenjie/Documents/MES/edge-mes-demo",
+  "local_gate_failure": {
+    "pre_task_porcelain_snapshot_persisted_before_helper_creation": false,
+    "runner_ast_parse": false,
+    "failure": "SyntaxError at run_activation.py line 7: invalid decimal literal"
+  },
+  "r33_authority": {
+    "identities": "exact match",
+    "manifest": "5/5 OK",
+    "terminal": "PASS / ACTIVATION_ELIGIBLE"
+  },
+  "remote_call_budget": {
+    "structured_ssh_calls": 0,
+    "retry": 0,
+    "resume": 0,
+    "supplemental_ssh": 0
+  },
+  "ssh_capture": {
+    "returncode": null,
+    "stdout_bytes": 0,
+    "stderr_bytes": 0
+  },
+  "local_mutation_audit": {
+    "git_mutations": 0,
+    "docker_commands": 0,
+    "cleanup": 0,
+    "extra_artifacts": 0
+  },
+  "helper_identities": {
+    "run_activation.py": {
+      "bytes": 10043,
+      "sha256": "7b809f2b84de88a444a292022049d6a86ea32194a7161a763cc0d35962c8fde9"
+    },
+    "remote_activation_controller.py": {
+      "bytes": 19124,
+      "sha256": "a893449f7872c9727db4c199336d05a56e0b70ab9e5479138170e616cb3852da"
+    }
+  }
+}

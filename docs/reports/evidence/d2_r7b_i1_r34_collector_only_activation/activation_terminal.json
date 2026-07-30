@@ -1,0 +1,26 @@
+{
+  "schema_version": "d2-r7b-i1-r34-remote-activation/v1",
+  "authority_id": "PM-D2-R7B-I1-R34-COLLECTOR-ONLY-ACTIVATION-260729-2034",
+  "status": "HOLD",
+  "classification": "REMOTE_NOT_OBSERVED",
+  "phase_history": [],
+  "last_started_phase": "NONE",
+  "last_completed_phase": "NONE",
+  "observed": {},
+  "assertions": {},
+  "command_audit": [],
+  "mutation_audit": {
+    "tag_mutation_count": 0,
+    "compose_recreate_count": 0,
+    "collector_lifecycle_count": 0,
+    "protected_service_lifecycle_count": 0,
+    "rollback_count": 0,
+    "cleanup_count": 0
+  },
+  "remote_call_budget": {
+    "structured_ssh_calls": 0,
+    "retry": 0,
+    "resume": 0,
+    "supplemental_ssh": 0
+  }
+}

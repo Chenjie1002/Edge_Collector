@@ -1,0 +1,34 @@
+{
+  "authority_id": "PM-D2-R7B-I1-R32-PHASE1-PHASE2-EXECUTION-260729-1517",
+  "build_context": "/private/var/tmp/edge-mes-d2-r7b-i1-r32-ca68dd4/build-context",
+  "build_exit": 0,
+  "build_input_file_count": 38,
+  "build_input_manifest_sha256": "ad339c6adaa3556df513b9dca30af6fe129b2d583b3f7720adab0b9e692044da",
+  "build_invocation_count": 1,
+  "classification": "HOST_STATIC_MAPPING_PREREQUISITE_MISSING",
+  "container_validation": "NOT_EXECUTED",
+  "exact_image_id": "sha256:899082388afebab65844cbc0e49fb69a0f19f8bf23c3c4c989f6533f2f2ce401",
+  "exact_image_tag": "edge-mes-demo-collector:r32-pkg-closed-ca68dd4",
+  "frozen_baseline": "ca68dd4a4913238fc62e9621f1ac632c709a3149",
+  "host_static_mapping": {
+    "error": "ModuleNotFoundError: No module named 'snap7'",
+    "result": "HOLD",
+    "validation_invocation_count": 1
+  },
+  "image": {
+    "architecture": "arm64",
+    "created": "2026-07-29T15:43:02.675492291+08:00",
+    "os": "linux",
+    "size": 54299587,
+    "variant": null
+  },
+  "phase": "PHASE_1",
+  "prohibited_action_counters": {
+    "archive_saves": 0,
+    "container_validation_invocations": 0,
+    "docker_pulls": 0,
+    "image_removals": 0,
+    "remote_network_calls": 0
+  },
+  "status": "HOLD"
+}

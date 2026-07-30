@@ -1,0 +1,17 @@
+{
+  "authority_id": "PM-D2-R7B-I1-R32-R1-HOST-INTERPRETER-CORRECTION-CONTINUATION-01",
+  "phase": "PHASE_2_TRANSPORT",
+  "status": "NOT_EXECUTED",
+  "classification": "NOT_EXECUTED_REMOTE_PREFLIGHT_HOLD",
+  "network_call_count": 0,
+  "local_archive": "/private/var/tmp/edge-mes-d2-r7b-i1-r32-ca68dd4/edge-mes-demo-collector-r32-ca68dd4-linux-arm64.tar",
+  "local_archive_state": "PRESENT / REGULAR / NON-SYMLINK",
+  "local_archive_bytes": 54313984,
+  "local_archive_sha256": "b0fc3d6e4c511cfc1782d5ce15ef3d9cd053ce99a3571622daf165422d65ce2e",
+  "remote_archive": "/home/mari/.edge-mes-demo-stage/d2-r7b-i1-r32-ca68dd4/edge-mes-demo-collector-r32-ca68dd4-linux-arm64.tar",
+  "remote_archive_state": "ABSENT",
+  "transport_invocation_count": 0,
+  "docker_invocations": 0,
+  "reason": "REMOTE_PREFLIGHT_PROBE_CONTRACT_HOLD",
+  "cleanup_invocation_count": 0
+}

@@ -1,0 +1,8 @@
+{
+  "authority_id": "PM-D2-R7B-I1-R32-PHASE1-PHASE2-EXECUTION-260729-1517",
+  "classification": "NOT_EXECUTED_PHASE1_HOLD",
+  "docker_load_invocation_count": 0,
+  "network_call_count": 0,
+  "phase": "PHASE_2_REMOTE_LOAD",
+  "status": "NOT_STARTED"
+}

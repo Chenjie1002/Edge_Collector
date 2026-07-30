@@ -1,0 +1,17 @@
+{
+  "authority_id": "PM-D2-R7B-I1-R32-R1-HOST-INTERPRETER-CORRECTION-CONTINUATION-01",
+  "phase": "PHASE_2_REMOTE_LOAD",
+  "status": "NOT_EXECUTED",
+  "classification": "NOT_EXECUTED_REMOTE_PREFLIGHT_HOLD",
+  "network_call_count": 0,
+  "remote_archive": "/home/mari/.edge-mes-demo-stage/d2-r7b-i1-r32-ca68dd4/edge-mes-demo-collector-r32-ca68dd4-linux-arm64.tar",
+  "remote_archive_state": "ABSENT",
+  "docker_load_invocation_count": 0,
+  "remote_loaded_image_id": null,
+  "descriptive_tag_relation": "NOT_OBSERVED",
+  "compatibility_alias_mutation": "NO",
+  "container_lifecycle_count": 0,
+  "compose_count": 0,
+  "cleanup_count": 0,
+  "reason": "REMOTE_PREFLIGHT_PROBE_CONTRACT_HOLD"
+}

@@ -1,0 +1,1976 @@
+{
+  "assertions": {
+    "bytecode_disabled": true,
+    "collector_lifecycle_stable": true,
+    "collector_mount_exact": true,
+    "collector_safe": true,
+    "command_plan_exact": true,
+    "container_terminal_valid": true,
+    "duplicate_container_absent": true,
+    "duplicate_service_absent": true,
+    "host_container_mapping_agree": true,
+    "host_filesystem_exact_and_stable": true,
+    "image_alias_exact": true,
+    "imports_exact": true,
+    "mapping_exact": true,
+    "mutation_counters_zero": true,
+    "protected_hard_fields_stable": true,
+    "remote_compose_exact": true,
+    "service_set_exact": true,
+    "snapshot_a_authority_exact": true,
+    "source_hashes_exact": true
+  },
+  "authority_id": "PM-D2-R7B-I1-R35-PHASE5-POST-ACTIVATION-VALIDATION-260729-2143",
+  "classification": "ACTIVATED",
+  "command_audit": [
+    {
+      "argv": [
+        "/usr/bin/docker",
+        "image",
+        "inspect",
+        "sha256:168bd07db0a427f003d1733a62354d3356b8ef6b362a15fed88d48728392f734",
+        "edge-mes-demo-collector:latest"
+      ],
+      "name": "aggregate_image_inspect",
+      "returncode": 0,
+      "stderr_bytes": 0,
+      "stderr_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "stdin_bytes": 0,
+      "stdin_sha256": null,
+      "stdout_bytes": 7529,
+      "stdout_sha256": "00d67d3b24aba7cd6945622ed0e2d1970bdbb60da3e482588f0eb31104ed06b0"
+    },
+    {
+      "argv": [
+        "/usr/bin/docker",
+        "ps",
+        "-aq",
+        "--filter",
+        "label=com.docker.compose.project=edge-mes-demo"
+      ],
+      "name": "project_ps_snapshot_a",
+      "returncode": 0,
+      "stderr_bytes": 0,
+      "stderr_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "stdin_bytes": 0,
+      "stdin_sha256": null,
+      "stdout_bytes": 130,
+      "stdout_sha256": "ebd704dea3296ba0eb73d604b3c9a67a4ff5697e2c23310f556d1584045a1bc9"
+    },
+    {
+      "argv": [
+        "/usr/bin/docker",
+        "inspect",
+        "3f0d0457a0a1",
+        "12e841b4ac33",
+        "649c31bb508a",
+        "d21e950b98ae",
+        "fa442407312e",
+        "3ebe1e4725af",
+        "03d48e04a511",
+        "943933f4c480",
+        "651c0226e4b1",
+        "bb3ba0738e69"
+      ],
+      "name": "aggregate_container_inspect_snapshot_a",
+      "returncode": 0,
+      "stderr_bytes": 0,
+      "stderr_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "stdin_bytes": 0,
+      "stdin_sha256": null,
+      "stdout_bytes": 113607,
+      "stdout_sha256": "a150f0bf3a94328340b71384b4249c3956ca8540973c82bfee4e23d68365a46b"
+    },
+    {
+      "argv": [
+        "/usr/bin/docker",
+        "exec",
+        "-i",
+        "-e",
+        "PYTHONDONTWRITEBYTECODE=1",
+        "3f0d0457a0a1a929b632a2d865016be6f4104fed001b6015eee14e502bb31ba8",
+        "/usr/local/bin/python",
+        "-B",
+        "-"
+      ],
+      "name": "container_static_exec",
+      "returncode": 0,
+      "stderr_bytes": 0,
+      "stderr_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "stdin_bytes": 7456,
+      "stdin_sha256": "f3dcc26108a46672c92d958352ca671294266b68d3011464435223f12dba98ae",
+      "stdout_bytes": 5218,
+      "stdout_sha256": "acc8960960a74459ba7898f6468788c01dd2adf705f052dcac1bcf86d0cc5d77"
+    },
+    {
+      "argv": [
+        "/usr/bin/docker",
+        "ps",
+        "-aq",
+        "--filter",
+        "label=com.docker.compose.project=edge-mes-demo"
+      ],
+      "name": "project_ps_snapshot_b",
+      "returncode": 0,
+      "stderr_bytes": 0,
+      "stderr_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "stdin_bytes": 0,
+      "stdin_sha256": null,
+      "stdout_bytes": 130,
+      "stdout_sha256": "ebd704dea3296ba0eb73d604b3c9a67a4ff5697e2c23310f556d1584045a1bc9"
+    },
+    {
+      "argv": [
+        "/usr/bin/docker",
+        "inspect",
+        "3f0d0457a0a1",
+        "12e841b4ac33",
+        "649c31bb508a",
+        "d21e950b98ae",
+        "fa442407312e",
+        "3ebe1e4725af",
+        "03d48e04a511",
+        "943933f4c480",
+        "651c0226e4b1",
+        "bb3ba0738e69"
+      ],
+      "name": "aggregate_container_inspect_snapshot_b",
+      "returncode": 0,
+      "stderr_bytes": 0,
+      "stderr_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "stdin_bytes": 0,
+      "stdin_sha256": null,
+      "stdout_bytes": 113606,
+      "stdout_sha256": "c94831971952d382888d30a7b3bb563320ac1a46d876d6e9e5b9260604e57611"
+    }
+  ],
+  "docker_budget": {
+    "commands": 6,
+    "container_exec": 1,
+    "container_exec_maximum": 1,
+    "maximum": 6
+  },
+  "evidence_boundary": {
+    "ACTIVATED": true,
+    "PRODUCTION_ACCEPTED": false,
+    "RUNTIME_LOADED": false,
+    "STATIC_MAPPING_INITIALIZED": true
+  },
+  "mutation_audit": {
+    "cleanup": 0,
+    "compose_commands": 0,
+    "container_lifecycle_commands": 0,
+    "db_api_plc_access": 0,
+    "filesystem_writes": 0,
+    "image_tag_mutations": 0,
+    "protected_service_lifecycle": 0,
+    "rollback": 0
+  },
+  "observed": {
+    "container_static_terminal": {
+      "assertions": {
+        "dont_write_bytecode": true,
+        "imports_exact": true,
+        "mapping_exact": true,
+        "source_hashes_exact": true
+      },
+      "classification": "STATIC_MAPPING_INITIALIZED",
+      "evidence_boundary": {
+        "PRODUCTION_ACCEPTED": false,
+        "RUNTIME_LOADED": false,
+        "STATIC_MAPPING_INITIALIZED": true
+      },
+      "mutation_audit": {
+        "api_calls": 0,
+        "db_connections": 0,
+        "filesystem_writes": 0,
+        "plc_connections": 0,
+        "production_data_generated": 0,
+        "runtime_worker_constructions": 0,
+        "socket_connections": 0,
+        "storage_constructions": 0
+      },
+      "observed": {
+        "dont_write_bytecode": true,
+        "imports": {
+          "app.main": {
+            "module": "app.main",
+            "success": true
+          },
+          "app.plc.mapping": {
+            "module": "app.plc.mapping",
+            "success": true
+          },
+          "app.plc.read_plan": {
+            "module": "app.plc.read_plan",
+            "success": true
+          },
+          "app.services.accepted_station_event_fact": {
+            "module": "app.services.accepted_station_event_fact",
+            "success": true
+          },
+          "app.services.event_collector": {
+            "module": "app.services.event_collector",
+            "success": true
+          },
+          "app.services.resolved_config_registry": {
+            "module": "app.services.resolved_config_registry",
+            "success": true
+          },
+          "app.services.storage": {
+            "module": "app.services.storage",
+            "success": true
+          },
+          "common.station_event": {
+            "module": "common.station_event",
+            "success": true
+          }
+        },
+        "mapping": {
+          "bytes": 7112,
+          "config_version": "2026.06.26-slice-a",
+          "line_id": "LINE_001",
+          "path": "/app/config/mapping.yaml",
+          "read_plan_count": 4,
+          "resolved_config_hash": "0038c05d5cf74ff3b8c508a3222ebb426658ad8e657c5034ac88c4ff32efae38",
+          "schema_version": "runtime-mapping/v1",
+          "sha256": "d9bb5fcb017e6ab491e8643077c793bb018011d1cbe0698172e4c08823080c9d"
+        },
+        "source_hashes": {
+          "/app/app/main.py": {
+            "bytes": 2073,
+            "expected_sha256": "a81b5427d682f3ad2678ba81c1a08f61c839fcebef87964db71d44ee18a60090",
+            "match": true,
+            "sha256": "a81b5427d682f3ad2678ba81c1a08f61c839fcebef87964db71d44ee18a60090"
+          },
+          "/app/app/plc/mapping.py": {
+            "bytes": 17433,
+            "expected_sha256": "c834c43b2bbb4cf8a20a2119053dbcd2970260d7e9a87d4fced995e73c13a098",
+            "match": true,
+            "sha256": "c834c43b2bbb4cf8a20a2119053dbcd2970260d7e9a87d4fced995e73c13a098"
+          },
+          "/app/app/plc/read_plan.py": {
+            "bytes": 1482,
+            "expected_sha256": "fd5f675501444ed8378d6a296c3ed3d8769af97a1f19d1e95f3c00d76d4b02d6",
+            "match": true,
+            "sha256": "fd5f675501444ed8378d6a296c3ed3d8769af97a1f19d1e95f3c00d76d4b02d6"
+          },
+          "/app/app/services/accepted_station_event_fact.py": {
+            "bytes": 5053,
+            "expected_sha256": "6545ef67d968ed849be57342ad630b258cd4a09519876efb02955a8c3c6fd911",
+            "match": true,
+            "sha256": "6545ef67d968ed849be57342ad630b258cd4a09519876efb02955a8c3c6fd911"
+          },
+          "/app/app/services/event_collector.py": {
+            "bytes": 16342,
+            "expected_sha256": "eb647af15e51d32c2af0c2f3defce8e8421f629afd722bd35828253e2718958f",
+            "match": true,
+            "sha256": "eb647af15e51d32c2af0c2f3defce8e8421f629afd722bd35828253e2718958f"
+          },
+          "/app/app/services/resolved_config_registry.py": {
+            "bytes": 17337,
+            "expected_sha256": "1844449a3f99e9ca53bddc8063c151fb0f889920597bccb170f5e62f3715db2c",
+            "match": true,
+            "sha256": "1844449a3f99e9ca53bddc8063c151fb0f889920597bccb170f5e62f3715db2c"
+          },
+          "/app/app/services/storage.py": {
+            "bytes": 38319,
+            "expected_sha256": "f3ab8cdc18ec7725a1b863014c698f9cb24f212773b36ead38be7545b2808d0b",
+            "match": true,
+            "sha256": "f3ab8cdc18ec7725a1b863014c698f9cb24f212773b36ead38be7545b2808d0b"
+          },
+          "/app/common/station_event/__init__.py": {
+            "bytes": 1453,
+            "expected_sha256": "d8a214d0c4a85e7bbaf7b5e79e6db905115be1f50effb27357fa9f371ea1c7a7",
+            "match": true,
+            "sha256": "d8a214d0c4a85e7bbaf7b5e79e6db905115be1f50effb27357fa9f371ea1c7a7"
+          },
+          "/app/common/station_event/constants.py": {
+            "bytes": 1210,
+            "expected_sha256": "6dd60705ab192a1c889f0a4652d478f7d367bd24b980fc092c48a51e25214e11",
+            "match": true,
+            "sha256": "6dd60705ab192a1c889f0a4652d478f7d367bd24b980fc092c48a51e25214e11"
+          },
+          "/app/common/station_event/errors.py": {
+            "bytes": 436,
+            "expected_sha256": "355c882f51cc7c66cdf8f22c73c0d72633391dc8403d4f9f428b0b8ac510b4f3",
+            "match": true,
+            "sha256": "355c882f51cc7c66cdf8f22c73c0d72633391dc8403d4f9f428b0b8ac510b4f3"
+          },
+          "/app/common/station_event/fingerprint.py": {
+            "bytes": 3371,
+            "expected_sha256": "cb35dcf5ab5ba9ccb3e60d0e38b1c86cf24717559cc70e250adf297dff939608",
+            "match": true,
+            "sha256": "cb35dcf5ab5ba9ccb3e60d0e38b1c86cf24717559cc70e250adf297dff939608"
+          },
+          "/app/common/station_event/lifecycle.py": {
+            "bytes": 4840,
+            "expected_sha256": "afec2c75010b8642239d2494c57f470f3414c4fbff486b588589adf7bc4efcff",
+            "match": true,
+            "sha256": "afec2c75010b8642239d2494c57f470f3414c4fbff486b588589adf7bc4efcff"
+          },
+          "/app/common/station_event/models.py": {
+            "bytes": 3485,
+            "expected_sha256": "176627b71f32bdef08c75a6bfe3b7badab1094e8ec2c3cf7b1e719d0a2d1df77",
+            "match": true,
+            "sha256": "176627b71f32bdef08c75a6bfe3b7badab1094e8ec2c3cf7b1e719d0a2d1df77"
+          },
+          "/app/common/station_event/projection.py": {
+            "bytes": 1328,
+            "expected_sha256": "39ed6034d87e23718a22a8a66fbb60af365a5d7b573ff045a021b7206c708623",
+            "match": true,
+            "sha256": "39ed6034d87e23718a22a8a66fbb60af365a5d7b573ff045a021b7206c708623"
+          },
+          "/app/common/station_event/serialization.py": {
+            "bytes": 2031,
+            "expected_sha256": "9cbabbd42e5685311829030b13f24fa16396fb853458e3f51bd7cb7bf5124407",
+            "match": true,
+            "sha256": "9cbabbd42e5685311829030b13f24fa16396fb853458e3f51bd7cb7bf5124407"
+          },
+          "/app/common/station_event/validation.py": {
+            "bytes": 41501,
+            "expected_sha256": "e7cff46b91112236873744a32dafec5160a0ca6036f184106e1ec4a232724bd1",
+            "match": true,
+            "sha256": "e7cff46b91112236873744a32dafec5160a0ca6036f184106e1ec4a232724bd1"
+          }
+        }
+      },
+      "schema_version": "d2-r7b-i1-r35-container-static/v1",
+      "status": "PASS"
+    },
+    "host_snapshot_a": {
+      "compose": {
+        "bytes": 4897,
+        "realpath": "/opt/edge-mes-demo/docker-compose.yml",
+        "regular": true,
+        "sha256": "a71ab815a34f3c493f38ec572e0cf5892a9a7cdc081d8d3e2e312a380cad9ef0",
+        "symlink": false
+      },
+      "filesystem": {
+        "backup": {
+          "bytes": 5935,
+          "expected": true,
+          "group": "mari",
+          "identity_stable": true,
+          "inode": 550916,
+          "mode": "0644",
+          "owner": "mari",
+          "path": "/opt/edge-mes-demo/config/.mapping.yaml.d2-r7b-backup.8de5edb.86af360ae3aeae603a97add4150245dcfe9b58dbcf9c44fe3a79a62ba82604c3.yaml",
+          "realpath": "/opt/edge-mes-demo/config/.mapping.yaml.d2-r7b-backup.8de5edb.86af360ae3aeae603a97add4150245dcfe9b58dbcf9c44fe3a79a62ba82604c3.yaml",
+          "sha256": "86af360ae3aeae603a97add4150245dcfe9b58dbcf9c44fe3a79a62ba82604c3",
+          "state": "PRESENT"
+        },
+        "parent": {
+          "directory": true,
+          "group": "mari",
+          "mode": "0775",
+          "owner": "mari",
+          "realpath": "/opt/edge-mes-demo/config",
+          "symlink": false
+        },
+        "rollback": {
+          "path": "/opt/edge-mes-demo/config/.mapping.yaml.d2-r7b-rollback.8de5edb.86af360ae3aeae603a97add4150245dcfe9b58dbcf9c44fe3a79a62ba82604c3.yaml",
+          "state": "ABSENT"
+        },
+        "sidecars": [
+          ".mapping.yaml.d2-r7b-backup.8de5edb.86af360ae3aeae603a97add4150245dcfe9b58dbcf9c44fe3a79a62ba82604c3.yaml"
+        ],
+        "target": {
+          "bytes": 7112,
+          "expected": true,
+          "group": "mari",
+          "identity_stable": true,
+          "inode": 550822,
+          "mode": "0644",
+          "owner": "mari",
+          "path": "/opt/edge-mes-demo/config/mapping.yaml",
+          "realpath": "/opt/edge-mes-demo/config/mapping.yaml",
+          "sha256": "d9bb5fcb017e6ab491e8643077c793bb018011d1cbe0698172e4c08823080c9d",
+          "state": "PRESENT"
+        },
+        "upload": {
+          "path": "/opt/edge-mes-demo/config/.mapping.yaml.d2-r7b-new.8de5edb",
+          "state": "ABSENT"
+        }
+      }
+    },
+    "host_snapshot_b": {
+      "compose": {
+        "bytes": 4897,
+        "realpath": "/opt/edge-mes-demo/docker-compose.yml",
+        "regular": true,
+        "sha256": "a71ab815a34f3c493f38ec572e0cf5892a9a7cdc081d8d3e2e312a380cad9ef0",
+        "symlink": false
+      },
+      "filesystem": {
+        "backup": {
+          "bytes": 5935,
+          "expected": true,
+          "group": "mari",
+          "identity_stable": true,
+          "inode": 550916,
+          "mode": "0644",
+          "owner": "mari",
+          "path": "/opt/edge-mes-demo/config/.mapping.yaml.d2-r7b-backup.8de5edb.86af360ae3aeae603a97add4150245dcfe9b58dbcf9c44fe3a79a62ba82604c3.yaml",
+          "realpath": "/opt/edge-mes-demo/config/.mapping.yaml.d2-r7b-backup.8de5edb.86af360ae3aeae603a97add4150245dcfe9b58dbcf9c44fe3a79a62ba82604c3.yaml",
+          "sha256": "86af360ae3aeae603a97add4150245dcfe9b58dbcf9c44fe3a79a62ba82604c3",
+          "state": "PRESENT"
+        },
+        "parent": {
+          "directory": true,
+          "group": "mari",
+          "mode": "0775",
+          "owner": "mari",
+          "realpath": "/opt/edge-mes-demo/config",
+          "symlink": false
+        },
+        "rollback": {
+          "path": "/opt/edge-mes-demo/config/.mapping.yaml.d2-r7b-rollback.8de5edb.86af360ae3aeae603a97add4150245dcfe9b58dbcf9c44fe3a79a62ba82604c3.yaml",
+          "state": "ABSENT"
+        },
+        "sidecars": [
+          ".mapping.yaml.d2-r7b-backup.8de5edb.86af360ae3aeae603a97add4150245dcfe9b58dbcf9c44fe3a79a62ba82604c3.yaml"
+        ],
+        "target": {
+          "bytes": 7112,
+          "expected": true,
+          "group": "mari",
+          "identity_stable": true,
+          "inode": 550822,
+          "mode": "0644",
+          "owner": "mari",
+          "path": "/opt/edge-mes-demo/config/mapping.yaml",
+          "realpath": "/opt/edge-mes-demo/config/mapping.yaml",
+          "sha256": "d9bb5fcb017e6ab491e8643077c793bb018011d1cbe0698172e4c08823080c9d",
+          "state": "PRESENT"
+        },
+        "upload": {
+          "path": "/opt/edge-mes-demo/config/.mapping.yaml.d2-r7b-new.8de5edb",
+          "state": "ABSENT"
+        }
+      }
+    },
+    "image_alias_inspect": [
+      {
+        "Architecture": "arm64",
+        "Author": "",
+        "Comment": "",
+        "Config": {
+          "AttachStderr": false,
+          "AttachStdin": false,
+          "AttachStdout": false,
+          "Cmd": [
+            "python",
+            "-m",
+            "app.main"
+          ],
+          "Domainname": "",
+          "Entrypoint": null,
+          "Env": [
+            "PATH=/usr/local/bin:/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin",
+            "LANG=C.UTF-8",
+            "GPG_KEY=7169605F62C751356D054A26A821E680E5FA6305",
+            "PYTHON_VERSION=3.12.13",
+            "PYTHON_SHA256=c08bc65a81971c1dd5783182826503369466c7e67374d1646519adf05207b684"
+          ],
+          "Hostname": "",
+          "Image": "",
+          "Labels": null,
+          "OnBuild": null,
+          "OpenStdin": false,
+          "StdinOnce": false,
+          "Tty": false,
+          "User": "",
+          "Volumes": null,
+          "WorkingDir": "/app"
+        },
+        "Created": "2026-07-29T15:43:02.675492291+08:00",
+        "DockerVersion": "",
+        "GraphDriver": {
+          "Data": {
+            "LowerDir": "/var/lib/docker/overlay2/8fc8b56b7b2d1581dc49ecd5033f1d534a926742c137d59dd2a5758fc2c2d684/diff:/var/lib/docker/overlay2/4231c54f596fa90e7afaa9f4c6a341729693b5cfd37437bbeef8fcd4fbd9e2b6/diff:/var/lib/docker/overlay2/226657d6627ead2c6aa86306909720ea3f47830a6d4e2501747c2d66c2c13aff/diff:/var/lib/docker/overlay2/b52706ba865da2d97c3886303337a18846cb6bf1faa6d739f75648643bcf350d/diff:/var/lib/docker/overlay2/0d2ace1fe4b4b1702bc039fd055f10c4fa232e7d839ad17c3c1ea121b7ff595b/diff:/var/lib/docker/overlay2/e0dcb62e63991f0e1ee73d763dbd6c2d056d7d62aa4e0fd46c788444619b3e20/diff:/var/lib/docker/overlay2/82920bd3bf97bf018021bbba953c6621968dff74ad2b20311bd32fb196e1f039/diff:/var/lib/docker/overlay2/e84cb0c5736f01069b53be8ae69680627a7597273c7f7d0304cefbe84dec77b0/diff",
+            "MergedDir": "/var/lib/docker/overlay2/74f3e2d388f8d67efba1ae57f993257292d7f81b95ef8110ffab74c7eed7a9b2/merged",
+            "UpperDir": "/var/lib/docker/overlay2/74f3e2d388f8d67efba1ae57f993257292d7f81b95ef8110ffab74c7eed7a9b2/diff",
+            "WorkDir": "/var/lib/docker/overlay2/74f3e2d388f8d67efba1ae57f993257292d7f81b95ef8110ffab74c7eed7a9b2/work"
+          },
+          "Name": "overlay2"
+        },
+        "Id": "sha256:168bd07db0a427f003d1733a62354d3356b8ef6b362a15fed88d48728392f734",
+        "Metadata": {
+          "LastTagTime": "2026-07-29T21:37:58.156435974+08:00"
+        },
+        "Os": "linux",
+        "Parent": "",
+        "RepoDigests": [],
+        "RepoTags": [
+          "edge-mes-demo-collector:latest",
+          "edge-mes-demo-collector:r32-pkg-closed-ca68dd4"
+        ],
+        "RootFS": {
+          "Layers": [
+            "sha256:4e6fee325600a0377566ca159a4da9833f6e35e04eaa4194c47dd3b2fe901717",
+            "sha256:1f6945ab3a1b6c4a2410d7a0a7384e91af9b5356cdbd63d725454651b14b2818",
+            "sha256:92e43e3934d11abe153198ffb0401027d24a6aa365d456f65b8c070caef41156",
+            "sha256:f52241bd08541c775533109caf6be52a9160f5000537b8dd0148bbce15dee151",
+            "sha256:379854df596ff562274bd82d0d2d11e90be551cffddb0a0d9b157446a2dcbda7",
+            "sha256:670be73767e6cd7502c4f716a33b1674adb8c24a7d9054a22d5ea2f6c64039f6",
+            "sha256:849842e564547162d7cd5e641bd25005d3025907b6efedc89350f08148c7ba00",
+            "sha256:f4f2a4337fdf6be5e391e35e85ea2d6d37a65efec8a2cfb8154b182bfefcb4c7",
+            "sha256:24077d2455892d3e67b12d31a673138baa19b5fa7174c3330e7a0233c8883846"
+          ],
+          "Type": "layers"
+        },
+        "Size": 174436937
+      },
+      {
+        "Architecture": "arm64",
+        "Author": "",
+        "Comment": "",
+        "Config": {
+          "AttachStderr": false,
+          "AttachStdin": false,
+          "AttachStdout": false,
+          "Cmd": [
+            "python",
+            "-m",
+            "app.main"
+          ],
+          "Domainname": "",
+          "Entrypoint": null,
+          "Env": [
+            "PATH=/usr/local/bin:/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin",
+            "LANG=C.UTF-8",
+            "GPG_KEY=7169605F62C751356D054A26A821E680E5FA6305",
+            "PYTHON_VERSION=3.12.13",
+            "PYTHON_SHA256=c08bc65a81971c1dd5783182826503369466c7e67374d1646519adf05207b684"
+          ],
+          "Hostname": "",
+          "Image": "",
+          "Labels": null,
+          "OnBuild": null,
+          "OpenStdin": false,
+          "StdinOnce": false,
+          "Tty": false,
+          "User": "",
+          "Volumes": null,
+          "WorkingDir": "/app"
+        },
+        "Created": "2026-07-29T15:43:02.675492291+08:00",
+        "DockerVersion": "",
+        "GraphDriver": {
+          "Data": {
+            "LowerDir": "/var/lib/docker/overlay2/8fc8b56b7b2d1581dc49ecd5033f1d534a926742c137d59dd2a5758fc2c2d684/diff:/var/lib/docker/overlay2/4231c54f596fa90e7afaa9f4c6a341729693b5cfd37437bbeef8fcd4fbd9e2b6/diff:/var/lib/docker/overlay2/226657d6627ead2c6aa86306909720ea3f47830a6d4e2501747c2d66c2c13aff/diff:/var/lib/docker/overlay2/b52706ba865da2d97c3886303337a18846cb6bf1faa6d739f75648643bcf350d/diff:/var/lib/docker/overlay2/0d2ace1fe4b4b1702bc039fd055f10c4fa232e7d839ad17c3c1ea121b7ff595b/diff:/var/lib/docker/overlay2/e0dcb62e63991f0e1ee73d763dbd6c2d056d7d62aa4e0fd46c788444619b3e20/diff:/var/lib/docker/overlay2/82920bd3bf97bf018021bbba953c6621968dff74ad2b20311bd32fb196e1f039/diff:/var/lib/docker/overlay2/e84cb0c5736f01069b53be8ae69680627a7597273c7f7d0304cefbe84dec77b0/diff",
+            "MergedDir": "/var/lib/docker/overlay2/74f3e2d388f8d67efba1ae57f993257292d7f81b95ef8110ffab74c7eed7a9b2/merged",
+            "UpperDir": "/var/lib/docker/overlay2/74f3e2d388f8d67efba1ae57f993257292d7f81b95ef8110ffab74c7eed7a9b2/diff",
+            "WorkDir": "/var/lib/docker/overlay2/74f3e2d388f8d67efba1ae57f993257292d7f81b95ef8110ffab74c7eed7a9b2/work"
+          },
+          "Name": "overlay2"
+        },
+        "Id": "sha256:168bd07db0a427f003d1733a62354d3356b8ef6b362a15fed88d48728392f734",
+        "Metadata": {
+          "LastTagTime": "2026-07-29T21:37:58.156435974+08:00"
+        },
+        "Os": "linux",
+        "Parent": "",
+        "RepoDigests": [],
+        "RepoTags": [
+          "edge-mes-demo-collector:latest",
+          "edge-mes-demo-collector:r32-pkg-closed-ca68dd4"
+        ],
+        "RootFS": {
+          "Layers": [
+            "sha256:4e6fee325600a0377566ca159a4da9833f6e35e04eaa4194c47dd3b2fe901717",
+            "sha256:1f6945ab3a1b6c4a2410d7a0a7384e91af9b5356cdbd63d725454651b14b2818",
+            "sha256:92e43e3934d11abe153198ffb0401027d24a6aa365d456f65b8c070caef41156",
+            "sha256:f52241bd08541c775533109caf6be52a9160f5000537b8dd0148bbce15dee151",
+            "sha256:379854df596ff562274bd82d0d2d11e90be551cffddb0a0d9b157446a2dcbda7",
+            "sha256:670be73767e6cd7502c4f716a33b1674adb8c24a7d9054a22d5ea2f6c64039f6",
+            "sha256:849842e564547162d7cd5e641bd25005d3025907b6efedc89350f08148c7ba00",
+            "sha256:f4f2a4337fdf6be5e391e35e85ea2d6d37a65efec8a2cfb8154b182bfefcb4c7",
+            "sha256:24077d2455892d3e67b12d31a673138baa19b5fa7174c3330e7a0233c8883846"
+          ],
+          "Type": "layers"
+        },
+        "Size": 174436937
+      }
+    ],
+    "interval_seconds": 5,
+    "snapshot_a_canonical": {
+      "containers": [
+        {
+          "Config.Image": "edge-mes-demo-api",
+          "Created": "2026-07-23T00:32:36.666029032Z",
+          "HostConfig.RestartPolicy": "unless-stopped",
+          "Id": "12e841b4ac33a75c835cee81f0df46e4dbcdb9382b50ca50523f5fad02c57058",
+          "Image": "sha256:9f03f370b37fd5fd2ddfd4e4e9e64d4c6b60312910e731157888544371683c11",
+          "Mounts": [
+            {
+              "Destination": "/app/config",
+              "RW": false,
+              "Source": "/opt/edge-mes-demo/config",
+              "Type": "bind"
+            }
+          ],
+          "Name": "/edge-mes-api",
+          "RestartCount": 0,
+          "State.Dead": false,
+          "State.Error": "",
+          "State.ExitCode": 0,
+          "State.OOMKilled": false,
+          "State.Restarting": false,
+          "State.Running": true,
+          "State.StartedAt": "2026-07-23T00:32:37.955732924Z",
+          "State.Status": "running",
+          "labels": {
+            "project": "edge-mes-demo",
+            "service": "api"
+          }
+        },
+        {
+          "Config.Image": "edge-mes-demo-collector",
+          "Created": "2026-07-29T13:37:58.275753165Z",
+          "HostConfig.RestartPolicy": "unless-stopped",
+          "Id": "3f0d0457a0a1a929b632a2d865016be6f4104fed001b6015eee14e502bb31ba8",
+          "Image": "sha256:168bd07db0a427f003d1733a62354d3356b8ef6b362a15fed88d48728392f734",
+          "Mounts": [
+            {
+              "Destination": "/app/config",
+              "RW": false,
+              "Source": "/opt/edge-mes-demo/config",
+              "Type": "bind"
+            }
+          ],
+          "Name": "/edge-mes-collector",
+          "RestartCount": 0,
+          "State.Dead": false,
+          "State.Error": "",
+          "State.ExitCode": 0,
+          "State.OOMKilled": false,
+          "State.Restarting": false,
+          "State.Running": true,
+          "State.StartedAt": "2026-07-29T13:38:09.122963461Z",
+          "State.Status": "running",
+          "labels": {
+            "project": "edge-mes-demo",
+            "service": "collector"
+          }
+        },
+        {
+          "Config.Image": "edge-mes-dashboard:local",
+          "Created": "2026-07-22T09:46:48.20229225Z",
+          "HostConfig.RestartPolicy": "on-failure",
+          "Id": "649c31bb508a5c94ea42bf84430eabc06af66d746b475e5ef7e308220c879ae4",
+          "Image": "sha256:adb0ae00966804473cad5a1c9a71f834bc6cacae890fa4b30e42de564a85f385",
+          "Mounts": [],
+          "Name": "/edge-mes-dashboard",
+          "RestartCount": 0,
+          "State.Dead": false,
+          "State.Error": "",
+          "State.ExitCode": 0,
+          "State.OOMKilled": false,
+          "State.Restarting": false,
+          "State.Running": true,
+          "State.StartedAt": "2026-07-22T09:46:48.770025069Z",
+          "State.Status": "running",
+          "labels": {
+            "project": "edge-mes-demo",
+            "service": "dashboard"
+          }
+        },
+        {
+          "Config.Image": "grafana/grafana:latest",
+          "Created": "2026-06-15T04:03:57.392904193Z",
+          "HostConfig.RestartPolicy": "unless-stopped",
+          "Id": "fa442407312e2cd05a2273b55f546e2e840b9f6f427ff420ffbdeba63cdb4f12",
+          "Image": "sha256:0d1b6e9173e6144d970bead78e7f1914a387dbabee073a617af1e076bfd59e15",
+          "Mounts": [
+            {
+              "Destination": "/etc/grafana/provisioning",
+              "RW": false,
+              "Source": "/opt/edge-mes-demo/config/grafana",
+              "Type": "bind"
+            },
+            {
+              "Destination": "/usr/share/grafana/public/custom",
+              "RW": false,
+              "Source": "/opt/edge-mes-demo/config/grafana/custom",
+              "Type": "bind"
+            },
+            {
+              "Destination": "/var/lib/grafana",
+              "RW": true,
+              "Source": "/opt/edge-mes-demo/data/grafana",
+              "Type": "bind"
+            }
+          ],
+          "Name": "/edge-mes-grafana",
+          "RestartCount": 0,
+          "State.Dead": false,
+          "State.Error": "",
+          "State.ExitCode": 0,
+          "State.OOMKilled": false,
+          "State.Restarting": false,
+          "State.Running": true,
+          "State.StartedAt": "2026-06-19T13:47:25.117873705Z",
+          "State.Status": "running",
+          "labels": {
+            "project": "edge-mes-demo",
+            "service": "grafana"
+          }
+        },
+        {
+          "Config.Image": "prom/node-exporter:latest",
+          "Created": "2026-06-14T07:19:55.078178983Z",
+          "HostConfig.RestartPolicy": "unless-stopped",
+          "Id": "943933f4c48042e6f0294ea68e0f39884f37ceedbf4c3cfd35c5443062e4fddb",
+          "Image": "sha256:5635e459687a21bee059ade06ae4170ebfae5330e2a224947254ab1a2860c22c",
+          "Mounts": [
+            {
+              "Destination": "/rootfs",
+              "RW": false,
+              "Source": "/",
+              "Type": "bind"
+            },
+            {
+              "Destination": "/host/proc",
+              "RW": false,
+              "Source": "/proc",
+              "Type": "bind"
+            },
+            {
+              "Destination": "/host/sys",
+              "RW": false,
+              "Source": "/sys",
+              "Type": "bind"
+            }
+          ],
+          "Name": "/edge-mes-node-exporter",
+          "RestartCount": 0,
+          "State.Dead": false,
+          "State.Error": "",
+          "State.ExitCode": 0,
+          "State.OOMKilled": false,
+          "State.Restarting": false,
+          "State.Running": true,
+          "State.StartedAt": "2026-06-14T07:19:57.00079108Z",
+          "State.Status": "running",
+          "labels": {
+            "project": "edge-mes-demo",
+            "service": "node-exporter"
+          }
+        },
+        {
+          "Config.Image": "postgres:16",
+          "Created": "2026-06-14T05:57:13.239812435Z",
+          "HostConfig.RestartPolicy": "unless-stopped",
+          "Id": "bb3ba0738e692c68b14a62ca64296e484990d3b86b1f6d395c27b200af5cb890",
+          "Image": "sha256:f961d097a9cedd37779baef1aab3fe87ef1c63b3b34d361f90a98ea5c9b77e56",
+          "Mounts": [
+            {
+              "Destination": "/var/lib/postgresql/data",
+              "RW": true,
+              "Source": "/opt/edge-mes-demo/data/postgres",
+              "Type": "bind"
+            },
+            {
+              "Destination": "/docker-entrypoint-initdb.d",
+              "RW": false,
+              "Source": "/opt/edge-mes-demo/db/init",
+              "Type": "bind"
+            }
+          ],
+          "Name": "/edge-mes-postgres",
+          "RestartCount": 0,
+          "State.Dead": false,
+          "State.Error": "",
+          "State.ExitCode": 0,
+          "State.OOMKilled": false,
+          "State.Restarting": false,
+          "State.Running": true,
+          "State.StartedAt": "2026-06-14T05:57:14.263634444Z",
+          "State.Status": "running",
+          "labels": {
+            "project": "edge-mes-demo",
+            "service": "postgres"
+          }
+        },
+        {
+          "Config.Image": "prom/prometheus:latest",
+          "Created": "2026-06-14T07:19:55.078265353Z",
+          "HostConfig.RestartPolicy": "unless-stopped",
+          "Id": "03d48e04a511f991418b1370f3ce02e0d1e770d279ffe4fa54d3bb7a6df286af",
+          "Image": "sha256:ce22ec1ea0f867f3a4e96d8df33cb671f7e8d5978fb17f0c6b7cbdefcc21037e",
+          "Mounts": [
+            {
+              "Destination": "/etc/prometheus",
+              "RW": false,
+              "Source": "/opt/edge-mes-demo/config/prometheus",
+              "Type": "bind"
+            },
+            {
+              "Destination": "/prometheus",
+              "RW": true,
+              "Source": "/opt/edge-mes-demo/data/prometheus",
+              "Type": "bind"
+            }
+          ],
+          "Name": "/edge-mes-prometheus",
+          "RestartCount": 0,
+          "State.Dead": false,
+          "State.Error": "",
+          "State.ExitCode": 0,
+          "State.OOMKilled": false,
+          "State.Restarting": false,
+          "State.Running": true,
+          "State.StartedAt": "2026-06-14T07:19:56.985010048Z",
+          "State.Status": "running",
+          "labels": {
+            "project": "edge-mes-demo",
+            "service": "prometheus"
+          }
+        },
+        {
+          "Config.Image": "edge-mes-demo-s7-plc-sim",
+          "Created": "2026-06-19T02:05:15.82128338Z",
+          "HostConfig.RestartPolicy": "unless-stopped",
+          "Id": "d21e950b98ae87bbd3ee321074100d0b54b174235ce46df34c5100e1130b785f",
+          "Image": "sha256:3a28ae38c623d8cb80f775f954315e633b1108112082c37ece698c7562522238",
+          "Mounts": [
+            {
+              "Destination": "/app/config",
+              "RW": false,
+              "Source": "/opt/edge-mes-demo/config",
+              "Type": "bind"
+            },
+            {
+              "Destination": "/app/data",
+              "RW": true,
+              "Source": "/opt/edge-mes-demo/data/vplc",
+              "Type": "bind"
+            }
+          ],
+          "Name": "/edge-mes-s7-plc-sim",
+          "RestartCount": 0,
+          "State.Dead": false,
+          "State.Error": "",
+          "State.ExitCode": 0,
+          "State.OOMKilled": false,
+          "State.Restarting": false,
+          "State.Running": true,
+          "State.StartedAt": "2026-06-19T02:05:27.378341652Z",
+          "State.Status": "running",
+          "labels": {
+            "project": "edge-mes-demo",
+            "service": "s7-plc-sim"
+          }
+        },
+        {
+          "Config.Image": "edge-mes-demo-simulator",
+          "Created": "2026-06-14T12:13:00.476282483Z",
+          "HostConfig.RestartPolicy": "unless-stopped",
+          "Id": "3ebe1e4725af577ac477594afe3046f7e5a197b8162f503ebac036d09b4fcfd5",
+          "Image": "sha256:08448d2876c30e9cbbecda4f0ca9a27a5e085a33f14dab2a6d2be3dd06430430",
+          "Mounts": [
+            {
+              "Destination": "/app/config",
+              "RW": false,
+              "Source": "/opt/edge-mes-demo/config",
+              "Type": "bind"
+            }
+          ],
+          "Name": "/edge-mes-simulator",
+          "RestartCount": 0,
+          "State.Dead": false,
+          "State.Error": "",
+          "State.ExitCode": 0,
+          "State.OOMKilled": false,
+          "State.Restarting": false,
+          "State.Running": true,
+          "State.StartedAt": "2026-06-14T12:13:23.098546695Z",
+          "State.Status": "running",
+          "labels": {
+            "project": "edge-mes-demo",
+            "service": "simulator"
+          }
+        },
+        {
+          "Config.Image": "edge-mes-demo-sync-worker",
+          "Created": "2026-06-14T05:57:13.45515899Z",
+          "HostConfig.RestartPolicy": "unless-stopped",
+          "Id": "651c0226e4b1949267065a88a7a20fc2e0df4bbab6a4f7ee3f0fbe2c029e8d23",
+          "Image": "sha256:a6c2edcfccb2945ea87ec71c96f4ff3066dd66a6c7c0945d8d20f2a6a55e2188",
+          "Mounts": [
+            {
+              "Destination": "/app/config",
+              "RW": false,
+              "Source": "/opt/edge-mes-demo/config",
+              "Type": "bind"
+            }
+          ],
+          "Name": "/edge-mes-sync-worker",
+          "RestartCount": 0,
+          "State.Dead": false,
+          "State.Error": "",
+          "State.ExitCode": 0,
+          "State.OOMKilled": false,
+          "State.Restarting": false,
+          "State.Running": true,
+          "State.StartedAt": "2026-06-14T05:57:25.700976852Z",
+          "State.Status": "running",
+          "labels": {
+            "project": "edge-mes-demo",
+            "service": "sync-worker"
+          }
+        }
+      ],
+      "ids": [
+        "03d48e04a511",
+        "12e841b4ac33",
+        "3ebe1e4725af",
+        "3f0d0457a0a1",
+        "649c31bb508a",
+        "651c0226e4b1",
+        "943933f4c480",
+        "bb3ba0738e69",
+        "d21e950b98ae",
+        "fa442407312e"
+      ],
+      "inspect_ok": true
+    },
+    "snapshot_a_raw": {
+      "containers": [
+        {
+          "Config.Image": "edge-mes-demo-collector",
+          "Created": "2026-07-29T13:37:58.275753165Z",
+          "HostConfig.RestartPolicy": "unless-stopped",
+          "Id": "3f0d0457a0a1a929b632a2d865016be6f4104fed001b6015eee14e502bb31ba8",
+          "Image": "sha256:168bd07db0a427f003d1733a62354d3356b8ef6b362a15fed88d48728392f734",
+          "Mounts": [
+            {
+              "Destination": "/app/config",
+              "RW": false,
+              "Source": "/opt/edge-mes-demo/config",
+              "Type": "bind"
+            }
+          ],
+          "Name": "/edge-mes-collector",
+          "RestartCount": 0,
+          "State.Dead": false,
+          "State.Error": "",
+          "State.ExitCode": 0,
+          "State.OOMKilled": false,
+          "State.Restarting": false,
+          "State.Running": true,
+          "State.StartedAt": "2026-07-29T13:38:09.122963461Z",
+          "State.Status": "running",
+          "labels": {
+            "project": "edge-mes-demo",
+            "service": "collector"
+          }
+        },
+        {
+          "Config.Image": "edge-mes-demo-api",
+          "Created": "2026-07-23T00:32:36.666029032Z",
+          "HostConfig.RestartPolicy": "unless-stopped",
+          "Id": "12e841b4ac33a75c835cee81f0df46e4dbcdb9382b50ca50523f5fad02c57058",
+          "Image": "sha256:9f03f370b37fd5fd2ddfd4e4e9e64d4c6b60312910e731157888544371683c11",
+          "Mounts": [
+            {
+              "Destination": "/app/config",
+              "RW": false,
+              "Source": "/opt/edge-mes-demo/config",
+              "Type": "bind"
+            }
+          ],
+          "Name": "/edge-mes-api",
+          "RestartCount": 0,
+          "State.Dead": false,
+          "State.Error": "",
+          "State.ExitCode": 0,
+          "State.OOMKilled": false,
+          "State.Restarting": false,
+          "State.Running": true,
+          "State.StartedAt": "2026-07-23T00:32:37.955732924Z",
+          "State.Status": "running",
+          "labels": {
+            "project": "edge-mes-demo",
+            "service": "api"
+          }
+        },
+        {
+          "Config.Image": "edge-mes-dashboard:local",
+          "Created": "2026-07-22T09:46:48.20229225Z",
+          "HostConfig.RestartPolicy": "on-failure",
+          "Id": "649c31bb508a5c94ea42bf84430eabc06af66d746b475e5ef7e308220c879ae4",
+          "Image": "sha256:adb0ae00966804473cad5a1c9a71f834bc6cacae890fa4b30e42de564a85f385",
+          "Mounts": [],
+          "Name": "/edge-mes-dashboard",
+          "RestartCount": 0,
+          "State.Dead": false,
+          "State.Error": "",
+          "State.ExitCode": 0,
+          "State.OOMKilled": false,
+          "State.Restarting": false,
+          "State.Running": true,
+          "State.StartedAt": "2026-07-22T09:46:48.770025069Z",
+          "State.Status": "running",
+          "labels": {
+            "project": "edge-mes-demo",
+            "service": "dashboard"
+          }
+        },
+        {
+          "Config.Image": "edge-mes-demo-s7-plc-sim",
+          "Created": "2026-06-19T02:05:15.82128338Z",
+          "HostConfig.RestartPolicy": "unless-stopped",
+          "Id": "d21e950b98ae87bbd3ee321074100d0b54b174235ce46df34c5100e1130b785f",
+          "Image": "sha256:3a28ae38c623d8cb80f775f954315e633b1108112082c37ece698c7562522238",
+          "Mounts": [
+            {
+              "Destination": "/app/config",
+              "RW": false,
+              "Source": "/opt/edge-mes-demo/config",
+              "Type": "bind"
+            },
+            {
+              "Destination": "/app/data",
+              "RW": true,
+              "Source": "/opt/edge-mes-demo/data/vplc",
+              "Type": "bind"
+            }
+          ],
+          "Name": "/edge-mes-s7-plc-sim",
+          "RestartCount": 0,
+          "State.Dead": false,
+          "State.Error": "",
+          "State.ExitCode": 0,
+          "State.OOMKilled": false,
+          "State.Restarting": false,
+          "State.Running": true,
+          "State.StartedAt": "2026-06-19T02:05:27.378341652Z",
+          "State.Status": "running",
+          "labels": {
+            "project": "edge-mes-demo",
+            "service": "s7-plc-sim"
+          }
+        },
+        {
+          "Config.Image": "grafana/grafana:latest",
+          "Created": "2026-06-15T04:03:57.392904193Z",
+          "HostConfig.RestartPolicy": "unless-stopped",
+          "Id": "fa442407312e2cd05a2273b55f546e2e840b9f6f427ff420ffbdeba63cdb4f12",
+          "Image": "sha256:0d1b6e9173e6144d970bead78e7f1914a387dbabee073a617af1e076bfd59e15",
+          "Mounts": [
+            {
+              "Destination": "/etc/grafana/provisioning",
+              "RW": false,
+              "Source": "/opt/edge-mes-demo/config/grafana",
+              "Type": "bind"
+            },
+            {
+              "Destination": "/usr/share/grafana/public/custom",
+              "RW": false,
+              "Source": "/opt/edge-mes-demo/config/grafana/custom",
+              "Type": "bind"
+            },
+            {
+              "Destination": "/var/lib/grafana",
+              "RW": true,
+              "Source": "/opt/edge-mes-demo/data/grafana",
+              "Type": "bind"
+            }
+          ],
+          "Name": "/edge-mes-grafana",
+          "RestartCount": 0,
+          "State.Dead": false,
+          "State.Error": "",
+          "State.ExitCode": 0,
+          "State.OOMKilled": false,
+          "State.Restarting": false,
+          "State.Running": true,
+          "State.StartedAt": "2026-06-19T13:47:25.117873705Z",
+          "State.Status": "running",
+          "labels": {
+            "project": "edge-mes-demo",
+            "service": "grafana"
+          }
+        },
+        {
+          "Config.Image": "edge-mes-demo-simulator",
+          "Created": "2026-06-14T12:13:00.476282483Z",
+          "HostConfig.RestartPolicy": "unless-stopped",
+          "Id": "3ebe1e4725af577ac477594afe3046f7e5a197b8162f503ebac036d09b4fcfd5",
+          "Image": "sha256:08448d2876c30e9cbbecda4f0ca9a27a5e085a33f14dab2a6d2be3dd06430430",
+          "Mounts": [
+            {
+              "Destination": "/app/config",
+              "RW": false,
+              "Source": "/opt/edge-mes-demo/config",
+              "Type": "bind"
+            }
+          ],
+          "Name": "/edge-mes-simulator",
+          "RestartCount": 0,
+          "State.Dead": false,
+          "State.Error": "",
+          "State.ExitCode": 0,
+          "State.OOMKilled": false,
+          "State.Restarting": false,
+          "State.Running": true,
+          "State.StartedAt": "2026-06-14T12:13:23.098546695Z",
+          "State.Status": "running",
+          "labels": {
+            "project": "edge-mes-demo",
+            "service": "simulator"
+          }
+        },
+        {
+          "Config.Image": "prom/prometheus:latest",
+          "Created": "2026-06-14T07:19:55.078265353Z",
+          "HostConfig.RestartPolicy": "unless-stopped",
+          "Id": "03d48e04a511f991418b1370f3ce02e0d1e770d279ffe4fa54d3bb7a6df286af",
+          "Image": "sha256:ce22ec1ea0f867f3a4e96d8df33cb671f7e8d5978fb17f0c6b7cbdefcc21037e",
+          "Mounts": [
+            {
+              "Destination": "/etc/prometheus",
+              "RW": false,
+              "Source": "/opt/edge-mes-demo/config/prometheus",
+              "Type": "bind"
+            },
+            {
+              "Destination": "/prometheus",
+              "RW": true,
+              "Source": "/opt/edge-mes-demo/data/prometheus",
+              "Type": "bind"
+            }
+          ],
+          "Name": "/edge-mes-prometheus",
+          "RestartCount": 0,
+          "State.Dead": false,
+          "State.Error": "",
+          "State.ExitCode": 0,
+          "State.OOMKilled": false,
+          "State.Restarting": false,
+          "State.Running": true,
+          "State.StartedAt": "2026-06-14T07:19:56.985010048Z",
+          "State.Status": "running",
+          "labels": {
+            "project": "edge-mes-demo",
+            "service": "prometheus"
+          }
+        },
+        {
+          "Config.Image": "prom/node-exporter:latest",
+          "Created": "2026-06-14T07:19:55.078178983Z",
+          "HostConfig.RestartPolicy": "unless-stopped",
+          "Id": "943933f4c48042e6f0294ea68e0f39884f37ceedbf4c3cfd35c5443062e4fddb",
+          "Image": "sha256:5635e459687a21bee059ade06ae4170ebfae5330e2a224947254ab1a2860c22c",
+          "Mounts": [
+            {
+              "Destination": "/rootfs",
+              "RW": false,
+              "Source": "/",
+              "Type": "bind"
+            },
+            {
+              "Destination": "/host/proc",
+              "RW": false,
+              "Source": "/proc",
+              "Type": "bind"
+            },
+            {
+              "Destination": "/host/sys",
+              "RW": false,
+              "Source": "/sys",
+              "Type": "bind"
+            }
+          ],
+          "Name": "/edge-mes-node-exporter",
+          "RestartCount": 0,
+          "State.Dead": false,
+          "State.Error": "",
+          "State.ExitCode": 0,
+          "State.OOMKilled": false,
+          "State.Restarting": false,
+          "State.Running": true,
+          "State.StartedAt": "2026-06-14T07:19:57.00079108Z",
+          "State.Status": "running",
+          "labels": {
+            "project": "edge-mes-demo",
+            "service": "node-exporter"
+          }
+        },
+        {
+          "Config.Image": "edge-mes-demo-sync-worker",
+          "Created": "2026-06-14T05:57:13.45515899Z",
+          "HostConfig.RestartPolicy": "unless-stopped",
+          "Id": "651c0226e4b1949267065a88a7a20fc2e0df4bbab6a4f7ee3f0fbe2c029e8d23",
+          "Image": "sha256:a6c2edcfccb2945ea87ec71c96f4ff3066dd66a6c7c0945d8d20f2a6a55e2188",
+          "Mounts": [
+            {
+              "Destination": "/app/config",
+              "RW": false,
+              "Source": "/opt/edge-mes-demo/config",
+              "Type": "bind"
+            }
+          ],
+          "Name": "/edge-mes-sync-worker",
+          "RestartCount": 0,
+          "State.Dead": false,
+          "State.Error": "",
+          "State.ExitCode": 0,
+          "State.OOMKilled": false,
+          "State.Restarting": false,
+          "State.Running": true,
+          "State.StartedAt": "2026-06-14T05:57:25.700976852Z",
+          "State.Status": "running",
+          "labels": {
+            "project": "edge-mes-demo",
+            "service": "sync-worker"
+          }
+        },
+        {
+          "Config.Image": "postgres:16",
+          "Created": "2026-06-14T05:57:13.239812435Z",
+          "HostConfig.RestartPolicy": "unless-stopped",
+          "Id": "bb3ba0738e692c68b14a62ca64296e484990d3b86b1f6d395c27b200af5cb890",
+          "Image": "sha256:f961d097a9cedd37779baef1aab3fe87ef1c63b3b34d361f90a98ea5c9b77e56",
+          "Mounts": [
+            {
+              "Destination": "/var/lib/postgresql/data",
+              "RW": true,
+              "Source": "/opt/edge-mes-demo/data/postgres",
+              "Type": "bind"
+            },
+            {
+              "Destination": "/docker-entrypoint-initdb.d",
+              "RW": false,
+              "Source": "/opt/edge-mes-demo/db/init",
+              "Type": "bind"
+            }
+          ],
+          "Name": "/edge-mes-postgres",
+          "RestartCount": 0,
+          "State.Dead": false,
+          "State.Error": "",
+          "State.ExitCode": 0,
+          "State.OOMKilled": false,
+          "State.Restarting": false,
+          "State.Running": true,
+          "State.StartedAt": "2026-06-14T05:57:14.263634444Z",
+          "State.Status": "running",
+          "labels": {
+            "project": "edge-mes-demo",
+            "service": "postgres"
+          }
+        }
+      ],
+      "ids": [
+        "3f0d0457a0a1",
+        "12e841b4ac33",
+        "649c31bb508a",
+        "d21e950b98ae",
+        "fa442407312e",
+        "3ebe1e4725af",
+        "03d48e04a511",
+        "943933f4c480",
+        "651c0226e4b1",
+        "bb3ba0738e69"
+      ],
+      "inspect_ok": true
+    },
+    "snapshot_b_canonical": {
+      "containers": [
+        {
+          "Config.Image": "edge-mes-demo-api",
+          "Created": "2026-07-23T00:32:36.666029032Z",
+          "HostConfig.RestartPolicy": "unless-stopped",
+          "Id": "12e841b4ac33a75c835cee81f0df46e4dbcdb9382b50ca50523f5fad02c57058",
+          "Image": "sha256:9f03f370b37fd5fd2ddfd4e4e9e64d4c6b60312910e731157888544371683c11",
+          "Mounts": [
+            {
+              "Destination": "/app/config",
+              "RW": false,
+              "Source": "/opt/edge-mes-demo/config",
+              "Type": "bind"
+            }
+          ],
+          "Name": "/edge-mes-api",
+          "RestartCount": 0,
+          "State.Dead": false,
+          "State.Error": "",
+          "State.ExitCode": 0,
+          "State.OOMKilled": false,
+          "State.Restarting": false,
+          "State.Running": true,
+          "State.StartedAt": "2026-07-23T00:32:37.955732924Z",
+          "State.Status": "running",
+          "labels": {
+            "project": "edge-mes-demo",
+            "service": "api"
+          }
+        },
+        {
+          "Config.Image": "edge-mes-demo-collector",
+          "Created": "2026-07-29T13:37:58.275753165Z",
+          "HostConfig.RestartPolicy": "unless-stopped",
+          "Id": "3f0d0457a0a1a929b632a2d865016be6f4104fed001b6015eee14e502bb31ba8",
+          "Image": "sha256:168bd07db0a427f003d1733a62354d3356b8ef6b362a15fed88d48728392f734",
+          "Mounts": [
+            {
+              "Destination": "/app/config",
+              "RW": false,
+              "Source": "/opt/edge-mes-demo/config",
+              "Type": "bind"
+            }
+          ],
+          "Name": "/edge-mes-collector",
+          "RestartCount": 0,
+          "State.Dead": false,
+          "State.Error": "",
+          "State.ExitCode": 0,
+          "State.OOMKilled": false,
+          "State.Restarting": false,
+          "State.Running": true,
+          "State.StartedAt": "2026-07-29T13:38:09.122963461Z",
+          "State.Status": "running",
+          "labels": {
+            "project": "edge-mes-demo",
+            "service": "collector"
+          }
+        },
+        {
+          "Config.Image": "edge-mes-dashboard:local",
+          "Created": "2026-07-22T09:46:48.20229225Z",
+          "HostConfig.RestartPolicy": "on-failure",
+          "Id": "649c31bb508a5c94ea42bf84430eabc06af66d746b475e5ef7e308220c879ae4",
+          "Image": "sha256:adb0ae00966804473cad5a1c9a71f834bc6cacae890fa4b30e42de564a85f385",
+          "Mounts": [],
+          "Name": "/edge-mes-dashboard",
+          "RestartCount": 0,
+          "State.Dead": false,
+          "State.Error": "",
+          "State.ExitCode": 0,
+          "State.OOMKilled": false,
+          "State.Restarting": false,
+          "State.Running": true,
+          "State.StartedAt": "2026-07-22T09:46:48.770025069Z",
+          "State.Status": "running",
+          "labels": {
+            "project": "edge-mes-demo",
+            "service": "dashboard"
+          }
+        },
+        {
+          "Config.Image": "grafana/grafana:latest",
+          "Created": "2026-06-15T04:03:57.392904193Z",
+          "HostConfig.RestartPolicy": "unless-stopped",
+          "Id": "fa442407312e2cd05a2273b55f546e2e840b9f6f427ff420ffbdeba63cdb4f12",
+          "Image": "sha256:0d1b6e9173e6144d970bead78e7f1914a387dbabee073a617af1e076bfd59e15",
+          "Mounts": [
+            {
+              "Destination": "/etc/grafana/provisioning",
+              "RW": false,
+              "Source": "/opt/edge-mes-demo/config/grafana",
+              "Type": "bind"
+            },
+            {
+              "Destination": "/usr/share/grafana/public/custom",
+              "RW": false,
+              "Source": "/opt/edge-mes-demo/config/grafana/custom",
+              "Type": "bind"
+            },
+            {
+              "Destination": "/var/lib/grafana",
+              "RW": true,
+              "Source": "/opt/edge-mes-demo/data/grafana",
+              "Type": "bind"
+            }
+          ],
+          "Name": "/edge-mes-grafana",
+          "RestartCount": 0,
+          "State.Dead": false,
+          "State.Error": "",
+          "State.ExitCode": 0,
+          "State.OOMKilled": false,
+          "State.Restarting": false,
+          "State.Running": true,
+          "State.StartedAt": "2026-06-19T13:47:25.117873705Z",
+          "State.Status": "running",
+          "labels": {
+            "project": "edge-mes-demo",
+            "service": "grafana"
+          }
+        },
+        {
+          "Config.Image": "prom/node-exporter:latest",
+          "Created": "2026-06-14T07:19:55.078178983Z",
+          "HostConfig.RestartPolicy": "unless-stopped",
+          "Id": "943933f4c48042e6f0294ea68e0f39884f37ceedbf4c3cfd35c5443062e4fddb",
+          "Image": "sha256:5635e459687a21bee059ade06ae4170ebfae5330e2a224947254ab1a2860c22c",
+          "Mounts": [
+            {
+              "Destination": "/rootfs",
+              "RW": false,
+              "Source": "/",
+              "Type": "bind"
+            },
+            {
+              "Destination": "/host/proc",
+              "RW": false,
+              "Source": "/proc",
+              "Type": "bind"
+            },
+            {
+              "Destination": "/host/sys",
+              "RW": false,
+              "Source": "/sys",
+              "Type": "bind"
+            }
+          ],
+          "Name": "/edge-mes-node-exporter",
+          "RestartCount": 0,
+          "State.Dead": false,
+          "State.Error": "",
+          "State.ExitCode": 0,
+          "State.OOMKilled": false,
+          "State.Restarting": false,
+          "State.Running": true,
+          "State.StartedAt": "2026-06-14T07:19:57.00079108Z",
+          "State.Status": "running",
+          "labels": {
+            "project": "edge-mes-demo",
+            "service": "node-exporter"
+          }
+        },
+        {
+          "Config.Image": "postgres:16",
+          "Created": "2026-06-14T05:57:13.239812435Z",
+          "HostConfig.RestartPolicy": "unless-stopped",
+          "Id": "bb3ba0738e692c68b14a62ca64296e484990d3b86b1f6d395c27b200af5cb890",
+          "Image": "sha256:f961d097a9cedd37779baef1aab3fe87ef1c63b3b34d361f90a98ea5c9b77e56",
+          "Mounts": [
+            {
+              "Destination": "/var/lib/postgresql/data",
+              "RW": true,
+              "Source": "/opt/edge-mes-demo/data/postgres",
+              "Type": "bind"
+            },
+            {
+              "Destination": "/docker-entrypoint-initdb.d",
+              "RW": false,
+              "Source": "/opt/edge-mes-demo/db/init",
+              "Type": "bind"
+            }
+          ],
+          "Name": "/edge-mes-postgres",
+          "RestartCount": 0,
+          "State.Dead": false,
+          "State.Error": "",
+          "State.ExitCode": 0,
+          "State.OOMKilled": false,
+          "State.Restarting": false,
+          "State.Running": true,
+          "State.StartedAt": "2026-06-14T05:57:14.263634444Z",
+          "State.Status": "running",
+          "labels": {
+            "project": "edge-mes-demo",
+            "service": "postgres"
+          }
+        },
+        {
+          "Config.Image": "prom/prometheus:latest",
+          "Created": "2026-06-14T07:19:55.078265353Z",
+          "HostConfig.RestartPolicy": "unless-stopped",
+          "Id": "03d48e04a511f991418b1370f3ce02e0d1e770d279ffe4fa54d3bb7a6df286af",
+          "Image": "sha256:ce22ec1ea0f867f3a4e96d8df33cb671f7e8d5978fb17f0c6b7cbdefcc21037e",
+          "Mounts": [
+            {
+              "Destination": "/etc/prometheus",
+              "RW": false,
+              "Source": "/opt/edge-mes-demo/config/prometheus",
+              "Type": "bind"
+            },
+            {
+              "Destination": "/prometheus",
+              "RW": true,
+              "Source": "/opt/edge-mes-demo/data/prometheus",
+              "Type": "bind"
+            }
+          ],
+          "Name": "/edge-mes-prometheus",
+          "RestartCount": 0,
+          "State.Dead": false,
+          "State.Error": "",
+          "State.ExitCode": 0,
+          "State.OOMKilled": false,
+          "State.Restarting": false,
+          "State.Running": true,
+          "State.StartedAt": "2026-06-14T07:19:56.985010048Z",
+          "State.Status": "running",
+          "labels": {
+            "project": "edge-mes-demo",
+            "service": "prometheus"
+          }
+        },
+        {
+          "Config.Image": "edge-mes-demo-s7-plc-sim",
+          "Created": "2026-06-19T02:05:15.82128338Z",
+          "HostConfig.RestartPolicy": "unless-stopped",
+          "Id": "d21e950b98ae87bbd3ee321074100d0b54b174235ce46df34c5100e1130b785f",
+          "Image": "sha256:3a28ae38c623d8cb80f775f954315e633b1108112082c37ece698c7562522238",
+          "Mounts": [
+            {
+              "Destination": "/app/config",
+              "RW": false,
+              "Source": "/opt/edge-mes-demo/config",
+              "Type": "bind"
+            },
+            {
+              "Destination": "/app/data",
+              "RW": true,
+              "Source": "/opt/edge-mes-demo/data/vplc",
+              "Type": "bind"
+            }
+          ],
+          "Name": "/edge-mes-s7-plc-sim",
+          "RestartCount": 0,
+          "State.Dead": false,
+          "State.Error": "",
+          "State.ExitCode": 0,
+          "State.OOMKilled": false,
+          "State.Restarting": false,
+          "State.Running": true,
+          "State.StartedAt": "2026-06-19T02:05:27.378341652Z",
+          "State.Status": "running",
+          "labels": {
+            "project": "edge-mes-demo",
+            "service": "s7-plc-sim"
+          }
+        },
+        {
+          "Config.Image": "edge-mes-demo-simulator",
+          "Created": "2026-06-14T12:13:00.476282483Z",
+          "HostConfig.RestartPolicy": "unless-stopped",
+          "Id": "3ebe1e4725af577ac477594afe3046f7e5a197b8162f503ebac036d09b4fcfd5",
+          "Image": "sha256:08448d2876c30e9cbbecda4f0ca9a27a5e085a33f14dab2a6d2be3dd06430430",
+          "Mounts": [
+            {
+              "Destination": "/app/config",
+              "RW": false,
+              "Source": "/opt/edge-mes-demo/config",
+              "Type": "bind"
+            }
+          ],
+          "Name": "/edge-mes-simulator",
+          "RestartCount": 0,
+          "State.Dead": false,
+          "State.Error": "",
+          "State.ExitCode": 0,
+          "State.OOMKilled": false,
+          "State.Restarting": false,
+          "State.Running": true,
+          "State.StartedAt": "2026-06-14T12:13:23.098546695Z",
+          "State.Status": "running",
+          "labels": {
+            "project": "edge-mes-demo",
+            "service": "simulator"
+          }
+        },
+        {
+          "Config.Image": "edge-mes-demo-sync-worker",
+          "Created": "2026-06-14T05:57:13.45515899Z",
+          "HostConfig.RestartPolicy": "unless-stopped",
+          "Id": "651c0226e4b1949267065a88a7a20fc2e0df4bbab6a4f7ee3f0fbe2c029e8d23",
+          "Image": "sha256:a6c2edcfccb2945ea87ec71c96f4ff3066dd66a6c7c0945d8d20f2a6a55e2188",
+          "Mounts": [
+            {
+              "Destination": "/app/config",
+              "RW": false,
+              "Source": "/opt/edge-mes-demo/config",
+              "Type": "bind"
+            }
+          ],
+          "Name": "/edge-mes-sync-worker",
+          "RestartCount": 0,
+          "State.Dead": false,
+          "State.Error": "",
+          "State.ExitCode": 0,
+          "State.OOMKilled": false,
+          "State.Restarting": false,
+          "State.Running": true,
+          "State.StartedAt": "2026-06-14T05:57:25.700976852Z",
+          "State.Status": "running",
+          "labels": {
+            "project": "edge-mes-demo",
+            "service": "sync-worker"
+          }
+        }
+      ],
+      "ids": [
+        "03d48e04a511",
+        "12e841b4ac33",
+        "3ebe1e4725af",
+        "3f0d0457a0a1",
+        "649c31bb508a",
+        "651c0226e4b1",
+        "943933f4c480",
+        "bb3ba0738e69",
+        "d21e950b98ae",
+        "fa442407312e"
+      ],
+      "inspect_ok": true
+    },
+    "snapshot_b_raw": {
+      "containers": [
+        {
+          "Config.Image": "edge-mes-demo-collector",
+          "Created": "2026-07-29T13:37:58.275753165Z",
+          "HostConfig.RestartPolicy": "unless-stopped",
+          "Id": "3f0d0457a0a1a929b632a2d865016be6f4104fed001b6015eee14e502bb31ba8",
+          "Image": "sha256:168bd07db0a427f003d1733a62354d3356b8ef6b362a15fed88d48728392f734",
+          "Mounts": [
+            {
+              "Destination": "/app/config",
+              "RW": false,
+              "Source": "/opt/edge-mes-demo/config",
+              "Type": "bind"
+            }
+          ],
+          "Name": "/edge-mes-collector",
+          "RestartCount": 0,
+          "State.Dead": false,
+          "State.Error": "",
+          "State.ExitCode": 0,
+          "State.OOMKilled": false,
+          "State.Restarting": false,
+          "State.Running": true,
+          "State.StartedAt": "2026-07-29T13:38:09.122963461Z",
+          "State.Status": "running",
+          "labels": {
+            "project": "edge-mes-demo",
+            "service": "collector"
+          }
+        },
+        {
+          "Config.Image": "edge-mes-demo-api",
+          "Created": "2026-07-23T00:32:36.666029032Z",
+          "HostConfig.RestartPolicy": "unless-stopped",
+          "Id": "12e841b4ac33a75c835cee81f0df46e4dbcdb9382b50ca50523f5fad02c57058",
+          "Image": "sha256:9f03f370b37fd5fd2ddfd4e4e9e64d4c6b60312910e731157888544371683c11",
+          "Mounts": [
+            {
+              "Destination": "/app/config",
+              "RW": false,
+              "Source": "/opt/edge-mes-demo/config",
+              "Type": "bind"
+            }
+          ],
+          "Name": "/edge-mes-api",
+          "RestartCount": 0,
+          "State.Dead": false,
+          "State.Error": "",
+          "State.ExitCode": 0,
+          "State.OOMKilled": false,
+          "State.Restarting": false,
+          "State.Running": true,
+          "State.StartedAt": "2026-07-23T00:32:37.955732924Z",
+          "State.Status": "running",
+          "labels": {
+            "project": "edge-mes-demo",
+            "service": "api"
+          }
+        },
+        {
+          "Config.Image": "edge-mes-dashboard:local",
+          "Created": "2026-07-22T09:46:48.20229225Z",
+          "HostConfig.RestartPolicy": "on-failure",
+          "Id": "649c31bb508a5c94ea42bf84430eabc06af66d746b475e5ef7e308220c879ae4",
+          "Image": "sha256:adb0ae00966804473cad5a1c9a71f834bc6cacae890fa4b30e42de564a85f385",
+          "Mounts": [],
+          "Name": "/edge-mes-dashboard",
+          "RestartCount": 0,
+          "State.Dead": false,
+          "State.Error": "",
+          "State.ExitCode": 0,
+          "State.OOMKilled": false,
+          "State.Restarting": false,
+          "State.Running": true,
+          "State.StartedAt": "2026-07-22T09:46:48.770025069Z",
+          "State.Status": "running",
+          "labels": {
+            "project": "edge-mes-demo",
+            "service": "dashboard"
+          }
+        },
+        {
+          "Config.Image": "edge-mes-demo-s7-plc-sim",
+          "Created": "2026-06-19T02:05:15.82128338Z",
+          "HostConfig.RestartPolicy": "unless-stopped",
+          "Id": "d21e950b98ae87bbd3ee321074100d0b54b174235ce46df34c5100e1130b785f",
+          "Image": "sha256:3a28ae38c623d8cb80f775f954315e633b1108112082c37ece698c7562522238",
+          "Mounts": [
+            {
+              "Destination": "/app/config",
+              "RW": false,
+              "Source": "/opt/edge-mes-demo/config",
+              "Type": "bind"
+            },
+            {
+              "Destination": "/app/data",
+              "RW": true,
+              "Source": "/opt/edge-mes-demo/data/vplc",
+              "Type": "bind"
+            }
+          ],
+          "Name": "/edge-mes-s7-plc-sim",
+          "RestartCount": 0,
+          "State.Dead": false,
+          "State.Error": "",
+          "State.ExitCode": 0,
+          "State.OOMKilled": false,
+          "State.Restarting": false,
+          "State.Running": true,
+          "State.StartedAt": "2026-06-19T02:05:27.378341652Z",
+          "State.Status": "running",
+          "labels": {
+            "project": "edge-mes-demo",
+            "service": "s7-plc-sim"
+          }
+        },
+        {
+          "Config.Image": "grafana/grafana:latest",
+          "Created": "2026-06-15T04:03:57.392904193Z",
+          "HostConfig.RestartPolicy": "unless-stopped",
+          "Id": "fa442407312e2cd05a2273b55f546e2e840b9f6f427ff420ffbdeba63cdb4f12",
+          "Image": "sha256:0d1b6e9173e6144d970bead78e7f1914a387dbabee073a617af1e076bfd59e15",
+          "Mounts": [
+            {
+              "Destination": "/etc/grafana/provisioning",
+              "RW": false,
+              "Source": "/opt/edge-mes-demo/config/grafana",
+              "Type": "bind"
+            },
+            {
+              "Destination": "/usr/share/grafana/public/custom",
+              "RW": false,
+              "Source": "/opt/edge-mes-demo/config/grafana/custom",
+              "Type": "bind"
+            },
+            {
+              "Destination": "/var/lib/grafana",
+              "RW": true,
+              "Source": "/opt/edge-mes-demo/data/grafana",
+              "Type": "bind"
+            }
+          ],
+          "Name": "/edge-mes-grafana",
+          "RestartCount": 0,
+          "State.Dead": false,
+          "State.Error": "",
+          "State.ExitCode": 0,
+          "State.OOMKilled": false,
+          "State.Restarting": false,
+          "State.Running": true,
+          "State.StartedAt": "2026-06-19T13:47:25.117873705Z",
+          "State.Status": "running",
+          "labels": {
+            "project": "edge-mes-demo",
+            "service": "grafana"
+          }
+        },
+        {
+          "Config.Image": "edge-mes-demo-simulator",
+          "Created": "2026-06-14T12:13:00.476282483Z",
+          "HostConfig.RestartPolicy": "unless-stopped",
+          "Id": "3ebe1e4725af577ac477594afe3046f7e5a197b8162f503ebac036d09b4fcfd5",
+          "Image": "sha256:08448d2876c30e9cbbecda4f0ca9a27a5e085a33f14dab2a6d2be3dd06430430",
+          "Mounts": [
+            {
+              "Destination": "/app/config",
+              "RW": false,
+              "Source": "/opt/edge-mes-demo/config",
+              "Type": "bind"
+            }
+          ],
+          "Name": "/edge-mes-simulator",
+          "RestartCount": 0,
+          "State.Dead": false,
+          "State.Error": "",
+          "State.ExitCode": 0,
+          "State.OOMKilled": false,
+          "State.Restarting": false,
+          "State.Running": true,
+          "State.StartedAt": "2026-06-14T12:13:23.098546695Z",
+          "State.Status": "running",
+          "labels": {
+            "project": "edge-mes-demo",
+            "service": "simulator"
+          }
+        },
+        {
+          "Config.Image": "prom/prometheus:latest",
+          "Created": "2026-06-14T07:19:55.078265353Z",
+          "HostConfig.RestartPolicy": "unless-stopped",
+          "Id": "03d48e04a511f991418b1370f3ce02e0d1e770d279ffe4fa54d3bb7a6df286af",
+          "Image": "sha256:ce22ec1ea0f867f3a4e96d8df33cb671f7e8d5978fb17f0c6b7cbdefcc21037e",
+          "Mounts": [
+            {
+              "Destination": "/etc/prometheus",
+              "RW": false,
+              "Source": "/opt/edge-mes-demo/config/prometheus",
+              "Type": "bind"
+            },
+            {
+              "Destination": "/prometheus",
+              "RW": true,
+              "Source": "/opt/edge-mes-demo/data/prometheus",
+              "Type": "bind"
+            }
+          ],
+          "Name": "/edge-mes-prometheus",
+          "RestartCount": 0,
+          "State.Dead": false,
+          "State.Error": "",
+          "State.ExitCode": 0,
+          "State.OOMKilled": false,
+          "State.Restarting": false,
+          "State.Running": true,
+          "State.StartedAt": "2026-06-14T07:19:56.985010048Z",
+          "State.Status": "running",
+          "labels": {
+            "project": "edge-mes-demo",
+            "service": "prometheus"
+          }
+        },
+        {
+          "Config.Image": "prom/node-exporter:latest",
+          "Created": "2026-06-14T07:19:55.078178983Z",
+          "HostConfig.RestartPolicy": "unless-stopped",
+          "Id": "943933f4c48042e6f0294ea68e0f39884f37ceedbf4c3cfd35c5443062e4fddb",
+          "Image": "sha256:5635e459687a21bee059ade06ae4170ebfae5330e2a224947254ab1a2860c22c",
+          "Mounts": [
+            {
+              "Destination": "/rootfs",
+              "RW": false,
+              "Source": "/",
+              "Type": "bind"
+            },
+            {
+              "Destination": "/host/proc",
+              "RW": false,
+              "Source": "/proc",
+              "Type": "bind"
+            },
+            {
+              "Destination": "/host/sys",
+              "RW": false,
+              "Source": "/sys",
+              "Type": "bind"
+            }
+          ],
+          "Name": "/edge-mes-node-exporter",
+          "RestartCount": 0,
+          "State.Dead": false,
+          "State.Error": "",
+          "State.ExitCode": 0,
+          "State.OOMKilled": false,
+          "State.Restarting": false,
+          "State.Running": true,
+          "State.StartedAt": "2026-06-14T07:19:57.00079108Z",
+          "State.Status": "running",
+          "labels": {
+            "project": "edge-mes-demo",
+            "service": "node-exporter"
+          }
+        },
+        {
+          "Config.Image": "edge-mes-demo-sync-worker",
+          "Created": "2026-06-14T05:57:13.45515899Z",
+          "HostConfig.RestartPolicy": "unless-stopped",
+          "Id": "651c0226e4b1949267065a88a7a20fc2e0df4bbab6a4f7ee3f0fbe2c029e8d23",
+          "Image": "sha256:a6c2edcfccb2945ea87ec71c96f4ff3066dd66a6c7c0945d8d20f2a6a55e2188",
+          "Mounts": [
+            {
+              "Destination": "/app/config",
+              "RW": false,
+              "Source": "/opt/edge-mes-demo/config",
+              "Type": "bind"
+            }
+          ],
+          "Name": "/edge-mes-sync-worker",
+          "RestartCount": 0,
+          "State.Dead": false,
+          "State.Error": "",
+          "State.ExitCode": 0,
+          "State.OOMKilled": false,
+          "State.Restarting": false,
+          "State.Running": true,
+          "State.StartedAt": "2026-06-14T05:57:25.700976852Z",
+          "State.Status": "running",
+          "labels": {
+            "project": "edge-mes-demo",
+            "service": "sync-worker"
+          }
+        },
+        {
+          "Config.Image": "postgres:16",
+          "Created": "2026-06-14T05:57:13.239812435Z",
+          "HostConfig.RestartPolicy": "unless-stopped",
+          "Id": "bb3ba0738e692c68b14a62ca64296e484990d3b86b1f6d395c27b200af5cb890",
+          "Image": "sha256:f961d097a9cedd37779baef1aab3fe87ef1c63b3b34d361f90a98ea5c9b77e56",
+          "Mounts": [
+            {
+              "Destination": "/var/lib/postgresql/data",
+              "RW": true,
+              "Source": "/opt/edge-mes-demo/data/postgres",
+              "Type": "bind"
+            },
+            {
+              "Destination": "/docker-entrypoint-initdb.d",
+              "RW": false,
+              "Source": "/opt/edge-mes-demo/db/init",
+              "Type": "bind"
+            }
+          ],
+          "Name": "/edge-mes-postgres",
+          "RestartCount": 0,
+          "State.Dead": false,
+          "State.Error": "",
+          "State.ExitCode": 0,
+          "State.OOMKilled": false,
+          "State.Restarting": false,
+          "State.Running": true,
+          "State.StartedAt": "2026-06-14T05:57:14.263634444Z",
+          "State.Status": "running",
+          "labels": {
+            "project": "edge-mes-demo",
+            "service": "postgres"
+          }
+        }
+      ],
+      "ids": [
+        "3f0d0457a0a1",
+        "12e841b4ac33",
+        "649c31bb508a",
+        "d21e950b98ae",
+        "fa442407312e",
+        "3ebe1e4725af",
+        "03d48e04a511",
+        "943933f4c480",
+        "651c0226e4b1",
+        "bb3ba0738e69"
+      ],
+      "inspect_ok": true
+    }
+  },
+  "remote_call_budget": {
+    "other_network_calls": 0,
+    "resume": 0,
+    "retry": 0,
+    "structured_ssh_calls": 1,
+    "supplemental_ssh": 0
+  },
+  "schema_version": "d2-r7b-i1-r35-post-activation/v1",
+  "status": "PASS"
+}

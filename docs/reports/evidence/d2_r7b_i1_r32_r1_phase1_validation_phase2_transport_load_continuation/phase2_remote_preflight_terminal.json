@@ -1,0 +1,54 @@
+{
+  "authority_id": "PM-D2-R7B-I1-R32-R1-HOST-INTERPRETER-CORRECTION-CONTINUATION-01",
+  "phase": "PHASE_2_REMOTE_PREFLIGHT",
+  "status": "HOLD",
+  "classification": "REMOTE_PREFLIGHT_PROBE_CONTRACT_HOLD",
+  "network_call_count": 1,
+  "ssh": {
+    "endpoint": "mari@10.0.0.217",
+    "port": 22,
+    "identity": "/Users/chenjie/.ssh/edge_pi_codex",
+    "identity_contents_read": false,
+    "ssh_options": ["-T", "BatchMode=yes", "IdentitiesOnly=yes"]
+  },
+  "remote_observed": {
+    "authorized_user": "mari",
+    "authorized_uid": 1000,
+    "home": "/home/mari",
+    "home_identity": "mari:mari:1000:700:directory",
+    "stage_root": "/home/mari/.edge-mes-demo-stage/d2-r7b-i1-r32-ca68dd4",
+    "stage_root_state": "ABSENT",
+    "archive": "/home/mari/.edge-mes-demo-stage/d2-r7b-i1-r32-ca68dd4/edge-mes-demo-collector-r32-ca68dd4-linux-arm64.tar",
+    "archive_state": "ABSENT",
+    "docker_info_exit": 0,
+    "docker_os": "linux",
+    "docker_architecture_raw": "aarch64",
+    "docker_architecture_normalized": "arm64",
+    "free_bytes": 461896556544,
+    "required_free_bytes": 377049027,
+    "retained_safety_margin_bytes": 268435456,
+    "descriptive_tag": "edge-mes-demo-collector:r32-pkg-closed-ca68dd4",
+    "descriptive_tag_state": "ABSENT",
+    "fresh_exact_image_id": "sha256:899082388afebab65844cbc0e49fb69a0f19f8bf23c3c4c989f6533f2f2ce401",
+    "fresh_exact_image_id_state": "ABSENT"
+  },
+  "contract_evaluation": {
+    "remote_user_and_home_identity": "PASS_BY_AUTHORIZED_NAME_AND_OWNERSHIP",
+    "remote_stage_and_archive_absence": "PASS",
+    "remote_docker_platform": "PASS",
+    "remote_disk_margin": "PASS",
+    "remote_tag_and_exact_id_absence": "PASS",
+    "probe_terminal": "HOLD",
+    "probe_hold_reason": "LOCAL_PROBE_ADDED_UNAUTHORIZED_REMOTE_UID_501_REQUIREMENT",
+    "transport_authorized_after_terminal": false
+  },
+  "prohibited_action_counters": {
+    "remote_docker_load": 0,
+    "remote_docker_tag": 0,
+    "container_lifecycle": 0,
+    "compose_lifecycle": 0,
+    "cleanup": 0,
+    "additional_ssh_calls": 0,
+    "retry": 0
+  }
+}
