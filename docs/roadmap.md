@@ -1,7 +1,7 @@
 # Edge MES Phase-2 Roadmap
 
-更新时间：2026-07-30
-状态：Phase-2 MVP Execution — D2-R7B-I1 implementation package committed and pushed at `934ced7...` / accepted local build-image planning PM-final-accepted / execution preparation next / build, runtime-loaded and production acceptance not authorized
+更新时间：2026-08-01
+状态：R67 local candidate chain = CLOSED / PASS；LOCAL IMAGE ACCEPTED = YES；D2-R7B end-to-end = NOT CLOSED；ACTIVE AUTHORITY = NONE；next eligible branch = accepted local-image transport planning
 Phase-1 基线：最终验收 PASS，GitHub freeze/tag 已完成
 
 ## 1. 当前里程碑
@@ -308,6 +308,52 @@ attempt、local roots、builder/candidate names、source materialization argv、
 Docker/network budgets、terminal paths、isolated validation、stop/retry/cleanup和Git authority；
 不得从本roadmap直接执行build。
 
+### 1I. 2026-08-01 D2-R7B-G0 Governance / Status Sync — accepted local candidate
+
+本节更新当前 status wording；`1H` 及更早 sections 保留其原有 chronology 与历史事实。
+当前 Gate truth 以 `docs/thread_handoff/chatgpt_pm_handoff_260801-1400.md`、corrected
+R67-SR2 durable package（`docs/reports/sprint4_d2_r7b_i1_r67_sr2_minimal_direct_existing_candidate_probe_validation_execution.md`、
+`docs/reports/evidence/d2_r7b_i1_r67_sr2_minimal_direct_existing_candidate_probe_validation/01_validation.json`）
+及 `docs/thread_handoff/pm_task_20260801T0537Z_d2_r7b_i1_r67_sr2_c1_exact_validation_artifact_path_authority_correction.md` 为准。
+
+```text
+PRODUCT SOURCE COMMIT         = 934ced7b9659cb566628b1709cf6d73463a534d8
+LOCAL CANDIDATE IMAGE ID      = sha256:8008cacf46229f5465bb71013db0177696b08b9307d56fcb30512d0670f2f013
+
+R67 local candidate chain     = CLOSED / PASS
+EXACT-COMMIT MATERIALIZATION  = PASS
+EXISTING CANDIDATE VALIDATED  = YES
+LOCAL IMAGE ACCEPTED          = YES
+PM ACCEPTED                   = YES
+REBUILD REQUIRED              = NO
+
+D2-R7B end-to-end             = NOT CLOSED
+ARCHIVE ACCEPTED              = NO
+TRANSPORTED                   = NO
+REMOTE IMAGE ACCEPTED         = NO
+REMOTE LOADED OBJECT          = NO
+DEPLOYED                      = NO
+ACTIVATED                     = NO
+RUNTIME-LOADED ACCEPTED       = NO
+PRODUCTION ACCEPTED           = NO
+ROLLBACK ACCEPTED             = NO
+
+ACTIVE AUTHORITY              = NONE
+next eligible branch          = accepted local-image transport planning
+```
+
+本地接受只适用于上述 exact full image ID，不转移到 tag、archive、remote object、service
+或 runtime。R67 chain 的 local materialization、existing-candidate validation、artifact-path
+correction 与 PM acceptance 已闭合；这不建立 archive、transport、remote load、deployment、
+activation、runtime-loaded、production 或 rollback claim。
+
+旧 `IMAGE_LOADED_EXACT`、旧 activation 及旧 remote object statements 是 predecessor
+candidates 的历史事实，不证明当前 `934ced7...` candidate 已 archived、transported、
+remotely loaded、deployed 或 activated。release chain 继续 phase-separated；任何 PASS
+均不授予下一阶段 authority。Archive generation、transport、remote preflight、remote load、
+deployment、pre-activation rollback readiness、activation、runtime-loaded validation、
+production-fact validation、rollback drill 与 final D2-R7B closeout 均为独立 Gates。
+
 ## 2. Phase-2 定位
 
 将单线三工站 Demo 演进为：
@@ -424,22 +470,12 @@ flowchart LR
 
 ## 8. 当前下一步
 
-当前accepted build/image planning已完成PM final acceptance，static review stopping rule已达到：
+当前 Gate 是 D2-R7B-G0 governance/status sync 的 docs-only durable truth：
 
-1. R64与`docs/current_status.md`、`docs/roadmap.md`同步保持
-   `WRITTEN / UNSTAGED / UNCOMMITTED / UNPUSHED`，不自动执行Git closeout。
-2. 不再追加同类Architecture、Reliability、Data Quality或Verification静态review；active
-   planning blockers为none。
-3. 下一eligible branch为单独授权的future execution-preparation planning；必须冻结exact
-   attempt、roots、builder/candidate、materialization、base resolution、Docker/network budget、
-   terminal paths、isolated validation、stop/retry/cleanup与Git authority。
-4. execution-preparation planning被PM接受后，用户仍须单独授权actual local build/image
-   acceptance；build不自动授权archive、transport、remote load、deployment、activation、
-   runtime A–H或production acceptance。
-5. 用户单独授权后，只可对`docs/current_status.md`、`docs/roadmap.md`与R64执行exact-path
-   docs-only stage/commit/push；不得`git add .`、`git add -A`、`git add docs/`，也不得吸收
-   R56–R63或Batch D/E。
-6. 旧的`IMAGE_LOADED_EXACT`/activation记录继续保留为历史事实，但不能证明commit
-   `934ced7...`对应的新candidate已构建、加载或部署。
+1. 本次 governance/status sync 是当前 docs-only Gate；完成后等待 `PM Independent Intake — D2-R7B-G0 Governance / Status Sync`。
+2. PM intake 后，exact-path Git closeout separately eligible，但本 roadmap 与本 Thread 均未授权 stage、commit 或 push。
+3. governance truth durable 后，下一 technical planning branch 是 `Accepted Local-Image Transport Planning`。
+4. archive generation、transport、remote preflight、remote load、deployment、pre-activation rollback readiness、activation、runtime-loaded validation、production-fact validation、rollback drill 与 final D2-R7B closeout 均保持为 separate Gates。
+5. D2-R7B end-to-end closure 后，项目返回 OEE source adequacy / Quality / Trace data semantics，并完成 final Dashboard/UI integration。
 
-D2-R7B 关闭后，项目再根据真实数据主线选择 OEE、Quality/Pareto 或 Trace relation 的最小数据语义切片；Dashboard/UI acceptance debt继续保留到最终集成阶段，不重新打开 Attempt-3 browser evidence 分支。
+本 docs-only Gate 不授权 Docker、archive、transport、remote、deployment、activation、runtime、production、rollback 或 Git mutation。

@@ -1,8 +1,50 @@
 # 当前状态 / Codex 恢复上下文
 
-更新时间：2026-07-30
+更新时间：2026-08-01
 工作目录：`/Users/chenjie/Documents/MES/edge-mes-demo`
 树莓派部署目录：`/opt/edge-mes-demo`
+
+## 0M. 2026-08-01 D2-R7B-G0 Governance / Status Sync
+
+本节是当前最高优先级 control block，明确 supersede `0L` 中已过时的 current-state
+wording；`0L` 及更早段落继续保留为历史快照，不删除、不重写。当前 Gate truth 以
+`docs/thread_handoff/chatgpt_pm_handoff_260801-1400.md`、corrected R67-SR2 durable package
+（`docs/reports/sprint4_d2_r7b_i1_r67_sr2_minimal_direct_existing_candidate_probe_validation_execution.md`、
+`docs/reports/evidence/d2_r7b_i1_r67_sr2_minimal_direct_existing_candidate_probe_validation/01_validation.json`）
+及 `docs/thread_handoff/pm_task_20260801T0537Z_d2_r7b_i1_r67_sr2_c1_exact_validation_artifact_path_authority_correction.md`
+为准。
+
+```text
+PRODUCT SOURCE COMMIT         = 934ced7b9659cb566628b1709cf6d73463a534d8
+LOCAL CANDIDATE IMAGE ID      = sha256:8008cacf46229f5465bb71013db0177696b08b9307d56fcb30512d0670f2f013
+
+EXACT-COMMIT MATERIALIZATION  = PASS
+EXISTING CANDIDATE VALIDATED  = YES
+LOCAL IMAGE ACCEPTED          = YES
+PM ACCEPTED                   = YES
+REBUILD REQUIRED              = NO
+
+R67 CHAIN                     = CLOSED
+D2-R7B END-TO-END             = NOT CLOSED
+
+ARCHIVE ACCEPTED              = NO
+TRANSPORTED                   = NO
+REMOTE IMAGE ACCEPTED         = NO
+REMOTE LOADED OBJECT          = NO
+DEPLOYED                      = NO
+ACTIVATED                     = NO
+RUNTIME-LOADED ACCEPTED       = NO
+PRODUCTION ACCEPTED           = NO
+ROLLBACK ACCEPTED             = NO
+
+ACTIVE AUTHORITY              = NONE
+NEXT ELIGIBLE BRANCH          = ACCEPTED LOCAL-IMAGE TRANSPORT PLANNING
+```
+
+`LOCAL IMAGE ACCEPTED = YES` 仅适用于上述 exact full image ID；不得因共享名称、tag、
+历史或来源而转移到 tag、archive、remote object、service 或 runtime。R67-SR2、
+R67-SR2-C1 及 handoff 中保留的三个 R67 evidence containers 均在本任务范围之外；不授权
+cleanup、restart、reuse、rename、export 或其它容器操作。
 
 ## 0L. 2026-07-30 D2-R7B-I1 final build/image planning acceptance
 
