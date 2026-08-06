@@ -1,8 +1,74 @@
 # 当前状态 / Codex 恢复上下文
 
-更新时间：2026-08-01
+更新时间：2026-08-06
 工作目录：`/Users/chenjie/Documents/MES/edge-mes-demo`
 树莓派部署目录：`/opt/edge-mes-demo`
+
+## 0N. 2026-08-06 PM-TOOL-R1 / W0 Recovery Governance Control Sync
+
+本控制块 supersedes `0M` 与全部更早章节中的 current-state wording；`0M` 与所有更早章节继续作为 immutable historical context 保留，不删除、不重写、不重排。当前 truth 仅来自 current handoff、PM-TOOL-R1 acceptance package、A14 terminal report/evidence、R1/R2 accepted terminal HOLD 与本轮 fresh live checks。
+
+控制状态矩阵：
+
+```text
+PM TAKEOVER                     = NEW_PM_TAKEOVER / PASS
+PM-TOOL-R1 PUBLISHER            = PM ACCEPTED / PASS / FROZEN
+PM-TOOL-R1 IDENTITIES           = EXACT
+A14 EXECUTION                   = PM ACCEPTED / HOLD / PRE_EXECUTE_FRESHNESS_DRIFT
+A14 PREPARE / EXECUTE           = 1 / 0
+A14 AUTHORITY                   = UNCONSUMED_BUT_TERMINAL_NONREUSABLE
+A15                             = TERMINAL / PLANNING REPORT ABSENT
+A16                             = TERMINAL_INVALID_ARTIFACT / PASS REJECTED / NONREUSABLE
+A17                             = TERMINAL / PLANNING REPORT ABSENT
+A18                             = TERMINAL / PLANNING REPORT ABSENT
+R1 STATUS SYNC                  = PM ACCEPTED / HOLD / READ_ONLY_PREFLIGHT_VALIDATOR_FAILURE
+R2 STATUS SYNC                  = PM ACCEPTED / HOLD / PRE_AUTHORITY_LOCAL_REPAIR_WINDOW_EXHAUSTED
+R3 LOCAL STATUS OUTPUT          = WRITTEN / PM INTAKE PENDING
+ACTIVE W0 ATTEMPT               = NONE
+ACTIVE EXECUTION AUTHORITY      = NONE
+CURRENT PREPARE AUTHORITY       = NONE
+CURRENT EXECUTE AUTHORITY       = NONE
+CURRENT EVIDENCE MUTATION       = NOT AUTHORIZED
+CURRENT RETAINED MUTATION       = NOT AUTHORIZED
+MATERIALIZATION                 = NOT ESTABLISHED
+W0 ACCEPTED                     = NO
+A0                              = NOT ESTABLISHED
+RUNTIME-LOADED                  = NOT ESTABLISHED
+PRODUCTION ACCEPTED             = NO
+```
+
+当前 handoff identity：`docs/thread_handoff/chatgpt_pm_handoff_260806-1527.md`，regular/non-symlink，24513 bytes，SHA-256 `74b45dec3b057dc6bc8ab13c1c9a08a0fc4b92e3c60f3de11cb12ca52d662415`。
+
+PM-TOOL-R1 acceptance package identities：
+
+- task：`docs/thread_handoff/pm_task_20260806T0337Z_pm_tool_r1_report_publisher_implementation_test_acceptance.md`，19282 bytes，SHA-256 `8368c436546d0bacf483b3cf09b3cafe936f7262d9930f23e4bfd599b6bfc942`。
+- publisher：`docs/thread_handoff/pm_tools/pm_report_publisher.py`，20592 bytes，SHA-256 `153a9804493020ee6745c6223e3e00afa464a3a4024cd492b7cb6a55c50a1dba`。
+- tests：`docs/thread_handoff/pm_tools/test_pm_report_publisher.py`，25714 bytes，SHA-256 `6571a3d1ad1cd45ae9d9c9c3f08ab705b072e76a73a5c0ef6e25432638afab51`。
+- acceptance report：`docs/reports/pm_tool_r1_report_publisher_implementation_test_acceptance.md`，3928 bytes，SHA-256 `38871dca69ccbc549638dadf98251cdeaf88e6d440c5ff07638c3b848bf66665`。
+
+PM-TOOL-R1 remains `PM ACCEPTED / PASS / FROZEN` with the four accepted blocks in their exact order. Publisher acceptance is distinct from invocation authority：the publisher、tests and acceptance package remain frozen and unused by R3。
+
+A14 terminal continuity：
+
+- task：`docs/thread_handoff/pm_task_20260805T1400Z_d2_r7b_w0_sr_a14_s1_real_candidate_execution.md`，41534 bytes，SHA-256 `df22ac66f04c14c35fe67edeca0b56b0113269bf2576a806bff051ec48696565`。
+- report：`docs/reports/sprint4_d2_r7b_w0_sr_a14_s1_real_candidate_execution.md`，6738 bytes，SHA-256 `8d311d3d504319607899c8092a719855eb95a298371418b46c8c877d53066c02`。
+- `00_frozen_verifier_output.json`：10501 bytes，SHA-256 `572e2db9a903b3d8f75d02b60e4d930d6ff599bcb856b6489f3226db6db04c8e`；`01_w0_recovery_prepare.json`：22070 bytes，SHA-256 `c34a3bb04caab91d153fbd490dda10f5014faec8734df4b288ba8dbfce2e9bc7`。
+- evidence root direct membership is exactly `00_frozen_verifier_output.json` and `01_w0_recovery_prepare.json`；`02_w0_recovery_evidence.json` and all three temporary siblings are absent。
+- state is `PM ACCEPTED / HOLD / PRE_EXECUTE_FRESHNESS_DRIFT`，Prepare1 / Execute0，authority `UNCONSUMED_BUT_TERMINAL_NONREUSABLE`，fresh retained child absent。Historical A14 `PUBLISHED` / `PREPARED` local evidence does not establish executed、materialized、W0、A0、runtime-loaded or production truth。
+
+A15/A17/A18 planning reports remain absent at their exact paths：`docs/reports/sprint4_d2_r7b_w0_sr_s1p3_a15_fresh_attempt_execution_recovery_planning.md`、`docs/reports/sprint4_d2_r7b_w0_sr_s1p5_a17_planning_publication_source_integrity_correction.md`、`docs/reports/sprint4_d2_r7b_w0_sr_s1p6_a18_contract_satisfiability_safe_corruption_representation_planning.md`。A16 is retained only as `TERMINAL_INVALID_ARTIFACT / PASS REJECTED / NONREUSABLE`：`docs/reports/sprint4_d2_r7b_w0_sr_s1p4_a16_pre_authority_repair_window_planning_correction.md`，4106 bytes，SHA-256 `339373af4bdf288322c2247fb1a1dbd558e2107eb138363a4e68995c7e822f61`；its internal PASS narrative is rejected and no raw corruption payload is copied here。
+
+R1/R2 terminal continuity：
+
+- R1 task：`docs/thread_handoff/pm_task_20260806T0902Z_d2_r7b_w0_gov_status_r1_current_status_control_sync.md`，27620 bytes，SHA-256 `39dad850537d65819a51779b6516d8baa30af5edd4d1bdc414edf5a9f00bf3af`；report：`docs/reports/sprint4_d2_r7b_w0_gov_status_r1_current_status_control_sync.md`，6018 bytes，SHA-256 `bf38c6a5fa6b959080fa6497c74775c84424d1051df8aac1851903dd6c47b84e`；state `PM ACCEPTED / HOLD / READ_ONLY_PREFLIGHT_VALIDATOR_FAILURE`。
+- R2 task：`docs/thread_handoff/pm_task_20260806T1003Z_d2_r7b_w0_gov_status_r2_current_status_control_sync.md`，34988 bytes，SHA-256 `c491e7892f7f70a09ad621ac1a4e8e3272ad8aa4289121a3bd81a11d7dd79d67`；report：`docs/reports/sprint4_d2_r7b_w0_gov_status_r2_current_status_control_sync.md`，9005 bytes，SHA-256 `9a3e1442fd7e5ea836b72957d852b31efd4f326414e90ebe3e4eccdb846c1d74`；state `PM ACCEPTED / HOLD / PRE_AUTHORITY_LOCAL_REPAIR_WINDOW_EXHAUSTED`。
+- R1 and R2 are terminal/nonreusable；neither predecessor synchronized status or supplies reusable repair/write authority。
+
+Retained/process continuity：`/Users/chenjie/Documents/MES/edge-mes-transport` remains a directory/non-symlink with device 16777234、inode 12813593、UID/GID 501/20、mode 0700 and direct membership exactly `d2-r7b-t0`。Historical child `d2-r7b-t0` remains unchanged、directory/non-symlink、device 16777234、inode 13207719、UID/GID 501/20、mode 0700 and empty；fresh child `d2-r7b-t1` is absent/non-symlink。The fresh process policy classifies unrelated `chroma-mcp` and its resource tracker as `UNRELATED_NON_BLOCKING` with no kill/signal/cleanup；no project-bound task process is active。
+
+This document is synchronized only for the current governance sequence。`docs/roadmap.md` and all product/runtime status surfaces remain unchanged by this task。
+
+Exactly one next eligible decision exists：ChatGPT PM read-only intake of this exact R3 task、R3 report、status diff and fresh live continuity。Only after PM acceptance may the Owner decide whether to authorize a separate fresh minimal W0 recovery planning task；R3 itself does not name、allocate or activate a new attempt or authority。
 
 ## 0M. 2026-08-01 D2-R7B-G0 Governance / Status Sync
 
