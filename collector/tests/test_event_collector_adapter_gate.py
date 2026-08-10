@@ -258,6 +258,14 @@ def ws01_station_data(size: int) -> bytearray:
     return data
 
 
+def varied_ws01_station_data(size: int) -> bytearray:
+    data = ws01_station_data(size)
+    for start, end in ((34, 40), (82, 100), (124, 200)):
+        for offset in range(start, end):
+            data[offset] = (offset * 73 + (offset // 7) * 19 + 29) % 256
+    return data
+
+
 def set_s7_string(data: bytearray, offset: int, value: str, max_length: int) -> None:
     encoded = value.encode("ascii")
     data[offset] = max_length
@@ -569,6 +577,34 @@ def test_real_runtime_raw_decode_accepts_and_persists_then_acks() -> None:
     assert len(client.writes) == 1
     assert storage.events == ["begin", "production_fact", "persist_cycle", "commit", "ack_write", "ack_ok"]
     assert storage.errors == []
+
+
+def test_real_runtime_varied_346_byte_raw_hex_persists_then_acks() -> None:
+    worker, storage, client, runtime, baseline_data, baseline_decoded = make_real_runtime_worker()
+    assert runtime.plan.read_size == 346
+
+    data = varied_ws01_station_data(runtime.plan.read_size)
+    raw_hex = bytes(data).hex()
+    decoded = decode_read_plan(data, runtime.plan, worker.mapping.timezone)
+
+    assert len(raw_hex) == 692
+    assert raw_hex == raw_hex.lower()
+    assert set(raw_hex) == set("0123456789abcdef")
+    assert decoded == baseline_decoded
+    assert data != baseline_data
+
+    worker._process_station(runtime, data, decoded, BOOT_ID)
+
+    assert storage.errors == [], (
+        storage.errors[-1]["raw_context"].get("adapter_error_code")
+        if storage.errors
+        else None
+    )
+    assert storage.persist_calls == 1
+    assert storage.ack_ok_calls == 1
+    assert storage.ack_failed_calls == 0
+    assert len(client.writes) == 1
+    assert storage.events == ["begin", "production_fact", "persist_cycle", "commit", "ack_write", "ack_ok"]
 
 
 def test_resolved_station_missing_records_diagnostics_without_persist_or_ack() -> None:

@@ -431,6 +431,42 @@ def test_raw_fingerprint_is_deterministic_and_key_order_independent() -> None:
     )
 
 
+def test_canonical_production_sized_raw_hex_is_accepted_by_shared_validator() -> None:
+    raw = event_dict()
+    raw["payload"] = {}
+    raw_hex = bytes(
+        (index * 73 + (index // 7) * 19 + 29) % 256
+        for index in range(346)
+    ).hex()
+    assert len(raw_hex) == 692
+    assert raw_hex == raw_hex.lower()
+    assert set(raw_hex) == set("0123456789abcdef")
+    raw["raw_payload"] = {"raw_hex": raw_hex}
+    raw["correlation"].update(
+        payload_template="screw_result_v1",
+        raw_encoding="json",
+    )
+    raw["correlation"]["fact_key"] = compute_fact_key(raw)
+
+    snapshot = SimpleNamespace(
+        config_hash=CONFIG_HASH,
+        line_id="LINE-01",
+        stations=(
+            SimpleNamespace(
+                station_id="WS02",
+                plc_id="PLC-01",
+                station_type="screw",
+                cycle_profile="normal_screwdriving",
+            ),
+        ),
+        decode_raw_payload=lambda _raw_payload, _event: {},
+    )
+
+    result = validate_event(raw, snapshot)
+
+    assert result.is_valid, result.errors
+
+
 @pytest.mark.parametrize(
     ("field", "value", "code"),
     [

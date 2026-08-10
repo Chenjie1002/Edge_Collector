@@ -134,6 +134,7 @@ RAW_BINARY_MIME_RE = re.compile(
     re.IGNORECASE,
 )
 RAW_BASE64_RE = re.compile(r"[A-Za-z0-9+/]+={0,2}")
+RAW_HEX_RE = re.compile(r"(?:[0-9a-f]{2})+")
 RAW_LONG_TEXT_BYTES = 4096
 RAW_BASE64_SAMPLE_CHARS = 4096
 RAW_PERIODIC_COMPRESSED_BYTES = 512
@@ -423,6 +424,8 @@ def _walk_json(
 def _raw_content_forbidden(key: str, value: Any) -> bool:
     if not isinstance(value, str):
         return bool(RAW_BINARY_KEY_RE.search(key) or RAW_MIME_KEY_RE.search(key))
+    if key == "raw_hex" and RAW_HEX_RE.fullmatch(value):
+        return False
     stripped = value.strip()
     if RAW_DATA_URI_RE.match(stripped):
         return True
