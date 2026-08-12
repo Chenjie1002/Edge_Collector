@@ -1,8 +1,170 @@
 # 当前状态 / Codex 恢复上下文
 
-更新时间：2026-08-06
+更新时间：2026-08-12
 工作目录：`/Users/chenjie/Documents/MES/edge-mes-demo`
 树莓派部署目录：`/opt/edge-mes-demo`
+
+## 0P. 2026-08-12 P1-G6 PM Acceptance / Durable Closeout Status Reconciliation
+
+本控制块是当前最高优先级 product/status truth，supersedes `0O` 与全部更早章节中的 current-state wording；`0O` 与所有更早章节继续作为 immutable historical context 保留，不删除、不重写、不重排。旧章节中的 `PRODUCTION ACCEPTED = NO`、旧 active gate、旧 next-action 等文字仅表示其写入时的历史状态，不得覆盖本 `0P`。
+
+Owner 于 `2026-08-12T17:02+08:00` 授权 ChatGPT Mainline PM 执行 PM-direct Level 0 durable closeout/status reconciliation。Durable G6 decision：
+
+```text
+docs/reports/p1_g6_pm_acceptance_closeout_20260812T0902Z.md
+9284 bytes
+SHA-256 = 13058397e9faf51f4076af0f45585f1fff7ae81c568b0ed96a26fffd6c2c9473
+
+P1_G6_PM_ACCEPTANCE                    = PASS
+P1_PM_ACCEPTED                         = YES
+P1_STATUS                              = COMPLETE / CLOSED
+P1_PRODUCTION_TRUTH_TRUSTED_CONSUMPTION = COMPLETE
+
+PRODUCTION_TRUTH_SOURCE_ACCEPTED       = YES
+QUALITY_SEMANTICS_ACCEPTED             = YES
+TRACE_SEMANTICS_ACCEPTED               = YES
+PROCESS_KPI_SEMANTICS_ACCEPTED         = YES
+OEE_DATA_SUFFICIENCY_EXPLICIT          = YES
+FULL_OEE_FALSE_CLAIM                   = NO
+BOUNDED_PRODUCTION_API_ACCEPTED        = YES
+DB_API_RECONCILIATION                  = PASS
+LEGACY_FALLBACK                        = NO
+REAL_RUNTIME_VALIDATED                 = YES
+```
+
+P1 accepted chain：
+
+```text
+G0 Production Source Adequacy                         = ACCEPTED
+G1 Production Semantics Contract                     = ACCEPTED
+G2 Quality + Trace Vertical Slice                    = ACCEPTED
+G3 Process KPI / OEE Data-Sufficiency Semantics      = ACCEPTED
+G4 Bounded Production API                            = ACCEPTED
+V5 Controlled Raspberry Pi API Deployment            = ACCEPTED
+G5 Parent Real Runtime DB/API Candidate               = PASS
+G5 Local Verification Recovery                       = PASS
+G5 Mainline PM Acceptance                            = YES
+G6 P1 PM Acceptance                                  = PASS
+```
+
+G5 history must remain separated from product acceptance：
+
+```text
+HISTORICAL_G5_GOAL_TERMINAL = HOLD / DURABLE_EVIDENCE_NOT_ACCESSIBLE
+HISTORICAL_G5_GOAL_REWRITTEN = NO
+G5_PARENT_RUNTIME_CANDIDATE = PASS
+G5_LOCAL_VERIFICATION_RECOVERY = PASS
+P1_G5_PM_ACCEPTED = YES
+```
+
+The historical Goal HOLD came from a Verification workflow defect that froze a mutable Ledger identity across a required dispatch transition. It did not invalidate the already persisted bounded runtime candidate. The later independent local-only Verification recovery certified that final Parent Evidence without any second remote observation.
+
+Accepted P1 product/runtime claim boundary：
+
+```text
+production_accepted_station_event_fact = sole accepted P1 station-business production truth
+station-scoped Quality                  = ACCEPTED
+bounded accepted-fact Trace             = ACCEPTED WITH EXPLICIT PARTIAL/UNKNOWN BOUNDARY
+bounded Process Metrics API             = ACCEPTED
+real bounded DB/API reconciliation      = PASS
+Performance numeric authority           = UNSUPPORTED
+Availability numeric authority          = UNSUPPORTED
+Full OEE numeric authority              = UNSUPPORTED
+Full OEE false numeric claim            = NO
+station cycle-time pairing              = PARTIAL / authority missing
+historical ideal-cycle-time resolution  = PARTIAL / historical config authority unresolved
+historical route/terminal completeness  = PARTIAL where lineage unresolved
+Full Genealogy                          = OUT OF SCOPE
+all-stations/all-history universal runtime correctness = NOT CLAIMED
+```
+
+G5 accepted real-runtime evidence covers one deterministic bounded stable production window and proves exact DB/API reconciliation for Quality、Trace 与 Process Metrics under that scope. It must not be generalized into universal correctness for every station、every historical window or future data. No production stimulus was used for G5.
+
+P0 / deployment continuity：
+
+```text
+P0_REMOTE_CLOSURE               = COMPLETE / SEALED
+P0_PM_ACCEPTED                  = YES
+PRODUCTION_ACCEPTED             = YES
+P0_REOPENED_BY_P1               = NO
+API_DEPLOYMENT_VERIFIED         = YES / V5 MAINLINE PM ACCEPTED
+DEPLOYMENT_RECOVERY_REQUIRED    = NO
+```
+
+Parallel workstream continuity：`FIELD-VALIDATION-COLLECTOR-DB` remains governance-isolated。P1 acceptance neither closes it nor grants Mainline P1 authority over it。
+
+Current authority after this reconciliation：
+
+```text
+ACTIVE_P1_EXECUTION_AUTHORITY       = NONE
+ACTIVE_REMOTE_AUTHORITY             = NONE
+ACTIVE_DB_OR_HTTP_AUTHORITY         = NONE
+ACTIVE_DOCKER_COMPOSE_AUTHORITY     = NONE
+ACTIVE_GIT_PUBLICATION_AUTHORITY    = NONE
+ACTIVE_SUCCESSOR_PHASE_AUTHORITY    = NONE
+```
+
+This Level 0 task performs no network、SSH、DB/API runtime call、Docker/Compose、source/product mutation、Git stage/commit/push/tag or cleanup. `docs/thread_handoff/pm_operating_rules.md` remains protected pre-existing tracked-dirty external continuity and is not modified by G6 closeout.
+
+P1 is closed. There is no automatically authorized P2、Dashboard redesign、OEE expansion、historical config registry、Genealogy、deployment、runtime recheck or Git publication。
+
+Exactly one next eligible **decision** exists：
+
+```text
+OWNER / MAINLINE PM — SELECT NEXT PRODUCT PHASE OR WORKSTREAM
+```
+
+If the Owner wants this P1 closeout/status package committed and pushed, that is a separate later exact-path Git authority and is not implied by `P1_PM_ACCEPTED=YES`。
+
+## 0O. 2026-08-06 R3 Post-Closeout Governance Reconciliation
+
+本控制块 supersedes `0N` 与全部更早章节中的 current-state wording；`0N` 与所有更早章节继续作为 immutable historical context 保留，不删除、不重写、不重排。本轮由 ChatGPT PM 按 Level 0 直接执行，只协调已经发生且已核验的 Git/remote 事实与 authority violation，不重新执行或追认超出 authority 的 closeout 操作。
+
+控制状态矩阵：
+
+```text
+R3 GOVERNANCE SYNC              = PM ACCEPTED / PASS / LOCAL_DOCS_GOVERNANCE_SYNC_ONLY
+R3 ARTIFACT COMMIT              = 2a4f9d4ac6a11a3758b00f1e368dbe9484d10d35
+R3 ARTIFACTS STAGED             = YES
+R3 ARTIFACTS COMMITTED          = YES
+R3 ARTIFACTS PUSHED             = YES
+REMOTE MAIN VERIFIED            = YES / 2a4f9d4ac6a11a3758b00f1e368dbe9484d10d35
+ACTUAL GIT FACTS ACCEPTED        = YES
+CLOSEOUT THREAD PASS            = REJECTED
+CLOSEOUT GOVERNANCE STATE       = PM ACCEPTED / HOLD / UNAUTHORIZED_PRE_AUTHORITY_REPAIR
+PM ACCEPTED GIT CLOSEOUT        = NO
+CLOSEOUT TASK AUTHORITY         = TERMINAL / NONREUSABLE
+ACTUAL COMMIT / PUSH STATE      = IMMUTABLE / DO NOT ROLLBACK
+POST-CLOSEOUT RECONCILIATION    = PM-DIRECT / LOCAL_DOCS_GOVERNANCE_RECONCILIATION_ONLY
+RECONCILIATION GIT MUTATION     = NONE
+ACTIVE W0 ATTEMPT               = NONE
+ACTIVE EXECUTION AUTHORITY      = NONE
+CURRENT PREPARE AUTHORITY       = NONE
+CURRENT EXECUTE AUTHORITY       = NONE
+CURRENT EVIDENCE MUTATION       = NOT AUTHORIZED
+CURRENT RETAINED MUTATION       = NOT AUTHORIZED
+MATERIALIZATION                 = NOT ESTABLISHED
+W0 ACCEPTED                     = NO
+A0                              = NOT ESTABLISHED
+RUNTIME-LOADED                  = NOT ESTABLISHED
+PRODUCTION ACCEPTED             = NO
+```
+
+Owner authority：current PM window instruction at `2026-08-06T21:40+08:00`，authority ID `OWNER-D2-R7B-W0-GOV-STATUS-R3-POST-CLOSEOUT-GOVERNANCE-RECONCILIATION-20260806T2140+0800`。This is a PM-direct Level 0 docs reconciliation，not a new core-Thread authority。
+
+Verified immutable Git facts：
+
+- commit `2a4f9d4ac6a11a3758b00f1e368dbe9484d10d35`，parent `94dcfc6c721130ffb3c300d5e291bd0aea9cd1a6`，subject `Sync accepted D2-R7B-W0 governance status`，empty body；
+- local `HEAD`、local `origin/main` and live remote `refs/heads/main` all equal the commit above；ahead/behind `0/0`；
+- committed path set is exactly `docs/current_status.md`、`docs/thread_handoff/pm_task_20260806T1115Z_d2_r7b_w0_gov_status_r3_minimal_direct_synchronization.md` and `docs/reports/sprint4_d2_r7b_w0_gov_status_r3_minimal_direct_synchronization.md`；their accepted bytes、SHA-256、Git blobs and modes remain exact；
+- `docs/thread_handoff/pm_operating_rules.md` remains the sole tracked dirty path at its pre-existing exact identity；
+- `docs/thread_handoff/pm_task_20260806T1214Z_d2_r7b_w0_gov_status_r3_exact_path_git_closeout.md` remains untracked、unstaged、not indexed、not ignored at 22761 bytes / SHA-256 `ba0ae6835c232857026e525c85d99ef467799b1740ec671977058696f262ad7c`。
+
+Governance classification：the closeout Thread consumed one repair although its task stated `pre-authority local repair window: not authorized`。Therefore its PASS remains rejected and its authority is terminal/nonreusable。This classification does not erase、revert or invalidate the actual commit/push bytes；it prevents those correct Git facts from being misrepresented as an authority-compliant closeout PASS。Reset、revert、amend、force-push、retry、cleanup and replacement closeout are not authorized。
+
+This reconciliation creates no Git/index/ref/remote mutation and grants no W0、Prepare、Execute、evidence、retained、runtime or production authority。The durable PM reconciliation record is `docs/reports/sprint4_d2_r7b_w0_gov_status_r3_post_closeout_governance_reconciliation.md`。
+
+Exactly one next eligible decision exists：Owner may authorize a separate fresh minimal W0 recovery planning task。Git publication of this reconciliation status/report remains a separate optional exact-path PM authority and is not implied by this block。
 
 ## 0N. 2026-08-06 PM-TOOL-R1 / W0 Recovery Governance Control Sync
 
