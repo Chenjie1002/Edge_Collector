@@ -1,0 +1,119 @@
+import { cleanup, fireEvent, render, screen } from "@testing-library/react";
+import { afterEach, describe, expect, it } from "vitest";
+import { StationSummaryQueryControls } from "../StationSummaryQueryControls";
+
+afterEach(() => cleanup());
+
+const catalog = {
+  contractVersion: "production-scope-options/v1",
+  timezone: "Asia/Shanghai",
+  utcOffset: "+08:00",
+  lines: [
+    {
+      lineId: "LINE_001",
+      name: "Demo Assembly Line Runtime",
+      stations: [
+        { stationId: "WS01", name: "Screw Station", stationOrder: 1 },
+        { stationId: "WS02", name: "EOL Test Station", stationOrder: 2 },
+      ],
+    },
+    {
+      lineId: "LINE_002",
+      name: "Second Line",
+      stations: [{ stationId: "WS10", name: "Pack Station", stationOrder: 1 }],
+    },
+  ],
+} as const;
+
+describe("StationSummaryQueryControls", () => {
+  it("renders trusted dependent selects, plant-local datetime controls, and exactly four navigation keys", () => {
+    render(
+      <StationSummaryQueryControls
+        catalog={catalog}
+        query={{
+          lineId: "LINE_001",
+          stationId: "WS01",
+          startTime: "2026-07-05T00:00:00+08:00",
+          endTime: "2026-07-05T08:00:00+08:00",
+        }}
+      />,
+    );
+
+    const form = screen.getByRole("form", { name: "Station summary scope query" });
+    expect(form.getAttribute("method")).toBe("get");
+    expect(form.getAttribute("action")).toBe("/station-summary");
+    expect(form.classList.contains("query-controls")).toBe(true);
+    expect(form.classList.contains("station-summary-query-controls")).toBe(true);
+    expect(screen.getByRole("heading", { level: 2, name: "Scope" })).toBeTruthy();
+
+    const line = screen.getByLabelText("Line") as HTMLSelectElement;
+    const station = screen.getByLabelText("Station / WS") as HTMLSelectElement;
+    const start = screen.getByLabelText("Start time") as HTMLInputElement;
+    const end = screen.getByLabelText("End time") as HTMLInputElement;
+    expect([line.name, station.name, start.name, end.name]).toEqual(["line_id", "station_id", "", ""]);
+    expect([line.value, station.value, start.value, end.value]).toEqual([
+      "LINE_001",
+      "WS01",
+      "2026-07-05T00:00",
+      "2026-07-05T08:00",
+    ]);
+    expect(Array.from(form.querySelectorAll("[name]"), (element) => element.getAttribute("name"))).toEqual([
+      "line_id",
+      "station_id",
+      "start_time",
+      "end_time",
+    ]);
+    expect((form.querySelector('input[name="start_time"]') as HTMLInputElement).value).toBe("2026-07-05T00:00:00+08:00");
+    expect((form.querySelector('input[name="end_time"]') as HTMLInputElement).value).toBe("2026-07-05T08:00:00+08:00");
+    expect(start.type).toBe("datetime-local");
+    expect(end.type).toBe("datetime-local");
+    expect(screen.getByText("Plant time: Asia/Shanghai (UTC+08:00)")).toBeTruthy();
+    expect(screen.getByRole("button", { name: "Last 1h" })).toBeTruthy();
+    expect(screen.getByRole("button", { name: "Last 8h" })).toBeTruthy();
+    expect(screen.getByRole("button", { name: "Last 24h" })).toBeTruthy();
+
+    const apply = screen.getByRole("button", { name: "Apply" }) as HTMLButtonElement;
+    expect(apply.classList.contains("station-summary-scope-apply")).toBe(true);
+    expect(apply.parentElement?.classList.contains("station-summary-scope-fields")).toBe(true);
+    expect(apply.disabled).toBe(false);
+  });
+
+  it("resets station to the first enabled station when line changes", () => {
+    render(<StationSummaryQueryControls catalog={catalog} />);
+
+    const line = screen.getByLabelText("Line") as HTMLSelectElement;
+    const station = screen.getByLabelText("Station / WS") as HTMLSelectElement;
+    expect(line.value).toBe("LINE_001");
+    expect(station.value).toBe("WS01");
+
+    fireEvent.change(line, { target: { value: "LINE_002" } });
+
+    expect(station.value).toBe("WS10");
+    expect(Array.from(station.options).map((option) => option.value)).toEqual(["", "WS10"]);
+  });
+
+  it("disables trusted controls and Apply without a catalog", () => {
+    render(<StationSummaryQueryControls />);
+
+    expect((screen.getByLabelText("Line") as HTMLSelectElement).disabled).toBe(true);
+    expect((screen.getByLabelText("Station / WS") as HTMLSelectElement).disabled).toBe(true);
+    expect((screen.getByLabelText("Start time") as HTMLInputElement).disabled).toBe(true);
+    expect((screen.getByLabelText("End time") as HTMLInputElement).disabled).toBe(true);
+    expect((screen.getByRole("button", { name: "Apply" }) as HTMLButtonElement).disabled).toBe(true);
+    expect(screen.queryByPlaceholderText("LINE_001")).toBeNull();
+  });
+
+  it("keeps Apply disabled for a non-positive or oversized local window", () => {
+    render(<StationSummaryQueryControls catalog={catalog} />);
+    const start = screen.getByLabelText("Start time");
+    const end = screen.getByLabelText("End time");
+    const apply = screen.getByRole("button", { name: "Apply" }) as HTMLButtonElement;
+
+    fireEvent.change(start, { target: { value: "2026-07-01T08:00" } });
+    fireEvent.change(end, { target: { value: "2026-07-01T08:00" } });
+    expect(apply.disabled).toBe(true);
+
+    fireEvent.change(end, { target: { value: "2026-08-01T08:01" } });
+    expect(apply.disabled).toBe(true);
+  });
+});

@@ -190,3 +190,262 @@ dd {
     padding: 18px;
   }
 }
+
+.station-summary-shell {
+  gap: 16px;
+  max-width: 1180px;
+  padding-top: 24px;
+}
+
+.station-summary-header {
+  display: grid;
+  gap: 8px;
+  border-top: 4px solid #1b5c78;
+  padding: 18px 2px 6px;
+}
+
+.station-summary-shell .station-summary-eyebrow {
+  color: #1b5c78;
+  font-size: 12px;
+  font-weight: 800;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+}
+
+.station-summary-shell .station-summary-header h1 {
+  margin-bottom: 0;
+  color: #102736;
+  font-size: 34px;
+  letter-spacing: -0.02em;
+}
+
+.station-summary-shell .station-summary-header > p:last-child {
+  max-width: 720px;
+  color: #485b68;
+  line-height: 1.55;
+}
+
+.station-summary-query-controls {
+  grid-template-columns: minmax(0, 1fr);
+  gap: 16px;
+  border: 1px solid #cbd7df;
+  border-radius: 8px;
+  padding: 18px;
+  background: #ffffff;
+}
+
+.station-summary-scope-heading {
+  display: flex;
+  align-items: baseline;
+  gap: 12px;
+  border-bottom: 1px solid #e2e9ee;
+  padding-bottom: 12px;
+}
+
+.station-summary-scope-heading h2 {
+  margin: 0;
+  color: #183746;
+  font-size: 18px;
+}
+
+.station-summary-shell .station-summary-scope-heading p {
+  color: #647581;
+  font-size: 13px;
+}
+
+.station-summary-scope-fields {
+  display: grid;
+  grid-template-columns: minmax(140px, 0.7fr) minmax(160px, 0.8fr) minmax(240px, 1.25fr) minmax(240px, 1.25fr) max-content;
+  gap: 12px;
+  align-items: end;
+}
+
+.station-summary-scope-fields > label {
+  min-width: 0;
+}
+
+.station-summary-scope-fields input {
+  width: 100%;
+  min-width: 0;
+  border-color: #b9c7d1;
+  background: #fbfcfd;
+}
+
+.station-summary-scope-fields input:focus {
+  outline: 2px solid #7faec2;
+  outline-offset: 1px;
+  border-color: #1b5c78;
+  background: #ffffff;
+}
+
+.station-summary-scope-apply {
+  min-width: 92px;
+  align-self: end;
+  white-space: nowrap;
+}
+
+.station-summary-state-message {
+  display: grid;
+  gap: 8px;
+  border-left: 4px solid #5f7480;
+  padding: 20px;
+}
+
+.station-summary-state-message.state-error {
+  border-color: #9a5a20;
+  background: #fffaf4;
+}
+
+.station-summary-shell .station-summary-state-code {
+  color: #8a4c18;
+  font-size: 12px;
+  font-weight: 800;
+  letter-spacing: 0.1em;
+}
+
+.station-summary-state-message h2 {
+  margin-bottom: 0;
+  color: #263b46;
+}
+
+.station-summary-state-message.state-error h2 {
+  color: #713c13;
+}
+
+.station-summary-state-message > p:last-child {
+  max-width: 760px;
+  line-height: 1.55;
+}
+
+@media (max-width: 1080px) {
+  .station-summary-scope-fields {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .station-summary-scope-apply {
+    grid-column: 2;
+    justify-self: end;
+  }
+}
+
+@media (max-width: 640px) {
+  .station-summary-shell {
+    padding: 14px;
+  }
+
+  .station-summary-shell .station-summary-header h1 {
+    font-size: 29px;
+  }
+
+  .station-summary-scope-heading {
+    display: grid;
+    gap: 4px;
+  }
+
+  .station-summary-scope-fields {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .station-summary-scope-apply {
+    grid-column: 1;
+    width: 100%;
+    justify-self: stretch;
+  }
+}
+
+/* G2 Station Summary scope/time controls: keep the existing shared query-controls contract untouched. */
+.station-summary-query-controls .station-summary-scope-fields {
+  grid-template-columns: minmax(150px, 0.75fr) minmax(170px, 0.85fr) repeat(2, minmax(210px, 1fr)) minmax(220px, 0.9fr) max-content;
+}
+
+.station-summary-scope-time-fields {
+  display: grid;
+  grid-column: span 2;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 12px;
+  min-width: 0;
+}
+
+.station-summary-scope-time-fields label {
+  min-width: 0;
+}
+
+.station-summary-scope-time-fields input {
+  width: 100%;
+  min-width: 0;
+}
+
+.station-summary-scope-presets {
+  display: grid;
+  gap: 6px;
+  min-width: 0;
+}
+
+.station-summary-scope-presets-label,
+.station-summary-scope-timezone,
+.station-summary-scope-validation {
+  color: #5b6875;
+  font-size: 12px;
+  font-weight: 700;
+}
+
+.station-summary-scope-preset-buttons {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+
+.station-summary-scope-preset-buttons button {
+  min-height: 32px;
+  border: 1px solid #8ba6b5;
+  border-radius: 5px;
+  padding: 5px 8px;
+  background: #f3f7f9;
+  color: #174f78;
+  cursor: pointer;
+  font-size: 12px;
+  font-weight: 700;
+  white-space: nowrap;
+}
+
+.station-summary-scope-preset-buttons button:disabled,
+.station-summary-scope-apply:disabled {
+  cursor: not-allowed;
+  opacity: 0.55;
+}
+
+.station-summary-scope-validation {
+  color: #8a4c18;
+}
+
+.station-summary-scope-apply:disabled {
+  border-color: #8d9ca5;
+  background: #7e8f99;
+}
+
+@media (max-width: 1080px) {
+  .station-summary-query-controls .station-summary-scope-fields {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .station-summary-scope-time-fields,
+  .station-summary-scope-presets {
+    grid-column: span 2;
+  }
+}
+
+@media (max-width: 640px) {
+  .station-summary-query-controls .station-summary-scope-fields {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .station-summary-scope-time-fields,
+  .station-summary-scope-presets,
+  .station-summary-scope-apply {
+    grid-column: 1;
+  }
+
+  .station-summary-scope-time-fields {
+    grid-template-columns: minmax(0, 1fr);
+  }
+}
