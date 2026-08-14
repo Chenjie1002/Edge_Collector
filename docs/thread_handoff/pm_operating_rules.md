@@ -1,6 +1,6 @@
 # ChatGPT PM Operating Rules
 
-Updated: 2026-07-24
+Updated: 2026-08-03
 
 Applies to: Edge MES Demo ChatGPT PM / Codex Thread workflow.
 
@@ -389,28 +389,200 @@ Governance documents such as this file, `README.md`, `docs/current_status.md` an
 
 ## 10. Minimal prompt pattern
 
-Before assigning a task, PM must record:
+Before assigning a task, PM must make two separate assessments:
+
+Owner-facing main-Thread routing assessment:
 
 - task size;
 - expected file scope;
-- whether the current Thread has enough context capacity;
-- whether a new Thread is needed;
-- the reason for continuing the current Thread or opening a new one.
+- whether the current Owner/PM conversation has enough context capacity;
+- whether the Owner should manually dispatch the task into a new top-level Thread;
+- the reason for continuing the current top-level Thread or opening a new one.
 
-Future Thread prompts must use the fixed outer template in this section. This is a mandatory governance format, not a preferred example.
+This routing recommendation is for the Owner only. It belongs in the Owner summary and must not be written as an instruction for the executing Thread to open、switch or create a new top-level conversation/window/Thread. Repository-backed tasks are manually dispatched by the Owner.
+
+Executing-Thread sub-agent assessment:
+
+- whether sub-agents are recommended to improve execution efficiency or review quality;
+- the exact independently delegable subtask(s), or `none`;
+- the reason sub-agents are or are not appropriate;
+- the authority boundary: sub-agents inherit no authority beyond the task file, and the assigned core Thread remains responsible for integration、validation and the final report.
+
+The sub-agent assessment must appear inside the authoritative task file. Future Thread prompts must use the fixed outer template in this section. This is a mandatory governance format, not a preferred example.
 
 Before issuing any Architecture / Integration、Reliability、Data Quality or Verification Prompt, PM must re-read this section and audit the completed Prompt against the mandatory field checklist below. Correct task content does not excuse a non-conforming Prompt structure.
 
-When PM issues a task prompt for another Thread, the Thread prompt body must be returned as one complete copyable Markdown block. Do not split the Thread prompt body across multiple separate code fences. PM may write intake, judgment or explanation before or after the prompt, but the Thread prompt itself must remain a single copyable Markdown block so the user can copy it directly into the target Thread. Inside the copyable prompt, nested command, file and path examples may still use indented blocks or fenced examples when useful, provided the prompt body remains one copyable block.
+### Repository-backed Prompt dispatch
+
+Repository-backed Prompt mode is the mandatory default for every new Architecture / Integration、Reliability、Data Quality or Verification task unless the Owner explicitly overrides it for that one task. The complete authoritative Prompt must be materialized as one uniquely named repository file:
+
+```text
+docs/thread_handoff/pm_task_<YYYYMMDDTHHMMZ>_<task-id>_<slug>.md
+```
+
+Naming rules:
+
+- the timestamp is UTC and uses the exact minute-resolution form `YYYYMMDDTHHMMZ`;
+- `<task-id>` and `<slug>` use lowercase ASCII letters, digits and underscores only;
+- task-ID separators such as `-` or `/` are normalized to underscores;
+- the slug is concise, stable and describes the authorized task rather than its result;
+- every task file path is unique and an existing task file must never be overwritten.
+
+The task file itself must contain the complete fixed 16-section Prompt defined below. The first required-reading item inside the Prompt must be the task file itself, and the executing Thread must verify its exact path, regular/non-symlink type, byte length and SHA-256 against the Owner launcher before reading other authority files or performing any task action.
+
+The Chat window must not repeat the full Prompt. It must show only:
+
+1. a concise Owner summary covering the Gate, assigned core Thread, Owner-facing recommendation on whether to dispatch into a new top-level Thread, task-file sub-agent recommendation, principal authority boundary, major mutations or command budgets, decisive PASS/HOLD stop condition and single next gate;
+2. the task-file identity: exact repository path, bytes, SHA-256 and current Git state;
+3. a short launcher instructing the already selected executing Thread to read that exact task file first, verify the identity and execute only the authority contained there.
+
+The launcher must not instruct the executing Thread to open、switch or create a new top-level conversation/window/Thread. That dispatch decision belongs to the Owner. The launcher is not independent authority and must not broaden, summarize away or contradict the task file. When the launcher and task file differ, the executing Thread must stop with `HOLD / TASK_FILE_LAUNCHER_IDENTITY_OR_AUTHORITY_MISMATCH`.
+
+The launcher must use this fixed structure and order:
+
+```text
+你是 Edge MES Demo 项目的独立 <Architecture / Integration | Reliability | Data Quality | Verification> Thread。
+
+项目绝对路径：
+
+`/Users/chenjie/Documents/MES/edge-mes-demo`
+
+首先读取并核验以下 authoritative task file：
+
+`<repository-relative task path>`
+
+Expected identity：
+
+- regular / non-symlink
+- bytes：`<exact bytes>`
+- SHA-256：`<exact lowercase SHA-256>`
+
+必须在读取任何其他 repository content、运行 Python、执行 Git 命令、测试、probe、调用 sub-agent 或写入文件前完成 task self-identity gate。
+
+该 task file 是本轮完整且唯一的 authority。Launcher 不构成独立 authority，也不得扩张、缩减或替代 task file 内容。
+
+若 path、type、bytes、SHA-256 或 authority 与 launcher 不一致，立即停止并返回：
+
+`HOLD / TASK_FILE_LAUNCHER_IDENTITY_OR_AUTHORITY_MISMATCH`
+
+核验通过后，严格按照 task file 执行。不得继承其他 core Thread 或 predecessor task 的隐含 authority。
+
+本任务只授权 <one concise sentence naming the exact principal scope and exact durable output authority>。
+
+不授权 <one concise sentence naming the principal excluded mutations/phases>。
+```
+
+Launcher-specific path rule：the project absolute path appears exactly once in the launcher；the task path and every repository-internal path in the launcher are relative to that project root；external retained/runtime/remote paths are omitted from the launcher unless they are the principal target and are necessary to prevent ambiguity。
+
+Task files are authority and audit records:
+
+- they must not be added to `.gitignore` or any exclude mechanism;
+- immediately after materialization they must be regular, non-symlink, not ignored, visible in `git status`, untracked, unstaged and not indexed unless a separate prior Git authority explicitly establishes another state;
+- their path must be included in exact untracked-membership accounting;
+- writing or dispatching a task file does not authorize staging, commit, push or tag;
+- stage、commit、push and tag require later independent exact-path Git authority;
+- after the Owner launcher publishes the file identity, the file is immutable for that dispatched task. A correction requires a new unique task file and a new launcher that explicitly supersede the prior file, unless the Owner grants an exact pre-execution in-place correction before the executing Thread consumes authority.
+
+A Prompt already dispatched before this rule was materialized is not retroactively invalidated. This mode applies beginning with the next newly issued Thread Prompt.
+
+### Identity verification tiers and SHA mismatch triage
+
+Exact SHA-256 remains a hard authority gate only where the current task depends on exact bytes to determine authority or executable behavior. Do not turn every required-reading file into a transcription-sensitive hard gate.
+
+Use these three identity classes:
+
+1. `AUTHORITY_HARD_GATE`
+   - includes the current repository-backed task file, any execution/commit/deploy authority artifact, and any helper/test/spec/evidence object whose exact bytes are directly consumed to perform the authorized action;
+   - require exact path, regular/non-symlink type, byte length and mechanically compared SHA-256;
+   - a confirmed byte mismatch is HOLD.
+2. `PROTECTED_CONTINUITY`
+   - includes legacy helpers/tests, adapters and other files that must remain unchanged during the task but whose historical expected bytes are not themselves the current authority source;
+   - compute and record an entry identity from the live file, then recompute at the final audit and require `final == entry`;
+   - do not require a task-embedded historical expected SHA unless the task has a specific reason that exact historical bytes are authority-bearing.
+3. `HISTORICAL_OR_SEMANTIC_READ`
+   - includes prior reports, prior planning tasks, status/history documents and other context used only for bounded semantic facts;
+   - require exact path plus regular/non-symlink existence and validate the task-relevant semantic facts;
+   - SHA may be recorded diagnostically but mismatch alone is not HOLD unless the current task explicitly upgrades that file to `AUTHORITY_HARD_GATE`.
+
+Expected SHA values must never be manually retyped for comparison when a machine-readable source line or live file can be compared mechanically. A Thread must not classify `REQUIRED_READING_IDENTITY_MISMATCH` from a copied or summarized SHA string without first performing the triage below.
+
+SHA mismatch triage is mandatory and does not consume a pre-authority repair cycle because it is read-only classification, not repository repair:
+
+1. re-read the exact authoritative task/launcher line once from the source file rather than from prior chat text or a copied value;
+2. verify that any expected SHA is exactly 64 lowercase hexadecimal characters; a malformed/truncated copied value is a validator/transcription defect, not repository drift;
+3. recompute the live file SHA once with an approved read-only hashing command;
+4. compare expected and actual mechanically without retyping either value;
+5. if the authoritative source line and live file agree, continue and record `SHA_TRIAGE_FALSE_MISMATCH`; do not consume repair budget and do not terminalize the task;
+6. only when the mechanically re-read authoritative expected identity genuinely differs from the live object may the Thread return an identity-drift HOLD.
+
+A failed diagnostic command used only for this triage is not itself a repair cycle when it reads no unauthorized repository content and performs no mutation; rerun the same bounded check with a corrected invocation and record the diagnostic defect. Broad reads, unauthorized paths or any mutation remain governed by the normal allowlist and can still be terminal HOLD.
+
+New task prompts should minimize embedded SHA ledgers. Prefer:
+
+- exact SHA hard gates for the task itself and action-bearing executable/authority artifacts;
+- entry/final continuity for protected non-authority files;
+- semantic validation for historical/background reads.
+
+The launcher task self-identity gate remains unchanged and strict.
+
+### Governed local repository write target and path-base rule
+
+Repository mutation safety is determined by the effective resolved target inside the declared local repository/worktree, not by any product-specific tool name or remote workspace abstraction. A Codex local Thread operates directly on its local checkout/worktree and must not be required to obtain Devspace、MCP workspaceId or another external workspace binding unless that external environment is itself the explicit task target.
+
+For governed repository writes:
+
+- before the first repository mutation, verify the local execution root with read-only facts: physical `cwd` and `git rev-parse --show-toplevel` must both resolve to the declared project root for the active checkout/worktree;
+- every task-owned mutation target must be one exact allowlisted repository-relative path. `..`、path traversal、globs、directory-level targets and inferred output paths are forbidden. If a local editing primitive requires an absolute path, the Thread must mechanically prove that the resolved target is exactly `project_root / allowlisted_relative_path` before mutation;
+- write primitives are environment-specific implementation details, not governance authorities. Codex Local may use the local editor/patch/write primitive actually available in that Thread only when its path base or explicit target can be verified for that invocation. Do not require Devspace、workspaceId、MCP binding or another tool that is unavailable in the local Codex execution environment;
+- generic patch/edit primitives, including `apply_patch`, are not globally forbidden by name. They are permitted only when the current environment exposes or otherwise allows the Thread to prove the effective target/base before the first authority-bearing write. If the primitive's path base is ambiguous or cannot be proven, do not use that primitive; choose another local editing method whose exact target is verifiable;
+- shell redirection、heredoc、`tee`、`sed -i`、`perl -i`、generated patcher scripts or other mutation mechanisms remain forbidden when the task or harness cannot prove exact target confinement and changed-path accounting. A task may explicitly authorize a different mechanism only with an exact root/target contract;
+- immediately after the first write performed with a mutation primitive in a task, verify that the expected allowlisted repository path exists or changed as intended and inspect changed-path accounting. When the primitive previously exhibited an uncertain base, also verify that the known repository parent/sibling location does not contain a same-suffix stray object before continuing;
+- a write that actually lands outside the exact allowlist is a real unauthorized mutation and is terminal HOLD unless the Owner grants separate exact cleanup/recovery authority. Do not silently delete、move、adopt or retry the stray object;
+- an external cleanup action is never inherited from repository write authority. It requires an explicit exact absolute-path cleanup authorization and must not broaden into parent-directory cleanup or recursive deletion;
+- task prompts that authorize local repository writes must state the root/target proof required before mutation, but should avoid hard-coding product-specific tool brands unless that specific tool is itself part of the task contract;
+- an environment-specific binding failure such as missing Devspace/workspaceId is not repository drift when the task is intended for Codex Local and the declared local checkout/worktree is valid. If no mutation or authority-consuming action occurred, PM may reject that HOLD as `CROSS_ENVIRONMENT_TOOL_BINDING_ASSUMPTION` and relaunch under the environment-neutral rule.
+
+This rule applies to all newly launched or relaunched mutation tasks. Existing terminal HOLDs caused by an actual out-of-allowlist write remain real historical HOLDs; a later cross-environment binding HOLD does not erase that history, but it also does not create a new repository defect when no mutation occurred.
+
+### Host control-plane Python 3.14 runtime freeze
+
+Any PM task that uses host-side Python for authority-bearing discovery, parsing, hashing, archive inspection, validation, evidence generation, test execution or direct-final record creation must use the frozen project control-plane runtime below. This rule applies to host-side PM/Thread tooling only; it does not change the Collector product runtime, Dockerfile base image, container runtime or any separately frozen candidate runtime.
+
+Frozen runtime identity until an explicit Owner-approved governance or environment update supersedes it:
+
+```text
+formula line       = homebrew/core/python@3.14
+formula version    = 3.14.6
+entrypoint         = /opt/homebrew/opt/python@3.14/bin/python3.14
+resolved target    = /opt/homebrew/Cellar/python@3.14/3.14.6/Frameworks/Python.framework/Versions/3.14/bin/python3.14
+version            = Python 3.14.6
+architecture       = arm64
+resolved bytes     = 52448
+resolved SHA-256   = b502cb4c5b46b8d4192ec6bcb600ce8922f1afc396fcf646e8765c6eba74a0bf
+```
+
+Mandatory invocation and acceptance rules:
+
+- use the exact absolute entrypoint `/opt/homebrew/opt/python@3.14/bin/python3.14`; use `-B` or `PYTHONDONTWRITEBYTECODE=1` whenever repository or attempt-root bytecode creation is not explicitly authorized;
+- `/usr/bin/python3`, Command Line Tools Python, `xcrun python3`, unqualified `python`/`python3`, `/usr/bin/env python*`, generic `/opt/homebrew/bin/python3` and implicit PATH resolution are forbidden for authority-bearing host-side Python work unless one task receives an explicit exact-runtime override from the Owner;
+- before the first task-owned write, package mutation, Docker/daemon call, network call or remote call, the executing Thread must verify the entrypoint, link resolution, exact patch version, `sys.executable`, `platform.machine()`, resolved regular/non-symlink executable type, bytes and SHA-256;
+- the same exact interpreter that will execute the real parser or producer must execute a pre-write compatibility smoke for every nontrivial language or standard-library primitive on which the task depends, including examples such as `zip(..., strict=True)`, `tarfile`, `pathlib`, JSON encoding, UTF-8 handling and required hashing APIs;
+- a smoke performed with another interpreter, another path or another Python minor version is not transferable evidence;
+- the task Prompt must record the frozen runtime identity and exact required primitive smoke. Runtime or primitive drift is `HOLD / HOST_CONTROL_PLANE_PYTHON_RUNTIME_DRIFT_OR_INCOMPATIBILITY` before authority-consuming work;
+- there is no fallback interpreter after authority consumption. Repair, package install, upgrade, downgrade, relink or runtime substitution requires a new explicit environment authority;
+- this governance rule does not itself authorize Homebrew install/update/upgrade, shell-profile changes, PATH changes, symlink mutation or Python package installation;
+- a future Python 3.14 patch change or migration to another minor version requires an explicit Owner-approved governance/environment update that freezes the replacement identities before a dependent task is dispatched.
+
+A Prompt already terminalized before this runtime freeze remains historical and must not be edited, retried or reclassified. This runtime rule applies beginning with the next newly issued Thread Prompt.
 
 The required outer order is:
 
 1. report identity;
 2. task identity;
 3. executing Thread;
-4. PM workload / Thread-routing assessment;
+4. project absolute path、repository path convention and PM workload / sub-agent assessment;
 5. report delivery mode and exact output authority;
-6. project path and authority source;
+6. authority source;
 7. required reading order;
 8. fresh recovery / live-fact checks;
 9. current gate and authority boundary;
@@ -424,7 +596,7 @@ The required outer order is:
 
 A section may be short when it does not apply, but it must remain visible and state `none`、`not applicable` or `not authorized`; PM must not silently omit authority-bearing sections.
 
-Future Thread prompts must use this template:
+The authoritative repository-backed task file must use this template:
 
 ```text
 报告名称：
@@ -436,12 +608,24 @@ Future Thread prompts must use this template:
 执行 Thread：
 <Architecture / Integration | Reliability | Data Quality | Verification>
 
-PM 任务前工作量评估：
+项目绝对路径：
+/Users/chenjie/Documents/MES/edge-mes-demo
+
+Repository path convention：
+- the project absolute path is declared exactly once in this dedicated field;
+- every other repository-internal task、report、artifact、source、test and required-reading path in this Prompt must be relative to that project root;
+- paths outside the repository, including retained、runtime、remote、mount or deployment paths, remain exact absolute paths;
+- before using any relative repository path, the executing Thread must verify that its working directory is the exact project root;
+- do not repeat the project absolute path elsewhere in the authoritative task file or its machine blocks unless a frozen external tool contract makes an absolute value technically unavoidable; any such exception must be named and justified explicitly;
+- the separately published launcher declares the same project absolute path exactly once under its own fixed launcher template and otherwise uses repository-relative paths.
+
+PM 任务前工作量 / sub-agent 评估：
 - 任务规模：小 / 中 / 大
 - 涉及范围：<expected file/domain scope>
-- 当前 Thread 是否建议继续：yes / no
-- 是否需要新开 Thread：yes / no
-- 理由：<context capacity / scope isolation reason>
+- 是否建议使用 sub-agent：yes / no
+- sub-agent exact scope：<independently delegable subtasks, or none>
+- 理由：<efficiency、quality、independence and integration-boundary reason>
+- authority boundary：sub-agents inherit no authority beyond this task file；the assigned core Thread owns integration、validation and the final report
 
 Report delivery mode：
 <CHAT_ONLY | CONVERSATION_ATTACHMENT | REPOSITORY_DURABLE_REPORT | REPOSITORY_REPORT_WITH_ARTIFACTS>
@@ -455,18 +639,16 @@ Exact artifact paths：
 Docs / artifact write authority：
 <not authorized | granted for the exact paths above only>
 
-项目绝对路径：
-/Users/chenjie/Documents/MES/edge-mes-demo
-
 Authority source / ID：
 <exact PM handoff, report, authority ID or current user instruction>
 
 请先按顺序读取：
-1. docs/thread_handoff/pm_operating_rules.md
-2. docs/current_status.md
-3. <current PM handoff or authority file>
-4. <task-specific gate/status docs>
-5. <task-specific source/contract/report/evidence files>
+1. <this exact repository-backed task file; verify path, regular/non-symlink type, bytes and SHA-256 against the Owner launcher>
+2. docs/thread_handoff/pm_operating_rules.md
+3. docs/current_status.md
+4. <current PM handoff or authority file>
+5. <task-specific gate/status docs>
+6. <task-specific source/contract/report/evidence files>
 
 Fresh recovery / live facts：
 - <exact read-only commands or checks required before work>
@@ -488,6 +670,7 @@ Exact allowlist：
 - files that may be read:
 - files that may be created or modified:
 - commands/tests that may be run:
+- host control-plane Python runtime: exact entrypoint, resolved identity, version/architecture/bytes/SHA-256 and pre-write primitive compatibility smoke, or `not applicable`
 - pre-authority local repair window: not authorized | authorized, with exact cycle budget and eligible repair classes
 - execution lock: required fields and the point after which helpers become immutable
 - unordered discovery: stable canonicalization keys and raw-versus-normalized evidence requirements
@@ -521,9 +704,22 @@ Next gate：
 
 Mandatory pre-dispatch audit：
 
-- the Prompt is one complete copyable Markdown block;
+- the complete Prompt is stored in one unique `docs/thread_handoff/pm_task_<YYYYMMDDTHHMMZ>_<task-id>_<slug>.md` file;
+- the task filename uses UTC, normalized lowercase task ID and slug, and does not overwrite an existing path;
+- the task file is regular, non-symlink, not ignored, visible in `git status`, untracked, unstaged and not indexed at initial dispatch unless separately authorized otherwise;
+- the task file is the first required-reading item and requires exact path/bytes/SHA-256 verification before any other task action;
+- the Chat response contains only the Owner summary, exact task-file identity and short launcher, not the full Prompt body;
+- the Owner summary contains the Owner-facing top-level Thread routing recommendation; the task file and launcher do not instruct the executing Thread to open、switch or create a new top-level conversation/window/Thread;
+- the task file explicitly states whether sub-agents are recommended, their exact independently delegable scope or `none`, the reason, and the non-inheritance/integration boundary;
+- the launcher follows the fixed role-first template：assigned core Thread；project absolute path exactly once；repository-relative task path；expected regular/non-symlink、bytes and SHA-256；pre-action self-identity gate；complete-authority statement；mismatch HOLD；concise principal authorization and exclusion boundaries；
+- the launcher states that the task file is complete authority and does not broaden or contradict it;
+- the project absolute path appears exactly once in the authoritative task file's dedicated project-path field and exactly once in the separately published launcher；all other repository-internal paths are relative to that root, while external/runtime/retained/remote paths remain exact absolute paths inside the task file;
+- the executing Thread is required to verify the exact project root as its working directory before resolving repository-relative paths;
+- exact task-file membership is included in the expected working-tree accounting;
+- Git stage、commit、push and tag for the task file remain separately authorized;
 - every heading above is present in the required order;
 - task-specific authority, allowlist and prohibited operations are explicit;
+- when host-side Python is used, the Prompt freezes the Section 10 Python 3.14 entrypoint and identity, forbids implicit/PATH/Apple CLT fallback, and defines exact pre-write primitive compatibility smoke;
 - report delivery mode and exact output paths are declared before execution;
 - remote-call budget and consumption rules are explicit when remote access is involved;
 - the Prompt explicitly states whether a pre-authority local repair window is authorized, its cycle budget, eligible repair classes and forbidden authority-bearing changes;
@@ -803,17 +999,20 @@ MVP 路径一致性：
 
 Thread 输出 / 上下文评估:
 - 本次输出长度：短 / 中 / 长
-- 当前 Thread 是否建议继续：yes / no
-- 下一轮是否建议新开 Thread：yes / no
+- 当前 Thread 是否建议继续承载后续任务：yes / no
+- Owner 是否应在下一轮手工分发到新的top-level Thread：yes / no
+- 本任务sub-agent计划：yes / no；exact scope / none
+- 本任务sub-agent实际使用：yes / no；实际scope / none
 - 理由：
 ```
 
-When returning a report, the Thread must reassess context capacity after completing the task. This reassessment must state:
+When returning a report, the Thread must reassess context capacity after completing the task. This reassessment is advisory metadata for the Owner only; the executing Thread must not open、switch or create a new top-level conversation/window/Thread. It must state:
 
 - the current output length;
 - whether the current Thread can continue to carry the next task;
-- whether the next round should start a new Thread;
-- the reason for that recommendation.
+- whether the Owner should manually dispatch the next round into a new top-level Thread;
+- the task-file sub-agent recommendation and the actual sub-agent usage/scope;
+- the reason for those recommendations and any variance from the task-file sub-agent plan.
 
 Do not repeat long-term background already stored in project docs. Reference the relevant durable paths instead.
 
