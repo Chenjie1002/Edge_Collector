@@ -4,6 +4,24 @@
 工作目录：`/Users/chenjie/Documents/MES/edge-mes-demo`
 树莓派部署目录：`/opt/edge-mes-demo`
 
+## 0R. 2026-08-15 Untracked Corpus Governance Closeout
+
+本地 historical corpus reconciliation 已关闭。剩余 15 个 corpus-governance intermediate controls 已作为 archive tranche 3 保存在本地 archive；仅 exact working copies 被移除，未执行 broad cleanup。
+
+```text
+ARCHIVE_BRANCH                 = archive/pm-evidence-20260815
+ARCHIVE_TRANCHE_3_COMMIT       = 419174f85d4ad1c8129c327a4525ef6b410e74f2
+ARCHIVE_TRANCHE_3_PARENT       = 64d8610e8368c2175ddf2d25fd42929fae36b9ae
+ARCHIVE_TRANCHE_1_FILES        = 516
+ARCHIVE_TRANCHE_2_FILES        = 645
+ARCHIVE_TRANCHE_3_FILES        = 15
+MAIN_PRE_CLOSEOUT_HEAD         = 3f6ba2c31e33f9fecd4d8fcb5d0a6353e5e4e16d
+PUSHED                        = NO
+FINAL_HYGIENE_TARGET          = staged 0 / tracked dirty 0 / untracked 0
+```
+
+本地 archive/提交事实不升级为 remote、runtime 或 production acceptance；product/runtime/remote acceptance boundaries remain unchanged。`FIELD-VALIDATION-COLLECTOR-DB` 继续保持 governance-isolated。
+
 ## 0Q. 2026-08-15 A1 Local Trusted Data Path / Formal Producer Runtime Reconciliation
 
 本控制块是当前最高优先级 product/runtime status truth，supersedes `0P` 与更早章节中的 current-state wording；`0P` 及全部更早章节继续作为 immutable historical context 保留，不删除、不重写、不重排。`0Q` 不重开已经 CLOSED 的 P1，也不把 local demo runtime 事实泛化为 Raspberry Pi remote production acceptance。
