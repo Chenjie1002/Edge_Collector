@@ -27,6 +27,7 @@ from collector.app.services.resolved_config_registry import (
 )
 from collector.app.services.station_event_runtime_source import (
     RuntimeSourcePayloadError,
+    _decode_result,
     build_runtime_source_payload,
 )
 
@@ -478,6 +479,42 @@ def real_runtime_decoded_fields() -> dict[str, object]:
         "plc_end_time": "2026-06-26T10:00:30+08:00",
         "nok_code_count": 0,
     }
+
+
+@pytest.mark.parametrize(
+    ("result_code", "expected"),
+    ((0, "unknown"), (1, "ok"), (2, "nok"), (3, "skip")),
+)
+def test_runtime_result_code_table_canonicalizes_skipped_to_skip(
+    result_code: int,
+    expected: str,
+) -> None:
+    mapping = load_edge_mapping("config/mapping.yaml")
+
+    assert _decode_result(result_code, mapping.code_tables) == expected
+
+
+@pytest.mark.parametrize("station_id", ("WS02", "WS03"))
+def test_downstream_skipped_result_builds_canonical_skip_source_payload(
+    station_id: str,
+) -> None:
+    mapping = load_edge_mapping("config/mapping.yaml")
+    snapshot = build_resolved_config_snapshot_from_mapping(mapping.runtime_snapshot)
+    station = snapshot.station_for(station_id)
+    decoded_fields = {**real_runtime_decoded_fields(), "result": 3}
+
+    payload = build_runtime_source_payload(
+        decoded_fields=decoded_fields,
+        raw_bytes=b"\x03\x00",
+        station_snapshot=station,
+        resolved_config_hash=snapshot.config_hash,
+        plc_boot_id="BOOT-1",
+        observed_at="2026-06-26T02:00:31Z",
+        code_tables=mapping.code_tables,
+    )
+
+    assert payload["result"] == "skip"
+    assert payload["result"] != "skipped"
 
 
 def test_real_mapping_ws01_raw_capable_source_builder_emits_raw_hex_without_replacing_normalized_payload() -> None:

@@ -141,7 +141,8 @@ def _decode_result(value: Any, code_tables: Mapping[str, Mapping[Any, Any]]) -> 
         return None
     table = code_tables.get("result", {})
     decoded = table.get(value, table.get(str(value), value))
-    return str(decoded).lower()
+    normalized = str(decoded).lower()
+    return "skip" if normalized == "skipped" else normalized
 
 
 def _first_nok_code(decoded_fields: Mapping[str, Any]) -> int | None:
