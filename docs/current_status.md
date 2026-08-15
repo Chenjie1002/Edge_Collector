@@ -1,8 +1,116 @@
 # 当前状态 / Codex 恢复上下文
 
-更新时间：2026-08-12
+更新时间：2026-08-15
 工作目录：`/Users/chenjie/Documents/MES/edge-mes-demo`
 树莓派部署目录：`/opt/edge-mes-demo`
+
+## 0Q. 2026-08-15 A1 Local Trusted Data Path / Formal Producer Runtime Reconciliation
+
+本控制块是当前最高优先级 product/runtime status truth，supersedes `0P` 与更早章节中的 current-state wording；`0P` 及全部更早章节继续作为 immutable historical context 保留，不删除、不重写、不重排。`0Q` 不重开已经 CLOSED 的 P1，也不把 local demo runtime 事实泛化为 Raspberry Pi remote production acceptance。
+
+Owner 于 2026-08-15 连续授权 A1 local trusted-data diagnosis、minimal stack bring-up、accepted-fact schema materialization、data-source reconciliation、formal producer image materialization 与 bounded producer runtime observation。当前机械验证链路为：
+
+```text
+local V-PLC
+-> Collector adapter decision = accepted
+-> production_accepted_station_event_fact
+-> bounded FastAPI consumers
+-> Station Summary
+```
+
+当前 local runtime truth：
+
+```text
+POSTGRES                    = RUNNING / HEALTHY
+API                         = RUNNING / HEALTH 200
+DASHBOARD                   = RUNNING / HEALTHY / HEALTH 200
+DASHBOARD_TRUSTED_ORIGIN    = http://api:8000
+DASHBOARD_ORIGIN_PROFILE    = container
+ACCEPTED_FACT_RELATION      = public.production_accepted_station_event_fact / MATERIALIZED
+FORMAL_PRODUCER_PATH        = LOCAL V-PLC -> COLLECTOR -> ACCEPTED FACT
+PRODUCER_OBSERVATION        = PASS / BOUNDED
+PRODUCER_CONTAINERS         = STOPPED AFTER OBSERVATION
+ONGOING_AUTOMATIC_DB_WRITES = NO
+```
+
+首次 local formal-product-path accepted fact 已通过默认 V-PLC production plan 自然产生，不是 fixture、seed、manual INSERT 或 remote-copy：
+
+```text
+line_id          = LINE_001
+station_id       = WS01
+event_type       = station_result
+production_result= ok
+unit_id          = U-20260815-000001
+dmc              = SUB-000001
+cycle_counter    = 1
+source_event_id  = sha256:aef4f112b0d23444c7e36dab0f6e0f4e24558a6dfc1722ea6997c52b3eeb425c
+fact_key         = sha256:36c739dea4671abefdf7a366809d790393311e7843a854a789b323ecdcc4fabf
+accepted_fact_count = 0 -> 1
+```
+
+Bounded consumer reconciliation on the observed window：
+
+```text
+GET Quality             = HTTP 200 / ok=1 / nok=0 / denominator=1 / quality_rate=1.0 / SUPPORTED
+GET Process Metrics     = HTTP 200 / accepted_event_count=1 / PARTIAL with explicit unsupported authorities
+GET Accepted Events     = HTTP 200 / exact WS01 accepted fact returned
+GET Station Summary     = HTTP 200 / LINE_001 + WS01 / SUPPORTED + PARTIAL
+ACCEPTED_FACT_SOURCE_503 = CLOSED FOR CURRENT LOCAL SCHEMA/RUNTIME
+FRONTEND_SOURCE_ERROR    = NOT CURRENT BLOCKER
+```
+
+Local accepted-fact schema history must remain explicit：fresh local PostgreSQL initially had no `production_accepted_station_event_fact`; migration `db/migrations/007_accepted_station_event_visibility.sql` was applied once as an Owner-authorized local DDL transaction, after compatibility preflight. Immediately after schema materialization the table had `0` rows and API responses changed from source-unavailable `503` to query-success/empty-window `200`; subsequent formal producer observation created the first accepted row through the product path.
+
+Data-source decision：`sync-worker` is not an accepted-fact importer; it remains mock `sync_outbox -> Oracle staging` behavior and Phase-2 out of scope. Remote Raspberry Pi accepted facts were not copied into local PostgreSQL. The selected local data source is the implemented V-PLC -> Collector accepted-only write path so provenance, duplicate/conflict handling and ACK ordering remain product-authoritative.
+
+Current A1 durable local-chain evidence：
+
+```text
+docs/reports/a1_station_summary_trusted_origin_real_data_wiring_readonly_diagnosis_r2_20260815T0949Z.md
+  7779 bytes / 7550246a483a16f392785de579d866b8e21ba68bc7951e158cba27657aa62048
+
+docs/reports/a1_station_summary_controlled_local_minimal_stack_bringup_20260815T1037Z.md
+  4970 bytes / 6832e903d183809a23a136fff6e39db5ce57bc80e8756dea82c8f015a9da8045
+
+docs/reports/a1_local_minimal_stack_image_materialization_20260815T1047Z.md
+  4818 bytes / 41814a69d5595e40732d90da2d9d66b9bc9e98424c6b8ee2cd8c07920ff5c2b5
+
+docs/reports/a1_station_summary_controlled_local_minimal_stack_bringup_r2_20260815T1055Z.md
+  8831 bytes / de6a5c6e886f43695fb66532c76f54330ec916a09710d9d4256e7cebfc4cb46b
+
+docs/reports/a1_local_accepted_fact_source_readonly_reconciliation_20260815T1106Z.md
+  8367 bytes / 302b7e066b0d0b92eb5b266e969cd656c75f02a6f839839f303f8ba157025f3e
+
+docs/reports/a1_local_accepted_fact_schema_materialization_20260815T1110Z.md
+  7265 bytes / 0d4439beeede1fdfdbe6760efdc58c90a3b2ad8297778c9bb8976f4ed3fdd5db
+
+docs/reports/a1_local_accepted_fact_data_source_reconciliation_20260815T1117Z.md
+  9954 bytes / e70fb4fe228fdda17b6dc79a3073b32c9d5d3203caab11e336bedb57d807eb84
+
+docs/reports/a1_local_formal_producer_image_materialization_20260815T1122Z.md
+  7011 bytes / d4cb48c01d93e4fe0e10666bd0986d31beae249ba219f65c8d5302d51003f0ba
+
+docs/reports/a1_local_formal_producer_controlled_bringup_and_accepted_fact_observation_20260815T1132Z.md
+  6241 bytes / c6bbefef165f2b19973f7c4b4441f3952d8c2400fb446376d5872f7ca227e122
+
+docs/thread_handoff/chatgpt_pm_handoff_260815-1654.md
+  28667 bytes / cc9e428d039e1cc013aa0f7ae72f9e1638ce690cd83f4fb1fb6fe195ba2ab5c7
+```
+
+Boundary / non-claims：
+
+```text
+P1_G6_PM_ACCEPTANCE                  = REMAINS CLOSED / PASS
+REMOTE_G5_PRODUCTION_ACCEPTANCE      = UNCHANGED / NOT REPLACED BY LOCAL FACT
+LOCAL_ONE-FACT_OBSERVATION           = NOT UNIVERSAL ALL-STATIONS CORRECTNESS
+PERFORMANCE_NUMERIC_AUTHORITY        = STILL UNSUPPORTED
+AVAILABILITY_NUMERIC_AUTHORITY       = STILL UNSUPPORTED
+FULL_OEE_NUMERIC_AUTHORITY           = STILL UNSUPPORTED
+A1_S2 / COSMETIC EXPANSION           = NOT AUTHORIZED BY THIS STATUS SYNC
+FIELD-VALIDATION-COLLECTOR-DB        = REMAINS GOVERNANCE-ISOLATED
+```
+
+Current repository-governance priority is canonical continuity adoption of the already-existing durable reports/handoffs. Historical untracked raw evidence remains separately classified; no broad `git clean` / `git add docs/` / mass archival is authorized by this `0Q` status block.
 
 ## 0P. 2026-08-12 P1-G6 PM Acceptance / Durable Closeout Status Reconciliation
 
