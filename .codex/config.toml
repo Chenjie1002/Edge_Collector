@@ -1,0 +1,14 @@
+approval_policy = "on-request"
+approvals_reviewer = "user"
+sandbox_mode = "workspace-write"
+
+[features]
+goals = true
+multi_agent = true
+
+[agents]
+enabled = true
+interrupt_message = true
+
+[sandbox_workspace_write]
+network_access = false
