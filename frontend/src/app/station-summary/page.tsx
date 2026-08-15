@@ -55,18 +55,31 @@ export function StationSummaryPageView({ state, catalog = null }: { state: PageV
   return (
     <main className="dashboard-shell station-summary-shell">
       <header className="station-summary-header">
-        <p className="station-summary-eyebrow">Production insight · Read-only</p>
-        <h1>Station Summary</h1>
-        <p>Trusted production view for one station and time window. Unavailable or unsupported data remains explicit.</p>
+        <div className="station-summary-header-copy">
+          <p className="station-summary-eyebrow">Production insight · Trusted read-only</p>
+          <h1>Station Summary</h1>
+          <p>Trusted production view for one station and time window, sourced from trusted Quality and Process Metrics routes. Unsupported and unavailable values remain explicit.</p>
+        </div>
+        <div className="station-summary-header-policy" aria-label="Station summary data policy">
+          <span>Trusted API only</span>
+          <span>No fabricated fallback</span>
+        </div>
       </header>
       <StationSummaryQueryControls catalog={catalog} query={query} defaultWindow={query ? undefined : quickRangeAt(new Date(), 8)} />
       {state.kind !== "ready" ? (
         <StationSummaryStateMessage state={state} />
       ) : (
-        <div className="detail-grid">
+        <section className="station-summary-results" aria-label="Station summary results">
+          <header className="station-summary-results-heading">
+            <div>
+              <p className="station-summary-results-kicker">Selected scope</p>
+              <h2>{state.query.lineId} / {state.query.stationId}</h2>
+            </div>
+            <p>{state.query.startTime} → {state.query.endTime}</p>
+          </header>
           <StationSummaryCards quality={state.viewModel.quality} />
           <ProcessMetricMatrix panel={state.viewModel.processMetrics} />
-        </div>
+        </section>
       )}
     </main>
   );
