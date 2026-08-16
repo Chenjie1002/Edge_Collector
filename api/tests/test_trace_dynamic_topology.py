@@ -185,6 +185,17 @@ def test_trace_page_renders_station_ids_from_response_not_fixed_three_station_li
     assert "Object.keys(data.stations || {})" in trace.TRACE_HTML
 
 
+def test_trace_page_places_recent_records_before_one_continuous_selected_unit_trace() -> None:
+    recent_index = trace.TRACE_HTML.index('id="recentPanel"')
+    selected_index = trace.TRACE_HTML.index('id="selectedTrace"')
+    assert recent_index < selected_index
+    assert 'id="unitSummary"' in trace.TRACE_HTML
+    assert 'class="trace-route"' in trace.TRACE_HTML
+    assert "Technical details" in trace.TRACE_HTML
+    assert "scrollIntoView" in trace.TRACE_HTML
+    assert 'class="timeline"' not in trace.TRACE_HTML
+
+
 def test_historical_10ws_trace_survives_current_3ws_topology(tmp_path: Path) -> None:
     baseline = _write_history_fixture(tmp_path)
     seed = _event("WS10", 10, unit_id="U-HIST-10", line_id="LINE_DEMO_10", plc_boot_id="BOOT_10")

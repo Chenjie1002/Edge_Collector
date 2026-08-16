@@ -16,7 +16,7 @@ stations:
   WS02: {base_cycle_s: 29.8, jitter_s: 1.0, nok_rate: 0.015}
   WS03: {base_cycle_s: 29.2, jitter_s: 0.9, nok_rate: 0.01}
 profiles:
-  normal: {cycle_scale: 1.0, allow_runtime_cycle_edit: false}
+  normal: {cycle_scale: 1.0, allow_runtime_cycle_edit: true}
   fast: {cycle_scale: 0.1, allow_runtime_cycle_edit: true}
   test: {cycle_scale: 0.05, allow_runtime_cycle_edit: true}
 """
@@ -37,7 +37,7 @@ class RuntimeConfigTest(unittest.TestCase):
 
         self.assertEqual("normal", config.profile)
         self.assertEqual(1.0, config.cycle_scale)
-        self.assertFalse(config.allow_runtime_cycle_edit)
+        self.assertTrue(config.allow_runtime_cycle_edit)
         self.assertEqual(30.4, config.stations["WS01"].base_cycle_s)
         self.assertEqual(str(path), config.source)
         self.assertEqual(64, len(config.config_hash))
@@ -67,7 +67,7 @@ class RuntimeConfigTest(unittest.TestCase):
         with self.assertRaisesRegex(ValueError, "WS01 base_cycle_s"):
             load_runtime_config(path)
 
-    def test_pipeline_uses_resolved_config_and_blocks_normal_cycle_edit(self) -> None:
+    def test_pipeline_uses_resolved_config_and_allows_normal_runtime_edit(self) -> None:
         temp_dir, path = self._config_path()
         self.addCleanup(temp_dir.cleanup)
         config = load_runtime_config(path)
@@ -81,9 +81,13 @@ class RuntimeConfigTest(unittest.TestCase):
         )
 
         self.assertEqual(30.4, pipeline.stations["WS01"].base_cycle_s)
-        with self.assertRaisesRegex(ValueError, "normal profile"):
-            pipeline.update_station("WS01", {"base_cycle_s": 1.0})
-        self.assertEqual(30.4, pipeline.stations["WS01"].base_cycle_s)
+        pipeline.update_station(
+            "WS01",
+            {"base_cycle_s": 42.5, "jitter_s": 2.25, "nok_rate": 0.125},
+        )
+        self.assertEqual(42.5, pipeline.stations["WS01"].base_cycle_s)
+        self.assertEqual(2.25, pipeline.stations["WS01"].jitter_s)
+        self.assertEqual(0.125, pipeline.stations["WS01"].nok_rate)
 
     def test_fast_profile_allows_runtime_cycle_edit(self) -> None:
         temp_dir, path = self._config_path()
@@ -101,8 +105,14 @@ class RuntimeConfigTest(unittest.TestCase):
         self.assertEqual(5.0, pipeline.stations["WS01"].base_cycle_s)
         self.assertEqual(0.0, pipeline.stations["WS01"].jitter_s)
 
-    def test_control_page_omits_locked_cycle_fields_from_normal_update(self) -> None:
-        self.assertIn("if (currentState.allow_runtime_cycle_edit)", CONTROL_HTML)
+    def test_control_page_does_not_disable_normal_cycle_fields(self) -> None:
+        self.assertNotIn('state.allow_runtime_cycle_edit ? "" : "disabled"', CONTROL_HTML)
+
+    def test_repository_normal_profile_allows_runtime_cycle_edit(self) -> None:
+        config = load_runtime_config(Path(__file__).resolve().parents[2] / "config" / "vplc.yaml")
+
+        self.assertEqual("normal", config.profile)
+        self.assertTrue(config.allow_runtime_cycle_edit)
 
     def test_active_projection_supplies_dynamic_station_parameters(self) -> None:
         active_mapping = {

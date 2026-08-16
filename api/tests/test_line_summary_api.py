@@ -3,6 +3,7 @@ from __future__ import annotations
 from contextlib import contextmanager
 from copy import deepcopy
 from datetime import datetime, timezone
+import re
 from unittest.mock import patch
 
 import pytest
@@ -64,6 +65,10 @@ def station_row(
         "defect_code": defect_code,
         "route_state": "COMPLETED_NOK" if terminal and result != "OK" else "COMPLETED_OK" if terminal else "NORMAL",
         "plc_end_time": START,
+        "cycle_time_ms": 30000 if process_status == "PROCESSED" else 4000,
+        "ack_status": "ACK_OK",
+        "label_code": f"ASM-{unit_id[-6:]}" if terminal else None,
+        "reject_id": f"NG-{unit_id[-6:]}" if terminal and result != "OK" else None,
     }
 
 
@@ -127,7 +132,7 @@ class FakeCursor:
         values = tuple(params or ())
         self.database.queries.append((sql, values))
         upper_sql = sql.upper()
-        if any(token in upper_sql for token in ("INSERT", "UPDATE", "DELETE")):
+        if re.search(r"\b(?:INSERT|UPDATE|DELETE)\b", upper_sql):
             self.database.write_seen = True
         if "SELECT" not in upper_sql:
             return
@@ -135,7 +140,12 @@ class FakeCursor:
             raise self.database.fail_on_select
         self.database.select_sql = sql
         self.database.select_params = values
-        self.rows = deepcopy(self.database.rows)
+        if "FROM COLLECTOR_RUNTIME_STATUS" in upper_sql:
+            self.rows = deepcopy(self.database.runtime_rows)
+        elif "FROM VPLC_PARAMETER_SNAPSHOT" in upper_sql:
+            self.rows = deepcopy(self.database.profile_rows)
+        else:
+            self.rows = deepcopy(self.database.rows)
 
     def fetchall(self) -> list[dict[str, object]]:
         return list(self.rows)
@@ -150,8 +160,17 @@ class FakeConnection:
 
 
 class FakeDatabase:
-    def __init__(self, rows: list[dict[str, object]], *, fail_on_select: Exception | None = None) -> None:
+    def __init__(
+        self,
+        rows: list[dict[str, object]],
+        *,
+        runtime_rows: list[dict[str, object]] | None = None,
+        profile_rows: list[dict[str, object]] | None = None,
+        fail_on_select: Exception | None = None,
+    ) -> None:
         self.rows = rows
+        self.runtime_rows = runtime_rows or []
+        self.profile_rows = profile_rows or []
         self.fail_on_select = fail_on_select
         self.queries: list[tuple[str, tuple]] = []
         self.select_sql = ""
@@ -218,6 +237,53 @@ def test_line_summary_uses_one_terminal_completed_cohort_and_conserves_units(
     assert "se.route_state" not in database.select_sql
 
 
+def test_line_summary_exposes_product_overview_trends_and_station_local_metrics(
+    client: TestClient,
+) -> None:
+    rows = unit_rows("U-000001") + unit_rows("U-000002", first_nok_station="WS02")
+    database = FakeDatabase(rows)
+
+    response = request_summary(client, database)
+
+    assert response.status_code == 200
+    payload = response.json()
+    assert payload["line"] == {
+        "line_id": LINE_ID,
+        "name": "Demo Line",
+        "station_count": 3,
+        "route": list(STATION_IDS),
+        "entry_station_id": "WS01",
+        "terminal_station_id": "WS03",
+        "active_profile": "UNAVAILABLE",
+        "collector_state": "UNAVAILABLE",
+        "collector_connected_stations": 0,
+        "runtime_status": "UNAVAILABLE",
+        "runtime_authority": "collector_runtime_status",
+        "mapping_content_sha256": None,
+        "config_version": None,
+    }
+    assert payload["overview"]["completed_units"] == 2
+    assert payload["overview"]["final_ok"] == 1
+    assert payload["overview"]["final_nok"] == 1
+    assert payload["overview"]["final_yield"] == 0.5
+    assert payload["overview"]["ack_pending_events"] == 0
+    assert payload["overview"]["average_cycle_seconds"] == 30.0
+    assert payload["trends"]["production"]
+    assert payload["trends"]["cycle_time"]
+    assert payload["quality"]["new_nok_by_station"] == [
+        {"station_id": "WS01", "count": 0},
+        {"station_id": "WS02", "count": 1},
+        {"station_id": "WS03", "count": 0},
+    ]
+    assert payload["quality"]["nok_code_distribution"] == [{"code": 20001, "count": 1}]
+    assert payload["recent_completed_units"][0]["unit_id"] in {"U-000001", "U-000002"}
+    ws02 = payload["stations"][1]
+    assert ws02["average_cycle_seconds"] == 30.0
+    assert ws02["local_nok_rate"] == 0.5
+    assert ws02["activity_trend"]
+    assert ws02["recent_records"]
+
+
 def test_line_summary_classifies_legacy_proven_upstream_skip_as_inherited_nok(
     client: TestClient,
 ) -> None:
@@ -269,3 +335,48 @@ def test_line_summary_returns_unavailable_when_read_source_fails(client: TestCli
 
     assert response.status_code == 503
     assert response.json() == {"detail": "line summary source unavailable"}
+
+
+def test_line_summary_exposes_line_runtime_state_from_collector_authority(client: TestClient) -> None:
+    runtime_now = datetime.now(timezone.utc)
+    database = FakeDatabase(
+        unit_rows("U-RUNTIME-STATE"),
+        runtime_rows=[
+            {
+                "station_id": station_id,
+                "collector_state": "RUNNING",
+                "plc_connection_state": "CONNECTED",
+                "station_status": "RUNNING",
+                "updated_at": runtime_now,
+            }
+            for station_id in STATION_IDS
+        ],
+    )
+
+    response = request_summary(client, database)
+
+    assert response.status_code == 200
+    assert response.json()["line"]["runtime_status"] == "RUNNING"
+    assert response.json()["line"]["runtime_authority"] == "collector_runtime_status"
+
+
+def test_line_summary_exposes_stopped_runtime_state_without_using_recent_data(client: TestClient) -> None:
+    runtime_now = datetime.now(timezone.utc)
+    database = FakeDatabase(
+        unit_rows("U-RECENT-DATA-BUT-STOPPED"),
+        runtime_rows=[
+            {
+                "station_id": station_id,
+                "collector_state": "STOPPED",
+                "plc_connection_state": "DISCONNECTED",
+                "station_status": "OFFLINE",
+                "updated_at": runtime_now,
+            }
+            for station_id in STATION_IDS
+        ],
+    )
+
+    response = request_summary(client, database)
+
+    assert response.status_code == 200
+    assert response.json()["line"]["runtime_status"] == "STOPPED"

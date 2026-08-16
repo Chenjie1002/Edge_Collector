@@ -17,7 +17,7 @@ stations:
 profiles:
   normal:
     cycle_scale: 1.0
-    allow_runtime_cycle_edit: false
+    allow_runtime_cycle_edit: true
   fast:
     cycle_scale: 0.1
     allow_runtime_cycle_edit: true

@@ -1,7 +1,7 @@
 "use client";
 
-import { useState } from "react";
-import type { LineSummaryQuery } from "../../lib/stationSummary/lineSummaryQuery";
+import { useEffect, useState } from "react";
+import type { LineSummaryMode, LineSummaryQuery } from "../../lib/stationSummary/lineSummaryQuery";
 import type { TrustedScopeCatalog } from "../../lib/stationSummary/scopeCatalog";
 import {
   localMinuteToOffsetIso,
@@ -14,6 +14,7 @@ import {
 type Props = {
   catalog?: TrustedScopeCatalog | null;
   query?: LineSummaryQuery;
+  view?: "line" | "station";
   defaultWindow?: LocalWindow;
 };
 
@@ -31,12 +32,17 @@ function initialWindow(query: LineSummaryQuery | undefined, defaultWindow: Local
   return defaultWindow ?? quickRangeAt(new Date(), 8);
 }
 
-export function StationSummaryQueryControls({ catalog = null, query, defaultWindow }: Props) {
+function initialMode(query: LineSummaryQuery | undefined): LineSummaryMode {
+  return query?.mode ?? (query ? "FIXED" : "LIVE");
+}
+
+export function StationSummaryQueryControls({ catalog = null, query, view = "line", defaultWindow }: Props) {
   const lines = catalog?.lines ?? [];
   const requestedLine = query ? lines.find((line) => line.lineId === query.lineId) : undefined;
   const firstLine = requestedLine ?? lines[0];
   const requestedStation = query?.stationId && firstLine ? firstLine.stations.find((station) => station.stationId === query.stationId) : undefined;
   const defaults = initialWindow(query, defaultWindow);
+  const [mode, setMode] = useState<LineSummaryMode>(() => initialMode(query));
   const [lineId, setLineId] = useState(firstLine?.lineId ?? "");
   const [stationId, setStationId] = useState(requestedStation?.stationId ?? "");
   const [startLocal, setStartLocal] = useState(defaults.startLocal);
@@ -45,9 +51,15 @@ export function StationSummaryQueryControls({ catalog = null, query, defaultWind
   const selectedLine = lines.find((line) => line.lineId === lineId);
   const stations = selectedLine?.stations ?? [];
   const windowValidation = validateLocalWindow(startLocal, endLocal);
-  const canApply = Boolean(catalog && selectedLine && windowValidation.ok);
+  const canApply = Boolean(catalog && selectedLine && (mode === "LIVE" || windowValidation.ok));
   const startTime = windowValidation.ok ? localMinuteToOffsetIso(startLocal, "+08:00") : "";
   const endTime = windowValidation.ok ? localMinuteToOffsetIso(endLocal, "+08:00") : "";
+
+  useEffect(() => {
+    if (!query || query.mode !== "LIVE") return undefined;
+    const timer = window.setInterval(() => window.location.reload(), 10_000);
+    return () => window.clearInterval(timer);
+  }, [query]);
 
   function chooseLine(nextLineId: string) {
     setLineId(nextLineId);
@@ -56,6 +68,7 @@ export function StationSummaryQueryControls({ catalog = null, query, defaultWind
 
   function chooseQuickRange(hours: 1 | 8 | 24) {
     const nextWindow = quickRangeAt(new Date(), hours);
+    setMode("FIXED");
     setStartLocal(nextWindow.startLocal);
     setEndLocal(nextWindow.endLocal);
   }
@@ -111,6 +124,19 @@ export function StationSummaryQueryControls({ catalog = null, query, defaultWind
             ))}
           </select>
         </label>
+        <label htmlFor="station-summary-mode">
+          Window mode
+          <select
+            id="station-summary-mode"
+            name="mode"
+            value={mode}
+            onChange={(event) => setMode(event.target.value as LineSummaryMode)}
+            disabled={!catalog}
+          >
+            <option value="LIVE">LIVE · Rolling 8h</option>
+            <option value="FIXED">FIXED WINDOW · Start/end</option>
+          </select>
+        </label>
         <div className="station-summary-scope-time-fields">
           <label htmlFor="station-summary-start-time">
             Start time
@@ -119,9 +145,9 @@ export function StationSummaryQueryControls({ catalog = null, query, defaultWind
               type="datetime-local"
               value={startLocal}
               onChange={(event) => setStartLocal(event.target.value)}
-              required
+              required={mode === "FIXED"}
               step={60}
-              disabled={!catalog}
+              disabled={!catalog || mode === "LIVE"}
             />
           </label>
           <label htmlFor="station-summary-end-time">
@@ -131,9 +157,9 @@ export function StationSummaryQueryControls({ catalog = null, query, defaultWind
               type="datetime-local"
               value={endLocal}
               onChange={(event) => setEndLocal(event.target.value)}
-              required
+              required={mode === "FIXED"}
               step={60}
-              disabled={!catalog}
+              disabled={!catalog || mode === "LIVE"}
             />
           </label>
         </div>
@@ -151,13 +177,18 @@ export function StationSummaryQueryControls({ catalog = null, query, defaultWind
             </button>
           </div>
           <span className="station-summary-scope-timezone">Plant time: Asia/Shanghai (UTC+08:00)</span>
+          <span className="station-summary-scope-mode-hint">
+            {mode === "LIVE" ? "Rolling horizon · line status and data refresh every 10s." : "Explicit start/end · window remains fixed until manually refreshed."}
+          </span>
           {!windowValidation.ok ? <span className="station-summary-scope-validation">{windowValidation.reason}</span> : null}
         </div>
-        <input type="hidden" name="start_time" value={startTime} disabled={!canApply} readOnly />
-        <input type="hidden" name="end_time" value={endTime} disabled={!canApply} readOnly />
+        <input type="hidden" name="view" value={view} readOnly />
+        <input type="hidden" name="start_time" value={startTime} disabled={!canApply || mode === "LIVE"} readOnly />
+        <input type="hidden" name="end_time" value={endTime} disabled={!canApply || mode === "LIVE"} readOnly />
         <button className="station-summary-scope-apply" type="submit" disabled={!canApply}>
-          Apply
+          {mode === "LIVE" ? "Refresh LIVE" : "Apply fixed window"}
         </button>
+        {mode === "LIVE" ? <button type="button" onClick={() => window.location.reload()}>Refresh now</button> : null}
       </div>
     </form>
   );

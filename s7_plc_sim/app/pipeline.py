@@ -100,6 +100,29 @@ class StationState:
         return max(4.0, value) * scale
 
 
+def _current_cycle_snapshot(station: StationState, now_mono: float) -> dict[str, object] | None:
+    job = station.current_job
+    if job is None:
+        return None
+    planned = max(float(job.cycle_time_s), 0.0)
+    remaining = max(float(job.finish_monotonic) - now_mono, 0.0)
+    elapsed = max(planned - remaining, 0.0)
+    if planned > 0:
+        elapsed = min(elapsed, planned)
+        progress = min(max(elapsed / planned * 100.0, 0.0), 100.0)
+    else:
+        progress = 100.0 if remaining <= 0 else 0.0
+    return {
+        "unit_id": job.part.unit_id,
+        "dmc": job.part.child_dmc,
+        "started_at": job.started_at.isoformat(),
+        "planned_cycle_seconds": round(planned, 3),
+        "elapsed_seconds": round(elapsed, 3),
+        "remaining_seconds": round(remaining, 3),
+        "progress_percent": round(progress, 1),
+    }
+
+
 @dataclass
 class ProductionPlan:
     mode: str = "continuous"
@@ -397,6 +420,7 @@ class ThreeStationPipeline:
 
     def snapshot(self) -> dict:
         line_running = self.plan.active
+        now_mono = time.monotonic()
         return {
             "scale": self.scale,
             "profile": self.profile,
@@ -444,6 +468,7 @@ class ThreeStationPipeline:
                     "paused": station.paused,
                     "cycle_counter": station.cycle_counter,
                     "current_dmc": station.current_job.part.child_dmc if station.current_job else "",
+                    "current_cycle": _current_cycle_snapshot(station, now_mono),
                     "last_dmc": station.last_dmc,
                     "last_result": station.last_result,
                     "last_nok_codes": station.last_nok_codes,
@@ -1219,6 +1244,17 @@ class SingleLinearRoutePipeline(ThreeStationPipeline):
         if ("WS02", "WS03") in self.edge_queues:
             wip["ws02_to_ws03"] = len(self.edge_queues[("WS02", "WS03")])
         state["wip"] = wip
+        state["buffers"] = [
+            {
+                "from_station_id": left,
+                "to_station_id": right,
+                "wip": len(queue),
+                "status": "WAITING" if queue else "EMPTY",
+                "waiting_unit_id": queue[0].unit_id if queue else None,
+                "waiting_dmc": queue[0].child_dmc if queue else None,
+            }
+            for (left, right), queue in self.edge_queues.items()
+        ]
         for station_id, station_state in state["stations"].items():
             metadata = self.station_metadata[station_id]
             station_state.update(

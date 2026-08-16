@@ -1,5 +1,7 @@
 from __future__ import annotations
 
+from datetime import datetime
+from pathlib import Path
 import time
 
 from snap7 import util
@@ -9,8 +11,15 @@ from app.pipeline import (
     RESULT_OK,
     RESULT_NOK,
     ROUTE_COMPLETED_NOK,
+    Part,
+    StationJob,
+    ThreeStationPipeline,
     SingleLinearRoutePipeline,
 )
+from app.runtime_config import load_runtime_config
+
+
+REPO_ROOT = Path(__file__).resolve().parents[2]
 
 
 def _mapping10() -> dict[str, object]:
@@ -76,6 +85,75 @@ def test_single_linear_route_builds_dynamic_topology_and_edge_queues() -> None:
     assert set(pipeline.edge_queues) == {
         (f"WS{i:02d}", f"WS{i + 1:02d}") for i in range(1, 10)
     }
+
+
+def test_snapshot_exposes_real_buffer_identity_and_current_cycle_progress() -> None:
+    pipeline = SingleLinearRoutePipeline.from_mapping(_mapping10(), scale=1.0)
+    waiting = Part(serial_no=101, unit_id="U-000101", child_dmc="SUB-000101")
+    pipeline.edge_queues[("WS01", "WS02")].append(waiting)
+    now_mono = time.monotonic()
+    running = Part(serial_no=102, unit_id="U-000102", child_dmc="SUB-000102")
+    pipeline.stations["WS02"].current_job = StationJob(
+        part=running,
+        started_at=datetime.now(),
+        finish_monotonic=now_mono + 10.0,
+        cycle_time_s=20.0,
+    )
+
+    state = pipeline.snapshot()
+
+    first_buffer = state["buffers"][0]
+    assert first_buffer == {
+        "from_station_id": "WS01",
+        "to_station_id": "WS02",
+        "wip": 1,
+        "status": "WAITING",
+        "waiting_unit_id": "U-000101",
+        "waiting_dmc": "SUB-000101",
+    }
+    current_cycle = state["stations"]["WS02"]["current_cycle"]
+    assert current_cycle["unit_id"] == "U-000102"
+    assert current_cycle["dmc"] == "SUB-000102"
+    assert current_cycle["planned_cycle_seconds"] == 20.0
+    assert 9.0 <= current_cycle["remaining_seconds"] <= 10.0
+    assert 49.0 <= current_cycle["progress_percent"] <= 55.0
+    assert current_cycle["elapsed_seconds"] > 9.0
+
+
+def test_runtime_update_keeps_inflight_sample_and_changes_next_job_timing() -> None:
+    config = load_runtime_config(REPO_ROOT / "config" / "vplc.yaml")
+    pipeline = ThreeStationPipeline(
+        scale=config.cycle_scale,
+        profile=config.profile,
+        allow_runtime_cycle_edit=config.allow_runtime_cycle_edit,
+        station_parameters=config.station_dict(),
+    )
+    station = pipeline.stations["WS01"]
+    started_mono = time.monotonic()
+    in_flight = Part(serial_no=101, unit_id="U-000101", child_dmc="SUB-000101")
+    station.current_job = StationJob(
+        part=in_flight,
+        started_at=datetime.now(),
+        finish_monotonic=started_mono + 17.5,
+        cycle_time_s=17.5,
+    )
+
+    pipeline.update_station(
+        "WS01",
+        {"base_cycle_s": 44.0, "jitter_s": 0.0, "nok_rate": 0.125},
+        audit_context={"reason": "timing boundary test"},
+    )
+
+    assert station.current_job is not None
+    assert station.current_job.part.unit_id == "U-000101"
+    assert station.current_job.cycle_time_s == 17.5
+    assert station.current_job.finish_monotonic == started_mono + 17.5
+
+    station.current_job = None
+    next_part = Part(serial_no=102, unit_id="U-000102", child_dmc="SUB-000102")
+    pipeline._start_station(station, next_part, datetime.now(), time.monotonic())
+    assert station.current_job is not None
+    assert station.current_job.cycle_time_s == 44.0
 
 
 def test_single_linear_route_accepts_explicit_test_serial_start() -> None:

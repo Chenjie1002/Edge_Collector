@@ -207,6 +207,16 @@ CONTROL_HTML = """
     .field-label { display: grid; gap: 6px; color: var(--muted); font-size: 12px; }
     .dot { display: inline-block; width: 10px; height: 10px; border-radius: 50%; margin-right: 8px; background: var(--green); box-shadow: 0 0 0 4px #e9f8f1; }
     .dot.off { background: var(--red); box-shadow: 0 0 0 4px #fff0ef; }
+    .flow-strip { display: flex; align-items: stretch; gap: 10px; overflow-x: auto; padding: 2px 1px 6px; }
+    .flow-node { min-width: 188px; flex: 1 0 188px; border: 1px solid var(--line); border-radius: 8px; padding: 12px; background: var(--surface); }
+    .flow-node.buffer { min-width: 150px; flex-basis: 150px; background: var(--surface-2); border-style: dashed; }
+    .flow-node-head { display: flex; align-items: center; justify-content: space-between; gap: 8px; margin-bottom: 10px; }
+    .flow-node-title { font-weight: 760; }
+    .flow-meta { display: grid; gap: 5px; color: var(--muted); font-size: 12px; }
+    .flow-meta strong { color: var(--text); font-weight: 700; overflow-wrap: anywhere; }
+    .cycle-track { height: 8px; margin-top: 10px; border-radius: 999px; background: #dfe5ec; overflow: hidden; }
+    .cycle-fill { height: 100%; border-radius: inherit; background: var(--blue); transition: width 160ms linear; }
+    .flow-arrow { flex: 0 0 18px; align-self: center; color: var(--muted); font-weight: 800; text-align: center; }
     @media (max-width: 960px) { .topline, .grid, .form-grid { grid-template-columns: 1fr; } table { min-width: 980px; } .table-wrap { overflow-x: auto; } }
   </style>
 </head>
@@ -225,6 +235,13 @@ CONTROL_HTML = """
       <div class="tile"><div class="label">总序号</div><div class="value" id="serial">-</div><div class="hint" id="serialHint">入口站投入件累计</div></div>
       <div class="tile"><div class="label">完成件数</div><div class="value" id="completed">-</div><div class="hint" id="completedHint">终点站 OK 下线累计</div></div>
       <div class="tile"><div class="label" id="wipLabel">首段 WIP</div><div class="value" id="wip12">-</div><div class="hint" id="wipHint">-</div></div>
+    </section>
+    <section class="panel">
+      <div class="panel-head">
+        <h2>产线流动</h2>
+        <span class="hint">真实 topology / edge queue / current cycle，只读轮询</span>
+      </div>
+      <div class="flow-strip" id="lineFlow" aria-label="V-PLC topology flow"></div>
     </section>
     <section class="panel">
       <div class="panel-head">
@@ -297,6 +314,73 @@ CONTROL_HTML = """
   <script>
     let stations = [];
     let currentState = null;
+    const protectedInputValues = new Map();
+    const dirtyInputKeys = new Set();
+    let activeInputKey = null;
+
+    function inputKey(input) {
+      return `${input.dataset.station}:${input.dataset.field}`;
+    }
+
+    function inputIdFor(stationId, field) {
+      const suffix = { base_cycle_s: "base", jitter_s: "jitter", nok_rate: "nok" }[field];
+      return `${stationId}-${suffix}`;
+    }
+
+    function captureProtectedInputs() {
+      activeInputKey = null;
+      document.querySelectorAll("input[data-station][data-field]").forEach(input => {
+        const key = inputKey(input);
+        if (document.activeElement === input) {
+          activeInputKey = key;
+          protectedInputValues.set(key, input.value);
+        } else if (input.dataset.dirty === "true") {
+          protectedInputValues.set(key, input.value);
+        } else {
+          protectedInputValues.delete(key);
+        }
+      });
+    }
+
+    function rememberInput(input) {
+      protectedInputValues.set(inputKey(input), input.value);
+    }
+
+    function markInputDirty(input) {
+      const key = inputKey(input);
+      dirtyInputKeys.add(key);
+      protectedInputValues.set(key, input.value);
+      input.dataset.dirty = "true";
+    }
+
+    function clearStationDrafts(stationId) {
+      ["base_cycle_s", "jitter_s", "nok_rate"].forEach(field => {
+        const key = `${stationId}:${field}`;
+        protectedInputValues.delete(key);
+        dirtyInputKeys.delete(key);
+      });
+      document.querySelectorAll("input[data-station][data-field]").forEach(input => {
+        if (input.dataset.station === stationId) input.dataset.dirty = "false";
+      });
+      if (activeInputKey && activeInputKey.startsWith(`${stationId}:`)) activeInputKey = null;
+    }
+
+    function protectedInputValue(stationId, field, fallback) {
+      const key = `${stationId}:${field}`;
+      return protectedInputValues.has(key) ? protectedInputValues.get(key) : fallback;
+    }
+
+    function inputDirtyAttribute(stationId, field) {
+      return dirtyInputKeys.has(`${stationId}:${field}`) ? ' data-dirty="true"' : "";
+    }
+
+    function restoreFocusedInput() {
+      if (!activeInputKey) return;
+      const separator = activeInputKey.indexOf(":");
+      const stationId = activeInputKey.slice(0, separator);
+      const field = activeInputKey.slice(separator + 1);
+      document.getElementById(inputIdFor(stationId, field))?.focus();
+    }
 
     function resultText(code) {
       if (code === 1) return "OK";
@@ -335,7 +419,46 @@ CONTROL_HTML = """
       render(currentState);
     }
 
+    function renderFlow(state) {
+      const topology = state.topology || {};
+      const stationIds = topology.station_ids || Object.keys(state.stations || {});
+      const buffers = new Map((state.buffers || []).map(buffer => [`${buffer.from_station_id}->${buffer.to_station_id}`, buffer]));
+      const parts = [];
+      stationIds.forEach((id, index) => {
+        const station = state.stations[id] || {};
+        const cycle = station.current_cycle;
+        const progress = cycle ? Number(station.current_cycle.progress_percent || 0) : 0;
+        parts.push(`<article class="flow-node station-node">
+          <div class="flow-node-head"><span class="flow-node-title">${id}</span><span class="status ${statusClass(station)}">${statusText(station)}</span></div>
+          <div class="flow-meta">
+            <span>Current Unit <strong class="code">${cycle?.unit_id || "-"}</strong></span>
+            <span>DMC <strong class="code">${cycle?.dmc || station.current_dmc || "-"}</strong></span>
+            <span>Cycle <strong>${cycle ? `${cycle.elapsed_seconds.toFixed(1)} / ${cycle.planned_cycle_seconds.toFixed(1)} s` : "Idle"}</strong></span>
+          </div>
+          <div class="cycle-track" aria-label="${id} cycle progress"><div class="cycle-fill" style="width:${Math.max(0, Math.min(100, progress))}%"></div></div>
+          <div class="hint">${cycle ? `${progress.toFixed(0)}% · remaining ${cycle.remaining_seconds.toFixed(1)} s` : "等待下一件"}</div>
+        </article>`);
+        if (index < stationIds.length - 1) {
+          const next = stationIds[index + 1];
+          const buffer = buffers.get(`${id}->${next}`) || { from_station_id: id, to_station_id: next, wip: state.wip?.[`${id}_to_${next}`] || 0, status: "EMPTY", waiting_unit_id: null, waiting_dmc: null };
+          parts.push(`<div class="flow-arrow">→</div>`);
+          parts.push(`<article class="flow-node buffer">
+            <div class="flow-node-head"><span class="flow-node-title">Buffer</span><span class="status ${buffer.wip ? "hold" : "ok"}">${buffer.status || (buffer.wip ? "WAITING" : "EMPTY")}</span></div>
+            <div class="flow-meta">
+              <span>${buffer.from_station_id} → ${buffer.to_station_id}</span>
+              <span>WIP <strong>${buffer.wip || 0}</strong></span>
+              <span>Waiting Unit <strong class="code">${buffer.waiting_unit_id || "-"}</strong></span>
+              <span>DMC <strong class="code">${buffer.waiting_dmc || "-"}</strong></span>
+            </div>
+          </article>`);
+          parts.push(`<div class="flow-arrow">→</div>`);
+        }
+      });
+      document.getElementById("lineFlow").innerHTML = parts.join("");
+    }
+
     function render(state) {
+      captureProtectedInputs();
       const line = state.line;
       stations = (state.topology && state.topology.station_ids) || Object.keys(state.stations || {});
       const topology = state.topology || {};
@@ -356,6 +479,7 @@ CONTROL_HTML = """
       document.getElementById("wip12").textContent = wipEntries[0]?.value || 0;
       document.getElementById("wipHint").textContent = wipEntries.slice(1).map(item => `${item.label}: ${item.value}`).join(" / ") || "无中间边";
       document.getElementById("planHint").textContent = planText(line, wipEntries);
+      renderFlow(state);
       document.getElementById("rawJson").textContent = JSON.stringify(state, null, 2);
       document.getElementById("updatedAt").textContent = new Date().toLocaleTimeString();
       document.getElementById("stationRows").innerHTML = stations.map(id => {
@@ -367,9 +491,9 @@ CONTROL_HTML = """
             <td>${station.cycle_counter}</td>
             <td class="code">${station.current_dmc || "-"}</td>
             <td class="code">${station.last_dmc || "-"} ${resultText(station.last_result)}</td>
-            <td><input id="${id}-base" type="number" min="1" step="0.1" value="${station.base_cycle_s.toFixed(1)}" ${state.allow_runtime_cycle_edit ? "" : "disabled"}></td>
-            <td><input id="${id}-jitter" type="number" min="0" step="0.1" value="${station.jitter_s.toFixed(1)}" ${state.allow_runtime_cycle_edit ? "" : "disabled"}></td>
-            <td><input id="${id}-nok" type="number" min="0" max="1" step="0.001" value="${station.nok_rate.toFixed(3)}"></td>
+            <td><input id="${id}-base" data-station="${id}" data-field="base_cycle_s"${inputDirtyAttribute(id, "base_cycle_s")} type="number" min="1" step="0.1" value="${protectedInputValue(id, "base_cycle_s", station.base_cycle_s.toFixed(1))}" onfocus="rememberInput(this)" oninput="markInputDirty(this)"></td>
+            <td><input id="${id}-jitter" data-station="${id}" data-field="jitter_s"${inputDirtyAttribute(id, "jitter_s")} type="number" min="0" step="0.1" value="${protectedInputValue(id, "jitter_s", station.jitter_s.toFixed(1))}" onfocus="rememberInput(this)" oninput="markInputDirty(this)"></td>
+            <td><input id="${id}-nok" data-station="${id}" data-field="nok_rate"${inputDirtyAttribute(id, "nok_rate")} type="number" min="0" max="1" step="0.001" value="${protectedInputValue(id, "nok_rate", station.nok_rate.toFixed(3))}" onfocus="rememberInput(this)" oninput="markInputDirty(this)"></td>
             <td>
               <select id="${id}-nok-code" ${station.allow_force === false ? "disabled" : ""}>${nokOptions(station)}</select>
               <input id="${id}-nok-count" type="number" min="1" max="100" step="1" value="1" title="连续强制 NOK 数量">
@@ -384,6 +508,7 @@ CONTROL_HTML = """
             </td>
           </tr>`;
       }).join("");
+      restoreFocusedInput();
     }
 
     function planText(line, wipEntries) {
@@ -398,18 +523,18 @@ CONTROL_HTML = """
       const reason = prompt("请输入本次参数修改原因：");
       if (!reason) return;
       const payload = {
+        base_cycle_s: Number(document.getElementById(`${id}-base`).value),
+        jitter_s: Number(document.getElementById(`${id}-jitter`).value),
         nok_rate: Number(document.getElementById(`${id}-nok`).value),
         reason,
       };
-      if (currentState.allow_runtime_cycle_edit) {
-        payload.base_cycle_s = Number(document.getElementById(`${id}-base`).value);
-        payload.jitter_s = Number(document.getElementById(`${id}-jitter`).value);
-      }
-      currentState = await api(`/vplc/stations/${id}`, {
+      const nextState = await api(`/vplc/stations/${id}`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(payload)
       });
+      clearStationDrafts(id);
+      currentState = nextState;
       render(currentState);
     }
 
@@ -472,8 +597,10 @@ CONTROL_HTML = """
       render(currentState);
     }
 
-    loadState();
-    setInterval(loadState, 2000);
+    async function pollState() {
+      try { await loadState(); } finally { setTimeout(pollState, 1000); }
+    }
+    pollState();
   </script>
 </body>
 </html>

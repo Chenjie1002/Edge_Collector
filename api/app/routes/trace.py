@@ -767,9 +767,22 @@ TRACE_HTML = f"""
     input, select, button {{ height: 38px; border: 1px solid var(--line); border-radius: 6px; padding: 0 10px; font: inherit; background: #fff; }}
     button {{ cursor: pointer; }}
     button.primary {{ background: var(--blue); color: white; border-color: var(--blue); }}
-    .timeline {{ display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 12px; }}
-    .station {{ border: 1px solid var(--line); border-radius: 8px; padding: 14px; min-height: 260px; }}
-    .station h2 {{ margin: 0 0 10px; font-size: 16px; }}
+    .unit-summary {{ display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 1px; margin-bottom: 18px; border: 1px solid var(--line); background: var(--line); }}
+    .unit-summary > div {{ min-width: 0; padding: 12px 14px; background: var(--surface); }}
+    .unit-summary span {{ display: block; color: var(--muted); font-size: 11px; margin-bottom: 5px; }}
+    .unit-summary strong {{ display: block; overflow-wrap: anywhere; }}
+    .trace-route {{ position: relative; display: grid; gap: 0; padding-left: 26px; }}
+    .trace-route::before {{ content: ""; position: absolute; left: 9px; top: 18px; bottom: 18px; width: 2px; background: var(--line); }}
+    .trace-node {{ position: relative; border: 1px solid var(--line); border-radius: 8px; padding: 14px 16px; margin-bottom: 12px; background: var(--surface); }}
+    .trace-node::before {{ content: ""; position: absolute; left: -23px; top: 20px; width: 10px; height: 10px; border: 3px solid var(--surface); border-radius: 50%; background: var(--blue); box-shadow: 0 0 0 1px var(--line); }}
+    .trace-node h3 {{ margin: 0; font-size: 16px; }}
+    .trace-node-head {{ display: flex; align-items: center; justify-content: space-between; gap: 12px; margin-bottom: 12px; }}
+    .process-grid {{ display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 8px 14px; margin: 12px 0; }}
+    .process-cell {{ min-width: 0; padding: 8px 0; border-top: 1px solid var(--line); }}
+    .process-cell span {{ display: block; color: var(--muted); font-size: 11px; margin-bottom: 4px; }}
+    .process-cell strong {{ overflow-wrap: anywhere; }}
+    details.tech {{ margin-top: 10px; }}
+    details.tech summary {{ cursor: pointer; color: var(--muted); font-size: 12px; }}
     .badge {{ display: inline-flex; align-items: center; justify-content: center; min-width: 54px; height: 24px; border-radius: 999px; font-size: 12px; font-weight: 750; }}
     .ok {{ background: #e9f8f1; color: var(--green); }}
     .nok {{ background: #fff0ef; color: var(--red); }}
@@ -790,7 +803,7 @@ TRACE_HTML = f"""
     table {{ width: 100%; border-collapse: collapse; }}
     th, td {{ padding: 9px 8px; border-bottom: 1px solid var(--line); text-align: left; }}
     th {{ color: var(--muted); font-size: 12px; background: #fbfcfd; }}
-    @media (max-width: 900px) {{ .timeline, .search, .recent-grid {{ grid-template-columns: 1fr; }} }}
+    @media (max-width: 900px) {{ .search, .recent-grid, .unit-summary, .process-grid {{ grid-template-columns: 1fr; }} }}
   </style>
 </head>
 <body>
@@ -807,8 +820,7 @@ TRACE_HTML = f"""
       </div>
       <p class="muted" id="summary">输入最终 label_code 或子件 DMC 后查询。</p>
     </section>
-    <section class="timeline" id="timeline"></section>
-    <section class="panel">
+    <section class="panel" id="recentPanel">
       <div class="recent-head">
         <h2 style="margin:0;font-size:16px">最近记录</h2>
         <select id="recentLimit" onchange="loadRecent()">
@@ -832,6 +844,14 @@ TRACE_HTML = f"""
         </article>
       </div>
     </section>
+    <section class="panel" id="selectedTrace">
+      <div class="recent-head">
+        <h2 style="margin:0;font-size:16px">Selected Unit Trace</h2>
+        <span class="muted">One unit · continuous route lifecycle</span>
+      </div>
+      <div class="unit-summary" id="unitSummary"><div><span>Status</span><strong>Select a recent unit or search above</strong></div></div>
+      <div class="trace-route" id="traceRoute"></div>
+    </section>
   </main>
   <script>
     const stations = [];
@@ -839,39 +859,89 @@ TRACE_HTML = f"""
       stations.splice(0, stations.length, ...Object.keys(data.stations || {{}}));
     }}
     function esc(v) {{ return String(v ?? "").replace(/[&<>"']/g, s => ({{"&":"&amp;","<":"&lt;",">":"&gt;","\\"":"&quot;","'":"&#39;"}}[s])); }}
+    function normalizedResult(row) {{
+      if (!row) return "-";
+      return row.result === "SKIPPED" && row.process_status === "SKIPPED" && row.skip_reason === "UPSTREAM_NOK" ? "NOK" : (row.result || "-");
+    }}
     function badge(result) {{ const cls = result === "NOK" ? "nok" : "ok"; return `<span class="badge ${{cls}}">${{esc(result || "-")}}</span>`; }}
-    function stationCard(id, row) {{
-      if (!row) return `<article class="station"><h2>${{id}}</h2><p class="muted">无记录</p></article>`;
-      return `<article class="station">
-        <h2>${{id}} ${{badge(row.result)}}</h2>
+    const processLabels = {{
+      screw_1_torque_nm: "Torque #1", screw_1_angle_deg: "Angle #1", screw_2_torque_nm: "Torque #2", screw_2_angle_deg: "Angle #2", screw_3_torque_nm: "Torque #3", screw_3_angle_deg: "Angle #3",
+      avg_current_a: "Avg current", avg_voltage_v: "Avg voltage", stall_peak_current_a: "Stall peak", stall_time_ms: "Stall time", clockwise_time_ms: "CW time", counterclockwise_time_ms: "CCW time",
+      product_model_code: "Product model", serial_no: "Serial"
+    }};
+    function processValue(key, value) {{
+      if (value === null || value === undefined || value === "") return "-";
+      if (typeof value === "number") {{
+        if (key.endsWith("_nm")) return `${{value.toFixed(3)}} Nm`;
+        if (key.endsWith("_deg")) return `${{value.toFixed(2)}}°`;
+        if (key.endsWith("_a")) return `${{value.toFixed(3)}} A`;
+        if (key.endsWith("_v")) return `${{value.toFixed(3)}} V`;
+        if (key.endsWith("_ms")) return `${{value}} ms`;
+      }}
+      return String(value);
+    }}
+    function processEntries(id, row) {{
+      const payload = row?.payload || {{}};
+      const preferred = id === "WS01"
+        ? ["screw_1_torque_nm", "screw_1_angle_deg", "screw_2_torque_nm", "screw_2_angle_deg", "screw_3_torque_nm", "screw_3_angle_deg"]
+        : id === "WS02"
+          ? ["avg_current_a", "avg_voltage_v", "stall_peak_current_a", "stall_time_ms", "clockwise_time_ms", "counterclockwise_time_ms"]
+          : id === "WS03"
+            ? ["product_model_code", "serial_no"]
+            : Object.keys(payload).filter(key => !key.startsWith("upstream_")).slice(0, 6);
+      return preferred.filter(key => Object.prototype.hasOwnProperty.call(payload, key)).map(key => [processLabels[key] || key.replaceAll("_", " "), processValue(key, payload[key])]);
+    }}
+    function stationNode(id, row) {{
+      if (!row) return `<article class="trace-node"><div class="trace-node-head"><h3>${{esc(id)}}</h3><span class="badge muted">MISSING</span></div><p class="muted">No station event is available for this route node.</p></article>`;
+      const process = processEntries(id, row);
+      const processHtml = process.length ? `<div class="process-grid">${{process.map(([label, value]) => `<div class="process-cell"><span>${{esc(label)}}</span><strong>${{esc(value)}}</strong></div>`).join("")}}</div>` : "";
+      const defect = row.defect_code ? `${{esc(row.defect_origin_station || "-")}} / ${{esc(row.defect_code)}}` : "-";
+      return `<article class="trace-node">
+        <div class="trace-node-head"><h3>${{esc(id)}} · Step ${{esc(row.route_step ?? "-")}}</h3>${{badge(normalizedResult(row))}}</div>
         <dl>
-          <dt>UID</dt><dd>${{esc(row.unit_id || "-")}}</dd>
-          <dt>Counter</dt><dd>${{esc(row.cycle_counter)}}</dd>
-          <dt>DMC</dt><dd>${{esc(row.dmc || row.child_dmc || "-")}}</dd>
-          <dt>子件 DMC</dt><dd>${{esc(row.child_dmc || row.payload?.upstream_child_dmc || "-")}}</dd>
-          <dt>Label</dt><dd>${{esc(row.label_code || row.final_label_code || "-")}}</dd>
-          <dt>Reject</dt><dd>${{esc(row.reject_id || "-")}}</dd>
-          <dt>Process</dt><dd>${{esc(row.process_status || "-")}}</dd>
-          <dt>Skip</dt><dd>${{esc(row.skip_reason || "-")}}</dd>
-          <dt>缺陷源站</dt><dd>${{esc(row.defect_origin_station || "-")}}</dd>
-          <dt>缺陷代码</dt><dd>${{esc(row.defect_code || "-")}}</dd>
-          <dt>开始</dt><dd>${{esc(row.plc_start_time || "-")}}</dd>
-          <dt>结束</dt><dd>${{esc(row.plc_end_time || "-")}}</dd>
-          <dt>Cycle Time</dt><dd>${{row.cycle_time_ms ? (row.cycle_time_ms / 1000).toFixed(2) + " s" : "-"}}</dd>
-          <dt>NOK Code</dt><dd>${{esc((row.nok_codes || []).join(", ") || "-")}}</dd>
+          <dt>Unit / DMC</dt><dd>${{esc(row.unit_id || "-")}} · ${{esc(row.dmc || row.child_dmc || "-")}}</dd>
+          <dt>Process status</dt><dd>${{esc(row.process_status || "-")}}${{row.skip_reason && row.skip_reason !== "NONE" ? ` · ${{esc(row.skip_reason)}}` : ""}}</dd>
+          <dt>Cycle time</dt><dd>${{row.cycle_time_ms != null ? (row.cycle_time_ms / 1000).toFixed(2) + " s" : "-"}}</dd>
+          <dt>Start → End</dt><dd>${{esc(row.plc_start_time || "-")}} → ${{esc(row.plc_end_time || "-")}}</dd>
+          <dt>Defect</dt><dd>${{defect}}</dd>
           <dt>ACK</dt><dd>${{esc(row.ack_status || "-")}}</dd>
+          ${{id === stations[stations.length - 1] ? `<dt>Label / Reject</dt><dd>${{esc(row.label_code || row.final_label_code || "-")}} · ${{esc(row.reject_id || "-")}}</dd>` : ""}}
         </dl>
-        <pre>${{esc(JSON.stringify(row.payload || {{}}, null, 2))}}</pre>
+        ${{processHtml}}
+        <details class="tech"><summary>Technical details</summary><pre>${{esc(JSON.stringify(row, null, 2))}}</pre></details>
       </article>`;
+    }}
+    function renderUnitSummary(data) {{
+      if (!data.found) {{
+        document.getElementById("unitSummary").innerHTML = `<div><span>Status</span><strong>No matching unit</strong></div>`;
+        document.getElementById("traceRoute").innerHTML = "";
+        return;
+      }}
+      const events = data.events || [];
+      const finalEvent = events[events.length - 1] || {{}};
+      const defectEvent = events.find(row => row.defect_code && row.defect_origin_station && row.defect_origin_station !== "UNKNOWN") || finalEvent;
+      const integrity = stations.every(id => data.stations?.[id]) ? "COMPLETE" : `PARTIAL · ${{events.length}}/${{stations.length}} nodes`;
+      const route = `${{stations.join(" → ")}} → Terminal`;
+      const completedAt = String(finalEvent.route_state || "").startsWith("COMPLETED") ? (finalEvent.plc_end_time || "-") : "In progress";
+      document.getElementById("unitSummary").innerHTML = `
+        <div><span>Unit ID</span><strong>${{esc(data.unit_id || finalEvent.unit_id || data.query || "-")}}</strong></div>
+        <div><span>Final Result</span><strong>${{badge(normalizedResult(finalEvent))}}</strong></div>
+        <div><span>Completed At</span><strong>${{esc(completedAt)}}</strong></div>
+        <div><span>Trace Integrity</span><strong>${{esc(integrity)}}</strong></div>
+        <div><span>Defect Origin</span><strong>${{esc(defectEvent?.defect_origin_station && defectEvent.defect_origin_station !== "UNKNOWN" ? defectEvent.defect_origin_station : "-")}}</strong></div>
+        <div><span>Defect Code</span><strong>${{esc(defectEvent?.defect_code || "-")}}</strong></div>
+        <div style="grid-column:span 2"><span>Route</span><strong>${{esc(route)}}</strong></div>`;
+      document.getElementById("traceRoute").innerHTML = stations.map(id => stationNode(id, data.stations[id])).join("");
     }}
     async function searchTrace() {{
       const q = document.getElementById("query").value.trim();
-      if (!q) return;
+      if (!q) return false;
       const res = await fetch(`/trace/api?q=${{encodeURIComponent(q)}}`);
       const data = await res.json();
       setStations(data);
-      document.getElementById("summary").textContent = data.found ? `序号 ${{data.serial_no}}，找到 ${{data.events.length}} 条工站事件。` : "没有找到匹配追溯记录。";
-      document.getElementById("timeline").innerHTML = stations.map(id => stationCard(id, data.stations[id])).join("");
+      document.getElementById("summary").textContent = data.found ? `Unit ${{data.unit_id || q}} · ${{data.events.length}} route events.` : "没有找到匹配追溯记录。";
+      renderUnitSummary(data);
+      return data.found;
     }}
     function traceId(r) {{ return r.label_code || r.reject_id || r.unit_id || r.child_dmc || r.dmc || r.part_id || r.cycle_counter; }}
     function rowButton(r) {{
@@ -896,7 +966,11 @@ TRACE_HTML = f"""
         loadRecentGroup("nok", "recentNok"),
       ]);
     }}
-    function pick(q) {{ document.getElementById("query").value = q; searchTrace(); }}
+    async function pick(q) {{
+      document.getElementById("query").value = q;
+      await searchTrace();
+      document.getElementById("selectedTrace").scrollIntoView({{ behavior: "smooth", block: "start" }});
+    }}
     const initial = new URLSearchParams(window.location.search).get("q");
     if (initial) {{
       document.getElementById("query").value = initial;

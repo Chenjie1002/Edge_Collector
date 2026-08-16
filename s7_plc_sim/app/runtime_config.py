@@ -20,7 +20,7 @@ SAFE_DEFAULTS: dict[str, Any] = {
         "WS03": {"base_cycle_s": 29.2, "jitter_s": 0.9, "nok_rate": 0.01},
     },
     "profiles": {
-        "normal": {"cycle_scale": 1.0, "allow_runtime_cycle_edit": False},
+        "normal": {"cycle_scale": 1.0, "allow_runtime_cycle_edit": True},
         "fast": {"cycle_scale": 0.1, "allow_runtime_cycle_edit": True},
         "test": {"cycle_scale": 0.05, "allow_runtime_cycle_edit": True},
     },

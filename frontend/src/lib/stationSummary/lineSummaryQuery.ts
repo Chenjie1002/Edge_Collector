@@ -1,10 +1,13 @@
 import { parseStationSummaryInstant } from "./query";
 
+export type LineSummaryMode = "LIVE" | "FIXED";
+
 export type LineSummaryQuery = Readonly<{
   lineId: string;
   startTime: string;
   endTime: string;
   stationId?: string;
+  mode?: LineSummaryMode;
 }>;
 
 export type LineSummaryQueryValidation =
@@ -16,6 +19,8 @@ const MAX_WINDOW_MS = 31 * 24 * 60 * 60 * 1000;
 export function validateLineSummaryQuery(query: LineSummaryQuery): LineSummaryQueryValidation {
   const lineId = query.lineId.trim();
   if (!lineId) return { ok: false, reason: "line_id is required" };
+  const mode = query.mode ?? "FIXED";
+  if (mode !== "LIVE" && mode !== "FIXED") return { ok: false, reason: "mode must be LIVE or FIXED" };
 
   let startTimestamp: number;
   let endTimestamp: number;
@@ -39,6 +44,7 @@ export function validateLineSummaryQuery(query: LineSummaryQuery): LineSummaryQu
       lineId,
       startTime: query.startTime,
       endTime: query.endTime,
+      mode,
       ...(stationId ? { stationId } : {}),
     },
   };
