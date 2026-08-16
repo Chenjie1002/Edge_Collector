@@ -46,3 +46,19 @@ def test_projected_10ws_terminal_policy_is_ws10() -> None:
 
     assert policy.entry_station_id == "WS01"
     assert policy.terminal_station_id == "WS10"
+
+
+def test_projected_10ws_decoder_selects_generic_binding_by_payload_template() -> None:
+    mapping = parse_edge_mapping(_projection10())
+    resolved = build_resolved_config_snapshot_from_mapping(mapping.runtime_snapshot)
+    ws10_plan = next(plan for plan in build_read_plans(mapping) if plan.scope == "WS10")
+
+    decoded = resolved.decode_raw_payload(
+        {"raw_hex": bytes(ws10_plan.read_size).hex()},
+        {
+            "station_id": "WS10",
+            "correlation": {"payload_template": "generic_status_v1"},
+        },
+    )
+
+    assert decoded["status_word"] == 0

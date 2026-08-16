@@ -46,24 +46,37 @@ class DecoderRegistrySnapshot:
     ) -> Mapping[str, Any]:
         if not self.content_hash_matches():
             raise ValueError("DECODER_REGISTRY_HASH_MISMATCH")
-        binding = self._binding_for(decoder_id)
-        if binding is None:
+        decoder_bindings = tuple(
+            item for item in self.decoders if item.decoder_id == decoder_id
+        )
+        if not decoder_bindings:
             raise ValueError("DECODER_ID_UNKNOWN")
-        if binding.decoder_version != decoder_version:
+        version_bindings = tuple(
+            item for item in decoder_bindings if item.decoder_version == decoder_version
+        )
+        if not version_bindings:
             raise ValueError("DECODER_VERSION_MISMATCH")
+        payload_template = event.get("correlation", {}).get("payload_template")
+        binding = next(
+            (
+                item
+                for item in version_bindings
+                if item.payload_template == payload_template
+            ),
+        )
+        if binding is None:
+            binding = next(
+                (item for item in version_bindings if item.payload_template is None),
+                None,
+            )
+        if binding is None:
+            raise ValueError("DECODER_PAYLOAD_TEMPLATE_MISMATCH")
         if binding.decoder is None:
             raise ValueError("DECODER_CALLABLE_MISSING")
-        if binding.payload_template is not None:
-            payload_template = event.get("correlation", {}).get("payload_template")
-            if payload_template != binding.payload_template:
-                raise ValueError("DECODER_PAYLOAD_TEMPLATE_MISMATCH")
         decoded = binding.decoder(raw_payload, event)
         if not isinstance(decoded, Mapping):
             raise ValueError("DECODER_OUTPUT_INVALID")
         return dict(decoded)
-
-    def _binding_for(self, decoder_id: str) -> DecoderBinding | None:
-        return next((item for item in self.decoders if item.decoder_id == decoder_id), None)
 
 
 def compute_decoder_registry_hash(snapshot: DecoderRegistrySnapshot) -> str:
