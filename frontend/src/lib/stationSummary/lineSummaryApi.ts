@@ -1,4 +1,5 @@
 import type { TrustedAcceptedEventsApiOrigin } from "../acceptedStationEvents/apiOrigin";
+import { buildStationSummaryEndpoint } from "./browserEndpoint";
 import { validateLineSummaryQuery, type LineSummaryQuery } from "./lineSummaryQuery";
 import { parseLineSummaryResponseJson, type LineSummary } from "./lineSummarySchema";
 
@@ -29,7 +30,7 @@ export async function fetchLineSummary(
   const validation = validateLineSummaryQuery(query);
   if (!validation.ok) return { ok: false, kind: "invalid-query", message: validation.reason };
 
-  const endpoint = new URL("/api/v2/production/line-summary", trustedApiOrigin);
+  const endpoint = buildStationSummaryEndpoint("/api/v2/production/line-summary", trustedApiOrigin);
   const params = new URLSearchParams();
   params.set("line_id", validation.query.lineId);
   params.set("start_time", validation.query.startTime);

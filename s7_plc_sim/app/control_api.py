@@ -203,7 +203,31 @@ CONTROL_HTML = """
     .grid { display: grid; grid-template-columns: 1.4fr 0.9fr; gap: 14px; }
     .compact { width: 90px; }
     .code { font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace; }
-    .form-grid { display: grid; grid-template-columns: 180px repeat(4, minmax(100px, 1fr)) auto auto; gap: 10px; align-items: end; }
+    .plan-grid { display: grid; grid-template-columns: minmax(160px, 1.1fr) repeat(4, minmax(140px, 1fr)) auto auto; gap: 10px; align-items: end; }
+    .plan-field, .plan-mode-copy { min-width: 0; }
+    .plan-mode-copy { min-height: 34px; display: flex; align-items: center; padding: 0 10px; border: 1px dashed #aab5c5; border-radius: 6px; color: var(--blue); background: #f5f8ff; font-size: 13px; font-weight: 650; }
+    .plan-mode-copy[hidden], .plan-field[hidden] { display: none; }
+    .unit { color: var(--muted); font-size: 12px; }
+    .field-note { color: var(--muted); font-size: 11px; line-height: 1.35; }
+    .simulation-grid { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 12px; }
+    .simulation-card { min-height: 72px; padding: 12px; border: 1px solid var(--line); border-radius: 8px; background: #fbfcfd; }
+    .simulation-card strong { display: block; margin-top: 5px; font-size: 18px; }
+    .simulation-explain { margin: 12px 0 0; color: var(--muted); font-size: 12px; }
+    .station-list { display: grid; gap: 12px; }
+    .station-card { padding: 12px; border: 1px solid var(--line); border-radius: 8px; background: #fbfcfd; }
+    .station-card-head { display: flex; align-items: flex-start; justify-content: space-between; gap: 14px; margin-bottom: 12px; }
+    .station-card-title { display: flex; align-items: center; gap: 10px; font-size: 16px; font-weight: 760; }
+    .station-live-meta { display: grid; grid-template-columns: repeat(4, minmax(90px, 1fr)); gap: 8px 14px; color: var(--muted); font-size: 12px; }
+    .station-live-meta strong { display: block; margin-top: 3px; color: var(--text); font-size: 13px; overflow-wrap: anywhere; }
+    .station-groups { display: grid; grid-template-columns: 1.1fr 1.35fr 1.25fr 1.2fr; gap: 10px; }
+    .control-group { min-width: 0; padding: 10px; border: 1px solid var(--line); border-radius: 7px; background: var(--surface); }
+    .control-group h3 { margin: 0 0 9px; color: var(--muted); font-size: 12px; font-weight: 750; }
+    .control-fields { display: grid; gap: 8px; }
+    .control-fields.two { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+    .control-group .actions { align-items: start; }
+    .control-group button { flex: 1 1 120px; }
+    .live-value { min-height: 20px; overflow-wrap: anywhere; }
+    .readonly { color: var(--muted); }
     .field-label { display: grid; gap: 6px; color: var(--muted); font-size: 12px; }
     .dot { display: inline-block; width: 10px; height: 10px; border-radius: 50%; margin-right: 8px; background: var(--green); box-shadow: 0 0 0 4px #e9f8f1; }
     .dot.off { background: var(--red); box-shadow: 0 0 0 4px #fff0ef; }
@@ -217,7 +241,16 @@ CONTROL_HTML = """
     .cycle-track { height: 8px; margin-top: 10px; border-radius: 999px; background: #dfe5ec; overflow: hidden; }
     .cycle-fill { height: 100%; border-radius: inherit; background: var(--blue); transition: width 160ms linear; }
     .flow-arrow { flex: 0 0 18px; align-self: center; color: var(--muted); font-weight: 800; text-align: center; }
-    @media (max-width: 960px) { .topline, .grid, .form-grid { grid-template-columns: 1fr; } table { min-width: 980px; } .table-wrap { overflow-x: auto; } }
+    @media (max-width: 960px) {
+      .topline, .grid, .simulation-grid { grid-template-columns: 1fr; }
+      .plan-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+      .station-card-head { display: grid; }
+      .station-live-meta { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+      .station-groups { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+    }
+    @media (max-width: 620px) {
+      .plan-grid, .station-groups { grid-template-columns: 1fr; }
+    }
   </style>
 </head>
 <body>
@@ -245,58 +278,60 @@ CONTROL_HTML = """
     </section>
     <section class="panel">
       <div class="panel-head">
-        <h2>生产计划</h2>
+        <h2>Production Plan / 生产计划</h2>
         <span class="hint" id="planHint">-</span>
       </div>
-      <div class="form-grid">
-        <label class="field-label">模式
-          <select id="planMode">
+      <div class="plan-grid">
+        <label class="field-label">Mode / 模式
+          <select id="planMode" onfocus="rememberInput(this)" onchange="markPlanControlDirty(this); renderPlanMode(this.value)">
             <option value="continuous">连续生产</option>
             <option value="duration">按小时</option>
             <option value="quantity">按件数</option>
             <option value="shifts">按班次</option>
           </select>
         </label>
-        <label class="field-label">小时
-          <input id="durationHours" type="number" min="0.1" step="0.1" value="1">
+        <div class="plan-mode-copy" id="continuousPlanHint" data-plan-mode-field="continuous">
+          持续运行，直到手动点击“停止”
+        </div>
+        <label class="field-label plan-field" id="durationPlanField" data-plan-mode-field="duration" hidden>Duration / 时长
+          <input id="durationHours" type="number" min="0.1" step="0.1" value="1" onfocus="rememberInput(this)" oninput="markPlanControlDirty(this)">
+          <span class="unit">h</span>
         </label>
-        <label class="field-label">件数
-          <input id="quantityTarget" type="number" min="1" step="1" value="100">
+        <label class="field-label plan-field" id="quantityPlanField" data-plan-mode-field="quantity" hidden>Quantity / 目标件数
+          <input id="quantityTarget" type="number" min="1" step="1" value="100" onfocus="rememberInput(this)" oninput="markPlanControlDirty(this)">
+          <span class="unit">pcs</span>
         </label>
-        <label class="field-label">班次数
-          <input id="shiftCount" type="number" min="1" step="1" value="1">
+        <label class="field-label plan-field" id="shiftsPlanField" data-plan-mode-field="shifts" hidden>Shifts / 班次
+          <input id="shiftCount" type="number" min="1" step="1" value="1" onfocus="rememberInput(this)" oninput="markPlanControlDirty(this)">
+          <span class="unit">shifts</span>
         </label>
-        <label class="field-label">每班小时
-          <input id="shiftHours" type="number" min="0.1" step="0.1" value="8.5">
+        <label class="field-label plan-field" id="shiftHoursPlanField" data-plan-mode-field="shifts" hidden>Hours per shift / 每班小时
+          <input id="shiftHours" type="number" min="0.1" step="0.1" value="8.5" onfocus="rememberInput(this)" oninput="markPlanControlDirty(this)">
+          <span class="unit">h / shift</span>
         </label>
-        <button class="primary" onclick="startPlan()">开始</button>
+        <div class="plan-mode-copy readonly" id="planRunningState">-</div>
+        <button class="primary" id="startPlanButton" onclick="startPlan()">开始生产</button>
         <button class="danger" onclick="stopPlan()">停止</button>
       </div>
     </section>
     <section class="panel">
       <div class="panel-head">
-        <h2>工站参数</h2>
+        <h2>Simulation / 模拟设置</h2>
+        <span class="hint">Profile authority controls the effective cycle scale.</span>
+      </div>
+      <div class="simulation-grid">
+        <div class="simulation-card"><div class="label">Profile</div><strong id="simulationProfile">-</strong></div>
+        <div class="simulation-card"><div class="label">Cycle scale / 模拟倍率</div><strong id="simulationScale">-</strong></div>
+        <div class="simulation-card"><div class="label">Authority / 权限</div><strong id="simulationAuthority">-</strong></div>
+      </div>
+      <p class="simulation-explain">1.0× = nominal cycle · 0.1× = 10x faster simulation。倍率由当前 profile authority 决定，不伪装成任意可写工站参数。</p>
+    </section>
+    <section class="panel">
+      <div class="panel-head">
+        <h2>Station Controls / 工站控制</h2>
         <span class="hint">修改后立即生效，正在加工的当前件会保持其已抽样的节拍。</span>
       </div>
-      <div class="table-wrap">
-        <table>
-          <thead>
-            <tr>
-              <th style="width:76px;">工站</th>
-              <th style="width:92px;">状态</th>
-              <th style="width:90px;">Counter</th>
-              <th>当前 DMC</th>
-              <th>最近 DMC</th>
-              <th style="width:110px;">基准节拍(s)</th>
-              <th style="width:100px;">波动(s)</th>
-              <th style="width:96px;">NOK率</th>
-              <th style="width:120px;">强制NOK</th>
-              <th style="width:180px;">操作</th>
-            </tr>
-          </thead>
-          <tbody id="stationRows"></tbody>
-        </table>
-      </div>
+      <div class="station-list" id="stationRows"></div>
     </section>
     <section class="grid">
       <div class="panel">
@@ -316,26 +351,51 @@ CONTROL_HTML = """
     let currentState = null;
     const protectedInputValues = new Map();
     const dirtyInputKeys = new Set();
-    let activeInputKey = null;
+    const dirtyPlanKeys = new Set();
+    const planControlIds = ["planMode", "durationHours", "quantityTarget", "shiftCount", "shiftHours"];
 
     function inputKey(input) {
-      return `${input.dataset.station}:${input.dataset.field}`;
+      return input.dataset.station + ":" + input.dataset.field;
     }
 
-    function inputIdFor(stationId, field) {
-      const suffix = { base_cycle_s: "base", jitter_s: "jitter", nok_rate: "nok" }[field];
-      return `${stationId}-${suffix}`;
+    function controlKey(control) {
+      return control.dataset && control.dataset.station ? inputKey(control) : "plan:" + control.id;
+    }
+
+    function planControls() {
+      return planControlIds.map(id => document.getElementById(id)).filter(Boolean);
+    }
+
+    function isControlDirty(control) {
+      const key = controlKey(control);
+      return control.dataset.dirty === "true" || dirtyInputKeys.has(key) || dirtyPlanKeys.has(key);
+    }
+
+    function controlIsProtected(control) {
+      return Boolean(control && (document.activeElement === control || isControlDirty(control)));
+    }
+
+    function rememberControl(control) {
+      protectedInputValues.set(controlKey(control), {
+        value: control.value,
+        selectionStart: control.selectionStart,
+        selectionEnd: control.selectionEnd,
+      });
+    }
+
+    function editableControls() {
+      return [
+        ...document.querySelectorAll("input[data-station][data-field]"),
+        ...document.querySelectorAll("select[data-station][data-field]"),
+        ...planControls(),
+      ].filter((control, index, controls) => controls.indexOf(control) === index);
     }
 
     function captureProtectedInputs() {
-      activeInputKey = null;
-      document.querySelectorAll("input[data-station][data-field]").forEach(input => {
-        const key = inputKey(input);
-        if (document.activeElement === input) {
-          activeInputKey = key;
-          protectedInputValues.set(key, input.value);
-        } else if (input.dataset.dirty === "true") {
-          protectedInputValues.set(key, input.value);
+      editableControls().forEach(control => {
+        const key = controlKey(control);
+        if (controlIsProtected(control)) {
+          rememberControl(control);
         } else {
           protectedInputValues.delete(key);
         }
@@ -343,43 +403,57 @@ CONTROL_HTML = """
     }
 
     function rememberInput(input) {
-      protectedInputValues.set(inputKey(input), input.value);
+      rememberControl(input);
     }
 
     function markInputDirty(input) {
       const key = inputKey(input);
       dirtyInputKeys.add(key);
-      protectedInputValues.set(key, input.value);
+      rememberControl(input);
       input.dataset.dirty = "true";
     }
 
     function clearStationDrafts(stationId) {
       ["base_cycle_s", "jitter_s", "nok_rate"].forEach(field => {
-        const key = `${stationId}:${field}`;
+        const key = stationId + ":" + field;
         protectedInputValues.delete(key);
         dirtyInputKeys.delete(key);
       });
-      document.querySelectorAll("input[data-station][data-field]").forEach(input => {
-        if (input.dataset.station === stationId) input.dataset.dirty = "false";
+      editableControls().forEach(control => {
+        if (control.dataset.station === stationId && ["base_cycle_s", "jitter_s", "nok_rate"].includes(control.dataset.field)) {
+          control.dataset.dirty = "false";
+        }
       });
-      if (activeInputKey && activeInputKey.startsWith(`${stationId}:`)) activeInputKey = null;
-    }
-
-    function protectedInputValue(stationId, field, fallback) {
-      const key = `${stationId}:${field}`;
-      return protectedInputValues.has(key) ? protectedInputValues.get(key) : fallback;
     }
 
     function inputDirtyAttribute(stationId, field) {
-      return dirtyInputKeys.has(`${stationId}:${field}`) ? ' data-dirty="true"' : "";
+      return dirtyInputKeys.has(stationId + ":" + field) ? ' data-dirty="true"' : "";
     }
 
-    function restoreFocusedInput() {
-      if (!activeInputKey) return;
-      const separator = activeInputKey.indexOf(":");
-      const stationId = activeInputKey.slice(0, separator);
-      const field = activeInputKey.slice(separator + 1);
-      document.getElementById(inputIdFor(stationId, field))?.focus();
+    function markPlanControlDirty(control) {
+      const key = controlKey(control);
+      dirtyPlanKeys.add(key);
+      rememberControl(control);
+      control.dataset.dirty = "true";
+    }
+
+    function clearPlanDrafts() {
+      planControls().forEach(control => {
+        const key = controlKey(control);
+        protectedInputValues.delete(key);
+        dirtyPlanKeys.delete(key);
+        control.dataset.dirty = "false";
+      });
+    }
+
+    function setText(id, value) {
+      const element = document.getElementById(id);
+      if (element) element.textContent = String(value);
+    }
+
+    function updateEditableValue(control, fallback) {
+      if (!control || controlIsProtected(control)) return;
+      control.value = String(fallback);
     }
 
     function resultText(code) {
@@ -457,6 +531,184 @@ CONTROL_HTML = """
       document.getElementById("lineFlow").innerHTML = parts.join("");
     }
 
+    function nokOptionsKey(station) {
+      return (station.allow_force === false ? "disabled:" : "enabled:") + (station.nok_codes || []).join(",");
+    }
+
+    function stationRowHtml(id, station) {
+      return `
+        <article class="station-card" data-station-row="${id}">
+          <div class="station-card-head">
+            <div class="station-card-title">
+              <span class="code">${id}</span>
+              <span id="${id}-status" class="status ${statusClass(station)}">${statusText(station)}</span>
+            </div>
+            <div class="station-live-meta">
+              <div>Counter<strong id="${id}-counter" class="live-value">${station.cycle_counter}</strong></div>
+              <div>Current DMC<strong id="${id}-current-dmc" class="live-value code">${station.current_dmc || "-"}</strong></div>
+              <div>Recent DMC<strong id="${id}-last-dmc" class="live-value code">${station.last_dmc || "-"} ${resultText(station.last_result)}</strong></div>
+              <div>Cycle progress<strong id="${id}-cycle-progress" class="live-value">等待下一件</strong></div>
+            </div>
+          </div>
+          <div class="station-groups">
+            <section class="control-group">
+              <h3>Identity &amp; live status</h3>
+              <div class="control-fields">
+                <div class="readonly">Station identity: <strong class="code">${id}</strong></div>
+                <div class="readonly">Status: <strong id="${id}-status-copy">${statusText(station)}</strong></div>
+                <div class="readonly">Current unit: <strong id="${id}-current-unit" class="code">-</strong></div>
+              </div>
+            </section>
+            <section class="control-group">
+              <h3>Cycle simulation</h3>
+              <div class="control-fields">
+                <label class="field-label">Base cycle (s)
+                  <input id="${id}-base" data-station="${id}" data-field="base_cycle_s"${inputDirtyAttribute(id, "base_cycle_s")} type="number" min="1" step="0.1" value="${station.base_cycle_s.toFixed(1)}" onfocus="rememberInput(this)" oninput="markInputDirty(this)">
+                </label>
+                <label class="field-label">Jitter (s)
+                  <input id="${id}-jitter" data-station="${id}" data-field="jitter_s"${inputDirtyAttribute(id, "jitter_s")} type="number" min="0" step="0.1" value="${station.jitter_s.toFixed(1)}" onfocus="rememberInput(this)" oninput="markInputDirty(this)">
+                </label>
+                <label class="field-label">NOK rate (%)
+                  <input id="${id}-nok" data-station="${id}" data-field="nok_rate"${inputDirtyAttribute(id, "nok_rate")} type="number" min="0" max="1" step="0.001" value="${station.nok_rate.toFixed(3)}" onfocus="rememberInput(this)" oninput="markInputDirty(this)" aria-label="NOK rate 0..1; 0.02 = 2%">
+                  <span class="field-note">输入 0..1；例如 0.02 = 2%</span>
+                </label>
+              </div>
+            </section>
+            <section class="control-group">
+              <h3>Forced NOK</h3>
+              <div class="control-fields">
+                <label class="field-label">Code
+                  <select id="${id}-nok-code" data-station="${id}" data-field="force_nok_code" data-options-key="${nokOptionsKey(station)}" onchange="markInputDirty(this)" ${station.allow_force === false ? "disabled" : ""}>${nokOptions(station)}</select>
+                </label>
+                <label class="field-label">Count
+                  <input id="${id}-nok-count" data-station="${id}" data-field="force_nok_count" type="number" min="1" max="100" step="1" value="1" title="连续强制 NOK 数量" onfocus="rememberInput(this)" oninput="markInputDirty(this)">
+                </label>
+                <div class="readonly">Pending: <strong id="${id}-pending-nok">${station.pending_forced_nok_count}</strong></div>
+              </div>
+            </section>
+            <section class="control-group">
+              <h3>Control</h3>
+              <div class="actions">
+                <button class="primary" onclick="saveStation('${id}')">Save parameter</button>
+                <button id="${id}-pause-button" onclick="togglePause('${id}', ${!station.paused})">${station.paused ? "Resume" : "Pause"}</button>
+                <button class="danger" id="${id}-force-button" onclick="forceNok('${id}')" ${station.allow_force === false ? "disabled" : ""}>Force NOK (${station.pending_forced_nok_count})</button>
+                <button onclick="clearForcedNok('${id}')">Clear NOK</button>
+              </div>
+            </section>
+          </div>
+        </article>`;
+    }
+
+    function updateStationRow(id, station, state) {
+      if (!station) return;
+      const cycle = station.current_cycle;
+      const progress = cycle ? Number(cycle.progress_percent || 0) : 0;
+      const status = document.getElementById(id + "-status");
+      if (status) {
+        status.className = "status " + statusClass(station);
+        status.textContent = statusText(station);
+      }
+      setText(id + "-status-copy", statusText(station));
+      setText(id + "-counter", station.cycle_counter);
+      setText(id + "-current-dmc", station.current_dmc || "-");
+      setText(id + "-last-dmc", (station.last_dmc || "-") + " " + resultText(station.last_result));
+      setText(id + "-current-unit", cycle?.unit_id || "-");
+      setText(id + "-cycle-progress", cycle ? progress.toFixed(0) + "% · " + cycle.remaining_seconds.toFixed(1) + " s remaining" : "等待下一件");
+      setText(id + "-pending-nok", station.pending_forced_nok_count || 0);
+
+      const canEdit = state.allow_runtime_cycle_edit !== false;
+      const baseInput = document.getElementById(id + "-base");
+      const jitterInput = document.getElementById(id + "-jitter");
+      const nokInput = document.getElementById(id + "-nok");
+      [baseInput, jitterInput, nokInput].forEach(input => {
+        if (input) input.disabled = !canEdit;
+      });
+      updateEditableValue(baseInput, station.base_cycle_s.toFixed(1));
+      updateEditableValue(jitterInput, station.jitter_s.toFixed(1));
+      updateEditableValue(nokInput, station.nok_rate.toFixed(3));
+
+      const codeSelect = document.getElementById(id + "-nok-code");
+      if (codeSelect && !controlIsProtected(codeSelect)) {
+        const optionsKey = nokOptionsKey(station);
+        if (codeSelect.dataset.optionsKey !== optionsKey) {
+          const selected = codeSelect.value;
+          codeSelect.innerHTML = nokOptions(station);
+          codeSelect.dataset.optionsKey = optionsKey;
+          if (selected && (station.nok_codes || []).map(String).includes(selected)) codeSelect.value = selected;
+        }
+      }
+      if (codeSelect) codeSelect.disabled = station.allow_force === false || !(station.nok_codes || []).length;
+      const forceButton = document.getElementById(id + "-force-button");
+      if (forceButton) {
+        forceButton.disabled = station.allow_force === false || !(station.nok_codes || []).length;
+        forceButton.textContent = "Force NOK (" + (station.pending_forced_nok_count || 0) + ")";
+      }
+      const pauseButton = document.getElementById(id + "-pause-button");
+      if (pauseButton) pauseButton.textContent = station.paused ? "Resume" : "Pause";
+    }
+
+    function renderStationRows(state) {
+      const rowHost = document.getElementById("stationRows");
+      if (!rowHost) return;
+      const topologyKey = stations.join("|");
+      if (rowHost.dataset.topologyKey !== topologyKey) {
+        rowHost.innerHTML = stations.map(id => stationRowHtml(id, state.stations[id])).join("");
+        rowHost.dataset.topologyKey = topologyKey;
+      }
+      stations.forEach(id => updateStationRow(id, state.stations[id], state));
+    }
+
+    function renderPlanMode(mode) {
+      const modeFields = [
+        ["continuousPlanHint", "continuous"],
+        ["durationPlanField", "duration"],
+        ["quantityPlanField", "quantity"],
+        ["shiftsPlanField", "shifts"],
+        ["shiftHoursPlanField", "shifts"],
+      ];
+      modeFields.forEach(([id, fieldMode]) => {
+        const field = document.getElementById(id);
+        if (field) field.hidden = fieldMode !== mode;
+      });
+      const startButton = document.getElementById("startPlanButton");
+      if (startButton) startButton.textContent = mode === "continuous" ? "开始连续生产" : "开始生产";
+    }
+
+    function positiveNumber(value) {
+      const number = Number(value);
+      return Number.isFinite(number) && number > 0 ? number : null;
+    }
+
+    function planText(line, wipEntries) {
+      const mode = String(line.plan_mode || "continuous").toLowerCase();
+      let summary = mode.toUpperCase();
+      if (mode === "continuous") {
+        summary += line.plan_active ? " / Running until manual stop" : " / stopped";
+      } else if (mode === "duration") {
+        const hours = positiveNumber(line.remaining_seconds);
+        summary += hours ? " / " + (hours / 3600).toFixed(1) + " h remaining" : " / stopped";
+      } else if (mode === "quantity") {
+        const quantity = positiveNumber(line.target_quantity);
+        summary += quantity ? " / " + quantity + " pcs target" : " / stopped";
+      } else if (mode === "shifts") {
+        const shifts = positiveNumber(line.target_shifts);
+        const shiftHours = positiveNumber(line.shift_hours);
+        summary += shifts && shiftHours ? " / " + shifts + " shifts · " + shiftHours + " h/shift" : " / stopped";
+      }
+      const wip = wipEntries.map(item => item.label + " " + item.value).join(" / ") || "无中间 WIP";
+      return summary + " / " + wip;
+    }
+
+    function renderPlan(line, wipEntries) {
+      const modeControl = document.getElementById("planMode");
+      const serverMode = String(line.plan_mode || "continuous").toLowerCase();
+      if (modeControl && !controlIsProtected(modeControl)) modeControl.value = serverMode;
+      const mode = modeControl?.value || serverMode;
+      renderPlanMode(mode);
+      setText("planHint", planText(line, wipEntries));
+      setText("planRunningState", line.plan_active && serverMode === "continuous" ? "CONTINUOUS / Running until manual stop" : (line.plan_active ? serverMode.toUpperCase() + " / Running" : "STOPPED / " + (line.stop_reason || "manual stop")));
+    }
+
     function render(state) {
       captureProtectedInputs();
       const line = state.line;
@@ -471,6 +723,9 @@ CONTROL_HTML = """
       document.getElementById("lineHint").textContent = line.running ? `${line.plan_mode} / 已运行 ${line.elapsed_seconds}s` : (line.stop_reason || "停止");
       document.getElementById("scale").textContent = state.scale.toFixed(2);
       document.getElementById("profileHint").textContent = `${state.profile} / ${state.allow_runtime_cycle_edit ? "允许节拍编辑" : "节拍锁定"}`;
+      setText("simulationProfile", state.profile);
+      setText("simulationScale", state.scale.toFixed(2) + "×");
+      setText("simulationAuthority", state.allow_runtime_cycle_edit ? "normal: editable" : "profile locked");
       document.getElementById("serial").textContent = state.serial_no;
       document.getElementById("completed").textContent = state.completed_quantity;
       document.getElementById("serialHint").textContent = `${topology.entry_station_id || "入口站"} 投入件累计`;
@@ -478,45 +733,11 @@ CONTROL_HTML = """
       document.getElementById("wipLabel").textContent = wipEntries[0]?.label || "首段 WIP";
       document.getElementById("wip12").textContent = wipEntries[0]?.value || 0;
       document.getElementById("wipHint").textContent = wipEntries.slice(1).map(item => `${item.label}: ${item.value}`).join(" / ") || "无中间边";
-      document.getElementById("planHint").textContent = planText(line, wipEntries);
+      renderPlan(line, wipEntries);
       renderFlow(state);
       document.getElementById("rawJson").textContent = JSON.stringify(state, null, 2);
       document.getElementById("updatedAt").textContent = new Date().toLocaleTimeString();
-      document.getElementById("stationRows").innerHTML = stations.map(id => {
-        const station = state.stations[id];
-        return `
-          <tr>
-            <td class="code">${id}</td>
-            <td><span class="status ${statusClass(station)}">${statusText(station)}</span></td>
-            <td>${station.cycle_counter}</td>
-            <td class="code">${station.current_dmc || "-"}</td>
-            <td class="code">${station.last_dmc || "-"} ${resultText(station.last_result)}</td>
-            <td><input id="${id}-base" data-station="${id}" data-field="base_cycle_s"${inputDirtyAttribute(id, "base_cycle_s")} type="number" min="1" step="0.1" value="${protectedInputValue(id, "base_cycle_s", station.base_cycle_s.toFixed(1))}" onfocus="rememberInput(this)" oninput="markInputDirty(this)"></td>
-            <td><input id="${id}-jitter" data-station="${id}" data-field="jitter_s"${inputDirtyAttribute(id, "jitter_s")} type="number" min="0" step="0.1" value="${protectedInputValue(id, "jitter_s", station.jitter_s.toFixed(1))}" onfocus="rememberInput(this)" oninput="markInputDirty(this)"></td>
-            <td><input id="${id}-nok" data-station="${id}" data-field="nok_rate"${inputDirtyAttribute(id, "nok_rate")} type="number" min="0" max="1" step="0.001" value="${protectedInputValue(id, "nok_rate", station.nok_rate.toFixed(3))}" onfocus="rememberInput(this)" oninput="markInputDirty(this)"></td>
-            <td>
-              <select id="${id}-nok-code" ${station.allow_force === false ? "disabled" : ""}>${nokOptions(station)}</select>
-              <input id="${id}-nok-count" type="number" min="1" max="100" step="1" value="1" title="连续强制 NOK 数量">
-            </td>
-            <td>
-              <div class="actions">
-                <button class="primary" onclick="saveStation('${id}')">保存</button>
-                <button onclick="togglePause('${id}', ${!station.paused})">${station.paused ? "恢复" : "暂停"}</button>
-                <button class="danger" onclick="forceNok('${id}')" ${station.allow_force === false ? "disabled" : ""}>NOK(${station.pending_forced_nok_count})</button>
-                <button onclick="clearForcedNok('${id}')">清除NOK</button>
-              </div>
-            </td>
-          </tr>`;
-      }).join("");
-      restoreFocusedInput();
-    }
-
-    function planText(line, wipEntries) {
-      const rem = line.remaining_seconds === null ? "无限制" : `剩余 ${line.remaining_seconds}s`;
-      const qty = line.target_quantity ? `目标 ${line.target_quantity} 件` : "";
-      const shifts = line.target_shifts ? `目标 ${line.target_shifts} 班` : "";
-      const wip = wipEntries.map(item => `${item.label} ${item.value}`).join(" / ") || "无中间 WIP";
-      return `${line.plan_mode} ${rem} ${qty} ${shifts} / ${wip}`;
+      renderStationRows(state);
     }
 
     async function saveStation(id) {
@@ -600,6 +821,7 @@ CONTROL_HTML = """
     async function pollState() {
       try { await loadState(); } finally { setTimeout(pollState, 1000); }
     }
+    renderPlanMode("continuous");
     pollState();
   </script>
 </body>

@@ -157,4 +157,53 @@ describe("Station Summary charts", () => {
     fireEvent.focus(point);
     expect(screen.getByRole("status").textContent).toContain("2026-08-16T10:00:00Z · 30.125 s");
   });
+
+  it("shows an anchored pointer-near tooltip with exact value and unit, then hides it on leave", () => {
+    render(
+      <StationSummaryChart
+        ariaLabel="Observed cycle time"
+        points={[{ label: "2026-08-16T10:00:00Z", value: 30.125 }]}
+        xAxisLabel="Time"
+        yAxisLabel="Cycle time"
+        unit="s"
+        emptyMessage="No processed CT samples in this window."
+        variant="line"
+      />,
+    );
+
+    const point = screen.getByRole("button", { name: "2026-08-16T10:00:00Z · 30.125 s" });
+    fireEvent.mouseEnter(point);
+
+    const tooltip = screen.getByRole("tooltip");
+    expect(tooltip.classList.contains("mes-chart-tooltip")).toBe(true);
+    expect(tooltip.textContent).toContain("2026-08-16T10:00:00Z");
+    expect(tooltip.textContent).toContain("30.125 s");
+    expect(tooltip.getAttribute("data-anchor-x")).toBe("382");
+    expect(tooltip.getAttribute("data-anchor-y")).toBeTruthy();
+    expect(tooltip.style.left).not.toBe("");
+
+    fireEvent.mouseLeave(point);
+    expect(screen.queryByRole("tooltip")).toBeNull();
+  });
+
+  it("anchors the exact tooltip to the keyboard-focused bar", () => {
+    render(
+      <StationSummaryChart
+        ariaLabel="Inherited NOK"
+        points={[{ label: "WS01", value: 2 }]}
+        xAxisLabel="Station"
+        yAxisLabel="Unit count"
+        unit="units"
+        emptyMessage="No inherited NOK data in this window."
+      />,
+    );
+
+    const bar = screen.getByRole("button", { name: "WS01 · 2 units" });
+    fireEvent.focus(bar);
+
+    expect(screen.getByRole("tooltip").textContent).toContain("WS01");
+    expect(screen.getByRole("tooltip").textContent).toContain("2 units");
+    fireEvent.blur(bar);
+    expect(screen.queryByRole("tooltip")).toBeNull();
+  });
 });

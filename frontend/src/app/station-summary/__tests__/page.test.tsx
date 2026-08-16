@@ -18,9 +18,10 @@ vi.mock("../../../lib/stationSummary/lineSummaryApi", () => ({
   fetchLineSummary: vi.fn(),
 }));
 
-vi.mock("../../../lib/stationSummary/scopeCatalog", () => ({
-  fetchTrustedScopeCatalog: vi.fn(),
-}));
+vi.mock("../../../lib/stationSummary/scopeCatalog", async (importOriginal) => {
+  const actual = await importOriginal<typeof import("../../../lib/stationSummary/scopeCatalog")>();
+  return { ...actual, fetchTrustedScopeCatalog: vi.fn() };
+});
 
 vi.mock("../../../lib/acceptedStationEvents/apiOrigin", async (importOriginal) => {
   const actual = await importOriginal<typeof import("../../../lib/acceptedStationEvents/apiOrigin")>();

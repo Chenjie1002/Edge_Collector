@@ -1,4 +1,5 @@
 import { resolveTrustedAcceptedEventsApiOrigin, type TrustedAcceptedEventsApiOrigin } from "../acceptedStationEvents/apiOrigin";
+import { buildStationSummaryEndpoint } from "./browserEndpoint";
 import { buildProcessMetricsQuery, buildQualityQuery, type StationSummaryQuery, validateStationSummaryQuery } from "./query";
 import {
   parseProcessMetricsResponseJson,
@@ -52,7 +53,7 @@ async function fetchQuality(
   fetchImpl: typeof fetch
 ): Promise<StationSummarySourceResult<QualityResponse>> {
   try {
-    const endpoint = new URL("/api/v2/production/quality", trustedApiOrigin);
+    const endpoint = buildStationSummaryEndpoint("/api/v2/production/quality", trustedApiOrigin);
     endpoint.search = buildQualityQuery(query).toString();
     const response = await fetchImpl(endpoint, {
       method: "GET",
@@ -91,7 +92,7 @@ async function fetchProcessMetrics(
   fetchImpl: typeof fetch
 ): Promise<StationSummarySourceResult<ProcessMetricsResponse>> {
   try {
-    const endpoint = new URL("/api/v2/process-metrics", trustedApiOrigin);
+    const endpoint = buildStationSummaryEndpoint("/api/v2/process-metrics", trustedApiOrigin);
     endpoint.search = buildProcessMetricsQuery(query).toString();
     const response = await fetchImpl(endpoint, {
       method: "GET",

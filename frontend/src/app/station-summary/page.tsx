@@ -1,16 +1,13 @@
-import { LineProductSummary } from "../../components/station-summary/LineProductSummary";
-import { ProcessMetricMatrix } from "../../components/station-summary/ProcessMetricMatrix";
-import { StationDetailSummary } from "../../components/station-summary/StationDetailSummary";
-import { StationSummaryCards } from "../../components/station-summary/StationSummaryCards";
 import { StationSummaryQueryControls } from "../../components/station-summary/StationSummaryQueryControls";
+import { StationSummaryLiveDashboard } from "../../components/station-summary/StationSummaryLiveDashboard";
 import { StationSummaryStateMessage, type StationSummaryPageState } from "../../components/station-summary/StationSummaryStates";
-import { resolveTrustedAcceptedEventsApiOrigin } from "../../lib/acceptedStationEvents/apiOrigin";
+import { resolveTrustedAcceptedEventsApiOrigin, type TrustedAcceptedEventsApiOrigin } from "../../lib/acceptedStationEvents/apiOrigin";
 import { fetchStationSummary } from "../../lib/stationSummary/apiClient";
 import { fetchLineSummary } from "../../lib/stationSummary/lineSummaryApi";
 import { validateLineSummaryQuery, type LineSummaryMode, type LineSummaryQuery } from "../../lib/stationSummary/lineSummaryQuery";
 import type { LineSummary } from "../../lib/stationSummary/lineSummarySchema";
 import { validateStationSummaryQuery, type StationSummaryQuery } from "../../lib/stationSummary/query";
-import { fetchTrustedScopeCatalog, type TrustedScopeCatalog } from "../../lib/stationSummary/scopeCatalog";
+import { fetchTrustedScopeCatalog, topologyMatchesCatalog, type TrustedScopeCatalog } from "../../lib/stationSummary/scopeCatalog";
 import { localMinuteToOffsetIso, quickRangeAt } from "../../lib/stationSummary/timeWindow";
 import { toStationSummaryViewModel, type StationSummaryViewModel } from "../../lib/stationSummary/viewModel";
 
@@ -103,15 +100,6 @@ function queryFromSearchParams(params: SearchParams): { ok: true; query?: LineSu
   return validation.ok ? { ok: true, query: validation.query, view } : { ok: false, reason: validation.reason };
 }
 
-function topologyMatchesCatalog(summary: LineSummary, line: TrustedScopeCatalog["lines"][number]): boolean {
-  const catalogStationIds = line.stations.map((station) => station.stationId);
-  return (
-    summary.scope.lineId === line.lineId &&
-    summary.topology.stations.length === catalogStationIds.length &&
-    summary.topology.stations.every((stationId, index) => stationId === catalogStationIds[index])
-  );
-}
-
 function stationDetailQuery(query: LineSummaryQuery): StationSummaryQuery | undefined {
   if (!query.stationId) return undefined;
   const validation = validateStationSummaryQuery({
@@ -138,7 +126,7 @@ function tabHref(view: ProductView, query: LineSummaryQuery, summary: LineSummar
   return `/station-summary?${params.toString()}`;
 }
 
-export function StationSummaryPageView({ state, catalog = null }: { state: PageViewState; catalog?: TrustedScopeCatalog | null }) {
+export function StationSummaryPageView({ state, catalog = null, trustedApiOrigin }: { state: PageViewState; catalog?: TrustedScopeCatalog | null; trustedApiOrigin?: TrustedAcceptedEventsApiOrigin }) {
   const query = state.kind === "ready" ? state.query : undefined;
   const view = state.kind === "ready" ? state.view : "line";
   return (
@@ -158,41 +146,17 @@ export function StationSummaryPageView({ state, catalog = null }: { state: PageV
       {state.kind !== "ready" ? (
         <StationSummaryStateMessage state={state} />
       ) : (
-        <section className="station-summary-results" aria-label="Station summary results">
-          <nav className="mes-summary-tabs" aria-label="Production summary views">
-            <a href={tabHref("line", state.query, state.summary)} aria-current={state.view === "line" ? "page" : undefined}>Line Summary</a>
-            <a href={tabHref("station", state.query, state.summary)} aria-current={state.view === "station" ? "page" : undefined}>Station Detail</a>
-          </nav>
-          <header className="station-summary-results-heading">
-            <div>
-              <p className="station-summary-results-kicker">{state.view === "line" ? "Selected line" : "Selected station"}</p>
-              <h2>{state.view === "line" ? state.query.lineId : "Station Detail"}</h2>
-            </div>
-            <div className="station-summary-window-state" data-mode={state.query.mode ?? "FIXED"}>
-              <strong>{(state.query.mode ?? "FIXED") === "LIVE" ? "LIVE · Rolling 8h · refresh 10s" : "FIXED WINDOW"}</strong>
-              <span>{state.query.startTime} → {state.query.endTime}</span>
-            </div>
-          </header>
-
-          {state.view === "line" ? (
-            <LineProductSummary summary={state.summary} />
-          ) : state.query.stationId ? (
-            <>
-              <StationDetailSummary summary={state.summary} stationId={state.query.stationId} />
-              <details className="station-summary-diagnostics-detail mes-diagnostics-block">
-                <summary>Data diagnostics</summary>
-                {state.stationDetail?.kind === "ready" ? (
-                  <div className="station-summary-secondary-detail-content">
-                    <StationSummaryCards quality={state.stationDetail.viewModel.quality} />
-                    <ProcessMetricMatrix panel={state.stationDetail.viewModel.processMetrics} />
-                  </div>
-                ) : (
-                  <p className="station-summary-panel-alert" role="alert">{state.stationDetail?.message ?? "Accepted Events diagnostics are unavailable."}</p>
-                )}
-              </details>
-            </>
-          ) : null}
-        </section>
+        <StationSummaryLiveDashboard
+          view={state.view}
+          query={state.query}
+          summary={state.summary}
+          trustedApiOrigin={trustedApiOrigin}
+          trustedScopeLine={catalog?.lines.find((line) => line.lineId === state.query.lineId)}
+          lineTabHref={tabHref("line", state.query, state.summary)}
+          stationTabHref={tabHref("station", state.query, state.summary)}
+          stationDetail={state.stationDetail}
+          stationDetailQuery={state.view === "station" ? stationDetailQuery(state.query) : undefined}
+        />
       )}
     </main>
   );
@@ -250,5 +214,5 @@ export default async function StationSummaryPage({ searchParams }: { searchParam
     }
   }
 
-  return <StationSummaryPageView catalog={catalogResult.catalog} state={{ kind: "ready", view: queryResult.view, query: effectiveQuery, summary: result.summary, stationDetail }} />;
+  return <StationSummaryPageView catalog={catalogResult.catalog} trustedApiOrigin={resolution.origin} state={{ kind: "ready", view: queryResult.view, query: effectiveQuery, summary: result.summary, stationDetail }} />;
 }

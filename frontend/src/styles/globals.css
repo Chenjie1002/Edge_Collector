@@ -1532,12 +1532,52 @@ dd {
   margin: 12px 0 0;
 }
 
+.mes-chart-plot {
+  position: relative;
+  min-width: 0;
+  overflow: visible;
+}
+
 .mes-svg-chart svg {
   display: block;
   width: 100%;
   height: auto;
   min-height: 190px;
   overflow: visible;
+}
+
+.mes-chart-tooltip {
+  position: absolute;
+  z-index: 2;
+  display: grid;
+  gap: 3px;
+  min-width: max-content;
+  max-width: min(260px, 76%);
+  border: 1px solid #315a6b;
+  border-radius: 6px;
+  padding: 7px 9px;
+  background: #173443;
+  box-shadow: 0 4px 12px rgba(18, 44, 56, 0.2);
+  color: #ffffff;
+  font-size: 11px;
+  line-height: 1.25;
+  pointer-events: none;
+  transform: translate(-50%, calc(-100% - 12px));
+  white-space: normal;
+}
+
+.mes-chart-tooltip[data-placement="below"] {
+  transform: translate(-50%, 12px);
+}
+
+.mes-chart-tooltip span {
+  color: #d8e8ee;
+  font-variant-numeric: tabular-nums;
+}
+
+.mes-chart-tooltip strong {
+  color: #ffffff;
+  font-variant-numeric: tabular-nums;
 }
 
 .mes-chart-axis-summary {
@@ -1626,6 +1666,25 @@ dd {
   color: #274957;
   font-size: 12px;
   font-variant-numeric: tabular-nums;
+}
+
+.station-summary-live-status {
+  border-left: 3px solid #3b7d94;
+  padding: 7px 10px;
+  background: #eef7fa;
+  color: #235469;
+  font-size: 12px;
+  font-variant-numeric: tabular-nums;
+}
+
+.station-summary-live-status-refreshing {
+  color: #526d79;
+}
+
+.station-summary-live-status-stale {
+  border-color: #a45d22;
+  background: #fff7ed;
+  color: #7b4218;
 }
 
 .mes-activity-bars {

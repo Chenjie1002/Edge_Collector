@@ -18,6 +18,8 @@ type Props = {
   defaultWindow?: LocalWindow;
 };
 
+export const STATION_SUMMARY_REFRESH_EVENT = "station-summary:refresh";
+
 function initialWindow(query: LineSummaryQuery | undefined, defaultWindow: LocalWindow | undefined): LocalWindow {
   if (query) {
     try {
@@ -57,9 +59,9 @@ export function StationSummaryQueryControls({ catalog = null, query, view = "lin
 
   useEffect(() => {
     if (!query || query.mode !== "LIVE") return undefined;
-    const timer = window.setInterval(() => window.location.reload(), 10_000);
+    const timer = window.setInterval(() => window.dispatchEvent(new Event(STATION_SUMMARY_REFRESH_EVENT)), 10_000);
     return () => window.clearInterval(timer);
-  }, [query]);
+  }, [query?.mode]);
 
   function chooseLine(nextLineId: string) {
     setLineId(nextLineId);
@@ -188,7 +190,7 @@ export function StationSummaryQueryControls({ catalog = null, query, view = "lin
         <button className="station-summary-scope-apply" type="submit" disabled={!canApply}>
           {mode === "LIVE" ? "Refresh LIVE" : "Apply fixed window"}
         </button>
-        {mode === "LIVE" ? <button type="button" onClick={() => window.location.reload()}>Refresh now</button> : null}
+        {mode === "LIVE" ? <button type="button" onClick={() => window.dispatchEvent(new Event(STATION_SUMMARY_REFRESH_EVENT))}>Refresh now</button> : null}
       </div>
     </form>
   );

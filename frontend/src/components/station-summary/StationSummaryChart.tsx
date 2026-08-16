@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useId, useState } from "react";
 
 export type StationSummaryChartPoint = Readonly<{
   label: string;
@@ -39,6 +39,7 @@ export function StationSummaryChart({
   variant = "bar",
 }: Props) {
   const [activeIndex, setActiveIndex] = useState<number | null>(null);
+  const tooltipId = useId();
   if (!points.length) return <p className="mes-empty">{emptyMessage}</p>;
 
   const plotWidth = WIDTH - MARGIN.left - MARGIN.right;
@@ -50,6 +51,10 @@ export function StationSummaryChart({
   const barWidth = Math.min(64, Math.max(18, plotWidth / Math.max(points.length, 1) * 0.58));
   const linePoints = points.map((point, index) => `${xFor(index)},${yFor(point.value)}`).join(" ");
   const activePoint = activeIndex === null ? null : points[activeIndex];
+  const activeX = activeIndex === null ? null : xFor(activeIndex);
+  const activeY = activeIndex === null || !activePoint ? null : yFor(activePoint.value);
+  const tooltipPlacement = activeY !== null && activeY <= MARGIN.top + 48 ? "below" : "above";
+  const tooltipLeft = activeX === null ? null : `${Math.min(94, Math.max(6, (activeX / WIDTH) * 100))}%`;
 
   return (
     <figure className="mes-svg-chart" aria-label={ariaLabel}>
@@ -58,7 +63,8 @@ export function StationSummaryChart({
         <span>y = {yAxisLabel}</span>
         <span>unit = {unit}</span>
       </div>
-      <svg role="img" aria-label={ariaLabel} viewBox={`0 0 ${WIDTH} ${HEIGHT}`}>
+      <div className="mes-chart-plot">
+        <svg role="img" aria-label={ariaLabel} viewBox={`0 0 ${WIDTH} ${HEIGHT}`}>
         <line className="mes-chart-axis" data-axis="y" x1={MARGIN.left} y1={MARGIN.top} x2={MARGIN.left} y2={baseline} />
         <line className="mes-chart-axis" data-axis="x" x1={MARGIN.left} y1={baseline} x2={WIDTH - MARGIN.right} y2={baseline} />
         <line className="mes-chart-gridline" x1={MARGIN.left} y1={MARGIN.top + plotHeight / 2} x2={WIDTH - MARGIN.right} y2={MARGIN.top + plotHeight / 2} />
@@ -73,6 +79,7 @@ export function StationSummaryChart({
           const y = yFor(point.value);
           const label = pointLabel(point, unit);
           const setActive = () => setActiveIndex(index);
+          const describedBy = activeIndex === index ? tooltipId : undefined;
           return variant === "line" ? (
             <circle
               key={`${point.label}-${index}`}
@@ -80,11 +87,15 @@ export function StationSummaryChart({
               role="button"
               tabIndex={0}
               aria-label={label}
+              aria-describedby={describedBy}
               cx={x}
               cy={y}
               r={6}
+              onPointerEnter={setActive}
+              onPointerLeave={() => setActiveIndex(null)}
               onMouseEnter={setActive}
               onFocus={setActive}
+              onPointerOut={() => setActiveIndex(null)}
               onMouseLeave={() => setActiveIndex(null)}
               onBlur={() => setActiveIndex(null)}
             >
@@ -97,13 +108,17 @@ export function StationSummaryChart({
               role="button"
               tabIndex={0}
               aria-label={label}
+              aria-describedby={describedBy}
               x={x - barWidth / 2}
               y={y}
               width={barWidth}
               height={Math.max(0, baseline - y)}
               rx={4}
+              onPointerEnter={setActive}
+              onPointerLeave={() => setActiveIndex(null)}
               onMouseEnter={setActive}
               onFocus={setActive}
+              onPointerOut={() => setActiveIndex(null)}
               onMouseLeave={() => setActiveIndex(null)}
               onBlur={() => setActiveIndex(null)}
             >
@@ -114,7 +129,22 @@ export function StationSummaryChart({
         {points.map((point, index) => (
           <text key={`label-${point.label}-${index}`} className="mes-chart-x-tick" x={xFor(index)} y={baseline + 22} textAnchor="middle">{point.label}</text>
         ))}
-      </svg>
+        </svg>
+        {activePoint && activeX !== null && activeY !== null && tooltipLeft !== null ? (
+          <div
+            id={tooltipId}
+            className="mes-chart-tooltip"
+            role="tooltip"
+            data-anchor-x={activeX}
+            data-anchor-y={activeY}
+            data-placement={tooltipPlacement}
+            style={{ left: tooltipLeft, top: `${(activeY / HEIGHT) * 100}%` }}
+          >
+            <span>{activePoint.label}</span>
+            <strong>{displayValue(activePoint.value)} {unit}</strong>
+          </div>
+        ) : null}
+      </div>
       <div className="mes-chart-reading" role="status" aria-live="polite">
         {activePoint ? pointLabel(activePoint, unit) : "Hover or focus a point to read the exact value."}
       </div>

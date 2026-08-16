@@ -1,3 +1,5 @@
+import type { LineSummary } from "./lineSummarySchema";
+
 export type ScopeStation = Readonly<{
   stationId: string;
   name: string;
@@ -20,6 +22,15 @@ export type TrustedScopeCatalog = Readonly<{
 export type ScopeCatalogResult =
   | { ok: true; catalog: TrustedScopeCatalog }
   | { ok: false; kind: "unavailable" | "invalid-response"; message: string };
+
+export function topologyMatchesCatalog(summary: LineSummary, line: ScopeLine): boolean {
+  const catalogStationIds = line.stations.map((station) => station.stationId);
+  return (
+    summary.scope.lineId === line.lineId &&
+    summary.topology.stations.length === catalogStationIds.length &&
+    summary.topology.stations.every((stationId, index) => stationId === catalogStationIds[index])
+  );
+}
 
 const SCOPE_CATALOG_MESSAGE = "Scope catalog unavailable";
 

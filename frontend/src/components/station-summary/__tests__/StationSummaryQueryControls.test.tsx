@@ -49,6 +49,31 @@ describe("StationSummaryQueryControls", () => {
     expect(intervalSpy).toHaveBeenCalledWith(expect.any(Function), 10_000);
   });
 
+  it("requests data-only refresh without navigating the page", () => {
+    vi.useFakeTimers();
+    const refreshRequest = vi.fn();
+    window.addEventListener("station-summary:refresh", refreshRequest);
+
+    render(
+      <StationSummaryQueryControls
+        catalog={catalog}
+        query={{
+          lineId: "LINE_001",
+          stationId: undefined,
+          startTime: "2026-07-05T00:00:00+08:00",
+          endTime: "2026-07-05T08:00:00+08:00",
+          mode: "LIVE",
+        } as never}
+      />,
+    );
+
+    vi.advanceTimersByTime(10_000);
+
+    expect(refreshRequest).toHaveBeenCalledTimes(1);
+    expect(StationSummaryQueryControls.toString()).not.toContain("location.reload");
+    window.removeEventListener("station-summary:refresh", refreshRequest);
+  });
+
   it("does not schedule automatic refresh for a FIXED query", () => {
     vi.useFakeTimers();
     const intervalSpy = vi.spyOn(window, "setInterval");
