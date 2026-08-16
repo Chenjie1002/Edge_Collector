@@ -89,7 +89,16 @@ const summary: LineSummary = {
   },
   trends: {
     production: [{ bucketStart: "2026-08-16T10:00:00Z", completed: 3, ok: 2, nok: 1 }],
-    cycleTime: [],
+    productionByStation: [
+      { bucketStart: "2026-08-16T10:00:00Z", stationId: "WS01", completed: 3, ok: 2, nok: 1 },
+      { bucketStart: "2026-08-16T10:00:00Z", stationId: "WS02", completed: 3, ok: 2, nok: 1 },
+      { bucketStart: "2026-08-16T10:00:00Z", stationId: "WS03", completed: 3, ok: 2, nok: 1 },
+    ],
+    cycleTime: [
+      { bucketStart: "2026-08-16T10:00:00Z", stationId: "WS01", averageCycleSeconds: 30.125, samples: 3 },
+      { bucketStart: "2026-08-16T10:00:00Z", stationId: "WS02", averageCycleSeconds: 29.5, samples: 3 },
+      { bucketStart: "2026-08-16T10:00:00Z", stationId: "WS03", averageCycleSeconds: 28.75, samples: 3 },
+    ],
   },
   quality: {
     nokAccumulation: [
@@ -109,20 +118,37 @@ const summary: LineSummary = {
 };
 
 describe("Station Summary charts", () => {
-  it("shows axes, unit and exact focused value for API-backed production points", () => {
+  it("renders one multi-series chart for CT and one for station production", () => {
     render(<LineProductSummary summary={summary} />);
 
-    expect(screen.getByText("x = Time")).toBeTruthy();
-    expect(screen.getByText("y = Completed units / bucket")).toBeTruthy();
-    expect(screen.getAllByText("unit = units").length).toBeGreaterThan(0);
+    const cycleFigure = screen.getByRole("figure", { name: "Cycle Time Trend" });
+    const productionFigure = screen.getByRole("figure", { name: "Production Trend" });
+    expect(cycleFigure).toBeTruthy();
+    expect(productionFigure).toBeTruthy();
+    expect(screen.getByRole("heading", { name: "Cycle Time Trend" })).toBeTruthy();
+    expect(screen.getByRole("heading", { name: "Production Trend" })).toBeTruthy();
+    expect(within(cycleFigure).getByText("WS01")).toBeTruthy();
+    expect(within(cycleFigure).getByText("WS02")).toBeTruthy();
+    expect(within(cycleFigure).getByText("WS03")).toBeTruthy();
+    expect(within(productionFigure).getByText("WS01")).toBeTruthy();
+    expect(within(productionFigure).getByText("WS02")).toBeTruthy();
+    expect(within(productionFigure).getByText("WS03")).toBeTruthy();
+    expect(within(cycleFigure).getByText("y = Cycle time")).toBeTruthy();
+    expect(within(productionFigure).getByText("y = Units / bucket")).toBeTruthy();
+    expect(within(cycleFigure).getAllByText("unit = s").length).toBe(1);
+    expect(within(productionFigure).getAllByText("unit = units").length).toBe(1);
 
-    const point = screen.getByRole("button", { name: "2026-08-16T10:00:00Z · 3 units" });
+    const point = within(productionFigure).getByRole("button", { name: "WS01 · 2026-08-16T10:00:00Z · 3 units" });
     fireEvent.focus(point);
-    expect(screen.getAllByRole("status").some((reading) => reading.textContent === "2026-08-16T10:00:00Z · 3 units")).toBe(true);
+    expect(within(productionFigure).getByRole("tooltip").textContent).toContain("WS01");
+    expect(within(productionFigure).getByRole("tooltip").textContent).toContain("3 units");
 
-    const bar = within(screen.getByRole("figure", { name: "Inherited NOK across route" })).getByRole("button", { name: "WS01 · 1 units" });
+    const stackedFigure = screen.getByRole("figure", { name: "OK/NOK by Station" });
+    const bar = within(stackedFigure).getByRole("button", { name: "WS01 · OK · 2 units" });
     fireEvent.focus(bar);
-    expect(screen.getAllByRole("status").some((reading) => reading.textContent === "WS01 · 1 units")).toBe(true);
+    expect(within(stackedFigure).getByRole("tooltip").textContent).toContain("OK");
+    expect(within(stackedFigure).getByRole("tooltip").textContent).toContain("2 units");
+    expect(document.querySelectorAll(".mes-chart-reading")).toHaveLength(0);
   });
 
   it("renders explicit empty state without generating chart points", () => {
@@ -130,14 +156,16 @@ describe("Station Summary charts", () => {
       <LineProductSummary
         summary={{
           ...summary,
-          trends: { production: [], cycleTime: [] },
+          trends: { production: [], productionByStation: [], cycleTime: [] },
           quality: { nokAccumulation: [], newNokByStation: [], nokCodeDistribution: [] },
         }}
       />,
     );
 
     expect(screen.getByText("No trusted completed units in this window.")).toBeTruthy();
-    expect(screen.queryByRole("button", { name: /units$/ })).toBeNull();
+    expect(screen.queryByRole("figure", { name: "Cycle Time Trend" })).toBeNull();
+    expect(screen.queryByRole("figure", { name: "Production Trend" })).toBeNull();
+    expect(screen.getByRole("figure", { name: "OK/NOK by Station" })).toBeTruthy();
   });
 
   it("keeps decimal API values exact in focus readings", () => {
@@ -155,7 +183,7 @@ describe("Station Summary charts", () => {
 
     const point = screen.getByRole("button", { name: "2026-08-16T10:00:00Z · 30.125 s" });
     fireEvent.focus(point);
-    expect(screen.getByRole("status").textContent).toContain("2026-08-16T10:00:00Z · 30.125 s");
+    expect(screen.getByRole("tooltip").textContent).toContain("2026-08-16T10:00:00Z · 30.125 s");
   });
 
   it("shows an anchored pointer-near tooltip with exact value and unit, then hides it on leave", () => {

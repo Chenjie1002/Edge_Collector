@@ -269,6 +269,11 @@ def test_line_summary_exposes_product_overview_trends_and_station_local_metrics(
     assert payload["overview"]["ack_pending_events"] == 0
     assert payload["overview"]["average_cycle_seconds"] == 30.0
     assert payload["trends"]["production"]
+    assert payload["trends"]["production_by_station"] == [
+        {"bucket_start": "2026-08-16T10:00:00Z", "station_id": "WS01", "completed": 2, "ok": 2, "nok": 0},
+        {"bucket_start": "2026-08-16T10:00:00Z", "station_id": "WS02", "completed": 2, "ok": 1, "nok": 1},
+        {"bucket_start": "2026-08-16T10:00:00Z", "station_id": "WS03", "completed": 2, "ok": 1, "nok": 1},
+    ]
     assert payload["trends"]["cycle_time"]
     assert payload["quality"]["new_nok_by_station"] == [
         {"station_id": "WS01", "count": 0},

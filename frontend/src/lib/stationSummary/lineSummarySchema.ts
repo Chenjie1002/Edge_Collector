@@ -7,6 +7,14 @@ export type LineSummaryTrendPoint = Readonly<{
   nok: number;
 }>;
 
+export type StationProductionTrendPoint = Readonly<{
+  bucketStart: string;
+  stationId: string;
+  completed: number;
+  ok: number;
+  nok: number;
+}>;
+
 export type CycleTimeTrendPoint = Readonly<{
   bucketStart: string;
   stationId: string;
@@ -118,6 +126,7 @@ export type LineSummary = Readonly<{
   overview?: LineSummaryOverview;
   trends?: Readonly<{
     production: readonly LineSummaryTrendPoint[];
+    productionByStation?: readonly StationProductionTrendPoint[];
     cycleTime: readonly CycleTimeTrendPoint[];
   }>;
   quality?: Readonly<{
@@ -338,8 +347,28 @@ function parseOverview(value: unknown): LineSummaryOverview {
 
 function parseTrends(value: unknown): NonNullable<LineSummary["trends"]> {
   if (!isPlainObject(value)) throw new Error("invalid line summary trends");
-  exactKeys(value, ["production", "cycle_time"], "line summary trends");
+  exactKeys(value, ["production", "cycle_time"], "line summary trends", ["production_by_station"]);
   if (!Array.isArray(value.production) || !Array.isArray(value.cycle_time)) throw new Error("invalid line summary trends");
+  const productionByStation = value.production_by_station === undefined
+    ? undefined
+    : (() => {
+      if (!Array.isArray(value.production_by_station)) throw new Error("invalid station production trend");
+      return value.production_by_station.map((entry, index) => {
+        if (!isPlainObject(entry)) throw new Error(`invalid station production trend ${index}`);
+        exactKeys(entry, ["bucket_start", "station_id", "completed", "ok", "nok"], `station production trend ${index}`);
+        const completed = nonNegativeSafeInteger(entry.completed, `station production trend ${index}.completed`);
+        const ok = nonNegativeSafeInteger(entry.ok, `station production trend ${index}.ok`);
+        const nok = nonNegativeSafeInteger(entry.nok, `station production trend ${index}.nok`);
+        if (ok + nok !== completed) throw new Error(`invalid station production trend ${index} counts`);
+        return {
+          bucketStart: nonBlankString(entry.bucket_start, `station production trend ${index}.bucket_start`),
+          stationId: nonBlankString(entry.station_id, `station production trend ${index}.station_id`),
+          completed,
+          ok,
+          nok,
+        };
+      });
+    })();
   return {
     production: value.production.map((entry, index) => {
       if (!isPlainObject(entry)) throw new Error(`invalid production trend ${index}`);
@@ -351,6 +380,7 @@ function parseTrends(value: unknown): NonNullable<LineSummary["trends"]> {
         nok: nonNegativeSafeInteger(entry.nok, `production trend ${index}.nok`),
       };
     }),
+    ...(productionByStation ? { productionByStation } : {}),
     cycleTime: value.cycle_time.map((entry, index) => {
       if (!isPlainObject(entry)) throw new Error(`invalid cycle trend ${index}`);
       exactKeys(entry, ["bucket_start", "station_id", "average_cycle_seconds", "samples"], `cycle trend ${index}`);

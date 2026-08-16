@@ -579,6 +579,31 @@ def _product_sections(
         for bucket, counts in sorted(production_buckets.items())
     ]
 
+    station_production_buckets: dict[tuple[datetime, str], Counter[str]] = defaultdict(Counter)
+    for row in valid_events:
+        station_id = row.get("station_id")
+        when = row.get("plc_end_time")
+        if station_id not in station_ids or not isinstance(when, datetime):
+            continue
+        bucket = _bucket_start(when, start, end)
+        counts = station_production_buckets[(bucket, str(station_id))]
+        counts["completed"] += 1
+        counts[str(row.get("normalized_result") or "").lower()] += 1
+    station_order = {station_id: index for index, station_id in enumerate(station_ids)}
+    production_by_station = [
+        {
+            "bucket_start": _iso_z(bucket),
+            "station_id": station_id,
+            "completed": counts["completed"],
+            "ok": counts["ok"],
+            "nok": counts["nok"],
+        }
+        for (bucket, station_id), counts in sorted(
+            station_production_buckets.items(),
+            key=lambda item: (item[0][0], station_order.get(item[0][1], len(station_ids))),
+        )
+    ]
+
     cycle_buckets: dict[tuple[datetime, str], list[float]] = defaultdict(list)
     for row in valid_events:
         when = row.get("plc_end_time")
@@ -598,7 +623,11 @@ def _product_sections(
         }
         for (bucket, station_id), values in sorted(cycle_buckets.items())
     ]
-    trends = {"production": production_trend, "cycle_time": cycle_trend}
+    trends = {
+        "production": production_trend,
+        "production_by_station": production_by_station,
+        "cycle_time": cycle_trend,
+    }
 
     code_counts = Counter(
         _positive_int(row.get("defect_code"))

@@ -51,6 +51,8 @@ NOK_CODES = {
     "WS03": {30001, 30002},
 }
 
+SIMULATION_SPEED_MULTIPLIERS = (1.0, 2.0, 5.0, 10.0, 20.0)
+
 
 @dataclass
 class Part:
@@ -418,11 +420,57 @@ class ThreeStationPipeline:
         set_s7_string(db, 262, part.label_code if clear_terminal_ids else "", 40)
         set_s7_string(db, 304, part.reject_id if clear_terminal_ids else "", 40)
 
+    def speed_multiplier(self) -> float:
+        return round(1.0 / self.scale, 5)
+
+    def set_simulation_speed(
+        self,
+        speed_multiplier: float,
+        *,
+        audit_context: dict[str, object] | None = None,
+    ) -> dict:
+        requested = float(speed_multiplier)
+        normalized = next(
+            (option for option in SIMULATION_SPEED_MULTIPLIERS if abs(requested - option) <= 1e-9),
+            None,
+        )
+        if normalized is None:
+            raise ValueError("simulation speed must be one of 1, 2, 5, 10, 20")
+
+        context = {
+            "reason": "runtime simulation speed update",
+            "actor": "system",
+            "client_ip": None,
+            "request_id": None,
+            "source": "INTERNAL",
+            "plc_boot_id": None,
+            **(audit_context or {}),
+        }
+        previous = self.speed_multiplier()
+        self.scale = 1.0 / normalized
+        self._record_parameter_change(
+            "LINE",
+            "simulation_speed_multiplier",
+            previous,
+            normalized,
+            context,
+            accepted=True,
+        )
+        self.record_parameter_snapshot(
+            "runtime_speed_update",
+            plc_boot_id=str(context.get("plc_boot_id") or "") or None,
+        )
+        return self.snapshot()
+
     def snapshot(self) -> dict:
         line_running = self.plan.active
         now_mono = time.monotonic()
         return {
             "scale": self.scale,
+            "speed_multiplier": self.speed_multiplier(),
+            "speed_options": list(SIMULATION_SPEED_MULTIPLIERS),
+            "speed_runtime_writable": True,
+            "speed_source": "local_simulator_runtime",
             "profile": self.profile,
             "allow_runtime_cycle_edit": self.allow_runtime_cycle_edit,
             "config_source": self.config_source,

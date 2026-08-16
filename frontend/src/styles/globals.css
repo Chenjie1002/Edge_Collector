@@ -1343,6 +1343,40 @@ dd {
   gap: 14px;
 }
 
+.mes-dashboard-distribution-grid {
+  display: grid;
+  grid-template-columns: minmax(0, 1.15fr) minmax(0, 1fr) minmax(0, 1.1fr);
+  gap: 14px;
+}
+
+.mes-route-evidence {
+  border: 1px solid #d7e0e6;
+  border-radius: 8px;
+  background: #f8fafb;
+}
+
+.mes-route-evidence > summary {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 10px 12px;
+  color: #526b78;
+  cursor: pointer;
+  font-size: 12px;
+  font-weight: 800;
+}
+
+.mes-route-evidence > summary strong {
+  color: #2f6749;
+  font-size: 11px;
+}
+
+.mes-route-evidence > .line-flow-summary {
+  margin: 0 10px 10px;
+  box-shadow: none;
+}
+
 .mes-chart-panel,
 .mes-distribution-panel,
 .mes-list-panel,
@@ -1407,9 +1441,47 @@ dd {
 
 .mes-chart-legend {
   display: flex;
-  justify-content: space-between;
+  flex-wrap: wrap;
+  justify-content: flex-start;
+  gap: 6px 14px;
   color: #778892;
   font-size: 10px;
+}
+
+.mes-chart-legend > span {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  white-space: nowrap;
+}
+
+.mes-chart-legend i,
+.mes-chart-tooltip-series i {
+  display: inline-block;
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+}
+
+.mes-chart-tooltip-series {
+  display: grid;
+  gap: 4px;
+  margin: 4px 0 0;
+  padding: 0;
+  list-style: none;
+}
+
+.mes-chart-tooltip-series li {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.mes-chart-tooltip-series li > span {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
 }
 
 .mes-station-trends {
@@ -1517,6 +1589,13 @@ dd {
   color: #778892;
   text-align: right;
   overflow-wrap: anywhere;
+}
+
+.mes-table-subvalue {
+  display: block;
+  margin-top: 4px;
+  color: #71828c;
+  font-size: 11px;
 }
 
 .station-summary-shell .mes-empty {
@@ -1799,6 +1878,10 @@ dd {
     grid-template-columns: repeat(2, minmax(0, 1fr));
   }
 
+  .mes-dashboard-distribution-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
   .mes-runtime-list > div {
     grid-template-columns: 54px 76px 76px minmax(0, 1fr);
   }
@@ -1810,7 +1893,8 @@ dd {
   .station-summary-panel-heading,
   .mes-line-identity,
   .mes-station-identity,
-  .mes-chart-grid {
+  .mes-chart-grid,
+  .mes-dashboard-distribution-grid {
     grid-template-columns: minmax(0, 1fr);
   }
 

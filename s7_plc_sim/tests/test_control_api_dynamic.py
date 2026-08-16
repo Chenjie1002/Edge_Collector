@@ -10,7 +10,7 @@ from fastapi.testclient import TestClient
 
 from app.control_api import CONTROL_HTML
 from app.control_api import create_control_app
-from app.pipeline import ThreeStationPipeline
+from app.pipeline import Part, StationJob, ThreeStationPipeline
 from app.runtime_config import load_runtime_config
 
 
@@ -24,6 +24,11 @@ def test_control_page_renders_station_and_nok_capabilities_from_state() -> None:
     assert "renderFlow" in CONTROL_HTML
     assert "buffer.waiting_unit_id" in CONTROL_HTML
     assert "station.current_cycle.progress_percent" in CONTROL_HTML
+    assert "Applied base / jitter" in CONTROL_HTML
+    assert "Effective speed / 生效倍率" in CONTROL_HTML
+    assert "simulationSpeed" in CONTROL_HTML
+    assert "simulationSpeedApplied" in CONTROL_HTML
+    assert "draft-status" in CONTROL_HTML
     assert "setTimeout(pollState" in CONTROL_HTML
     assert "setInterval" not in CONTROL_HTML
 
@@ -82,6 +87,118 @@ def test_normal_profile_api_update_returns_and_persists_all_runtime_values() -> 
         "nok_rate",
     }
     assert all(item["reason"] == "normal profile runtime tuning" for item in audit.changes)
+
+
+def test_runtime_speed_endpoint_updates_future_jobs_and_preserves_inflight_job() -> None:
+    audit = _AuditRecorder()
+    pipeline = ThreeStationPipeline(
+        scale=1.0,
+        profile="normal",
+        allow_runtime_cycle_edit=True,
+        audit_recorder=audit,
+        station_parameters={
+            "WS01": {"base_cycle_s": 40.0, "jitter_s": 0.0, "nok_rate": 0.0},
+            "WS02": {"base_cycle_s": 30.0, "jitter_s": 0.0, "nok_rate": 0.0},
+            "WS03": {"base_cycle_s": 30.0, "jitter_s": 0.0, "nok_rate": 0.0},
+        },
+    )
+    station = pipeline.stations["WS01"]
+    started_mono = 100.0
+    station.current_job = StationJob(
+        part=Part(serial_no=1, unit_id="U-INFLIGHT", child_dmc="SUB-INFLIGHT"),
+        started_at=pipeline.plan.started_at,
+        finish_monotonic=started_mono + 17.5,
+        cycle_time_s=17.5,
+    )
+    client = TestClient(create_control_app(pipeline, threading.RLock()))
+
+    response = client.post(
+        "/vplc/simulation/speed",
+        json={"speed_multiplier": 10, "reason": "operator demo speed"},
+        headers={"X-VPLC-Actor": "operator"},
+    )
+
+    assert response.status_code == 200
+    assert response.json()["speed_multiplier"] == 10.0
+    assert response.json()["scale"] == 0.1
+    assert client.get("/vplc/state").json()["speed_multiplier"] == 10.0
+    assert station.current_job is not None
+    assert station.current_job.finish_monotonic == started_mono + 17.5
+
+    station.current_job = None
+    pipeline._start_station(
+        station,
+        Part(serial_no=2, unit_id="U-FUTURE", child_dmc="SUB-FUTURE"),
+        pipeline.plan.started_at,
+        200.0,
+    )
+    assert station.current_job is not None
+    assert station.current_job.cycle_time_s == 4.0
+    assert audit.changes[-1]["parameter_name"] == "simulation_speed_multiplier"
+    assert audit.changes[-1]["old_value"] == 1.0
+    assert audit.changes[-1]["new_value"] == 10.0
+    assert audit.snapshots[-1]["snapshot_type"] == "runtime_speed_update"
+
+
+def test_runtime_speed_endpoint_rejects_non_preset_multiplier() -> None:
+    client = TestClient(create_control_app(ThreeStationPipeline(), threading.RLock()))
+
+    response = client.post(
+        "/vplc/simulation/speed",
+        json={"speed_multiplier": 3, "reason": "unsupported demo speed"},
+    )
+
+    assert response.status_code == 400
+    assert "1, 2, 5, 10, 20" in response.json()["detail"]
+
+
+def test_control_page_speed_action_and_unsaved_indicator_have_runtime_behavior() -> None:
+    script = CONTROL_HTML.split("<script>", 1)[1].rsplit("</script>", 1)[0]
+    node_program = textwrap.dedent(
+        """
+        (async () => {
+        const vm = require("node:vm");
+        const source = __SOURCE__;
+        const elements = new Map([
+          ["simulationSpeed", { id: "simulationSpeed", value: "1", dataset: {}, disabled: false }],
+          ["simulationSpeedApplied", { id: "simulationSpeedApplied", textContent: "", dataset: {} }],
+          ["simulationSpeedDraftStatus", { id: "simulationSpeedDraftStatus", hidden: true, dataset: {} }],
+        ]);
+        const document = {
+          activeElement: null,
+          getElementById(id) { return elements.get(id) || null; },
+          querySelectorAll() { return []; },
+        };
+        let request;
+        const context = {
+          console,
+          document,
+          prompt: () => "speed test",
+          fetch: async (path, options) => {
+            request = { path, options };
+            return { ok: true, json: async () => ({ speed_multiplier: 10, scale: 0.1 }) };
+          },
+          setTimeout: () => 0,
+        };
+        vm.runInNewContext(source, context);
+        const speed = elements.get("simulationSpeed");
+        speed.value = "10";
+        context.markSpeedDirty(speed);
+        if (elements.get("simulationSpeedDraftStatus").hidden) throw new Error("speed draft is not marked before apply");
+        await context.applySimulationSpeed();
+        if (!request || request.path !== "/vplc/simulation/speed") throw new Error("speed endpoint was not called");
+        const payload = JSON.parse(request.options.body);
+        if (payload.speed_multiplier !== 10 || payload.reason !== "speed test") throw new Error("speed payload is incomplete");
+        if (elements.get("simulationSpeedApplied").textContent !== "10×") throw new Error("speed readback was not rendered");
+        process.stdout.write("CONTROL_SPEED_RUNTIME_OK\\n");
+        })().catch((error) => {
+          console.error(error && (error.stack || error.message) || error);
+          process.exitCode = 1;
+        });
+        """
+    ).replace("__SOURCE__", json.dumps(script))
+    result = subprocess.run(["node", "-"], input=node_program, text=True, capture_output=True, check=False)
+    assert result.returncode == 0, result.stdout + result.stderr
 
 
 def test_control_page_runtime_preserves_focused_and_dirty_inputs_and_sends_three_values() -> None:
@@ -600,8 +717,10 @@ def test_control_page_polling_keeps_editable_nodes_selection_and_mode_semantics(
         countInput.focus();
         countInput.setSelectionRange(0, 1);
         context.markInputDirty(countInput);
+        const draftStatus = document.getElementById("WS01-draft-status");
+        if (!draftStatus || draftStatus.hidden || draftStatus.textContent !== "Unsaved / 未保存") throw new Error("station draft status is not visible");
 
-            planMode.value = "duration";
+                planMode.value = "duration";
             planMode.dataset.dirty = "true";
             durationInput.value = "2.5";
             durationInput.focus();
@@ -631,9 +750,10 @@ def test_control_page_polling_keeps_editable_nodes_selection_and_mode_semantics(
             if (element.selectionStart !== start || element.selectionEnd !== end) throw new Error(name + " caret/selection moved during polling");
           }
         }
-        if (document.getElementById("WS01-status").textContent !== "RUNNING") throw new Error("live station status did not update");
-        if (!document.getElementById("lineFlow").innerHTML.includes("30%")) throw new Error("live cycle progress did not update");
-        if (!document.getElementById("lineFlow").innerHTML.includes("WIP <strong>2</strong>")) throw new Error("live buffer state did not update");
+            if (document.getElementById("WS01-status").textContent !== "RUNNING") throw new Error("live station status did not update");
+            if (!document.getElementById("lineFlow").innerHTML.includes("30%")) throw new Error("live cycle progress did not update");
+            if (!document.getElementById("lineFlow").innerHTML.includes("WIP <strong>2</strong>")) throw new Error("live buffer state did not update");
+            if (!document.getElementById("lineFlow").innerHTML.includes("1×")) throw new Error("effective speed is missing from line flow");
 
         if (typeof context.clearPlanDrafts !== "function") throw new Error("plan draft reset contract missing");
         context.clearPlanDrafts();
@@ -676,8 +796,8 @@ def test_control_page_polling_keeps_editable_nodes_selection_and_mode_semantics(
     assert "Production Plan / 生产计划" in CONTROL_HTML
     assert "Simulation / 模拟设置" in CONTROL_HTML
     assert "Station Controls / 工站控制" in CONTROL_HTML
-    assert "1.0× = nominal cycle" in CONTROL_HTML
-    assert "0.1× = 10x faster simulation" in CONTROL_HTML
+    assert "1× = nominal cycle" in CONTROL_HTML
+    assert "future jobs" in CONTROL_HTML
     assert "0.02 = 2%" in CONTROL_HTML
     assert "持续运行，直到手动点击“停止”" in CONTROL_HTML
     assert "开始连续生产" in CONTROL_HTML

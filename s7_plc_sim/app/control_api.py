@@ -32,6 +32,11 @@ class ProductionPlanRequest(BaseModel):
     shift_hours: float | None = Field(default=8.5, gt=0, le=24)
 
 
+class SimulationSpeedRequest(BaseModel):
+    speed_multiplier: float = Field(ge=1, le=20)
+    reason: str = Field(min_length=1, max_length=500)
+
+
 def create_control_app(pipeline: ThreeStationPipeline, lock: threading.RLock) -> FastAPI:
     app = FastAPI(title="V-PLC Control")
 
@@ -47,6 +52,23 @@ def create_control_app(pipeline: ThreeStationPipeline, lock: threading.RLock) ->
     def state() -> dict:
         with lock:
             return pipeline.snapshot()
+
+    @app.post("/vplc/simulation/speed")
+    def update_simulation_speed(update: SimulationSpeedRequest, request: Request) -> dict:
+        with lock:
+            try:
+                return pipeline.set_simulation_speed(
+                    update.speed_multiplier,
+                    audit_context={
+                        "reason": update.reason,
+                        "actor": request.headers.get("X-VPLC-Actor", "anonymous"),
+                        "client_ip": request.client.host if request.client else None,
+                        "request_id": request.headers.get("X-Request-ID", str(uuid.uuid4())),
+                        "source": "API",
+                    },
+                )
+            except ValueError as exc:
+                raise HTTPException(status_code=400, detail=str(exc)) from exc
 
     @app.post("/vplc/stations/{station_id}")
     def update_station(station_id: str, update: StationUpdateRequest, request: Request) -> dict:
@@ -212,6 +234,11 @@ CONTROL_HTML = """
     .simulation-grid { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 12px; }
     .simulation-card { min-height: 72px; padding: 12px; border: 1px solid var(--line); border-radius: 8px; background: #fbfcfd; }
     .simulation-card strong { display: block; margin-top: 5px; font-size: 18px; }
+    .simulation-speed-control { display: grid; grid-template-columns: minmax(180px, 0.9fr) minmax(180px, 1fr) auto; gap: 12px; align-items: end; margin-top: 12px; padding: 12px; border: 1px solid var(--line); border-radius: 8px; background: #fbfcfd; }
+    .simulation-speed-readback { min-height: 34px; display: flex; align-items: center; gap: 8px; color: var(--muted); }
+    .simulation-speed-readback strong { color: var(--text); font-size: 18px; }
+    .draft-status { display: inline-flex; align-items: center; min-height: 22px; padding: 0 8px; border-radius: 999px; background: #fff5df; color: var(--amber); font-size: 11px; font-weight: 750; }
+    .draft-status[hidden] { display: none; }
     .simulation-explain { margin: 12px 0 0; color: var(--muted); font-size: 12px; }
     .station-list { display: grid; gap: 12px; }
     .station-card { padding: 12px; border: 1px solid var(--line); border-radius: 8px; background: #fbfcfd; }
@@ -236,6 +263,9 @@ CONTROL_HTML = """
     .flow-node.buffer { min-width: 150px; flex-basis: 150px; background: var(--surface-2); border-style: dashed; }
     .flow-node-head { display: flex; align-items: center; justify-content: space-between; gap: 8px; margin-bottom: 10px; }
     .flow-node-title { font-weight: 760; }
+    .flow-runtime-badge { flex: 0 0 auto; min-width: 138px; display: grid; gap: 4px; align-self: center; padding: 10px 12px; border: 1px solid #b9ccef; border-radius: 8px; background: #f5f8ff; color: var(--muted); font-size: 11px; }
+    .flow-runtime-badge strong { color: var(--blue); font-size: 18px; }
+    .flow-runtime-badge small { color: var(--muted); }
     .flow-meta { display: grid; gap: 5px; color: var(--muted); font-size: 12px; }
     .flow-meta strong { color: var(--text); font-weight: 700; overflow-wrap: anywhere; }
     .cycle-track { height: 8px; margin-top: 10px; border-radius: 999px; background: #dfe5ec; overflow: hidden; }
@@ -243,6 +273,7 @@ CONTROL_HTML = """
     .flow-arrow { flex: 0 0 18px; align-self: center; color: var(--muted); font-weight: 800; text-align: center; }
     @media (max-width: 960px) {
       .topline, .grid, .simulation-grid { grid-template-columns: 1fr; }
+      .simulation-speed-control { grid-template-columns: 1fr; }
       .plan-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
       .station-card-head { display: grid; }
       .station-live-meta { grid-template-columns: repeat(2, minmax(0, 1fr)); }
@@ -317,14 +348,31 @@ CONTROL_HTML = """
     <section class="panel">
       <div class="panel-head">
         <h2>Simulation / 模拟设置</h2>
-        <span class="hint">Profile authority controls the effective cycle scale.</span>
+        <span class="hint">Profile supplies startup defaults; runtime speed is writable for future jobs.</span>
       </div>
       <div class="simulation-grid">
         <div class="simulation-card"><div class="label">Profile</div><strong id="simulationProfile">-</strong></div>
         <div class="simulation-card"><div class="label">Cycle scale / 模拟倍率</div><strong id="simulationScale">-</strong></div>
         <div class="simulation-card"><div class="label">Authority / 权限</div><strong id="simulationAuthority">-</strong></div>
       </div>
-      <p class="simulation-explain">1.0× = nominal cycle · 0.1× = 10x faster simulation。倍率由当前 profile authority 决定，不伪装成任意可写工站参数。</p>
+      <div class="simulation-speed-control">
+        <label class="field-label">Simulation speed / 运行倍率
+          <select id="simulationSpeed" onfocus="rememberInput(this)" onchange="markSpeedDirty(this)">
+            <option value="1">1×</option>
+            <option value="2">2×</option>
+            <option value="5">5×</option>
+            <option value="10">10×</option>
+            <option value="20">20×</option>
+          </select>
+        </label>
+        <div class="simulation-speed-readback">
+          <span>Server-applied / 服务端已生效</span>
+          <strong id="simulationSpeedApplied">-</strong>
+          <span id="simulationSpeedDraftStatus" class="draft-status" hidden>Unsaved / 未保存</span>
+        </div>
+        <button class="primary" onclick="applySimulationSpeed()">Apply speed / 应用倍率</button>
+      </div>
+      <p class="simulation-explain">1× = nominal cycle。新倍率只作用于尚未开始的 future jobs；当前 in-flight job 保持其已抽样的完成时间。</p>
     </section>
     <section class="panel">
       <div class="panel-head">
@@ -384,10 +432,12 @@ CONTROL_HTML = """
     }
 
     function editableControls() {
+      const speedControl = document.getElementById("simulationSpeed");
       return [
         ...document.querySelectorAll("input[data-station][data-field]"),
         ...document.querySelectorAll("select[data-station][data-field]"),
         ...planControls(),
+        ...(speedControl ? [speedControl] : []),
       ].filter((control, index, controls) => controls.indexOf(control) === index);
     }
 
@@ -411,6 +461,7 @@ CONTROL_HTML = """
       dirtyInputKeys.add(key);
       rememberControl(input);
       input.dataset.dirty = "true";
+      updateStationDraftStatus(input.dataset.station);
     }
 
     function clearStationDrafts(stationId) {
@@ -424,6 +475,7 @@ CONTROL_HTML = """
           control.dataset.dirty = "false";
         }
       });
+      updateStationDraftStatus(stationId);
     }
 
     function inputDirtyAttribute(stationId, field) {
@@ -444,6 +496,43 @@ CONTROL_HTML = """
         dirtyPlanKeys.delete(key);
         control.dataset.dirty = "false";
       });
+    }
+
+    function markSpeedDirty(control) {
+      const key = controlKey(control);
+      dirtyPlanKeys.add(key);
+      rememberControl(control);
+      control.dataset.dirty = "true";
+      const status = document.getElementById("simulationSpeedDraftStatus");
+      if (status) {
+        status.hidden = false;
+        status.textContent = "Unsaved / 未保存";
+      }
+    }
+
+    function clearSpeedDraft() {
+      const control = document.getElementById("simulationSpeed");
+      if (!control) return;
+      const key = controlKey(control);
+      protectedInputValues.delete(key);
+      dirtyPlanKeys.delete(key);
+      control.dataset.dirty = "false";
+      const status = document.getElementById("simulationSpeedDraftStatus");
+      if (status) status.hidden = true;
+    }
+
+    function formatSpeed(value) {
+      const number = Number(value);
+      return Number.isInteger(number) ? number.toFixed(0) + "×" : number.toFixed(2) + "×";
+    }
+
+    function updateStationDraftStatus(stationId) {
+      if (!stationId) return;
+      const status = document.getElementById(stationId + "-draft-status");
+      if (!status) return;
+      const dirty = editableControls().some(control => control.dataset.station === stationId && isControlDirty(control));
+      status.hidden = !dirty;
+      status.textContent = dirty ? "Unsaved / 未保存" : "";
     }
 
     function setText(id, value) {
@@ -490,7 +579,7 @@ CONTROL_HTML = """
 
     async function loadState() {
       currentState = await api("/vplc/state");
-      render(currentState);
+      if (currentState && currentState.line && currentState.topology && currentState.stations) render(currentState);
     }
 
     function renderFlow(state) {
@@ -498,6 +587,10 @@ CONTROL_HTML = """
       const stationIds = topology.station_ids || Object.keys(state.stations || {});
       const buffers = new Map((state.buffers || []).map(buffer => [`${buffer.from_station_id}->${buffer.to_station_id}`, buffer]));
       const parts = [];
+      const flowSpeed = Number.isFinite(Number(state.speed_multiplier))
+        ? Number(state.speed_multiplier)
+        : 1 / Number(state.scale || 1);
+      parts.push(`<div class="flow-runtime-badge"><span>Effective speed / 生效倍率</span><strong>${formatSpeed(flowSpeed)}</strong><small>server-applied runtime</small></div>`);
       stationIds.forEach((id, index) => {
         const station = state.stations[id] || {};
         const cycle = station.current_cycle;
@@ -508,6 +601,8 @@ CONTROL_HTML = """
             <span>Current Unit <strong class="code">${cycle?.unit_id || "-"}</strong></span>
             <span>DMC <strong class="code">${cycle?.dmc || station.current_dmc || "-"}</strong></span>
             <span>Cycle <strong>${cycle ? `${cycle.elapsed_seconds.toFixed(1)} / ${cycle.planned_cycle_seconds.toFixed(1)} s` : "Idle"}</strong></span>
+            <span>Applied base / jitter <strong>${Number(station.base_cycle_s || 0).toFixed(1)} / ${Number(station.jitter_s || 0).toFixed(1)} s</strong></span>
+            <span>Applied NOK rate <strong>${(Number(station.nok_rate || 0) * 100).toFixed(1)}%</strong></span>
           </div>
           <div class="cycle-track" aria-label="${id} cycle progress"><div class="cycle-fill" style="width:${Math.max(0, Math.min(100, progress))}%"></div></div>
           <div class="hint">${cycle ? `${progress.toFixed(0)}% · remaining ${cycle.remaining_seconds.toFixed(1)} s` : "等待下一件"}</div>
@@ -542,6 +637,7 @@ CONTROL_HTML = """
             <div class="station-card-title">
               <span class="code">${id}</span>
               <span id="${id}-status" class="status ${statusClass(station)}">${statusText(station)}</span>
+              <span id="${id}-draft-status" class="draft-status" hidden>Unsaved / 未保存</span>
             </div>
             <div class="station-live-meta">
               <div>Counter<strong id="${id}-counter" class="live-value">${station.cycle_counter}</strong></div>
@@ -645,6 +741,7 @@ CONTROL_HTML = """
       }
       const pauseButton = document.getElementById(id + "-pause-button");
       if (pauseButton) pauseButton.textContent = station.paused ? "Resume" : "Pause";
+      updateStationDraftStatus(id);
     }
 
     function renderStationRows(state) {
@@ -712,6 +809,9 @@ CONTROL_HTML = """
     function render(state) {
       captureProtectedInputs();
       const line = state.line;
+      const serverSpeed = Number.isFinite(Number(state.speed_multiplier))
+        ? Number(state.speed_multiplier)
+        : 1 / Number(state.scale || 1);
       stations = (state.topology && state.topology.station_ids) || Object.keys(state.stations || {});
       const topology = state.topology || {};
       const edges = topology.edges || [];
@@ -725,7 +825,12 @@ CONTROL_HTML = """
       document.getElementById("profileHint").textContent = `${state.profile} / ${state.allow_runtime_cycle_edit ? "允许节拍编辑" : "节拍锁定"}`;
       setText("simulationProfile", state.profile);
       setText("simulationScale", state.scale.toFixed(2) + "×");
-      setText("simulationAuthority", state.allow_runtime_cycle_edit ? "normal: editable" : "profile locked");
+      setText("simulationAuthority", state.speed_runtime_writable === false ? "runtime locked" : "runtime writable");
+      setText("simulationSpeedApplied", formatSpeed(serverSpeed));
+      const speedControl = document.getElementById("simulationSpeed");
+      if (speedControl && !controlIsProtected(speedControl)) speedControl.value = String(serverSpeed);
+      const speedDraftStatus = document.getElementById("simulationSpeedDraftStatus");
+      if (speedDraftStatus && (!speedControl || !isControlDirty(speedControl))) speedDraftStatus.hidden = true;
       document.getElementById("serial").textContent = state.serial_no;
       document.getElementById("completed").textContent = state.completed_quantity;
       document.getElementById("serialHint").textContent = `${topology.entry_station_id || "入口站"} 投入件累计`;
@@ -738,6 +843,22 @@ CONTROL_HTML = """
       document.getElementById("rawJson").textContent = JSON.stringify(state, null, 2);
       document.getElementById("updatedAt").textContent = new Date().toLocaleTimeString();
       renderStationRows(state);
+    }
+
+    async function applySimulationSpeed() {
+      const speedControl = document.getElementById("simulationSpeed");
+      if (!speedControl) return;
+      const reason = prompt("请输入本次运行倍率修改原因：");
+      if (!reason) return;
+      const nextState = await api("/vplc/simulation/speed", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ speed_multiplier: Number(speedControl.value), reason })
+      });
+      clearSpeedDraft();
+      currentState = nextState;
+      setText("simulationSpeedApplied", formatSpeed(nextState.speed_multiplier));
+      if (nextState.line && nextState.topology && nextState.stations) render(currentState);
     }
 
     async function saveStation(id) {
