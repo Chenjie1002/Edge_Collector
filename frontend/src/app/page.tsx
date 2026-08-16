@@ -1,21 +1,54 @@
-const productSurfaces = [
-  {
-    href: "/station-summary",
-    eyebrow: "Primary MVP view",
-    title: "Station Summary",
-    description: "Review one trusted station and bounded production window across Quality and Process Metrics, with unsupported authority kept explicit.",
-    action: "Open station summary",
-  },
-  {
-    href: "/accepted-events",
-    eyebrow: "Accepted fact detail",
-    title: "Accepted Events",
-    description: "Inspect read-only accepted station-event facts and their bounded trace and NOK evidence without diagnostic or raw-data fallback.",
-    action: "Open accepted events",
-  },
-] as const;
+import { resolveDashboardProductSurface } from "../lib/productSurfaces";
+
+export const dynamic = "force-dynamic";
+
+type ProductSurface = {
+  href: string | null;
+  eyebrow: string;
+  title: string;
+  description: string;
+  action: string;
+};
+
+function resolveProductSurfaceHref(surface: "trace" | "vplc") {
+  const resolution = resolveDashboardProductSurface(surface);
+  return resolution.ok ? resolution.href : null;
+}
 
 export default function DashboardHomePage() {
+  const productSurfaces = [
+    {
+      href: "/station-summary",
+      eyebrow: "Primary MVP view",
+      title: "Station Summary",
+      description: "Review one trusted station and bounded production window across Quality and Process Metrics, with unsupported authority kept explicit.",
+      action: "Open station summary",
+    },
+    {
+      href: "/accepted-events",
+      eyebrow: "Accepted fact detail",
+      title: "Accepted Events",
+      description: "Inspect read-only accepted station-event facts and their bounded trace and NOK evidence without diagnostic or raw-data fallback.",
+      action: "Open accepted events",
+    },
+    {
+      href: resolveProductSurfaceHref("trace"),
+      eyebrow: "Production traceability",
+      title: "Trace",
+      description:
+        "Open the existing complete unit trace for DMC, payload, result, defect, skip, label, and WS01 → WS02 → WS03 lineage.",
+      action: "Open Trace",
+    },
+    {
+      href: resolveProductSurfaceHref("vplc"),
+      eyebrow: "Simulator / control",
+      title: "V-PLC Console",
+      description:
+        "Operate the existing virtual PLC demo surface for profile, plan, station parameters, and controlled NOK simulation; this is not field PLC deployment configuration.",
+      action: "Open V-PLC Console",
+    },
+  ] satisfies ProductSurface[];
+
   return (
     <main className="dashboard-shell product-home-shell">
       <header className="product-home-header">
@@ -34,10 +67,16 @@ export default function DashboardHomePage() {
               <h2>{surface.title}</h2>
               <p>{surface.description}</p>
             </div>
-            <a className="product-home-surface-link" href={surface.href}>
-              {surface.action}
-              <span aria-hidden="true">→</span>
-            </a>
+            {surface.href ? (
+              <a className="product-home-surface-link" href={surface.href}>
+                {surface.action}
+                <span aria-hidden="true">→</span>
+              </a>
+            ) : (
+              <span className="product-home-surface-link" aria-disabled="true">
+                Surface unavailable
+              </span>
+            )}
           </article>
         ))}
       </section>
