@@ -222,9 +222,9 @@ CONTROL_HTML = """
     <section class="topline">
       <div class="tile"><div class="label">整线状态</div><div class="value" id="lineState">-</div><div class="hint" id="lineHint">-</div></div>
       <div class="tile"><div class="label">Profile / 模拟倍率</div><div class="value" id="scale">-</div><div class="hint" id="profileHint">1.0 表示真实 30s 左右节拍</div></div>
-      <div class="tile"><div class="label">总序号</div><div class="value" id="serial">-</div><div class="hint">WS01 投入件累计</div></div>
-      <div class="tile"><div class="label">完成件数</div><div class="value" id="completed">-</div><div class="hint">WS03 OK 下线累计</div></div>
-      <div class="tile"><div class="label">WIP WS01 -> WS02</div><div class="value" id="wip12">-</div><div class="hint">等待 EOL 的中间件</div></div>
+      <div class="tile"><div class="label">总序号</div><div class="value" id="serial">-</div><div class="hint" id="serialHint">入口站投入件累计</div></div>
+      <div class="tile"><div class="label">完成件数</div><div class="value" id="completed">-</div><div class="hint" id="completedHint">终点站 OK 下线累计</div></div>
+      <div class="tile"><div class="label" id="wipLabel">首段 WIP</div><div class="value" id="wip12">-</div><div class="hint" id="wipHint">-</div></div>
     </section>
     <section class="panel">
       <div class="panel-head">
@@ -295,7 +295,7 @@ CONTROL_HTML = """
     </section>
   </main>
   <script>
-    const stations = ["WS01", "WS02", "WS03"];
+    let stations = [];
     let currentState = null;
 
     function resultText(code) {
@@ -318,13 +318,10 @@ CONTROL_HTML = """
       return "IDLE";
     }
 
-    function nokOptions(stationId) {
-      const ranges = {
-        WS01: [[10001, "TQ_LOW"], [10002, "TQ_HIGH"], [10003, "ANG_LOW"], [10004, "ANG_HIGH"]],
-        WS02: [[20001, "CUR_HIGH"], [20002, "VOLT_LOW"], [20003, "VOLT_HIGH"], [20004, "STALL_CUR"], [20005, "STALL_TIME"]],
-        WS03: [[30001, "PRINT_FAIL"], [30002, "VERIFY_FAIL"]],
-      };
-      return ranges[stationId].map(([code, name]) => `<option value="${code}">${code} ${name}</option>`).join("");
+    function nokOptions(station) {
+      const codes = station.nok_codes || [];
+      if (station.allow_force === false || !codes.length) return `<option value="">不支持强制NOK</option>`;
+      return codes.map(code => `<option value="${code}">${code}</option>`).join("");
     }
 
     async function api(path, options = {}) {
@@ -340,14 +337,25 @@ CONTROL_HTML = """
 
     function render(state) {
       const line = state.line;
+      stations = (state.topology && state.topology.station_ids) || Object.keys(state.stations || {});
+      const topology = state.topology || {};
+      const edges = topology.edges || [];
+      const wipEntries = edges.map(edge => {
+        const key = `${edge.from_station_id}_to_${edge.to_station_id}`;
+        return { key, label: `${edge.from_station_id} -> ${edge.to_station_id}`, value: state.wip[key] || 0 };
+      });
       document.getElementById("lineState").innerHTML = `<span class="dot ${line.running ? "" : "off"}"></span>${line.running ? "RUN" : "STOP"}`;
       document.getElementById("lineHint").textContent = line.running ? `${line.plan_mode} / 已运行 ${line.elapsed_seconds}s` : (line.stop_reason || "停止");
       document.getElementById("scale").textContent = state.scale.toFixed(2);
       document.getElementById("profileHint").textContent = `${state.profile} / ${state.allow_runtime_cycle_edit ? "允许节拍编辑" : "节拍锁定"}`;
       document.getElementById("serial").textContent = state.serial_no;
       document.getElementById("completed").textContent = state.completed_quantity;
-      document.getElementById("wip12").textContent = state.wip.ws01_to_ws02;
-      document.getElementById("planHint").textContent = planText(line, state.wip.ws02_to_ws03);
+      document.getElementById("serialHint").textContent = `${topology.entry_station_id || "入口站"} 投入件累计`;
+      document.getElementById("completedHint").textContent = `${topology.terminal_station_id || "终点站"} OK 下线累计`;
+      document.getElementById("wipLabel").textContent = wipEntries[0]?.label || "首段 WIP";
+      document.getElementById("wip12").textContent = wipEntries[0]?.value || 0;
+      document.getElementById("wipHint").textContent = wipEntries.slice(1).map(item => `${item.label}: ${item.value}`).join(" / ") || "无中间边";
+      document.getElementById("planHint").textContent = planText(line, wipEntries);
       document.getElementById("rawJson").textContent = JSON.stringify(state, null, 2);
       document.getElementById("updatedAt").textContent = new Date().toLocaleTimeString();
       document.getElementById("stationRows").innerHTML = stations.map(id => {
@@ -363,14 +371,14 @@ CONTROL_HTML = """
             <td><input id="${id}-jitter" type="number" min="0" step="0.1" value="${station.jitter_s.toFixed(1)}" ${state.allow_runtime_cycle_edit ? "" : "disabled"}></td>
             <td><input id="${id}-nok" type="number" min="0" max="1" step="0.001" value="${station.nok_rate.toFixed(3)}"></td>
             <td>
-              <select id="${id}-nok-code">${nokOptions(id)}</select>
+              <select id="${id}-nok-code" ${station.allow_force === false ? "disabled" : ""}>${nokOptions(station)}</select>
               <input id="${id}-nok-count" type="number" min="1" max="100" step="1" value="1" title="连续强制 NOK 数量">
             </td>
             <td>
               <div class="actions">
                 <button class="primary" onclick="saveStation('${id}')">保存</button>
                 <button onclick="togglePause('${id}', ${!station.paused})">${station.paused ? "恢复" : "暂停"}</button>
-                <button class="danger" onclick="forceNok('${id}')">NOK(${station.pending_forced_nok_count})</button>
+                <button class="danger" onclick="forceNok('${id}')" ${station.allow_force === false ? "disabled" : ""}>NOK(${station.pending_forced_nok_count})</button>
                 <button onclick="clearForcedNok('${id}')">清除NOK</button>
               </div>
             </td>
@@ -378,11 +386,12 @@ CONTROL_HTML = """
       }).join("");
     }
 
-    function planText(line, wip23) {
+    function planText(line, wipEntries) {
       const rem = line.remaining_seconds === null ? "无限制" : `剩余 ${line.remaining_seconds}s`;
       const qty = line.target_quantity ? `目标 ${line.target_quantity} 件` : "";
       const shifts = line.target_shifts ? `目标 ${line.target_shifts} 班` : "";
-      return `${line.plan_mode} ${rem} ${qty} ${shifts} / WIP WS02->WS03 ${wip23}`;
+      const wip = wipEntries.map(item => `${item.label} ${item.value}`).join(" / ") || "无中间 WIP";
+      return `${line.plan_mode} ${rem} ${qty} ${shifts} / ${wip}`;
     }
 
     async function saveStation(id) {
@@ -436,7 +445,7 @@ CONTROL_HTML = """
     }
 
     async function resetPipeline() {
-      if (!confirm("确认重置 WIP 队列和三个工站 counter？")) return;
+      if (!confirm("确认重置 WIP 队列和全部工站 counter？")) return;
       currentState = await api("/vplc/reset", { method: "POST" });
       render(currentState);
     }

@@ -13,6 +13,7 @@ from psycopg.types.json import Jsonb
 from app.models import MachineState
 from app.plc.mapping import StationMapping
 from app.services.accepted_station_event_fact import AcceptedStationEventFact
+from app.services.resolved_config_registry import CompletionPolicy
 
 
 class Storage:
@@ -265,6 +266,7 @@ class Storage:
         read_size: int,
         raw_hex: str,
         code_tables: dict[str, dict[Any, Any]],
+        completion_policy: CompletionPolicy | None = None,
     ) -> int:
         event_id = self.persist_cycle_no_commit(
             plc_id=plc_id,
@@ -278,6 +280,7 @@ class Storage:
             read_size=read_size,
             raw_hex=raw_hex,
             code_tables=code_tables,
+            completion_policy=completion_policy,
         )
         self.conn.commit()
         return event_id
@@ -296,6 +299,7 @@ class Storage:
         read_size: int,
         raw_hex: str,
         code_tables: dict[str, dict[Any, Any]],
+        completion_policy: CompletionPolicy | None = None,
     ) -> int:
         raw_sample_id = self.insert_raw_plc_sample(
             plc_id=plc_id,
@@ -317,6 +321,7 @@ class Storage:
             decoded=decoded,
             raw_sample_id=raw_sample_id,
             code_tables=code_tables,
+            completion_policy=completion_policy,
         )
         self.insert_quality_event_for_cycle(event_id, commit=False)
         return event_id
@@ -435,6 +440,7 @@ class Storage:
         decoded: dict[str, Any],
         raw_sample_id: int,
         code_tables: dict[str, dict[Any, Any]],
+        completion_policy: CompletionPolicy | None = None,
     ) -> int:
         event_id = self.upsert_cycle_event_no_commit(
             plc_id=plc_id,
@@ -445,6 +451,7 @@ class Storage:
             decoded=decoded,
             raw_sample_id=raw_sample_id,
             code_tables=code_tables,
+            completion_policy=completion_policy,
         )
         self.conn.commit()
         return event_id
@@ -460,6 +467,7 @@ class Storage:
         decoded: dict[str, Any],
         raw_sample_id: int,
         code_tables: dict[str, dict[Any, Any]],
+        completion_policy: CompletionPolicy | None = None,
     ) -> int:
         result_code = int(decoded.get("result") or 0)
         result = str(code_tables.get("result", {}).get(result_code, result_code))
@@ -637,7 +645,10 @@ class Storage:
         )
         if unit_id:
             self.upsert_station_event_for_cycle(event_id)
-            self.upsert_production_unit_for_event(event_id)
+            self.upsert_production_unit_for_event(
+                event_id,
+                completion_policy=completion_policy,
+            )
         return event_id
 
     def upsert_station_event_for_cycle(self, cycle_event_id: int) -> int | None:
@@ -684,7 +695,15 @@ class Storage:
             row = cur.fetchone()
         return int(row[0]) if row else None
 
-    def upsert_production_unit_for_event(self, cycle_event_id: int) -> None:
+    def upsert_production_unit_for_event(
+        self,
+        cycle_event_id: int,
+        *,
+        completion_policy: CompletionPolicy | None,
+    ) -> None:
+        if not isinstance(completion_policy, CompletionPolicy):
+            raise ValueError("completion policy is required for production-unit persistence")
+        terminal_station_id = completion_policy.terminal_station_id
         with self.conn.cursor() as cur:
             cur.execute(
                 """
@@ -705,25 +724,25 @@ class Storage:
                         se.reject_id,
                         se.plc_end_time,
                         CASE
-                            WHEN se.station_id = 'WS03' AND se.result = 'OK' AND se.process_status = 'PROCESSED'
+                            WHEN se.station_id = %s AND se.result = 'OK' AND se.process_status = 'PROCESSED'
                                 THEN 'COMPLETED_OK'
-                            WHEN se.station_id = 'WS03' AND (se.result <> 'OK' OR se.process_status = 'SKIPPED')
+                            WHEN se.station_id = %s AND (se.result <> 'OK' OR se.process_status = 'SKIPPED')
                                 THEN 'COMPLETED_NOK'
                             WHEN se.process_status = 'SKIPPED'
                                 THEN 'BYPASSING'
                             ELSE 'WAITING_NEXT_STATION'
                         END AS unit_state,
                         CASE
-                            WHEN se.station_id = 'WS03' AND se.result = 'OK' AND se.process_status = 'PROCESSED'
+                            WHEN se.station_id = %s AND se.result = 'OK' AND se.process_status = 'PROCESSED'
                                 THEN 'OK'
-                            WHEN se.station_id = 'WS03' AND (se.result <> 'OK' OR se.process_status = 'SKIPPED')
+                            WHEN se.station_id = %s AND (se.result <> 'OK' OR se.process_status = 'SKIPPED')
                                 THEN 'NOK'
                             ELSE NULL
                         END AS final_result,
                         CASE
-                            WHEN se.station_id = 'WS03' AND se.result = 'OK' AND se.process_status = 'PROCESSED'
+                            WHEN se.station_id = %s AND se.result = 'OK' AND se.process_status = 'PROCESSED'
                                 THEN 'SHIPPING'
-                            WHEN se.station_id = 'WS03' AND (se.result <> 'OK' OR se.process_status = 'SKIPPED')
+                            WHEN se.station_id = %s AND (se.result <> 'OK' OR se.process_status = 'SKIPPED')
                                 THEN 'NONCONFORMING_HANDLING'
                             ELSE NULL
                         END AS disposition
@@ -766,7 +785,15 @@ class Storage:
                 )
                 """
                 ,
-                (cycle_event_id,),
+                (
+                    terminal_station_id,
+                    terminal_station_id,
+                    terminal_station_id,
+                    terminal_station_id,
+                    terminal_station_id,
+                    terminal_station_id,
+                    cycle_event_id,
+                ),
             )
 
     def _code_label(self, code_tables: dict[str, dict[Any, Any]], table: str, value: object) -> str:

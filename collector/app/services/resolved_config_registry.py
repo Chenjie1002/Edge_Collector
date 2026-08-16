@@ -22,6 +22,51 @@ class RouteEdgeSnapshot:
 @dataclass(frozen=True)
 class RouteGraphSnapshot:
     edges: tuple[RouteEdgeSnapshot, ...]
+    entry_station_id: str | None = None
+    terminal_station_id: str | None = None
+
+
+@dataclass(frozen=True)
+class CompletionPolicy:
+    line_id: str
+    config_hash: str
+    entry_station_id: str
+    terminal_station_id: str
+
+    @classmethod
+    def from_snapshot(cls, snapshot: "ResolvedConfigSnapshot") -> "CompletionPolicy":
+        if not isinstance(snapshot, ResolvedConfigSnapshot):
+            raise ValueError("completion policy requires a resolved config snapshot")
+        if not snapshot.config_hash:
+            raise ValueError("completion policy requires a resolved config hash")
+        enabled = [station for station in snapshot.stations if station.station_enabled]
+        if not enabled:
+            raise ValueError("completion policy requires enabled stations")
+        ordered = sorted(
+            enumerate(enabled),
+            key=lambda item: (
+                item[1].station_order if item[1].station_order is not None else item[0],
+                item[0],
+            ),
+        )
+        ordered_ids = [station.station_id for _index, station in ordered]
+        station_ids = set(ordered_ids)
+        incoming = {edge.to_station_id for edge in snapshot.route_graph.edges}
+        outgoing = {edge.from_station_id for edge in snapshot.route_graph.edges}
+        entry = snapshot.entry_station_id or snapshot.route_graph.entry_station_id
+        terminal = snapshot.terminal_station_id or snapshot.route_graph.terminal_station_id
+        entry = entry or next((station_id for station_id in ordered_ids if station_id not in incoming), None)
+        terminal = terminal or next((station_id for station_id in reversed(ordered_ids) if station_id not in outgoing), None)
+        if entry not in station_ids or terminal not in station_ids:
+            raise ValueError("completion policy topology is missing enabled entry/terminal")
+        if entry == terminal and len(ordered_ids) != 1:
+            raise ValueError("completion policy entry and terminal are inconsistent")
+        return cls(
+            line_id=snapshot.line_id,
+            config_hash=snapshot.config_hash,
+            entry_station_id=str(entry),
+            terminal_station_id=str(terminal),
+        )
 
 
 @dataclass(frozen=True)
@@ -54,6 +99,8 @@ class ResolvedConfigSnapshot:
     line_id: str
     stations: tuple[ResolvedStationSnapshot, ...]
     route_graph: RouteGraphSnapshot
+    entry_station_id: str | None = None
+    terminal_station_id: str | None = None
     schema_version: str = "runtime-mapping/v1"
     authoritative_source: str = "unknown"
     timezone: str = "Asia/Shanghai"
@@ -149,6 +196,10 @@ def compute_resolved_config_hash(snapshot: ResolvedConfigSnapshot) -> str:
         content["decoder_registry_snapshot_id"] = snapshot.decoder_registry_snapshot_id
     if snapshot.decoder_registry_content_hash is not None:
         content["decoder_registry_content_hash"] = snapshot.decoder_registry_content_hash
+    if snapshot.entry_station_id is not None:
+        content["entry_station_id"] = snapshot.entry_station_id
+    if snapshot.terminal_station_id is not None:
+        content["terminal_station_id"] = snapshot.terminal_station_id
     for station_content, station in zip(
         content["stations"],
         sorted(snapshot.stations, key=lambda item: item.station_id),
@@ -206,8 +257,12 @@ def build_resolved_config_snapshot_from_mapping(
                     to_station_id=edge.to_station_id,
                 )
                 for edge in mapping_snapshot.route_graph
-            )
+            ),
+            entry_station_id=mapping_snapshot.entry_station_id,
+            terminal_station_id=mapping_snapshot.terminal_station_id,
         ),
+        entry_station_id=mapping_snapshot.entry_station_id,
+        terminal_station_id=mapping_snapshot.terminal_station_id,
         schema_version=mapping_snapshot.schema_version,
         authoritative_source=mapping_snapshot.authoritative_source,
         timezone=mapping_snapshot.timezone,
@@ -271,6 +326,10 @@ def build_resolved_config_snapshot_from_mapping(
             resolved_content["decoder_registry_snapshot_id"] = candidate.decoder_registry_snapshot_id
         if candidate.decoder_registry_content_hash is not None:
             resolved_content["decoder_registry_content_hash"] = candidate.decoder_registry_content_hash
+        if candidate.entry_station_id is not None:
+            resolved_content["entry_station_id"] = candidate.entry_station_id
+        if candidate.terminal_station_id is not None:
+            resolved_content["terminal_station_id"] = candidate.terminal_station_id
         for station_content, station in zip(
             resolved_content["stations"],
             sorted(candidate.stations, key=lambda item: item.station_id),

@@ -104,6 +104,32 @@ class RuntimeConfigTest(unittest.TestCase):
     def test_control_page_omits_locked_cycle_fields_from_normal_update(self) -> None:
         self.assertIn("if (currentState.allow_runtime_cycle_edit)", CONTROL_HTML)
 
+    def test_active_projection_supplies_dynamic_station_parameters(self) -> None:
+        active_mapping = {
+            "authoritative_source": "active/mapping.yaml",
+            "projection_hash": "sha256:" + "a" * 64,
+            "execution_profile": {"mode": "test", "cycle_scale": 1.0},
+            "stations": [
+                {
+                    "station_id": f"WS{index:02d}",
+                    "cycle_time_s": 2.0,
+                    "jitter_s": 0.1,
+                    "nok_rate": 0.0,
+                }
+                for index in range(1, 11)
+            ],
+        }
+
+        temp_dir, path = self._config_path()
+        self.addCleanup(temp_dir.cleanup)
+        config = load_runtime_config(path, active_mapping=active_mapping)
+
+        self.assertEqual(tuple(f"WS{index:02d}" for index in range(1, 11)), tuple(config.stations))
+        self.assertEqual(10, len(config.stations))
+        self.assertEqual(2.0, config.stations["WS10"].base_cycle_s)
+        self.assertEqual("active/mapping.yaml", config.source)
+        self.assertEqual(64, len(config.config_hash))
+
 
 if __name__ == "__main__":
     unittest.main()

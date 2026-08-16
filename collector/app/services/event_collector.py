@@ -21,6 +21,7 @@ from app.plc.mapping import StationMapping
 from app.services.reliability import CounterDecision, classify_counter, validate_plc_boot_id
 from app.services.accepted_station_event_fact import build_accepted_station_event_fact
 from app.services.resolved_config_registry import (
+    CompletionPolicy,
     InMemoryResolvedConfigRegistry,
     ResolvedConfigSnapshot,
     build_resolved_config_snapshot_from_mapping,
@@ -117,6 +118,7 @@ class EventCollectorWorker:
         self.resolved_config_registry = InMemoryResolvedConfigRegistry(
             {self.resolved_config_snapshot.config_hash: self.resolved_config_snapshot}
         )
+        self.completion_policy = CompletionPolicy.from_snapshot(self.resolved_config_snapshot)
         resolved_lookup = self.resolved_config_registry.lookup_resolved_config(
             self.resolved_config_snapshot.config_hash
         )
@@ -375,6 +377,7 @@ class EventCollectorWorker:
                     read_size=runtime.plan.read_size,
                     raw_hex=bytes(data).hex(),
                     code_tables=self.mapping.code_tables,
+                    completion_policy=getattr(self, "completion_policy", None),
                 )
             logger.info(
                 "cycle event stored station=%s counter=%s id=%s decision=%s",

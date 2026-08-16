@@ -31,6 +31,12 @@ from .resolver import (
     estimate_config_load,
     resolve_line_config,
 )
+from .runtime_layout import RuntimeLayoutRegistry, default_runtime_layout_registry
+from .runtime_projection import (
+    RuntimeMappingProjection,
+    RuntimeProjectionError,
+    compile_runtime_mapping,
+)
 from .validator import validate_line_config
 
 __all__ = [
@@ -60,5 +66,10 @@ __all__ = [
     "load_line_config",
     "parse_deployment_candidate",
     "resolve_line_config",
+    "RuntimeLayoutRegistry",
+    "RuntimeMappingProjection",
+    "RuntimeProjectionError",
+    "compile_runtime_mapping",
+    "default_runtime_layout_registry",
     "validate_line_config",
 ]

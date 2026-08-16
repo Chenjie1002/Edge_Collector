@@ -43,7 +43,7 @@ export default function DashboardHomePage() {
       eyebrow: "Production traceability",
       title: "Trace",
       description:
-        "Open the existing complete unit trace for DMC, payload, result, defect, skip, label, and WS01 → WS02 → WS03 lineage.",
+        "Open the existing complete unit trace for DMC, payload, result, defect, skip, label, and the active configured route lineage.",
       action: "Open Trace",
     },
     {

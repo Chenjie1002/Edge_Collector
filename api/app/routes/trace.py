@@ -1,17 +1,97 @@
 from __future__ import annotations
 
+from dataclasses import dataclass
+import os
 import re
 from html import escape
-from datetime import datetime
+from pathlib import Path
 from typing import Any
 
 from fastapi import APIRouter, HTTPException, Query
 from fastapi.responses import HTMLResponse
 
+from common.runtime_mapping import EffectiveMappingUnavailable, read_effective_mapping
 from app.db import get_conn
 
 
 router = APIRouter(prefix="/trace", tags=["trace"])
+
+
+@dataclass(frozen=True)
+class TraceTopology:
+    station_ids: tuple[str, ...]
+    entry_station_id: str
+    terminal_station_id: str
+    edges: tuple[tuple[str, str], ...]
+
+    @property
+    def predecessor(self) -> dict[str, str]:
+        return {to_station: from_station for from_station, to_station in self.edges}
+
+
+def _trace_mapping_path() -> Path:
+    configured = os.environ.get("EDGE_MES_MAPPING_PATH")
+    if configured:
+        return Path(configured)
+    container_path = Path("/app/config/mapping.yaml")
+    if container_path.is_file():
+        return container_path
+    return Path(__file__).resolve().parents[3] / "config" / "mapping.yaml"
+
+
+def _load_trace_topology() -> TraceTopology:
+    try:
+        root = read_effective_mapping(_trace_mapping_path()).root
+    except EffectiveMappingUnavailable as exc:
+        raise HTTPException(status_code=503, detail="active trace topology unavailable") from exc
+    raw_stations = root.get("stations")
+    if not isinstance(raw_stations, list):
+        raise HTTPException(status_code=503, detail="active trace topology has no stations")
+    ordered_stations = sorted(
+        (
+            (index, station)
+            for index, station in enumerate(raw_stations)
+            if isinstance(station, dict) and station.get("station_enabled", True) is not False
+        ),
+        key=lambda item: (int(item[1].get("station_order", item[0] + 1)), item[0]),
+    )
+    station_ids = tuple(str(station["station_id"]) for _index, station in ordered_stations)
+    if not station_ids or len(set(station_ids)) != len(station_ids):
+        raise HTTPException(status_code=503, detail="active trace topology station identity is invalid")
+    route_raw = root.get("route_graph")
+    topology_raw = root.get("topology") if isinstance(root.get("topology"), dict) else {}
+    edges_raw = route_raw.get("edges", []) if isinstance(route_raw, dict) else (route_raw or [])
+    edges = tuple(
+        (str(edge["from_station_id"]), str(edge["to_station_id"]))
+        for edge in edges_raw
+        if isinstance(edge, dict)
+    )
+    station_set = set(station_ids)
+    if any(left not in station_set or right not in station_set for left, right in edges):
+        raise HTTPException(status_code=503, detail="active trace topology edge identity is invalid")
+    explicit_entry = root.get("entry_station_id") or topology_raw.get("entry_station_id")
+    explicit_terminal = root.get("terminal_station_id") or topology_raw.get("terminal_station_id")
+    if isinstance(route_raw, dict):
+        explicit_entry = explicit_entry or route_raw.get("entry_station_id")
+        explicit_terminal = explicit_terminal or route_raw.get("terminal_station_id")
+    predecessor = {right: left for left, right in edges}
+    successor = {left: right for left, right in edges}
+    entry = str(explicit_entry) if explicit_entry else next(
+        (station_id for station_id in station_ids if station_id not in predecessor),
+        station_ids[0],
+    )
+    terminal = str(explicit_terminal) if explicit_terminal else next(
+        (station_id for station_id in reversed(station_ids) if station_id not in successor),
+        station_ids[-1],
+    )
+    if entry not in station_set or terminal not in station_set:
+        raise HTTPException(status_code=503, detail="active trace topology entry/terminal is invalid")
+    return TraceTopology(
+        station_ids=station_ids,
+        entry_station_id=entry,
+        terminal_station_id=terminal,
+        edges=edges,
+    )
 
 
 def _serial_from_text(value: str | None) -> int | None:
@@ -41,40 +121,7 @@ def _station_payload_summary(row: dict[str, Any]) -> dict[str, Any]:
     payload = row.get("payload") or {}
     if not isinstance(payload, dict):
         return {}
-    interesting = {
-        "screw_1_torque_nm",
-        "screw_1_angle_deg",
-        "screw_2_torque_nm",
-        "screw_2_angle_deg",
-        "screw_3_torque_nm",
-        "screw_3_angle_deg",
-        "avg_current_a",
-        "avg_voltage_v",
-        "clockwise_time_ms",
-        "counterclockwise_time_ms",
-        "stall_peak_current_a",
-        "stall_time_ms",
-        "serial_no",
-        "product_model_code",
-        "upstream_ws01_end_time",
-        "upstream_ws01_result",
-        "upstream_child_dmc",
-        "upstream_ws02_end_time",
-        "upstream_ws02_result",
-        "upstream_ws02_dmc",
-    }
-    return {key: payload[key] for key in sorted(payload) if key in interesting}
-
-
-def _parse_time(value: Any) -> datetime | None:
-    if not value:
-        return None
-    if isinstance(value, datetime):
-        return value
-    try:
-        return datetime.fromisoformat(str(value))
-    except ValueError:
-        return None
+    return {key: payload[key] for key in sorted(payload)}
 
 
 def _format_event(row: dict[str, Any] | None) -> dict[str, Any] | None:
@@ -111,11 +158,12 @@ def _format_event(row: dict[str, Any] | None) -> dict[str, Any] | None:
 
 
 def _empty_trace(query: str, serial_no: int | None) -> dict[str, Any]:
+    topology = _load_trace_topology()
     return {
         "query": query,
         "serial_no": serial_no,
         "found": False,
-        "stations": {"WS01": None, "WS02": None, "WS03": None},
+        "stations": {station_id: None for station_id in topology.station_ids},
         "events": [],
     }
 
@@ -129,6 +177,7 @@ def _trace_by_unit(
     line_id: str | None = None,
     plc_boot_id: str | None = None,
 ) -> dict[str, Any]:
+    topology = _load_trace_topology()
     scope_sql, scope_params = _identity_scope_sql(
         plc_id=plc_id,
         line_id=line_id,
@@ -148,16 +197,19 @@ def _trace_by_unit(
             )
             rows = cur.fetchall()
 
-    stations: dict[str, dict[str, Any] | None] = {"WS01": None, "WS02": None, "WS03": None}
+    stations: dict[str, dict[str, Any] | None] = {
+        station_id: None for station_id in topology.station_ids
+    }
     for row in rows:
-        stations[row["station_id"]] = _format_event(row)
+        if row["station_id"] in stations:
+            stations[row["station_id"]] = _format_event(row)
     return {
         "query": query,
         "unit_id": unit_id,
         "serial_no": serial_no,
         "found": any(stations.values()),
         "stations": stations,
-        "events": [event for event in stations.values() if event],
+        "events": [stations[station_id] for station_id in topology.station_ids if stations[station_id]],
     }
 
 
@@ -169,6 +221,7 @@ def _trace_by_serial(
     line_id: str | None = None,
     plc_boot_id: str | None = None,
 ) -> dict[str, Any]:
+    topology = _load_trace_topology()
     serial6 = f"{serial_no:06d}"
     candidates = (f"SUB-{serial6}", f"ASM-{serial6}")
     scope_sql, scope_params = _identity_scope_sql(
@@ -211,11 +264,15 @@ def _trace_by_serial(
             )
             rows = cur.fetchall()
 
-    stations: dict[str, dict[str, Any] | None] = {"WS01": None, "WS02": None, "WS03": None}
+    stations: dict[str, dict[str, Any] | None] = {
+        station_id: None for station_id in topology.station_ids
+    }
     for row in rows:
-        stations[row["station_id"]] = _format_event(row)
-    _fill_upstream_by_time(
+        if row["station_id"] in stations:
+            stations[row["station_id"]] = _format_event(row)
+    _fill_upstream_by_identity(
         stations,
+        topology,
         plc_id=plc_id,
         line_id=line_id,
         plc_boot_id=plc_boot_id,
@@ -225,38 +282,33 @@ def _trace_by_serial(
         "serial_no": serial_no,
         "found": any(stations.values()),
         "stations": stations,
-        "events": [event for event in stations.values() if event],
+        "events": [stations[station_id] for station_id in topology.station_ids if stations[station_id]],
     }
 
 
-def _fill_upstream_by_time(
+def _fill_upstream_by_identity(
     stations: dict[str, dict[str, Any] | None],
+    topology: TraceTopology,
     *,
     plc_id: str | None = None,
     line_id: str | None = None,
     plc_boot_id: str | None = None,
 ) -> None:
-    ws03 = stations.get("WS03")
-    if ws03 and not stations.get("WS02"):
-        upstream_end = _parse_time((ws03.get("payload") or {}).get("upstream_ws02_end_time"))
-        child_dmc = ws03.get("child_dmc") or (ws03.get("payload") or {}).get("upstream_child_dmc")
-        stations["WS02"] = _find_upstream_event(
-            "WS02",
-            upstream_end,
-            child_dmc,
-            plc_id=plc_id,
-            line_id=line_id,
-            plc_boot_id=plc_boot_id,
-        )
-
-    ws02 = stations.get("WS02")
-    if ws02 and not stations.get("WS01"):
-        upstream_end = _parse_time((ws02.get("payload") or {}).get("upstream_ws01_end_time"))
-        child_dmc = ws02.get("child_dmc") or ws02.get("dmc") or (ws02.get("payload") or {}).get("upstream_child_dmc")
-        stations["WS01"] = _find_upstream_event(
-            "WS01",
-            upstream_end,
-            child_dmc,
+    for station_id in reversed(topology.station_ids):
+        row = stations.get(station_id)
+        predecessor = topology.predecessor.get(station_id)
+        if not row or not predecessor or stations.get(predecessor):
+            continue
+        payload = row.get("payload") or {}
+        explicit_dmc = (
+            payload.get(f"upstream_{predecessor.lower()}_dmc")
+            or payload.get("upstream_child_dmc")
+            or row.get("child_dmc")
+            or row.get("dmc")
+        ) if isinstance(payload, dict) else (row.get("child_dmc") or row.get("dmc"))
+        stations[predecessor] = _find_upstream_event(
+            predecessor,
+            explicit_dmc,
             plc_id=plc_id,
             line_id=line_id,
             plc_boot_id=plc_boot_id,
@@ -265,14 +317,13 @@ def _fill_upstream_by_time(
 
 def _find_upstream_event(
     station_id: str,
-    upstream_end: datetime | None,
     child_dmc: str | None,
     *,
     plc_id: str | None = None,
     line_id: str | None = None,
     plc_boot_id: str | None = None,
 ) -> dict[str, Any] | None:
-    if not upstream_end and not child_dmc:
+    if not child_dmc:
         return None
     scope_sql, scope_params = _identity_scope_sql(
         plc_id=plc_id,
@@ -305,29 +356,6 @@ def _find_upstream_event(
                 if row:
                     return _format_event(row)
                 return None
-            if upstream_end:
-                cur.execute(
-                    f"""
-                    SELECT *
-                    FROM cycle_event
-                    WHERE station_id = %s
-                      AND plc_end_time BETWEEN %s::timestamptz - interval '90 seconds'
-                                           AND %s::timestamptz + interval '90 seconds'
-                    {scope_sql}
-                    ORDER BY abs(extract(epoch FROM (plc_end_time - %s::timestamptz))), id DESC
-                    LIMIT 1
-                    """,
-                    (
-                        station_id,
-                        upstream_end,
-                        upstream_end,
-                        *scope_params,
-                        upstream_end,
-                    ),
-                )
-                row = cur.fetchone()
-                if row:
-                    return _format_event(row)
     return None
 
 
@@ -590,7 +618,7 @@ TRACE_HTML = f"""
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>三工站生产追溯</title>
+  <title>动态生产追溯</title>
   <style>
     :root {{
       --bg: #f4f6f8; --surface: #fff; --line: #d8dee7; --text: #17202c;
@@ -635,7 +663,7 @@ TRACE_HTML = f"""
 </head>
 <body>
   <header>
-    <h1>三工站生产追溯</h1>
+    <h1>动态生产追溯</h1>
     <a href="/docs" target="_blank">API Docs</a>
   </header>
   <main>
@@ -674,7 +702,10 @@ TRACE_HTML = f"""
     </section>
   </main>
   <script>
-    const stations = ["WS01", "WS02", "WS03"];
+    const stations = [];
+    function setStations(data) {{
+      stations.splice(0, stations.length, ...Object.keys(data.stations || {{}}));
+    }}
     function esc(v) {{ return String(v ?? "").replace(/[&<>"']/g, s => ({{"&":"&amp;","<":"&lt;",">":"&gt;","\\"":"&quot;","'":"&#39;"}}[s])); }}
     function badge(result) {{ const cls = result === "NOK" ? "nok" : "ok"; return `<span class="badge ${{cls}}">${{esc(result || "-")}}</span>`; }}
     function stationCard(id, row) {{
@@ -706,6 +737,7 @@ TRACE_HTML = f"""
       if (!q) return;
       const res = await fetch(`/trace/api?q=${{encodeURIComponent(q)}}`);
       const data = await res.json();
+      setStations(data);
       document.getElementById("summary").textContent = data.found ? `序号 ${{data.serial_no}}，找到 ${{data.events.length}} 条工站事件。` : "没有找到匹配追溯记录。";
       document.getElementById("timeline").innerHTML = stations.map(id => stationCard(id, data.stations[id])).join("");
     }}

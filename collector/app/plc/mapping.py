@@ -111,6 +111,8 @@ class RuntimeMappingSnapshot:
     route_graph: tuple[RouteEdgeMapping, ...]
     interpretation_code_tables: dict[str, dict[str, Any]]
     config_hash: str = ""
+    entry_station_id: str | None = None
+    terminal_station_id: str | None = None
 
     def station_for(self, station_id: str) -> RuntimeStationMapping | None:
         return next((station for station in self.stations if station.station_id == station_id), None)
@@ -232,7 +234,22 @@ def parse_edge_mapping(raw: dict[str, Any]) -> EdgeMapping:
             )
         )
 
-    route_graph = _parse_route_graph(raw.get("route_graph"), runtime_stations)
+    route_raw = raw.get("route_graph")
+    topology_raw = raw.get("topology") if isinstance(raw.get("topology"), dict) else {}
+    explicit_entry = raw.get("entry_station_id") or topology_raw.get("entry_station_id")
+    explicit_terminal = raw.get("terminal_station_id") or topology_raw.get("terminal_station_id")
+    if isinstance(route_raw, dict):
+        explicit_entry = explicit_entry or route_raw.get("entry_station_id")
+        explicit_terminal = explicit_terminal or route_raw.get("terminal_station_id")
+        route_raw = route_raw.get("edges")
+    if (explicit_entry is None) != (explicit_terminal is None):
+        raise RuntimeMappingContractError("entry_station_id and terminal_station_id must be declared together")
+    station_ids = {station.station_id for station in runtime_stations}
+    if explicit_entry is not None and str(explicit_entry) not in station_ids:
+        raise RuntimeMappingContractError("entry_station_id references unknown station")
+    if explicit_terminal is not None and str(explicit_terminal) not in station_ids:
+        raise RuntimeMappingContractError("terminal_station_id references unknown station")
+    route_graph = _parse_route_graph(route_raw, runtime_stations)
     expected_decoder_registry_hash = _compute_runtime_decoder_registry_hash(
         decoder_registry_snapshot_id,
         runtime_stations,
@@ -252,6 +269,8 @@ def parse_edge_mapping(raw: dict[str, Any]) -> EdgeMapping:
         stations=tuple(runtime_stations),
         route_graph=route_graph,
         interpretation_code_tables=_interpretation_code_tables(raw.get("code_tables", {})),
+        entry_station_id=str(explicit_entry) if explicit_entry is not None else None,
+        terminal_station_id=str(explicit_terminal) if explicit_terminal is not None else None,
     )
     runtime_snapshot = RuntimeMappingSnapshot(
         **{
@@ -295,7 +314,7 @@ def runtime_mapping_hash_content(snapshot: RuntimeMappingSnapshot) -> dict[str, 
 
 
 def _runtime_hash_content(snapshot: RuntimeMappingSnapshot) -> dict[str, Any]:
-    return {
+    content = {
         "schema_version": snapshot.schema_version,
         "config_version": snapshot.config_version,
         "authoritative_source": snapshot.authoritative_source,
@@ -351,6 +370,11 @@ def _runtime_hash_content(snapshot: RuntimeMappingSnapshot) -> dict[str, Any]:
             for station in sorted(snapshot.stations, key=lambda item: item.station_id)
         ],
     }
+    if snapshot.entry_station_id is not None:
+        content["entry_station_id"] = snapshot.entry_station_id
+    if snapshot.terminal_station_id is not None:
+        content["terminal_station_id"] = snapshot.terminal_station_id
+    return content
 
 
 def _compute_runtime_decoder_registry_hash(

@@ -6,6 +6,7 @@ from datetime import datetime
 import random
 import time
 from typing import Callable
+from collections.abc import Mapping
 from zoneinfo import ZoneInfo
 
 from snap7 import util
@@ -111,7 +112,6 @@ class ProductionPlan:
     shift_hours: float | None = None
     completed_quantity_at_start: int = 0
     stop_reason: str = ""
-
 
 class ThreeStationPipeline:
     def __init__(
@@ -404,6 +404,16 @@ class ThreeStationPipeline:
             "require_ack": self.require_ack,
             "serial_no": self.serial_no,
             "completed_quantity": self.completed_quantity,
+            "topology": {
+                "station_count": 3,
+                "entry_station_id": "WS01",
+                "terminal_station_id": "WS03",
+                "station_ids": ["WS01", "WS02", "WS03"],
+                "edges": [
+                    {"from_station_id": "WS01", "to_station_id": "WS02"},
+                    {"from_station_id": "WS02", "to_station_id": "WS03"},
+                ],
+            },
             "line": {
                 "running": line_running,
                 "external_running": self.external_running,
@@ -439,6 +449,8 @@ class ThreeStationPipeline:
                     "payload_ready": station.payload_ready_since is not None,
                     "pending_forced_nok_count": len(station.forced_nok_queue),
                     "pending_forced_nok_codes": list(station.forced_nok_queue),
+                    "allow_force": True,
+                    "nok_codes": sorted(NOK_CODES.get(station_id, set())),
                 }
                 for station_id, station in self.stations.items()
             },
@@ -743,3 +755,472 @@ class ThreeStationPipeline:
         util.set_int(db, 110, part.ws02_result)
         set_s7_string(db, 112, part.child_dmc, 40)
         set_s7_string(db, 154, part.child_dmc, 40)
+@dataclass(frozen=True)
+class RouteTopology:
+    station_ids: tuple[str, ...]
+    entry_station_id: str
+    terminal_station_id: str
+    edges: tuple[tuple[str, str], ...]
+
+    @property
+    def predecessor(self) -> dict[str, str]:
+        return {to_station: from_station for from_station, to_station in self.edges}
+
+    @property
+    def successor(self) -> dict[str, str]:
+        return {from_station: to_station for from_station, to_station in self.edges}
+
+
+class SingleLinearRoutePipeline(ThreeStationPipeline):
+    """Topology-driven single-PLC pipeline for the accepted 3WS/10WS route.
+
+    The existing ``ThreeStationPipeline`` remains available for legacy callers.
+    Runtime construction uses this class so station order, edge queues, terminal
+    completion and NOK capabilities all come from the active projection.
+    """
+
+    def __init__(
+        self,
+        *,
+        mapping: Mapping[str, object],
+        scale: float = 1.0,
+        ack_deadline_s: float = 10.0,
+        on_counter_reset: Callable[[], None] | None = None,
+        profile: str = "test",
+        allow_runtime_cycle_edit: bool = True,
+        station_parameters: dict[str, dict[str, float]] | None = None,
+        config_source: str = "active-mapping",
+        config_hash: str = "",
+        mapping_path: str = "",
+        mapping_content_sha256: str = "",
+        audit_recorder: object | None = None,
+        plc_boot_id_provider: Callable[[], str] | None = None,
+    ) -> None:
+        self._mapping = dict(mapping)
+        station_documents = [
+            item for item in self._mapping.get("stations", [])
+            if isinstance(item, dict) and item.get("station_enabled", True) is not False
+        ]
+        station_ids = tuple(str(item["station_id"]) for item in station_documents)
+        entry_station_id = str(
+            self._mapping.get("entry_station_id")
+            or (self._mapping.get("topology") or {}).get("entry_station_id")
+            or station_ids[0]
+        )
+        terminal_station_id = str(
+            self._mapping.get("terminal_station_id")
+            or (self._mapping.get("topology") or {}).get("terminal_station_id")
+            or station_ids[-1]
+        )
+        raw_edges = self._mapping.get("route_graph", [])
+        edges = tuple(
+            (
+                str(edge["from_station_id"]),
+                str(edge["to_station_id"]),
+            )
+            for edge in raw_edges
+            if isinstance(edge, dict)
+        )
+        if not edges:
+            edges = tuple(zip(station_ids, station_ids[1:]))
+        if tuple(item for item in station_ids) == () or entry_station_id not in station_ids:
+            raise ValueError("active mapping has no valid linear-route entry")
+        if terminal_station_id not in station_ids:
+            raise ValueError("active mapping has no valid linear-route terminal")
+        if len(edges) != len(station_ids) - 1:
+            raise ValueError("active mapping route edge count is not linear")
+        self.topology = RouteTopology(
+            station_ids=station_ids,
+            entry_station_id=entry_station_id,
+            terminal_station_id=terminal_station_id,
+            edges=edges,
+        )
+        self.station_metadata = {
+            str(item["station_id"]): item for item in station_documents
+        }
+        parameters = station_parameters or {
+            station_id: {
+                "base_cycle_s": float(item.get("cycle_time_s", 1.0)),
+                "jitter_s": float(item.get("jitter_s", 0.0)),
+                "nok_rate": float(item.get("nok_rate", 0.0)),
+            }
+            for station_id, item in self.station_metadata.items()
+        }
+        for station_id in station_ids:
+            parameters.setdefault(
+                station_id,
+                {"base_cycle_s": 1.0, "jitter_s": 0.0, "nok_rate": 0.0},
+            )
+        first_three = {station_id: parameters[station_id] for station_id in ("WS01", "WS02", "WS03") if station_id in parameters}
+        if len(first_three) < 3:
+            first_three.update(
+                {
+                    station_id: {"base_cycle_s": 1.0, "jitter_s": 0.0, "nok_rate": 0.0}
+                    for station_id in ("WS01", "WS02", "WS03")
+                    if station_id not in first_three
+                }
+            )
+        super().__init__(
+            scale=scale,
+            ack_deadline_s=ack_deadline_s,
+            on_counter_reset=on_counter_reset,
+            profile=profile,
+            allow_runtime_cycle_edit=allow_runtime_cycle_edit,
+            station_parameters=first_three,
+            config_source=config_source,
+            config_hash=config_hash,
+            audit_recorder=audit_recorder,
+            plc_boot_id_provider=plc_boot_id_provider,
+        )
+        self.mapping_path = mapping_path
+        self.mapping_content_sha256 = mapping_content_sha256
+        seed = int(time.time())
+        self.stations = {}
+        for index, station_id in enumerate(station_ids, start=1):
+            metadata = self.station_metadata[station_id]
+            params = parameters[station_id]
+            self.stations[station_id] = StationState(
+                station_id,
+                int(metadata["db_number"]),
+                float(params["base_cycle_s"]),
+                float(params["jitter_s"]),
+                float(params["nok_rate"]),
+                rng=random.Random(seed + index),
+            )
+        self.edge_queues: dict[tuple[str, str], deque[Part]] = {
+            edge: deque() for edge in self.topology.edges
+        }
+        self.q12 = self.edge_queues.get(("WS01", "WS02"), deque())
+        self.q23 = self.edge_queues.get(("WS02", "WS03"), deque())
+        self.nok_codes_by_station = {
+            station_id: set(
+                int(code)
+                for code in metadata.get("nok_codes", [])
+                if type(code) is int
+            )
+            or set(NOK_CODES.get(station_id, {11001}))
+            for station_id, metadata in self.station_metadata.items()
+        }
+        self.allow_force_by_station = {
+            station_id: bool(metadata.get("allow_force", True))
+            for station_id, metadata in self.station_metadata.items()
+        }
+        self.event_history: list[dict[str, object]] = []
+
+    @classmethod
+    def from_mapping(cls, mapping: Mapping[str, object], **kwargs: object) -> "SingleLinearRoutePipeline":
+        station_documents = [
+            item for item in mapping.get("stations", [])
+            if isinstance(item, dict) and item.get("station_enabled", True) is not False
+        ]
+        station_parameters = {
+            str(item["station_id"]): {
+                "base_cycle_s": float(item.get("cycle_time_s", 1.0)),
+                "jitter_s": float(item.get("jitter_s", 0.0)),
+                "nok_rate": float(item.get("nok_rate", 0.0)),
+            }
+            for item in station_documents
+        }
+        execution_profile = mapping.get("execution_profile")
+        profile = str((execution_profile or {}).get("mode", "test")) if isinstance(execution_profile, dict) else "test"
+        cycle_scale = float((execution_profile or {}).get("cycle_scale", 1.0)) if isinstance(execution_profile, dict) else 1.0
+        accepted_kwargs = dict(kwargs)
+        accepted_kwargs.setdefault("profile", profile)
+        accepted_kwargs.setdefault("scale", cycle_scale)
+        accepted_kwargs.setdefault("config_source", str(mapping.get("authoritative_source", "active-mapping")))
+        accepted_kwargs.setdefault("config_hash", str(mapping.get("projection_hash", mapping.get("config_hash", ""))))
+        accepted_kwargs["mapping"] = mapping
+        accepted_kwargs["station_parameters"] = station_parameters
+        return cls(**accepted_kwargs)  # type: ignore[arg-type]
+
+    def tick(self, dbs: dict[int, bytearray], running: bool) -> None:
+        now_mono = time.monotonic()
+        now = datetime.now(TZ)
+        self.external_running = running
+        self._update_plan(now_mono)
+        line_running = self.plan.active
+        for station in self.stations.values():
+            self._handle_ack(station, dbs[station.db_number], now_mono)
+        if line_running:
+            self._start_jobs(now, now_mono, dbs)
+        for station in self.stations.values():
+            if station.current_job and now_mono >= station.current_job.finish_monotonic:
+                self._finish_job(station, dbs[station.db_number], now)
+            elif station.current_job:
+                self._write_running(station, dbs[station.db_number])
+            elif not util.get_bool(dbs[station.db_number], 6, 0):
+                self._write_idle_or_waiting(station, dbs[station.db_number], line_running)
+
+    def _start_jobs(self, now: datetime, now_mono: float, dbs: dict[int, bytearray]) -> None:
+        for station_id in self.topology.station_ids:
+            station = self.stations[station_id]
+            if not self._can_start(station, dbs[station.db_number]):
+                continue
+            if station_id == self.topology.entry_station_id:
+                self.serial_no += 1
+                part = Part(
+                    serial_no=self.serial_no,
+                    unit_id=f"U-{now:%Y%m%d}-{self.serial_no:06d}",
+                    child_dmc=f"SUB-{self.serial_no:06d}",
+                )
+                self._start_station(station, part, now, now_mono)
+                continue
+            predecessor = self.topology.predecessor.get(station_id)
+            if predecessor is None:
+                continue
+            queue = self.edge_queues[(predecessor, station_id)]
+            if queue:
+                self._start_station(station, queue.popleft(), now, now_mono)
+
+    def _finish_job(self, station: StationState, db: bytearray, now: datetime) -> None:
+        job = station.current_job
+        if not job:
+            return
+        station.cycle_counter += 1
+        part = job.part
+        result, nok_codes, process_status, skip_reason = self._result_for(station.station_id, part)
+        station_id = station.station_id
+        part_result = getattr(part, "station_results", {})
+        part_result[station_id] = result
+        part.station_results = part_result
+        if station_id == "WS01":
+            part.ws01_end_time = now
+            part.ws01_result = result
+        if station_id == "WS02":
+            part.ws02_end_time = now
+            part.ws02_result = result
+        if result == RESULT_NOK and part.route_state != ROUTE_BYPASSING:
+            part.route_state = ROUTE_BYPASSING
+            part.defect_origin_station = station_id
+            part.defect_code = nok_codes[0] if nok_codes else 0
+
+        dmc = part.child_dmc
+        if station_id == self.topology.terminal_station_id:
+            part.label_code = f"ASM-{part.serial_no:06d}"
+            dmc = part.label_code
+            if result == RESULT_OK and part.route_state != ROUTE_BYPASSING:
+                part.route_state = ROUTE_COMPLETED_OK
+                self.completed_quantity += 1
+            else:
+                part.route_state = ROUTE_COMPLETED_NOK
+                if not part.reject_id:
+                    part.reject_id = f"NG-{part.serial_no:06d}"
+        else:
+            successor = self.topology.successor.get(station_id)
+            if successor is not None:
+                self.edge_queues[(station_id, successor)].append(part)
+
+        self._write_payload(station, db, job)
+        write_station_header(
+            db,
+            station_status=STATUS_IDLE,
+            cycle_counter=station.cycle_counter,
+            payload_ready=True,
+            ack_timeout=False,
+            cycle_valid=True,
+            plc_start_time=job.started_at,
+            plc_end_time=now,
+            result=result,
+            nok_codes=nok_codes,
+            alarm_code=0,
+            downtime_type=0,
+            pallet_id_numeric=part.serial_no,
+            station_dmc=dmc,
+        )
+        self._write_station_context(db, station, part, process_status, skip_reason)
+        util.set_bool(db, 6, 1, False)
+        station.payload_ready_since = time.monotonic()
+        station.last_payload_cycle = station.cycle_counter
+        station.last_result = result
+        station.last_nok_codes = nok_codes
+        station.last_dmc = dmc
+        station.last_end_time = now
+        self.event_history.append(
+            {
+                "unit_id": part.unit_id,
+                "station_id": station_id,
+                "result": result,
+                "process_status": process_status,
+                "skip_reason": skip_reason,
+                "route_state": part.route_state,
+                "defect_origin_station": part.defect_origin_station,
+                "defect_code": part.defect_code,
+            }
+        )
+        if len(self.event_history) > 2000:
+            del self.event_history[:-2000]
+        station.current_job = None
+
+    def _write_running(self, station: StationState, db: bytearray) -> None:
+        job = station.current_job
+        if not job:
+            return
+        write_station_header(
+            db,
+            station_status=STATUS_RUNNING,
+            cycle_counter=station.cycle_counter,
+            payload_ready=False,
+            ack_timeout=False,
+            cycle_valid=False,
+            plc_start_time=job.started_at,
+            plc_end_time=None,
+            result=RESULT_UNKNOWN,
+            nok_codes=[],
+            alarm_code=0,
+            downtime_type=0,
+            pallet_id_numeric=job.part.serial_no,
+            station_dmc=job.part.child_dmc,
+        )
+        self._write_station_context(db, station, job.part, PROCESS_UNKNOWN, SKIP_NONE, clear_terminal_ids=False)
+
+    def _write_idle_or_waiting(self, station: StationState, db: bytearray, running: bool) -> None:
+        status = STATUS_IDLE
+        predecessor = self.topology.predecessor.get(station.station_id)
+        if running and predecessor and not self.edge_queues[(predecessor, station.station_id)]:
+            status = STATUS_WAITING
+        if station.paused or not running:
+            status = STATUS_BLOCKED
+        write_station_header(
+            db,
+            station_status=status,
+            cycle_counter=station.cycle_counter,
+            payload_ready=False,
+            ack_timeout=False,
+            cycle_valid=False,
+            plc_start_time=None,
+            plc_end_time=None,
+            result=RESULT_UNKNOWN,
+            nok_codes=[],
+            alarm_code=0,
+            downtime_type=0,
+            pallet_id_numeric=0,
+            station_dmc="",
+        )
+
+    def _result_for(self, station_id: str, part: Part) -> tuple[int, list[int], int, int]:
+        if station_id != self.topology.entry_station_id and part.route_state == ROUTE_BYPASSING:
+            return RESULT_SKIPPED, [30003], PROCESS_SKIPPED, SKIP_UPSTREAM_NOK
+        station = self.stations[station_id]
+        if station.forced_nok_queue:
+            return RESULT_NOK, [station.forced_nok_queue.popleft()], PROCESS_PROCESSED, SKIP_NONE
+        codes = sorted(self.nok_codes_by_station.get(station_id, set()))
+        if codes and station.rng.random() < station.nok_rate:
+            return RESULT_NOK, [station.rng.choice(codes)], PROCESS_PROCESSED, SKIP_NONE
+        return RESULT_OK, [], PROCESS_PROCESSED, SKIP_NONE
+
+    def _write_station_context(
+        self,
+        db: bytearray,
+        station: StationState,
+        part: Part,
+        process_status: int,
+        skip_reason: int,
+        *,
+        clear_terminal_ids: bool = True,
+    ) -> None:
+        set_s7_string(db, 200, part.unit_id, 48)
+        util.set_int(db, 250, self.topology.station_ids.index(station.station_id) + 1)
+        util.set_int(db, 252, part.route_state)
+        util.set_int(db, 254, process_status)
+        util.set_int(db, 256, skip_reason)
+        util.set_int(db, 258, self.topology.station_ids.index(part.defect_origin_station) + 1 if part.defect_origin_station in self.topology.station_ids else 0)
+        util.set_int(db, 260, part.defect_code)
+        set_s7_string(db, 262, part.label_code if clear_terminal_ids else "", 40)
+        set_s7_string(db, 304, part.reject_id if clear_terminal_ids else "", 40)
+
+    def _write_payload(self, station: StationState, db: bytearray, job: StationJob) -> None:
+        template = self.station_metadata[station.station_id].get("payload_template")
+        if template == "screwdriving_payload_v1":
+            self._write_ws01_payload(db, job)
+        elif template == "eol_test_payload_v1":
+            self._write_ws02_payload(db, job)
+        elif template == "manual_confirm_payload_v1":
+            self._write_ws03_payload(db, job)
+        elif template == "flexible_payload_v1":
+            util.set_int(db, 100, 1)
+            set_real(db, 104, float(station.cycle_counter))
+        elif template == "generic_status_v1":
+            util.set_int(db, 100, 1)
+
+    def force_nok(
+        self,
+        station_id: str,
+        nok_code: int,
+        *,
+        count: int = 1,
+        audit_context: dict[str, object] | None = None,
+    ) -> dict:
+        station = self._station_or_raise(station_id)
+        code = int(nok_code)
+        context = {"reason": "force NOK", "actor": "system", "source": "INTERNAL", **(audit_context or {})}
+        if not self.allow_force_by_station.get(station.station_id, True):
+            raise ValueError(f"forced NOK is not allowed for {station.station_id}")
+        if code not in self.nok_codes_by_station.get(station.station_id, set()):
+            raise ValueError(f"NOK code {code} is not valid for {station.station_id}")
+        if not 1 <= int(count) <= 100:
+            raise ValueError("forced NOK count must be between 1 and 100")
+        previous = list(station.forced_nok_queue)
+        station.forced_nok_queue.extend([code] * int(count))
+        self._record_parameter_change(station.station_id, "forced_nok_queue", previous, list(station.forced_nok_queue), context, accepted=True)
+        self.record_parameter_snapshot("runtime_update")
+        return self.snapshot()
+
+    def reset(self) -> dict:
+        if self.on_counter_reset:
+            self.on_counter_reset()
+        self.serial_no = 0
+        self.completed_quantity = 0
+        self.event_history.clear()
+        for queue in self.edge_queues.values():
+            queue.clear()
+        for station in self.stations.values():
+            station.cycle_counter = 0
+            station.current_job = None
+            station.payload_ready_since = None
+            station.last_payload_cycle = 0
+            station.last_result = RESULT_UNKNOWN
+            station.last_nok_codes = []
+            station.last_dmc = ""
+            station.last_end_time = None
+            station.forced_nok_queue.clear()
+        self.record_parameter_snapshot("reset")
+        return self.snapshot()
+
+    def snapshot(self) -> dict:
+        state = super().snapshot()
+        state["topology"] = {
+            "station_count": len(self.topology.station_ids),
+            "entry_station_id": self.topology.entry_station_id,
+            "terminal_station_id": self.topology.terminal_station_id,
+            "station_ids": list(self.topology.station_ids),
+            "edges": [
+                {"from_station_id": left, "to_station_id": right}
+                for left, right in self.topology.edges
+            ],
+        }
+        state["mapping_path"] = self.mapping_path
+        state["mapping_content_sha256"] = self.mapping_content_sha256
+        state["projection_hash"] = self._mapping.get("projection_hash")
+        wip = {
+            f"{left}_to_{right}": len(queue)
+            for (left, right), queue in self.edge_queues.items()
+        }
+        if ("WS01", "WS02") in self.edge_queues:
+            wip["ws01_to_ws02"] = len(self.edge_queues[("WS01", "WS02")])
+        if ("WS02", "WS03") in self.edge_queues:
+            wip["ws02_to_ws03"] = len(self.edge_queues[("WS02", "WS03")])
+        state["wip"] = wip
+        for station_id, station_state in state["stations"].items():
+            metadata = self.station_metadata[station_id]
+            station_state.update(
+                {
+                    "station_order": self.topology.station_ids.index(station_id) + 1,
+                    "station_type": metadata.get("station_type"),
+                    "cycle_profile": metadata.get("cycle_profile"),
+                    "payload_template": metadata.get("payload_template"),
+                    "nok_template": metadata.get("nok_template"),
+                    "allow_force": self.allow_force_by_station.get(station_id, True),
+                    "nok_codes": sorted(self.nok_codes_by_station.get(station_id, set())),
+                }
+            )
+        return state

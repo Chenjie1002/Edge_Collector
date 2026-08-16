@@ -22,9 +22,12 @@ from common.line_config import (
     PlcDeploymentCandidate,
     candidate_content_hash,
     candidate_to_dict,
+    compile_runtime_mapping,
+    default_runtime_layout_registry,
     load_line_config,
     parse_deployment_candidate,
 )
+from common.line_config.runtime_projection import RuntimeMappingProjection, RuntimeProjectionError
 from common.runtime_mapping import EffectiveMappingUnavailable, read_effective_mapping
 
 _SERVICE_PATH = Path(__file__).resolve()
@@ -106,6 +109,9 @@ def load_active_deployment_config(
         },
         "active_station_count": len(active_station_ids),
         "active_station_ids": active_station_ids,
+        "entry_station_id": root.get("entry_station_id"),
+        "terminal_station_id": root.get("terminal_station_id"),
+        "active_projection_hash": root.get("projection_hash"),
         "activation": activation,
         "rollback_available": activation is not None,
     }
@@ -117,6 +123,8 @@ def load_line_options(
     store_path: Path | None = None,
 ) -> dict[str, object]:
     active = load_active_deployment_config(mapping_path, store_path=store_path)
+    active_connectivity = active["plc"]
+    assert isinstance(active_connectivity, dict)
     items: list[dict[str, object]] = []
     for line_path in sorted(lines_path.glob("*.yaml")):
         if line_path.is_symlink() or not line_path.is_file():
@@ -127,7 +135,20 @@ def load_line_options(
             raise DeploymentConfigUnavailable(
                 f"line configuration is invalid: {line_path.name}"
             ) from exc
-        items.append(_line_option(config, line_path.name, active["line_id"]))
+        projection, projection_error = _try_compile_projection(
+            config,
+            active_connectivity,
+            line_config_source=str(line_path.relative_to(PROJECT_ROOT)),
+        )
+        items.append(
+            _line_option(
+                config,
+                line_path.name,
+                active["line_id"],
+                projection=projection,
+                projection_error=projection_error,
+            )
+        )
     if not items:
         raise DeploymentConfigUnavailable("no line configurations are available")
     return {"items": items}
@@ -166,7 +187,18 @@ def validate_candidate(
             ],
         }
 
-    option = _line_option(line_config, candidate.line_config, active["line_id"])
+    projection, projection_error = _try_compile_projection(
+        line_config,
+        candidate_to_connectivity(candidate),
+        line_config_source=str(line_path.relative_to(PROJECT_ROOT)),
+    )
+    option = _line_option(
+        line_config,
+        candidate.line_config,
+        active["line_id"],
+        projection=projection,
+        projection_error=projection_error,
+    )
     content_hash = candidate_content_hash(candidate, line_config.config_hash)
     result: dict[str, object] = {
         **base,
@@ -174,14 +206,19 @@ def validate_candidate(
         "errors": [],
         "candidate": candidate_to_dict(candidate),
         "candidate_hash": f"sha256:{content_hash}",
+        "line_config_hash": f"sha256:{line_config.config_hash}",
+        "projection_hash": projection.projection_hash if projection else None,
         "line": option,
     }
-    if option["ready_to_activate"] is not True:
+    if projection is None:
         result["validation_state"] = "VALID_RUNTIME_NOT_SUPPORTED"
         result["warnings"] = [
             {
                 "field": "line_config",
-                "message": "Configuration is valid, but the current R2 runtime cannot be marked ready for this topology.",
+                "message": (
+                    "Configuration is valid, but the selected topology cannot be compiled "
+                    "for the current single-PLC runtime."
+                ),
             }
         ]
     else:
@@ -285,6 +322,8 @@ def save_candidate(
         "created_at": created_at,
         "status": "NOT ACTIVE / REQUIRES CONTROLLED ACTIVATION",
         "candidate_hash": validation["candidate_hash"],
+        "line_config_hash": validation.get("line_config_hash"),
+        "projection_hash": validation.get("projection_hash"),
         "active_mapping_hash": validation["active_mapping_hash"],
         "validation_state": validation["validation_state"],
         "candidate": validation["candidate"],
@@ -370,19 +409,30 @@ def activate_candidate(
             "writes_performed": False,
             "message": "Saved Candidate content does not match its recorded identity.",
         }
+    if (
+        candidate.get("projection_hash") is not None
+        and candidate.get("projection_hash") != validation.get("projection_hash")
+    ):
+        return {
+            "status": "CANDIDATE_IDENTITY_MISMATCH",
+            "candidate_id": candidate_id,
+            "previous_active_mapping_hash": previous_active_mapping_hash,
+            "writes_performed": False,
+            "message": "Saved Candidate projection identity does not match a fresh server compilation.",
+        }
     selected_line = validation.get("line")
     if (
         not isinstance(selected_line, dict)
-        or selected_line.get("active") is not True
-        or selected_line.get("station_count") != 3
         or selected_line.get("plc_count") != 1
+        or validation.get("projection_hash") is None
+        or validation.get("ready_to_activate") is not True
     ):
         return {
             "status": "UNSUPPORTED_TOPOLOGY",
             "candidate_id": candidate_id,
             "previous_active_mapping_hash": previous_active_mapping_hash,
             "writes_performed": False,
-            "message": "Only the current supported 3WS single-PLC topology can be activated.",
+            "message": "Only a compiled 3WS/10WS single-PLC topology can be activated.",
         }
 
     fresh_connection_test = test_connection(
@@ -419,12 +469,38 @@ def activate_candidate(
             "message": "Effective active mapping changed before activation write.",
         }
 
-    active_document, changed_fields = _overlay_connectivity_fields(
-        latest_root,
-        _candidate_from_validated(validation),
+    candidate_object = _candidate_from_validated(validation)
+    line_path = _line_path(lines_path, candidate_object.line_config)
+    line_config = load_line_config(line_path)
+    projection = compile_runtime_mapping(
+        line_config,
+        candidate_to_connectivity(candidate_object),
+        default_runtime_layout_registry(),
+        line_config_source=str(line_path.relative_to(PROJECT_ROOT)),
     )
-    if _without_connectivity_fields(active_document) != _without_connectivity_fields(latest_root):
-        raise DeploymentConfigUnavailable("activation would change non-connectivity mapping fields")
+    if (
+        candidate.get("projection_hash") is not None
+        and candidate.get("projection_hash") != projection.projection_hash
+    ):
+        return {
+            "status": "CANDIDATE_IDENTITY_MISMATCH",
+            "candidate_id": candidate_id,
+            "previous_active_mapping_hash": previous_active_mapping_hash,
+            "writes_performed": False,
+            "message": "Projection changed between validation and activation.",
+        }
+    if (
+        line_config.line_id == latest_root.get("line_id")
+        and len(latest_root.get("stations", [])) == 3
+        and latest_root.get("projection_hash") is None
+    ):
+        active_document, changed_fields = _overlay_connectivity_fields(
+            latest_root,
+            candidate_object,
+        )
+    else:
+        active_document = projection.document
+        changed_fields = _projection_changed_fields(latest_root, active_document)
     active_bytes = _dump_yaml(active_document)
     activation_id = uuid.uuid4().hex
     root = _store_root(store_path)
@@ -445,6 +521,11 @@ def activate_candidate(
         "previous_active_mapping_path": str(current_path),
         "previous_used_overlay": current_used_overlay,
         "active_mapping_hash": active_mapping_hash,
+        "active_line_id": active_document.get("line_id"),
+        "line_config_hash": projection.line_config_hash,
+        "projection_hash": projection.projection_hash,
+        "entry_station_id": active_document.get("entry_station_id"),
+        "terminal_station_id": active_document.get("terminal_station_id"),
         "active_mapping_source": "active/mapping.yaml",
         "active_mapping_path": str(active_path),
         "changed_fields": changed_fields,
@@ -464,7 +545,10 @@ def activate_candidate(
         if (
             not readback.used_overlay
             or readback.content_sha256 != active_mapping_hash.removeprefix("sha256:")
-            or _without_connectivity_fields(readback.root) != _without_connectivity_fields(latest_root)
+            or (
+                active_document.get("projection_hash") is not None
+                and readback.root.get("projection_hash") != active_document.get("projection_hash")
+            )
         ):
             raise DeploymentConfigUnavailable("active mapping readback identity verification failed")
         _atomic_write_json(activation_record_path, record)
@@ -761,14 +845,87 @@ def _load_active_activation(
     return document
 
 
-def _line_option(config: LineConfig, file_name: str, active_line_id: object) -> dict[str, object]:
+def _try_compile_projection(
+    config: LineConfig,
+    connectivity: dict[str, object],
+    *,
+    line_config_source: str,
+) -> tuple[RuntimeMappingProjection | None, RuntimeProjectionError | None]:
+    try:
+        return (
+            compile_runtime_mapping(
+                config,
+                connectivity,
+                default_runtime_layout_registry(),
+                line_config_source=line_config_source,
+            ),
+            None,
+        )
+    except RuntimeProjectionError as exc:
+        return None, exc
+
+
+def candidate_to_connectivity(candidate: PlcDeploymentCandidate) -> dict[str, object]:
+    return {
+        field: getattr(candidate, field)
+        for field in CONNECTIVITY_FIELDS
+    }
+
+
+def _projection_changed_fields(
+    previous: dict[str, Any],
+    projected: dict[str, Any],
+) -> list[str]:
+    changed_fields: list[str] = []
+    if (
+        previous.get("line_id") != projected.get("line_id")
+        or previous.get("projection_hash") != projected.get("projection_hash")
+        or previous.get("entry_station_id") != projected.get("entry_station_id")
+        or previous.get("terminal_station_id") != projected.get("terminal_station_id")
+        or previous.get("stations") != projected.get("stations")
+        or previous.get("route_graph") != projected.get("route_graph")
+    ):
+        changed_fields.append("projection")
+    previous_plcs = previous.get("plcs")
+    projected_plcs = projected.get("plcs")
+    if (
+        isinstance(previous_plcs, list)
+        and previous_plcs
+        and isinstance(previous_plcs[0], dict)
+        and isinstance(projected_plcs, list)
+        and projected_plcs
+        and isinstance(projected_plcs[0], dict)
+    ):
+        for field in CONNECTIVITY_FIELDS:
+            if previous_plcs[0].get(field) != projected_plcs[0].get(field):
+                changed_fields.append(field)
+    return changed_fields
+
+
+def _line_option(
+    config: LineConfig,
+    file_name: str,
+    active_line_id: object,
+    *,
+    projection: RuntimeMappingProjection | None = None,
+    projection_error: RuntimeProjectionError | None = None,
+) -> dict[str, object]:
     station_count = len(config.stations)
     plc_count = len(config.plcs)
-    if station_count == 3 and plc_count == 1:
+    if projection is not None and station_count == 3 and plc_count == 1:
         capability = "CURRENTLY_SUPPORTED"
         capability_label = "CURRENTLY SUPPORTED"
         ready_to_activate = True
-    elif station_count == 20 and plc_count > 1:
+    elif projection is not None and station_count == 10 and plc_count == 1:
+        capability = "CURRENTLY_SUPPORTED_SINGLE_PLC"
+        capability_label = "CURRENTLY SUPPORTED / SINGLE PLC"
+        ready_to_activate = True
+    elif (
+        station_count == 20
+        and plc_count > 1
+        and projection_error is not None
+        and projection_error.classification == "MULTI_PLC_RUNTIME_UNSUPPORTED"
+    ):
         capability = "CONFIG_VALID_MULTI_PLC_RUNTIME_NOT_YET_SUPPORTED"
         capability_label = "CONFIG VALID / MULTI-PLC RUNTIME NOT YET SUPPORTED"
         ready_to_activate = False
@@ -783,6 +940,8 @@ def _line_option(config: LineConfig, file_name: str, active_line_id: object) -> 
         "station_count": station_count,
         "plc_count": plc_count,
         "config_hash": f"sha256:{config.config_hash}",
+        "line_config_hash": f"sha256:{config.config_hash}",
+        "projection_hash": projection.projection_hash if projection else None,
         "capability": capability,
         "capability_label": capability_label,
         "ready_to_activate": ready_to_activate,

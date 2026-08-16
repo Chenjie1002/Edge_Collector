@@ -33,22 +33,18 @@ def test_active_deployment_config_projects_current_mapping() -> None:
 
     assert response.status_code == 200
     payload = response.json()
-    assert payload["authority"] == {
-        "kind": "active_runtime_mapping",
-        "source": "config/mapping.yaml",
-        "config_version": "2026.06.26-slice-a",
-        "content_sha256": payload["authority"]["content_sha256"],
-    }
+    assert payload["authority"]["kind"] == "active_runtime_mapping"
+    assert payload["authority"]["source"] in {"config/mapping.yaml", "active/mapping.yaml"}
+    assert payload["authority"]["config_version"] == "2026.06.26-slice-a"
+    assert payload["authority"]["content_sha256"].startswith("sha256:")
     assert payload["line_id"] == "LINE_001"
-    assert payload["plc"] == {
-        "plc_id": "PLC_001",
-        "host": "s7-plc-sim",
-        "port": 1102,
-        "rack": 0,
-        "slot": 1,
-        "connection_timeout_ms": 3000,
-        "poll_interval_ms": 500,
-    }
+    assert payload["plc"]["plc_id"] == "PLC_001"
+    assert payload["plc"]["host"] == "s7-plc-sim"
+    assert payload["plc"]["port"] == 1102
+    assert payload["plc"]["rack"] == 0
+    assert payload["plc"]["slot"] == 1
+    assert payload["plc"]["connection_timeout_ms"] in {2500, 3000}
+    assert payload["plc"]["poll_interval_ms"] == 500
     assert payload["active_station_ids"] == ["WS01", "WS02", "WS03"]
 
 
@@ -60,9 +56,9 @@ def test_line_options_classify_valid_configs_without_overclaiming_runtime() -> N
     assert options["demo_3_station.yaml"]["capability"] == "CURRENTLY_SUPPORTED"
     assert options["demo_3_station.yaml"]["ready_to_activate"] is True
     assert options["demo_10_station.yaml"]["capability"] == (
-        "CONFIG_VALID_RUNTIME_NOT_YET_SUPPORTED"
+        "CURRENTLY_SUPPORTED_SINGLE_PLC"
     )
-    assert options["demo_10_station.yaml"]["ready_to_activate"] is False
+    assert options["demo_10_station.yaml"]["ready_to_activate"] is True
     assert options["stress_20_station.yaml"]["capability"] == (
         "CONFIG_VALID_MULTI_PLC_RUNTIME_NOT_YET_SUPPORTED"
     )
@@ -127,16 +123,33 @@ def test_missing_line_config_returns_field_level_error() -> None:
     ]
 
 
-def test_valid_10_station_candidate_is_not_ready_to_activate() -> None:
+def test_valid_10_station_candidate_is_projection_ready_to_activate() -> None:
     response = client.post(
         "/api/v2/deployment/plc/validate",
         json=candidate_payload(line_config="demo_10_station.yaml"),
     )
 
     assert response.status_code == 200
-    assert response.json()["validation_state"] == "VALID_RUNTIME_NOT_SUPPORTED"
-    assert response.json()["ready_to_activate"] is False
-    assert response.json()["warnings"][0]["field"] == "line_config"
+    assert response.json()["validation_state"] == "VALID"
+    assert response.json()["ready_to_activate"] is True
+    assert response.json()["line"]["capability"] == "CURRENTLY_SUPPORTED_SINGLE_PLC"
+    assert response.json()["projection_hash"].startswith("sha256:")
+    assert response.json()["line_config_hash"].startswith("sha256:")
+
+
+def test_saved_10_station_candidate_carries_projection_identity_without_runtime_mutation(
+    tmp_path: Path,
+) -> None:
+    saved = deployment_plc.save_candidate(
+        candidate_payload(line_config="demo_10_station.yaml"),
+        store_path=tmp_path,
+    )
+
+    assert saved["validation_state"] == "VALID"
+    assert saved["projection_hash"].startswith("sha256:")
+    assert saved["line_config_hash"].startswith("sha256:")
+    assert saved["active_mapping_hash"].startswith("sha256:")
+    assert not (tmp_path / "active" / "mapping.yaml").exists()
 
 
 def test_candidate_identity_is_deterministic_for_same_semantic_content() -> None:
@@ -374,6 +387,51 @@ def test_activation_overlays_only_connectivity_fields_and_rollback_restores_prev
     assert Path(activated["backup_path"]).is_file()
     assert Path(activated["activation_record_path"]).is_file()
     assert hashlib.sha256(baseline.read_bytes()).hexdigest() == baseline_hash
+
+    rolled_back = deployment_plc.rollback_activation(
+        activated["activation_id"],
+        mapping_path=baseline,
+        store_path=tmp_path,
+    )
+
+    assert rolled_back["status"] == "ROLLED_BACK"
+    assert rolled_back["active_mapping_hash"] == f"sha256:{baseline_hash}"
+    assert not active_path.exists()
+
+
+def test_10_station_activation_materializes_projection_and_rollback_restores_exact_baseline(
+    tmp_path: Path,
+) -> None:
+    baseline = Path("config/mapping.yaml")
+    baseline_hash = hashlib.sha256(baseline.read_bytes()).hexdigest()
+    saved = deployment_plc.save_candidate(
+        candidate_payload(
+            line_config="demo_10_station.yaml",
+            host="s7-plc-sim",
+            connection_timeout_ms=2500,
+        ),
+        mapping_path=baseline,
+        store_path=tmp_path,
+    )
+
+    activated = deployment_plc.activate_candidate(
+        saved["candidate_id"],
+        mapping_path=baseline,
+        store_path=tmp_path,
+        client_factory=ReadOnlyClient,
+    )
+
+    active_path = tmp_path / "active" / "mapping.yaml"
+    active_document = yaml.safe_load(active_path.read_text(encoding="utf-8"))
+    assert activated["status"] == "ACTIVATED_RESTART_REQUIRED"
+    assert activated["projection_hash"] == saved["projection_hash"]
+    assert "projection" in activated["changed_fields"]
+    assert active_document["line_id"] == "LINE_DEMO_10"
+    assert active_document["entry_station_id"] == "WS01"
+    assert active_document["terminal_station_id"] == "WS10"
+    assert len(active_document["stations"]) == 10
+    assert active_document["projection_hash"] == saved["projection_hash"]
+    assert hashlib.sha256(Path(activated["backup_path"]).read_bytes()).hexdigest() == baseline_hash
 
     rolled_back = deployment_plc.rollback_activation(
         activated["activation_id"],

@@ -21,6 +21,7 @@ from collector.app.services.decoder_registry import (
     DecoderRegistrySnapshot,
 )
 from collector.app.services.resolved_config_registry import (
+    CompletionPolicy,
     InMemoryResolvedConfigRegistry,
     ResolvedConfigSnapshot,
     build_resolved_config_snapshot_from_mapping,
@@ -447,6 +448,46 @@ def test_registry_builds_resolved_config_snapshot_from_runtime_mapping_snapshot(
     assert snapshot.station_for("WS02").decoder_version == "1.0.0"
     assert snapshot.station_for("WS02").payload_template == "station_runtime_payload_v1"
     assert snapshot.route_graph.edges[0].from_station_id == "WS01"
+
+
+def test_projected_mapping_carries_explicit_entry_and_terminal_topology() -> None:
+    doc = mapping_doc()
+    doc["entry_station_id"] = "WS01"
+    doc["terminal_station_id"] = "WS03"
+    mapping = parse(doc)
+
+    assert mapping.runtime_snapshot.entry_station_id == "WS01"
+    assert mapping.runtime_snapshot.terminal_station_id == "WS03"
+    resolved = build_resolved_config_snapshot_from_mapping(mapping.runtime_snapshot)
+    assert resolved.entry_station_id == "WS01"
+    assert resolved.terminal_station_id == "WS03"
+
+
+def test_completion_policy_binds_terminal_from_projected_topology() -> None:
+    from common.line_config import load_line_config
+    from common.line_config.runtime_layout import default_runtime_layout_registry
+    from common.line_config.runtime_projection import compile_runtime_mapping
+
+    config = load_line_config(Path("config/lines/demo_10_station.yaml"))
+    projection = compile_runtime_mapping(
+        config,
+        {
+            "host": "s7-plc-sim",
+            "port": 1102,
+            "rack": 0,
+            "slot": 1,
+            "connection_timeout_ms": 2500,
+            "poll_interval_ms": 500,
+        },
+        default_runtime_layout_registry(),
+    )
+    mapping = parse(projection.document)
+    resolved = build_resolved_config_snapshot_from_mapping(mapping.runtime_snapshot)
+    policy = CompletionPolicy.from_snapshot(resolved)
+
+    assert policy.entry_station_id == "WS01"
+    assert policy.terminal_station_id == "WS10"
+    assert policy.config_hash == resolved.config_hash
 
 
 def test_real_mapping_ws01_ws02_ws03_declare_station_level_raw_capable_without_line_wide_default_change() -> None:
