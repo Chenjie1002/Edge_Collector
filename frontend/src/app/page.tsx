@@ -32,6 +32,13 @@ export default function DashboardHomePage() {
       action: "Open accepted events",
     },
     {
+      href: "/deployment/plc",
+      eyebrow: "Field deployment",
+      title: "PLC Deployment Configuration",
+      description: "Prepare and validate a candidate PLC connection and line selection. Active runtime configuration stays read-only, and Test Connection never writes to the PLC.",
+      action: "Open PLC Deployment Configuration",
+    },
+    {
       href: resolveProductSurfaceHref("trace"),
       eyebrow: "Production traceability",
       title: "Trace",

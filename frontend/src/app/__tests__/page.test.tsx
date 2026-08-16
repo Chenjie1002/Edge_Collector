@@ -15,8 +15,12 @@ describe("dashboard home page", () => {
 
     const stationSummary = screen.getByRole("link", { name: /Open station summary/i });
     const acceptedEvents = screen.getByRole("link", { name: /Open accepted events/i });
+    const deploymentConfig = screen.getByRole("link", {
+      name: /Open PLC Deployment Configuration/i
+    });
     expect(stationSummary.getAttribute("href")).toBe("/station-summary");
     expect(acceptedEvents.getAttribute("href")).toBe("/accepted-events");
+    expect(deploymentConfig.getAttribute("href")).toBe("/deployment/plc");
 
     vi.stubEnv("EDGE_MES_DASHBOARD_TRACE_ORIGIN", "http://127.0.0.1:8000");
     vi.stubEnv("EDGE_MES_DASHBOARD_VPLC_ORIGIN", "http://127.0.0.1:8200");

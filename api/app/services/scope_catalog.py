@@ -43,7 +43,10 @@ def _required_positive_int(value: object, field_name: str) -> int:
     return value
 
 
-def load_scope_catalog(mapping_path: Path = DEFAULT_MAPPING_PATH) -> dict[str, object]:
+def read_mapping_document(
+    mapping_path: Path = DEFAULT_MAPPING_PATH,
+) -> tuple[dict[str, Any], str]:
+    """Read the active mapping once with the same identity checks as scope-options."""
     try:
         path = Path(mapping_path)
         path_stat = path.lstat()
@@ -54,6 +57,16 @@ def load_scope_catalog(mapping_path: Path = DEFAULT_MAPPING_PATH) -> dict[str, o
         content_sha256 = hashlib.sha256(raw_bytes).hexdigest()
         document = yaml.safe_load(raw_bytes.decode("utf-8"))
         root = _required_mapping(document, "mapping root")
+        return root, content_sha256
+    except ScopeCatalogUnavailable:
+        raise
+    except Exception as exc:
+        raise ScopeCatalogUnavailable("scope catalog is unavailable") from exc
+
+
+def load_scope_catalog(mapping_path: Path = DEFAULT_MAPPING_PATH) -> dict[str, object]:
+    try:
+        root, content_sha256 = read_mapping_document(mapping_path)
 
         authoritative_source = _required_text(
             root.get("authoritative_source"),
