@@ -3,12 +3,14 @@ from __future__ import annotations
 from dataclasses import dataclass
 import os
 import re
+import stat
 from html import escape
 from pathlib import Path
 from typing import Any
 
 from fastapi import APIRouter, HTTPException, Query
 from fastapi.responses import HTMLResponse
+import yaml
 
 from common.runtime_mapping import EffectiveMappingUnavailable, read_effective_mapping
 from app.db import get_conn
@@ -44,9 +46,13 @@ def _load_trace_topology() -> TraceTopology:
         root = read_effective_mapping(_trace_mapping_path()).root
     except EffectiveMappingUnavailable as exc:
         raise HTTPException(status_code=503, detail="active trace topology unavailable") from exc
+    return _topology_from_mapping(root, "active trace topology")
+
+
+def _topology_from_mapping(root: dict[str, Any], label: str) -> TraceTopology:
     raw_stations = root.get("stations")
     if not isinstance(raw_stations, list):
-        raise HTTPException(status_code=503, detail="active trace topology has no stations")
+        raise HTTPException(status_code=503, detail=f"{label} has no stations")
     ordered_stations = sorted(
         (
             (index, station)
@@ -57,7 +63,7 @@ def _load_trace_topology() -> TraceTopology:
     )
     station_ids = tuple(str(station["station_id"]) for _index, station in ordered_stations)
     if not station_ids or len(set(station_ids)) != len(station_ids):
-        raise HTTPException(status_code=503, detail="active trace topology station identity is invalid")
+        raise HTTPException(status_code=503, detail=f"{label} station identity is invalid")
     route_raw = root.get("route_graph")
     topology_raw = root.get("topology") if isinstance(root.get("topology"), dict) else {}
     edges_raw = route_raw.get("edges", []) if isinstance(route_raw, dict) else (route_raw or [])
@@ -68,7 +74,7 @@ def _load_trace_topology() -> TraceTopology:
     )
     station_set = set(station_ids)
     if any(left not in station_set or right not in station_set for left, right in edges):
-        raise HTTPException(status_code=503, detail="active trace topology edge identity is invalid")
+        raise HTTPException(status_code=503, detail=f"{label} edge identity is invalid")
     explicit_entry = root.get("entry_station_id") or topology_raw.get("entry_station_id")
     explicit_terminal = root.get("terminal_station_id") or topology_raw.get("terminal_station_id")
     if isinstance(route_raw, dict):
@@ -85,13 +91,113 @@ def _load_trace_topology() -> TraceTopology:
         station_ids[-1],
     )
     if entry not in station_set or terminal not in station_set:
-        raise HTTPException(status_code=503, detail="active trace topology entry/terminal is invalid")
+        raise HTTPException(status_code=503, detail=f"{label} entry/terminal is invalid")
     return TraceTopology(
         station_ids=station_ids,
         entry_station_id=entry,
         terminal_station_id=terminal,
         edges=edges,
     )
+
+
+def _trace_deployment_store_path() -> Path:
+    configured = os.environ.get("DEPLOYMENT_CONFIG_DIR")
+    if configured:
+        return Path(configured)
+    return _trace_mapping_path().parent.parent / "data" / "deployment-config"
+
+
+def _read_mapping_file(path: Path) -> dict[str, Any] | None:
+    try:
+        path_stat = path.lstat()
+    except FileNotFoundError:
+        return None
+    except OSError as exc:
+        raise HTTPException(status_code=503, detail="historical trace mapping cannot be inspected") from exc
+    if stat.S_ISLNK(path_stat.st_mode) or not stat.S_ISREG(path_stat.st_mode):
+        raise HTTPException(status_code=503, detail="historical trace mapping must be a regular file")
+    try:
+        root = yaml.safe_load(path.read_text(encoding="utf-8"))
+    except Exception as exc:
+        raise HTTPException(status_code=503, detail="historical trace mapping cannot be parsed") from exc
+    if not isinstance(root, dict):
+        raise HTTPException(status_code=503, detail="historical trace mapping root is invalid")
+    return root
+
+
+def _historical_mapping_roots() -> list[dict[str, Any]]:
+    baseline_path = _trace_mapping_path()
+    try:
+        effective = read_effective_mapping(baseline_path)
+    except EffectiveMappingUnavailable as exc:
+        raise HTTPException(status_code=503, detail="historical trace mapping unavailable") from exc
+
+    paths: list[Path] = [baseline_path, effective.path]
+    backup_dir = _trace_deployment_store_path() / "backups"
+    try:
+        backup_stat = backup_dir.lstat()
+    except FileNotFoundError:
+        backup_stat = None
+    except OSError as exc:
+        raise HTTPException(status_code=503, detail="historical trace backup directory cannot be inspected") from exc
+    if backup_stat is not None:
+        if stat.S_ISLNK(backup_stat.st_mode) or not stat.S_ISDIR(backup_stat.st_mode):
+            raise HTTPException(status_code=503, detail="historical trace backup directory is invalid")
+        paths.extend(sorted(backup_dir.glob("*.yaml")))
+
+    roots: list[dict[str, Any]] = []
+    seen_paths: set[Path] = set()
+    for path in paths:
+        try:
+            resolved = path.resolve(strict=False)
+        except OSError as exc:
+            raise HTTPException(status_code=503, detail="historical trace mapping path cannot be resolved") from exc
+        if resolved in seen_paths:
+            continue
+        seen_paths.add(resolved)
+        root = _read_mapping_file(path)
+        if root is not None:
+            roots.append(root)
+    return roots
+
+
+def _mapping_matches_seed(root: dict[str, Any], seed: dict[str, Any]) -> bool:
+    line_id = seed.get("line_id")
+    if not line_id or root.get("line_id") != line_id:
+        return False
+    plc_id = seed.get("plc_id")
+    if not plc_id:
+        return True
+    plcs = root.get("plcs")
+    if not isinstance(plcs, list):
+        return False
+    return any(isinstance(plc, dict) and plc.get("plc_id") == plc_id for plc in plcs)
+
+
+def _topology_key(topology: TraceTopology) -> tuple[object, ...]:
+    return (
+        topology.station_ids,
+        topology.entry_station_id,
+        topology.terminal_station_id,
+        topology.edges,
+    )
+
+
+def _load_trace_topology_for_seed(seed: dict[str, Any]) -> TraceTopology:
+    required_scope = (seed.get("plc_id"), seed.get("line_id"), seed.get("plc_boot_id"))
+    if any(not value for value in required_scope):
+        raise HTTPException(status_code=503, detail="historical trace identity scope is incomplete")
+
+    matched: list[TraceTopology] = []
+    for root in _historical_mapping_roots():
+        if _mapping_matches_seed(root, seed):
+            matched.append(_topology_from_mapping(root, "historical trace topology"))
+    if not matched:
+        raise HTTPException(status_code=503, detail="historical trace topology is unavailable for identity scope")
+    unique = {_topology_key(topology) for topology in matched}
+    if len(unique) != 1:
+        raise HTTPException(status_code=503, detail="historical trace topology is ambiguous for identity scope")
+    return matched[0]
 
 
 def _serial_from_text(value: str | None) -> int | None:
@@ -157,8 +263,13 @@ def _format_event(row: dict[str, Any] | None) -> dict[str, Any] | None:
     }
 
 
-def _empty_trace(query: str, serial_no: int | None) -> dict[str, Any]:
-    topology = _load_trace_topology()
+def _empty_trace(
+    query: str,
+    serial_no: int | None,
+    *,
+    topology: TraceTopology | None = None,
+) -> dict[str, Any]:
+    topology = topology or _load_trace_topology()
     return {
         "query": query,
         "serial_no": serial_no,
@@ -176,8 +287,9 @@ def _trace_by_unit(
     plc_id: str | None = None,
     line_id: str | None = None,
     plc_boot_id: str | None = None,
+    topology: TraceTopology | None = None,
 ) -> dict[str, Any]:
-    topology = _load_trace_topology()
+    topology = topology or _load_trace_topology()
     scope_sql, scope_params = _identity_scope_sql(
         plc_id=plc_id,
         line_id=line_id,
@@ -220,8 +332,9 @@ def _trace_by_serial(
     plc_id: str | None = None,
     line_id: str | None = None,
     plc_boot_id: str | None = None,
+    topology: TraceTopology | None = None,
 ) -> dict[str, Any]:
-    topology = _load_trace_topology()
+    topology = topology or _load_trace_topology()
     serial6 = f"{serial_no:06d}"
     candidates = (f"SUB-{serial6}", f"ASM-{serial6}")
     scope_sql, scope_params = _identity_scope_sql(
@@ -486,11 +599,27 @@ def trace_query(q: str = Query(..., min_length=1, description="label_code, DMC, 
     query = q.strip()
     seed = _find_seed_event(query)
     serial_no = _serial_from_event(seed) or _serial_from_text(query)
+    historical_topology = _load_trace_topology_for_seed(seed) if seed else None
     if seed and seed.get("unit_id"):
-        return _trace_by_unit(query, str(seed["unit_id"]), serial_no)
+        return _trace_by_unit(
+            query,
+            str(seed["unit_id"]),
+            serial_no,
+            plc_id=str(seed["plc_id"]),
+            line_id=str(seed["line_id"]),
+            plc_boot_id=str(seed["plc_boot_id"]),
+            topology=historical_topology,
+        )
     if serial_no is None:
-        return _empty_trace(query, None)
-    return _trace_by_serial(query, serial_no)
+        return _empty_trace(query, None, topology=historical_topology)
+    return _trace_by_serial(
+        query,
+        serial_no,
+        plc_id=str(seed["plc_id"]) if seed else None,
+        line_id=str(seed["line_id"]) if seed else None,
+        plc_boot_id=str(seed["plc_boot_id"]) if seed else None,
+        topology=historical_topology,
+    )
 
 
 @router.get("/api/by-cycle")
@@ -522,6 +651,7 @@ def trace_by_cycle(
     if not row:
         raise HTTPException(status_code=404, detail="cycle event not found")
     serial_no = _serial_from_event(row)
+    historical_topology = _load_trace_topology_for_seed(row)
     if row.get("unit_id"):
         return _trace_by_unit(
             f"{station}:{cycle_counter}",
@@ -530,15 +660,17 @@ def trace_by_cycle(
             plc_id=str(row["plc_id"]),
             line_id=str(row["line_id"]),
             plc_boot_id=str(row["plc_boot_id"]),
+            topology=historical_topology,
         )
     if serial_no is None:
-        return _empty_trace(f"{station}:{cycle_counter}", None)
+        return _empty_trace(f"{station}:{cycle_counter}", None, topology=historical_topology)
     return _trace_by_serial(
         f"{station}:{cycle_counter}",
         serial_no,
         plc_id=str(row["plc_id"]),
         line_id=str(row["line_id"]),
         plc_boot_id=str(row["plc_boot_id"]),
+        topology=historical_topology,
     )
 
 
