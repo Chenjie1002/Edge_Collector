@@ -133,6 +133,15 @@ def main() -> None:
         cycle_scale_override=float(cycle_scale_text) if cycle_scale_text else None,
         active_mapping=active_mapping,
     )
+    serial_start_text = os.environ.get("VPLC_SERIAL_START", "0")
+    try:
+        serial_start = int(serial_start_text)
+    except ValueError as exc:
+        raise ValueError("VPLC_SERIAL_START must be a non-negative integer") from exc
+    if serial_start < 0:
+        raise ValueError("VPLC_SERIAL_START must be a non-negative integer")
+    if serial_start and runtime_config.profile != "test":
+        raise ValueError("VPLC_SERIAL_START is only allowed with the test profile")
     ack_deadline_s = float(os.environ.get("VPLC_ACK_DEADLINE_SECONDS", "10"))
     runtime_state_path = os.environ.get("VPLC_RUNTIME_STATE_PATH", "/app/data/vplc_runtime.json")
     runtime_identity = LineRuntimeIdentity.load_or_start(runtime_state_path)
@@ -163,6 +172,7 @@ def main() -> None:
         config_hash=active_mapping_sha256,
         mapping_path=str(active_mapping_file),
         mapping_content_sha256=active_mapping_sha256,
+        initial_serial_no=serial_start,
         audit_recorder=audit_recorder,
         plc_boot_id_provider=lambda: runtime_identity.plc_boot_id,
     )
@@ -188,7 +198,7 @@ def main() -> None:
         registered_db_numbers.add(station_db_number)
     server.start(tcp_port=port)
     logger.info(
-        "S7 PLC simulator started db=%s size=%s runtime_db=%s station_dbs=%s port=%s boot_id=%s restart_counter=%s ack_deadline_s=%s profile=%s scale=%s mapping_path=%s mapping_sha256=%s config_hash=%s stations=%s",
+        "S7 PLC simulator started db=%s size=%s runtime_db=%s station_dbs=%s port=%s boot_id=%s restart_counter=%s ack_deadline_s=%s profile=%s scale=%s serial_start=%s mapping_path=%s mapping_sha256=%s config_hash=%s stations=%s",
         db_number,
         db_size,
         runtime_db_number,
@@ -199,6 +209,7 @@ def main() -> None:
         ack_deadline_s,
         runtime_config.profile,
         runtime_config.cycle_scale,
+        serial_start,
         active_mapping_file,
         active_mapping_sha256,
         runtime_config.config_hash,

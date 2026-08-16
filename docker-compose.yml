@@ -42,6 +42,7 @@ services:
       VPLC_CONFIG_PATH: /app/config/vplc.yaml
       VPLC_MAPPING_PATH: /app/data/deployment-config/active/mapping.yaml
       VPLC_PROFILE: ${VPLC_PROFILE:-normal}
+      VPLC_SERIAL_START: ${VPLC_SERIAL_START:-0}
       VPLC_ACK_DEADLINE_SECONDS: "10"
       VPLC_RUNTIME_STATE_PATH: /app/data/vplc_runtime.json
       DATABASE_URL: postgresql://edge_mes:edge_mes_password@postgres:5432/edge_mes

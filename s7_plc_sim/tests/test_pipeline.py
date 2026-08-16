@@ -78,6 +78,16 @@ def test_single_linear_route_builds_dynamic_topology_and_edge_queues() -> None:
     }
 
 
+def test_single_linear_route_accepts_explicit_test_serial_start() -> None:
+    pipeline = SingleLinearRoutePipeline.from_mapping(
+        _mapping10(),
+        scale=0.05,
+        initial_serial_no=13000,
+    )
+
+    assert pipeline.serial_no == 13000
+
+
 def test_single_linear_route_ok_unit_reaches_only_configured_terminal() -> None:
     pipeline = SingleLinearRoutePipeline.from_mapping(_mapping10(), scale=0.05)
     dbs = {station.db_number: bytearray(512) for station in pipeline.stations.values()}

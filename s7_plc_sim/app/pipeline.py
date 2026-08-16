@@ -931,7 +931,12 @@ class SingleLinearRoutePipeline(ThreeStationPipeline):
         accepted_kwargs.setdefault("config_hash", str(mapping.get("projection_hash", mapping.get("config_hash", ""))))
         accepted_kwargs["mapping"] = mapping
         accepted_kwargs["station_parameters"] = station_parameters
-        return cls(**accepted_kwargs)  # type: ignore[arg-type]
+        initial_serial_no = accepted_kwargs.pop("initial_serial_no", 0)
+        if type(initial_serial_no) is not int or initial_serial_no < 0:
+            raise ValueError("initial_serial_no must be a non-negative integer")
+        pipeline = cls(**accepted_kwargs)  # type: ignore[arg-type]
+        pipeline.serial_no = initial_serial_no
+        return pipeline
 
     def tick(self, dbs: dict[int, bytearray], running: bool) -> None:
         now_mono = time.monotonic()
