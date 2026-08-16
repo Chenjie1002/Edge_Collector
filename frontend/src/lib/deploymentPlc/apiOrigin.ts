@@ -9,7 +9,10 @@ export type DeploymentApiOriginResolution =
 export function resolveDeploymentApiOrigin(
   environment?: DeploymentApiOriginEnvironment
 ): DeploymentApiOriginResolution {
-  const rawOrigin = environment?.EDGE_MES_DASHBOARD_API_ORIGIN ?? "http://127.0.0.1:8000";
+  const source = environment ?? {
+    EDGE_MES_DASHBOARD_API_ORIGIN: process.env.EDGE_MES_DASHBOARD_API_ORIGIN
+  };
+  const rawOrigin = source.EDGE_MES_DASHBOARD_API_ORIGIN ?? "http://127.0.0.1:8000";
   if (rawOrigin === "" || rawOrigin !== rawOrigin.trim()) return { ok: false, code: "ORIGIN_INVALID" };
   try {
     const parsed = new URL(rawOrigin);
