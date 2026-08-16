@@ -1,10 +1,55 @@
-import { cleanup, fireEvent, render, screen, within } from "@testing-library/react";
-import { afterEach, describe, expect, it } from "vitest";
+import { cleanup, render, screen, within } from "@testing-library/react";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { LineProductSummary } from "../LineProductSummary";
+import { StationDetailSummary } from "../StationDetailSummary";
 import { StationSummaryChart } from "../StationSummaryChart";
 import type { LineSummary } from "../../../lib/stationSummary/lineSummarySchema";
 
-afterEach(() => cleanup());
+const echartsMock = vi.hoisted(() => {
+  const charts: Array<{
+    setOption: ReturnType<typeof vi.fn>;
+    resize: ReturnType<typeof vi.fn>;
+    dispose: ReturnType<typeof vi.fn>;
+  }> = [];
+  const init = vi.fn(() => {
+    const chart = {
+      setOption: vi.fn(),
+      resize: vi.fn(),
+      dispose: vi.fn(),
+    };
+    charts.push(chart);
+    return chart;
+  });
+  return { charts, init, use: vi.fn() };
+});
+
+vi.mock("echarts/core", () => ({ init: echartsMock.init, use: echartsMock.use }));
+vi.mock("echarts/charts", () => ({ BarChart: {}, LineChart: {} }));
+vi.mock("echarts/components", () => ({ GridComponent: {}, LegendComponent: {}, TooltipComponent: {} }));
+vi.mock("echarts/renderers", () => ({ CanvasRenderer: {} }));
+
+let resizeCallback: (() => void) | undefined;
+class TestResizeObserver {
+  constructor(callback: () => void) {
+    resizeCallback = callback;
+  }
+
+  observe = vi.fn();
+  disconnect = vi.fn();
+}
+
+beforeEach(() => {
+  echartsMock.charts.length = 0;
+  echartsMock.init.mockClear();
+  echartsMock.use.mockClear();
+  resizeCallback = undefined;
+  vi.stubGlobal("ResizeObserver", TestResizeObserver);
+});
+
+afterEach(() => {
+  cleanup();
+  vi.unstubAllGlobals();
+});
 
 const summary: LineSummary = {
   contractVersion: "production-line-summary/v1",
@@ -118,40 +163,51 @@ const summary: LineSummary = {
 };
 
 describe("Station Summary charts", () => {
-  it("renders one multi-series chart for CT and one for station production", () => {
+  it("renders ECharts multi-series and stacked-bar options for the line dashboard", () => {
     render(<LineProductSummary summary={summary} />);
 
     const cycleFigure = screen.getByRole("figure", { name: "Cycle Time Trend" });
     const productionFigure = screen.getByRole("figure", { name: "Production Trend" });
+    const stackedFigure = screen.getByRole("figure", { name: "OK/NOK by Station" });
+    const nokFigure = screen.getByRole("figure", { name: "NOK Code Distribution" });
     expect(cycleFigure).toBeTruthy();
     expect(productionFigure).toBeTruthy();
     expect(screen.getByRole("heading", { name: "Cycle Time Trend" })).toBeTruthy();
     expect(screen.getByRole("heading", { name: "Production Trend" })).toBeTruthy();
-    expect(within(cycleFigure).getByText("WS01")).toBeTruthy();
-    expect(within(cycleFigure).getByText("WS02")).toBeTruthy();
-    expect(within(cycleFigure).getByText("WS03")).toBeTruthy();
-    expect(within(productionFigure).getByText("WS01")).toBeTruthy();
-    expect(within(productionFigure).getByText("WS02")).toBeTruthy();
-    expect(within(productionFigure).getByText("WS03")).toBeTruthy();
     expect(within(cycleFigure).getByText("y = Cycle time")).toBeTruthy();
     expect(within(productionFigure).getByText("y = Units / bucket")).toBeTruthy();
     expect(within(cycleFigure).getAllByText("unit = s").length).toBe(1);
     expect(within(productionFigure).getAllByText("unit = units").length).toBe(1);
+    expect(cycleFigure.querySelector("svg")).toBeNull();
+    expect(productionFigure.querySelector('[data-chart-engine="echarts"]')).toBeTruthy();
+    expect(stackedFigure.querySelector('[data-chart-engine="echarts"]')).toBeTruthy();
+    expect(nokFigure.querySelector('[data-chart-engine="echarts"]')).toBeTruthy();
 
-    const point = within(productionFigure).getByRole("button", { name: "WS01 · 2026-08-16T10:00:00Z · 3 units" });
-    fireEvent.focus(point);
-    expect(within(productionFigure).getByRole("tooltip").textContent).toContain("WS01");
-    expect(within(productionFigure).getByRole("tooltip").textContent).toContain("3 units");
-
-    const stackedFigure = screen.getByRole("figure", { name: "OK/NOK by Station" });
-    const bar = within(stackedFigure).getByRole("button", { name: "WS01 · OK · 2 units" });
-    fireEvent.focus(bar);
-    expect(within(stackedFigure).getByRole("tooltip").textContent).toContain("OK");
-    expect(within(stackedFigure).getByRole("tooltip").textContent).toContain("2 units");
-    expect(document.querySelectorAll(".mes-chart-reading")).toHaveLength(0);
+    expect(echartsMock.init).toHaveBeenCalledTimes(4);
+    const cycleOption = echartsMock.charts[0].setOption.mock.calls[0][0] as Record<string, any>;
+    const productionOption = echartsMock.charts[1].setOption.mock.calls[0][0] as Record<string, any>;
+    const stackedOption = echartsMock.charts[2].setOption.mock.calls[0][0] as Record<string, any>;
+    const nokOption = echartsMock.charts[3].setOption.mock.calls[0][0] as Record<string, any>;
+    expect(cycleOption.xAxis.type).toBe("time");
+    expect(cycleOption.yAxis.name).toBe("Cycle time (s)");
+    expect(cycleOption.tooltip.trigger).toBe("axis");
+    expect(cycleOption.legend.data).toEqual(["WS01", "WS02", "WS03"]);
+    expect(cycleOption.series).toHaveLength(3);
+    expect(cycleOption.series.map((item: Record<string, any>) => item.type)).toEqual(["line", "line", "line"]);
+    expect(cycleOption.series.map((item: Record<string, any>) => item.itemStyle.color)).toEqual(["#73BF69", "#F2CC0C", "#5794F2"]);
+    expect(productionOption.xAxis.type).toBe("time");
+    expect(productionOption.yAxis.name).toBe("Units / bucket (units)");
+    expect(productionOption.series).toHaveLength(3);
+    expect(stackedOption.xAxis.data).toEqual(["WS01", "WS02", "WS03"]);
+    expect(stackedOption.series.map((item: Record<string, any>) => item.name)).toEqual(["OK", "NOK"]);
+    expect(stackedOption.series.every((item: Record<string, any>) => item.type === "bar" && item.stack === "result")).toBe(true);
+    expect(stackedOption.series.map((item: Record<string, any>) => item.itemStyle.color)).toEqual(["#73BF69", "#F2CC0C"]);
+    expect(nokOption.xAxis.data).toEqual(["10001"]);
+    expect(nokOption.series[0].type).toBe("bar");
+    expect(nokOption.series[0].data).toEqual([1]);
   });
 
-  it("renders explicit empty state without generating chart points", () => {
+  it("renders explicit empty state without creating empty charts", () => {
     render(
       <LineProductSummary
         summary={{
@@ -166,9 +222,68 @@ describe("Station Summary charts", () => {
     expect(screen.queryByRole("figure", { name: "Cycle Time Trend" })).toBeNull();
     expect(screen.queryByRole("figure", { name: "Production Trend" })).toBeNull();
     expect(screen.getByRole("figure", { name: "OK/NOK by Station" })).toBeTruthy();
+    expect(echartsMock.init).toHaveBeenCalledTimes(1);
   });
 
-  it("keeps decimal API values exact in focus readings", () => {
+  it("reuses one ECharts instance for data updates and disposes it on unmount", () => {
+    const { rerender, unmount } = render(
+      <StationSummaryChart
+        ariaLabel="Observed cycle time"
+        points={[{ label: "2026-08-16T10:00:00Z", value: 30.125 }]}
+        xAxisLabel="Time"
+        yAxisLabel="Cycle time"
+        unit="s"
+        emptyMessage="No processed CT samples in this window."
+        variant="line"
+      />,
+    );
+
+    expect(echartsMock.init).toHaveBeenCalledTimes(1);
+    expect(echartsMock.charts[0].setOption).toHaveBeenCalledTimes(1);
+    rerender(
+      <StationSummaryChart
+        ariaLabel="Observed cycle time"
+        points={[{ label: "2026-08-16T10:00:00Z", value: 31.25 }]}
+        xAxisLabel="Time"
+        yAxisLabel="Cycle time"
+        unit="s"
+        emptyMessage="No processed CT samples in this window."
+        variant="line"
+      />,
+    );
+
+    expect(echartsMock.init).toHaveBeenCalledTimes(1);
+    expect(echartsMock.charts[0].setOption).toHaveBeenCalledTimes(2);
+    resizeCallback?.();
+    expect(echartsMock.charts[0].resize).toHaveBeenCalledTimes(1);
+    unmount();
+    expect(echartsMock.charts[0].dispose).toHaveBeenCalledTimes(1);
+  });
+
+  it("migrates Station Detail charts through the same ECharts wrapper", () => {
+    const station = summary.stations[0];
+    render(
+      <StationDetailSummary
+        summary={{
+          ...summary,
+          stations: [{
+            ...station,
+            activityTrend: [{ bucketStart: "2026-08-16T10:00:00Z", processed: 2, skipped: 1, newNok: 1 }],
+            nokCodes: [{ code: 10001, count: 1 }],
+          }, ...summary.stations.slice(1)],
+        }}
+        stationId="WS01"
+      />,
+    );
+
+    expect(screen.getByRole("figure", { name: "WS01 processed event trend" })).toBeTruthy();
+    expect(screen.getByRole("figure", { name: "WS01 observed cycle time trend" })).toBeTruthy();
+    expect(screen.getByRole("figure", { name: "WS01 NOK code distribution" })).toBeTruthy();
+    expect(screen.getByRole("figure", { name: "WS01 processed event trend" }).querySelector("svg")).toBeNull();
+    expect(echartsMock.init).toHaveBeenCalledTimes(4);
+  });
+
+  it("keeps decimal API values in the ECharts data option", () => {
     render(
       <StationSummaryChart
         ariaLabel="Observed cycle time"
@@ -181,57 +296,7 @@ describe("Station Summary charts", () => {
       />,
     );
 
-    const point = screen.getByRole("button", { name: "2026-08-16T10:00:00Z · 30.125 s" });
-    fireEvent.focus(point);
-    expect(screen.getByRole("tooltip").textContent).toContain("2026-08-16T10:00:00Z · 30.125 s");
-  });
-
-  it("shows an anchored pointer-near tooltip with exact value and unit, then hides it on leave", () => {
-    render(
-      <StationSummaryChart
-        ariaLabel="Observed cycle time"
-        points={[{ label: "2026-08-16T10:00:00Z", value: 30.125 }]}
-        xAxisLabel="Time"
-        yAxisLabel="Cycle time"
-        unit="s"
-        emptyMessage="No processed CT samples in this window."
-        variant="line"
-      />,
-    );
-
-    const point = screen.getByRole("button", { name: "2026-08-16T10:00:00Z · 30.125 s" });
-    fireEvent.mouseEnter(point);
-
-    const tooltip = screen.getByRole("tooltip");
-    expect(tooltip.classList.contains("mes-chart-tooltip")).toBe(true);
-    expect(tooltip.textContent).toContain("2026-08-16T10:00:00Z");
-    expect(tooltip.textContent).toContain("30.125 s");
-    expect(tooltip.getAttribute("data-anchor-x")).toBe("382");
-    expect(tooltip.getAttribute("data-anchor-y")).toBeTruthy();
-    expect(tooltip.style.left).not.toBe("");
-
-    fireEvent.mouseLeave(point);
-    expect(screen.queryByRole("tooltip")).toBeNull();
-  });
-
-  it("anchors the exact tooltip to the keyboard-focused bar", () => {
-    render(
-      <StationSummaryChart
-        ariaLabel="Inherited NOK"
-        points={[{ label: "WS01", value: 2 }]}
-        xAxisLabel="Station"
-        yAxisLabel="Unit count"
-        unit="units"
-        emptyMessage="No inherited NOK data in this window."
-      />,
-    );
-
-    const bar = screen.getByRole("button", { name: "WS01 · 2 units" });
-    fireEvent.focus(bar);
-
-    expect(screen.getByRole("tooltip").textContent).toContain("WS01");
-    expect(screen.getByRole("tooltip").textContent).toContain("2 units");
-    fireEvent.blur(bar);
-    expect(screen.queryByRole("tooltip")).toBeNull();
+    const option = echartsMock.charts[0].setOption.mock.calls[0][0] as Record<string, any>;
+    expect(option.series[0].data).toEqual([["2026-08-16T10:00:00Z", 30.125]]);
   });
 });

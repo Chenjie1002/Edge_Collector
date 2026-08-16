@@ -1226,8 +1226,7 @@ dd {
 
 .mes-runtime-strip small,
 .mes-kpi-grid small,
-.mes-station-trends small,
-.mes-ct-list small {
+.mes-runtime-list small {
   color: #6c7d87;
   font-size: 11px;
   line-height: 1.35;
@@ -1422,149 +1421,7 @@ dd {
   white-space: nowrap;
 }
 
-.mes-mini-bars {
-  display: flex;
-  height: 112px;
-  align-items: end;
-  gap: 5px;
-  border-bottom: 1px solid #cfd9df;
-  padding-top: 14px;
-}
-
-.mes-mini-bars > span {
-  flex: 1 1 0;
-  min-width: 3px;
-  max-width: 26px;
-  border-radius: 2px 2px 0 0;
-  background: #2f718c;
-}
-
-.mes-chart-legend {
-  display: flex;
-  flex-wrap: wrap;
-  justify-content: flex-start;
-  gap: 6px 14px;
-  color: #778892;
-  font-size: 10px;
-}
-
-.mes-chart-legend > span {
-  display: inline-flex;
-  align-items: center;
-  gap: 5px;
-  white-space: nowrap;
-}
-
-.mes-chart-legend i,
-.mes-chart-tooltip-series i {
-  display: inline-block;
-  width: 8px;
-  height: 8px;
-  border-radius: 50%;
-}
-
-.mes-chart-tooltip-series {
-  display: grid;
-  gap: 4px;
-  margin: 4px 0 0;
-  padding: 0;
-  list-style: none;
-}
-
-.mes-chart-tooltip-series li {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 12px;
-}
-
-.mes-chart-tooltip-series li > span {
-  display: inline-flex;
-  align-items: center;
-  gap: 5px;
-}
-
-.mes-station-trends {
-  display: grid;
-  gap: 10px;
-}
-
-.mes-station-trends > div {
-  display: grid;
-  grid-template-columns: 54px minmax(80px, 1fr) minmax(90px, auto);
-  align-items: end;
-  gap: 10px;
-  border-top: 1px solid #e1e7eb;
-  padding-top: 8px;
-}
-
-.mes-station-trends > div > span {
-  color: #315a6b;
-  font-size: 12px;
-  font-weight: 800;
-}
-
-.mes-station-trends .mes-mini-bars {
-  height: 42px;
-  padding-top: 0;
-}
-
-.mes-horizontal-bars {
-  display: grid;
-  gap: 10px;
-}
-
-.mes-horizontal-bars > div {
-  display: grid;
-  grid-template-columns: 54px minmax(0, 1fr) 36px;
-  align-items: center;
-  gap: 10px;
-}
-
-.mes-horizontal-bars span,
-.mes-horizontal-bars strong {
-  color: #315a6b;
-  font-size: 12px;
-  font-weight: 800;
-}
-
-.mes-horizontal-bars progress {
-  width: 100%;
-  height: 8px;
-  overflow: hidden;
-  border: 0;
-  border-radius: 999px;
-  background: #e5ebef;
-  accent-color: #356f87;
-}
-
-.mes-code-list {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 8px;
-}
-
-.mes-code-list > span {
-  display: inline-flex;
-  align-items: center;
-  gap: 10px;
-  border: 1px solid #d4dee5;
-  border-radius: 6px;
-  padding: 8px 10px;
-  background: #f8fafb;
-}
-
-.mes-code-list code {
-  color: #7d4d1d;
-  font-weight: 800;
-}
-
-.mes-code-list strong {
-  color: #274957;
-}
-
-.mes-runtime-list,
-.mes-ct-list {
+.mes-runtime-list {
   display: grid;
   gap: 0;
   border-top: 1px solid #dce4e9;
@@ -1604,59 +1461,24 @@ dd {
   font-size: 12px;
 }
 
-.mes-svg-chart {
+.mes-echart-figure {
   display: grid;
   min-width: 0;
   gap: 8px;
   margin: 12px 0 0;
 }
 
-.mes-chart-plot {
-  position: relative;
+.mes-echart-plot {
   min-width: 0;
-  overflow: visible;
+  width: 100%;
+  overflow: hidden;
 }
 
-.mes-svg-chart svg {
+.mes-echart {
   display: block;
   width: 100%;
-  height: auto;
-  min-height: 190px;
-  overflow: visible;
-}
-
-.mes-chart-tooltip {
-  position: absolute;
-  z-index: 2;
-  display: grid;
-  gap: 3px;
-  min-width: max-content;
-  max-width: min(260px, 76%);
-  border: 1px solid #315a6b;
-  border-radius: 6px;
-  padding: 7px 9px;
-  background: #173443;
-  box-shadow: 0 4px 12px rgba(18, 44, 56, 0.2);
-  color: #ffffff;
-  font-size: 11px;
-  line-height: 1.25;
-  pointer-events: none;
-  transform: translate(-50%, calc(-100% - 12px));
-  white-space: normal;
-}
-
-.mes-chart-tooltip[data-placement="below"] {
-  transform: translate(-50%, 12px);
-}
-
-.mes-chart-tooltip span {
-  color: #d8e8ee;
-  font-variant-numeric: tabular-nums;
-}
-
-.mes-chart-tooltip strong {
-  color: #ffffff;
-  font-variant-numeric: tabular-nums;
+  height: clamp(240px, 28vw, 340px);
+  min-height: 240px;
 }
 
 .mes-chart-axis-summary {
@@ -1671,80 +1493,6 @@ dd {
 .mes-chart-axis-summary span {
   border-left: 2px solid #b9ccd5;
   padding-left: 7px;
-}
-
-.mes-chart-axis,
-.mes-chart-gridline {
-  vector-effect: non-scaling-stroke;
-}
-
-.mes-chart-axis {
-  stroke: #52717e;
-  stroke-width: 1.5;
-}
-
-.mes-chart-gridline {
-  stroke: #dbe5e9;
-  stroke-dasharray: 4 4;
-  stroke-width: 1;
-}
-
-.mes-chart-axis-title {
-  fill: #315a6b;
-  font-size: 12px;
-  font-weight: 800;
-}
-
-.mes-chart-tick,
-.mes-chart-x-tick {
-  fill: #71858f;
-  font-size: 10px;
-  font-variant-numeric: tabular-nums;
-}
-
-.mes-chart-x-tick {
-  font-size: 9px;
-}
-
-.mes-chart-line {
-  fill: none;
-  stroke: #2f718c;
-  stroke-linecap: round;
-  stroke-linejoin: round;
-  stroke-width: 2.5;
-  vector-effect: non-scaling-stroke;
-}
-
-.mes-chart-bar,
-.mes-chart-point {
-  fill: #2f718c;
-  cursor: pointer;
-  transition: fill 120ms ease-out, stroke 120ms ease-out, transform 120ms ease-out;
-}
-
-.mes-chart-bar:hover,
-.mes-chart-bar:focus,
-.mes-chart-point:hover,
-.mes-chart-point:focus {
-  fill: #b66a2d;
-  stroke: #6f3e1f;
-  stroke-width: 2;
-  outline: none;
-}
-
-.mes-chart-point {
-  stroke: #ffffff;
-  stroke-width: 1.5;
-  vector-effect: non-scaling-stroke;
-}
-
-.mes-chart-reading {
-  min-height: 1.35em;
-  border-top: 1px solid #dbe5e9;
-  padding-top: 7px;
-  color: #274957;
-  font-size: 12px;
-  font-variant-numeric: tabular-nums;
 }
 
 .station-summary-live-status {
@@ -1764,59 +1512,6 @@ dd {
   border-color: #a45d22;
   background: #fff7ed;
   color: #7b4218;
-}
-
-.mes-activity-bars {
-  display: flex;
-  height: 128px;
-  align-items: end;
-  gap: 6px;
-  border-bottom: 1px solid #cfd9df;
-  padding-top: 16px;
-}
-
-.mes-activity-bars > div {
-  display: flex;
-  flex: 1 1 0;
-  height: 100%;
-  min-width: 5px;
-  max-width: 30px;
-  align-items: end;
-  gap: 1px;
-}
-
-.mes-activity-bars span,
-.mes-activity-bars i {
-  flex: 1 1 0;
-  min-height: 0;
-  border-radius: 2px 2px 0 0;
-}
-
-.mes-activity-bars span {
-  background: #2f718c;
-}
-
-.mes-activity-bars i {
-  background: #b88945;
-}
-
-.mes-ct-list > div {
-  display: grid;
-  grid-template-columns: minmax(0, 1fr) 74px 74px;
-  gap: 10px;
-  border-bottom: 1px solid #e5eaed;
-  padding: 8px 0;
-  color: #637580;
-  font-size: 11px;
-}
-
-.mes-ct-list strong {
-  color: #274957;
-  text-align: right;
-}
-
-.mes-ct-list small {
-  text-align: right;
 }
 
 .mes-compact-dl {
@@ -1937,16 +1632,12 @@ dd {
     min-width: 0;
   }
 
-  .mes-station-trends > div,
-  .mes-runtime-list > div,
-  .mes-ct-list > div {
+  .mes-runtime-list > div {
     grid-template-columns: minmax(0, 1fr);
     align-items: start;
   }
 
-  .mes-runtime-list small,
-  .mes-ct-list strong,
-  .mes-ct-list small {
+  .mes-runtime-list small {
     text-align: left;
   }
 }

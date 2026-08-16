@@ -5,6 +5,16 @@ import { fetchLineSummary } from "../../../lib/stationSummary/lineSummaryApi";
 import type { LineSummary } from "../../../lib/stationSummary/lineSummarySchema";
 import type { TrustedAcceptedEventsApiOrigin } from "../../../lib/acceptedStationEvents/apiOrigin";
 
+const echartsMock = vi.hoisted(() => ({
+  init: vi.fn(() => ({ setOption: vi.fn(), resize: vi.fn(), dispose: vi.fn() })),
+  use: vi.fn(),
+}));
+
+vi.mock("echarts/core", () => ({ init: echartsMock.init, use: echartsMock.use }));
+vi.mock("echarts/charts", () => ({ BarChart: {}, LineChart: {} }));
+vi.mock("echarts/components", () => ({ GridComponent: {}, LegendComponent: {}, TooltipComponent: {} }));
+vi.mock("echarts/renderers", () => ({ CanvasRenderer: {} }));
+
 vi.mock("../../../lib/stationSummary/lineSummaryApi", () => ({
   fetchLineSummary: vi.fn(),
 }));
