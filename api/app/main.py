@@ -6,6 +6,7 @@ from app.routes import (
     events,
     health,
     kpi,
+    line_summary,
     machines,
     process_metrics,
     quality_trace,
@@ -26,3 +27,4 @@ app.include_router(quality_trace.router)
 app.include_router(process_metrics.router)
 app.include_router(scope_options.router)
 app.include_router(deployment_plc.router)
+app.include_router(line_summary.router)

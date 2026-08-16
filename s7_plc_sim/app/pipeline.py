@@ -232,7 +232,7 @@ class ThreeStationPipeline:
         if station.station_id == "WS01":
             part.ws01_end_time = now
             part.ws01_result = result
-            if result == RESULT_NOK:
+            if result == RESULT_NOK and process_status == PROCESS_PROCESSED:
                 part.route_state = ROUTE_BYPASSING
                 part.defect_origin_station = "WS01"
                 part.defect_code = nok_codes[0] if nok_codes else 0
@@ -241,7 +241,7 @@ class ThreeStationPipeline:
         elif station.station_id == "WS02":
             part.ws02_end_time = now
             part.ws02_result = result
-            if result == RESULT_NOK:
+            if result == RESULT_NOK and process_status == PROCESS_PROCESSED:
                 part.route_state = ROUTE_BYPASSING
                 part.defect_origin_station = "WS02"
                 part.defect_code = nok_codes[0] if nok_codes else 0
@@ -257,7 +257,7 @@ class ThreeStationPipeline:
                 part.route_state = ROUTE_COMPLETED_NOK
                 if not part.reject_id:
                     part.reject_id = f"NG-{part.serial_no:06d}"
-                if result == RESULT_NOK and nok_codes:
+                if result == RESULT_NOK and process_status == PROCESS_PROCESSED and nok_codes:
                     part.defect_origin_station = "WS03"
                     part.defect_code = nok_codes[0]
             self._write_ws03_payload(db, job)
@@ -357,7 +357,9 @@ class ThreeStationPipeline:
 
     def _result_for(self, station_id: str, part: Part) -> tuple[int, list[int], int, int]:
         if station_id != "WS01" and part.route_state == ROUTE_BYPASSING:
-            return RESULT_SKIPPED, [30003], PROCESS_SKIPPED, SKIP_UPSTREAM_NOK
+            if part.defect_code <= 0:
+                raise ValueError("inherited NOK requires the original defect code")
+            return RESULT_NOK, [part.defect_code], PROCESS_SKIPPED, SKIP_UPSTREAM_NOK
 
         station = self.stations[station_id]
         if station.forced_nok_queue:
@@ -994,7 +996,7 @@ class SingleLinearRoutePipeline(ThreeStationPipeline):
         if station_id == "WS02":
             part.ws02_end_time = now
             part.ws02_result = result
-        if result == RESULT_NOK and part.route_state != ROUTE_BYPASSING:
+        if result == RESULT_NOK and process_status == PROCESS_PROCESSED:
             part.route_state = ROUTE_BYPASSING
             part.defect_origin_station = station_id
             part.defect_code = nok_codes[0] if nok_codes else 0
@@ -1104,7 +1106,9 @@ class SingleLinearRoutePipeline(ThreeStationPipeline):
 
     def _result_for(self, station_id: str, part: Part) -> tuple[int, list[int], int, int]:
         if station_id != self.topology.entry_station_id and part.route_state == ROUTE_BYPASSING:
-            return RESULT_SKIPPED, [30003], PROCESS_SKIPPED, SKIP_UPSTREAM_NOK
+            if part.defect_code <= 0:
+                raise ValueError("inherited NOK requires the original defect code")
+            return RESULT_NOK, [part.defect_code], PROCESS_SKIPPED, SKIP_UPSTREAM_NOK
         station = self.stations[station_id]
         if station.forced_nok_queue:
             return RESULT_NOK, [station.forced_nok_queue.popleft()], PROCESS_PROCESSED, SKIP_NONE

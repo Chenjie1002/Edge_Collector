@@ -11,7 +11,6 @@ from app.pipeline import (
     PROCESS_SKIPPED,
     RESULT_NOK,
     RESULT_OK,
-    RESULT_SKIPPED,
     ROUTE_BYPASSING,
     Part,
     ThreeStationPipeline,
@@ -50,12 +49,14 @@ class NokSimulationTest(unittest.TestCase):
             unit_id="U-1",
             child_dmc="D-1",
             route_state=ROUTE_BYPASSING,
+            defect_origin_station="WS01",
+            defect_code=10001,
         )
 
         result, codes, process_status, _ = self.pipeline._result_for("WS02", bypassed)
 
-        self.assertEqual(RESULT_SKIPPED, result)
-        self.assertEqual([30003], codes)
+        self.assertEqual(RESULT_NOK, result)
+        self.assertEqual([10001], codes)
         self.assertEqual(PROCESS_SKIPPED, process_status)
         self.assertEqual(1, self.pipeline.snapshot()["stations"]["WS02"]["pending_forced_nok_count"])
 

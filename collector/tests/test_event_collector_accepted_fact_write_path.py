@@ -205,6 +205,48 @@ def test_station_result_nok_requires_accepted_business_nok_evidence() -> None:
         build_accepted_station_event_fact(decision)
 
 
+def test_new_runtime_inherited_nok_is_accepted_as_nok_with_skipped_process_metadata() -> None:
+    decision = accepted_decision()
+    decision.normalized_event.update(
+        {
+            "result": "nok",
+            "nok_code": 10001,
+            "nok_origin": "plc",
+            "payload": {
+                "process_status": "SKIPPED",
+                "skip_reason": "UPSTREAM_NOK",
+                "defect_origin_station": "WS01",
+                "defect_code": 10001,
+            },
+        }
+    )
+    decision.projection_metadata = SimpleNamespace(production_outcome="nok", defect_detail=None)
+
+    fact = build_accepted_station_event_fact(decision)
+
+    assert fact.production_result == "nok"
+    assert fact.nok_code == 10001
+    assert fact.nok_origin == "plc"
+    assert decision.normalized_event["payload"]["process_status"] == "SKIPPED"
+    assert decision.normalized_event["payload"]["skip_reason"] == "UPSTREAM_NOK"
+
+
+def test_new_runtime_station_result_skip_is_rejected_as_a_production_result() -> None:
+    decision = accepted_decision()
+    decision.normalized_event.update(
+        {
+            "result": "skip",
+            "payload": {
+                "process_status": "SKIPPED",
+                "skip_reason": "UPSTREAM_NOK",
+            },
+        }
+    )
+
+    with pytest.raises(ValueError, match="station_result production result must be OK or NOK"):
+        build_accepted_station_event_fact(decision)
+
+
 def make_worker(storage: WritePathStorage) -> tuple[EventCollectorWorker, FakeClient]:
     client = FakeClient()
     worker = EventCollectorWorker.__new__(EventCollectorWorker)

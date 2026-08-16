@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import type { StationSummaryQuery } from "../../lib/stationSummary/query";
+import type { LineSummaryQuery } from "../../lib/stationSummary/lineSummaryQuery";
 import type { TrustedScopeCatalog } from "../../lib/stationSummary/scopeCatalog";
 import {
   localMinuteToOffsetIso,
@@ -13,11 +13,11 @@ import {
 
 type Props = {
   catalog?: TrustedScopeCatalog | null;
-  query?: StationSummaryQuery;
+  query?: LineSummaryQuery;
   defaultWindow?: LocalWindow;
 };
 
-function initialWindow(query: StationSummaryQuery | undefined, defaultWindow: LocalWindow | undefined): LocalWindow {
+function initialWindow(query: LineSummaryQuery | undefined, defaultWindow: LocalWindow | undefined): LocalWindow {
   if (query) {
     try {
       return {
@@ -35,26 +35,23 @@ export function StationSummaryQueryControls({ catalog = null, query, defaultWind
   const lines = catalog?.lines ?? [];
   const requestedLine = query ? lines.find((line) => line.lineId === query.lineId) : undefined;
   const firstLine = requestedLine ?? lines[0];
-  const requestedStation = query && firstLine ? firstLine.stations.find((station) => station.stationId === query.stationId) : undefined;
-  const firstStation = requestedStation ?? firstLine?.stations[0];
+  const requestedStation = query?.stationId && firstLine ? firstLine.stations.find((station) => station.stationId === query.stationId) : undefined;
   const defaults = initialWindow(query, defaultWindow);
   const [lineId, setLineId] = useState(firstLine?.lineId ?? "");
-  const [stationId, setStationId] = useState(firstStation?.stationId ?? "");
+  const [stationId, setStationId] = useState(requestedStation?.stationId ?? "");
   const [startLocal, setStartLocal] = useState(defaults.startLocal);
   const [endLocal, setEndLocal] = useState(defaults.endLocal);
 
   const selectedLine = lines.find((line) => line.lineId === lineId);
   const stations = selectedLine?.stations ?? [];
-  const selectedStation = stations.find((station) => station.stationId === stationId);
   const windowValidation = validateLocalWindow(startLocal, endLocal);
-  const canApply = Boolean(catalog && selectedLine && selectedStation && windowValidation.ok);
+  const canApply = Boolean(catalog && selectedLine && windowValidation.ok);
   const startTime = windowValidation.ok ? localMinuteToOffsetIso(startLocal, "+08:00") : "";
   const endTime = windowValidation.ok ? localMinuteToOffsetIso(endLocal, "+08:00") : "";
 
   function chooseLine(nextLineId: string) {
-    const nextLine = lines.find((line) => line.lineId === nextLineId);
     setLineId(nextLineId);
-    setStationId(nextLine?.stations[0]?.stationId ?? "");
+    setStationId("");
   }
 
   function chooseQuickRange(hours: 1 | 8 | 24) {
@@ -72,7 +69,7 @@ export function StationSummaryQueryControls({ catalog = null, query, defaultWind
     >
       <div className="station-summary-scope-heading">
         <h2>Scope</h2>
-        <p>Select one trusted station and a bounded production window.</p>
+        <p>Select a trusted line and bounded production window. Station detail is optional.</p>
       </div>
       <div className="station-summary-scope-fields">
         <label htmlFor="station-summary-line-id">
@@ -96,17 +93,16 @@ export function StationSummaryQueryControls({ catalog = null, query, defaultWind
           </select>
         </label>
         <label htmlFor="station-summary-station-id">
-          Station / WS
+          Station detail (optional)
           <select
             id="station-summary-station-id"
             name="station_id"
             value={stationId}
             onChange={(event) => setStationId(event.target.value)}
             disabled={!selectedLine || stations.length === 0}
-            required
           >
-            <option value="" disabled>
-              {selectedLine ? "Select station" : "Unavailable"}
+            <option value="">
+              {selectedLine ? "Whole line (default)" : "Unavailable"}
             </option>
             {stations.map((station) => (
               <option key={station.stationId} value={station.stationId}>

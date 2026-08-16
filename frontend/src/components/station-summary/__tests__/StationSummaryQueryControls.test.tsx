@@ -26,13 +26,13 @@ const catalog = {
 } as const;
 
 describe("StationSummaryQueryControls", () => {
-  it("renders trusted dependent selects, plant-local datetime controls, and exactly four navigation keys", () => {
+  it("renders a whole-line query with optional station drill-down and plant-local datetime controls", () => {
     render(
       <StationSummaryQueryControls
         catalog={catalog}
         query={{
           lineId: "LINE_001",
-          stationId: "WS01",
+          stationId: undefined,
           startTime: "2026-07-05T00:00:00+08:00",
           endTime: "2026-07-05T08:00:00+08:00",
         }}
@@ -47,13 +47,13 @@ describe("StationSummaryQueryControls", () => {
     expect(screen.getByRole("heading", { level: 2, name: "Scope" })).toBeTruthy();
 
     const line = screen.getByLabelText("Line") as HTMLSelectElement;
-    const station = screen.getByLabelText("Station / WS") as HTMLSelectElement;
+    const station = screen.getByLabelText("Station detail (optional)") as HTMLSelectElement;
     const start = screen.getByLabelText("Start time") as HTMLInputElement;
     const end = screen.getByLabelText("End time") as HTMLInputElement;
     expect([line.name, station.name, start.name, end.name]).toEqual(["line_id", "station_id", "", ""]);
     expect([line.value, station.value, start.value, end.value]).toEqual([
       "LINE_001",
-      "WS01",
+      "",
       "2026-07-05T00:00",
       "2026-07-05T08:00",
     ]);
@@ -78,17 +78,17 @@ describe("StationSummaryQueryControls", () => {
     expect(apply.disabled).toBe(false);
   });
 
-  it("resets station to the first enabled station when line changes", () => {
+  it("keeps station drill-down optional when the line changes", () => {
     render(<StationSummaryQueryControls catalog={catalog} />);
 
     const line = screen.getByLabelText("Line") as HTMLSelectElement;
-    const station = screen.getByLabelText("Station / WS") as HTMLSelectElement;
+    const station = screen.getByLabelText("Station detail (optional)") as HTMLSelectElement;
     expect(line.value).toBe("LINE_001");
-    expect(station.value).toBe("WS01");
+    expect(station.value).toBe("");
 
     fireEvent.change(line, { target: { value: "LINE_002" } });
 
-    expect(station.value).toBe("WS10");
+    expect(station.value).toBe("");
     expect(Array.from(station.options).map((option) => option.value)).toEqual(["", "WS10"]);
   });
 
@@ -96,7 +96,7 @@ describe("StationSummaryQueryControls", () => {
     render(<StationSummaryQueryControls />);
 
     expect((screen.getByLabelText("Line") as HTMLSelectElement).disabled).toBe(true);
-    expect((screen.getByLabelText("Station / WS") as HTMLSelectElement).disabled).toBe(true);
+    expect((screen.getByLabelText("Station detail (optional)") as HTMLSelectElement).disabled).toBe(true);
     expect((screen.getByLabelText("Start time") as HTMLInputElement).disabled).toBe(true);
     expect((screen.getByLabelText("End time") as HTMLInputElement).disabled).toBe(true);
     expect((screen.getByRole("button", { name: "Apply" }) as HTMLButtonElement).disabled).toBe(true);

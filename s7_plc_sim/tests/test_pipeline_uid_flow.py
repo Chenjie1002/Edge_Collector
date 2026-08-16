@@ -9,7 +9,7 @@ from app.pipeline import (
     PROCESS_SKIPPED,
     RESULT_NOK,
     RESULT_OK,
-    RESULT_SKIPPED,
+    ROUTE_COMPLETED_NOK,
     ThreeStationPipeline,
 )
 from app.plc_db import get_s7_string
@@ -105,14 +105,17 @@ class PipelineUidFlowTest(unittest.TestCase):
         self.assertTrue(next(iter(unit_ids)).startswith("U-"))
 
         self.assertEqual(RESULT_NOK, util.get_int(snapshots["WS01"], 16))
-        self.assertEqual(RESULT_SKIPPED, util.get_int(snapshots["WS02"], 16))
-        self.assertEqual(RESULT_SKIPPED, util.get_int(snapshots["WS03"], 16))
+        self.assertEqual(RESULT_NOK, util.get_int(snapshots["WS02"], 16))
+        self.assertEqual(RESULT_NOK, util.get_int(snapshots["WS03"], 16))
         self.assertEqual(PROCESS_SKIPPED, util.get_int(snapshots["WS02"], 254))
         self.assertEqual(PROCESS_SKIPPED, util.get_int(snapshots["WS03"], 254))
+        self.assertEqual(10001, util.get_int(snapshots["WS02"], 20))
+        self.assertEqual(10001, util.get_int(snapshots["WS03"], 20))
         self.assertEqual(1, util.get_int(snapshots["WS02"], 258))
         self.assertEqual(1, util.get_int(snapshots["WS03"], 258))
         self.assertEqual(10001, util.get_int(snapshots["WS02"], 260))
         self.assertEqual(10001, util.get_int(snapshots["WS03"], 260))
+        self.assertEqual(ROUTE_COMPLETED_NOK, util.get_int(snapshots["WS03"], 252))
         self.assertTrue(get_s7_string(snapshots["WS03"], 304, 40).startswith("NG-"))
 
 

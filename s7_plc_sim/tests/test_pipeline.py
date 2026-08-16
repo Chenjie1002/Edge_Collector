@@ -7,7 +7,7 @@ from snap7 import util
 from app.pipeline import (
     PROCESS_SKIPPED,
     RESULT_OK,
-    RESULT_SKIPPED,
+    RESULT_NOK,
     ROUTE_COMPLETED_NOK,
     SingleLinearRoutePipeline,
 )
@@ -116,10 +116,10 @@ def test_single_linear_route_mid_route_nok_preserves_origin_and_skips_downstream
     unit_events = [event for event in pipeline.event_history if event["unit_id"] == unit_id]
     by_station = {event["station_id"]: event for event in unit_events}
     for station_id in ("WS06", "WS07", "WS08", "WS09"):
-        assert by_station[station_id]["result"] == RESULT_SKIPPED
+        assert by_station[station_id]["result"] == RESULT_NOK
         assert by_station[station_id]["process_status"] == PROCESS_SKIPPED
         assert by_station[station_id]["defect_origin_station"] == "WS05"
         assert by_station[station_id]["defect_code"] == 11001
-    assert by_station["WS10"]["result"] == RESULT_SKIPPED
+    assert by_station["WS10"]["result"] == RESULT_NOK
     assert by_station["WS10"]["route_state"] == ROUTE_COMPLETED_NOK
     assert pipeline.completed_quantity == 0

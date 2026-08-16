@@ -13,6 +13,52 @@ body {
   background: #f6f8fa;
 }
 
+.product-navigation {
+  display: flex;
+  align-items: center;
+  gap: 22px;
+  min-height: 56px;
+  border-bottom: 1px solid #d9e1e8;
+  padding: 0 28px;
+  background: #ffffff;
+}
+
+.product-navigation-brand {
+  color: #173443;
+  font-size: 15px;
+  font-weight: 900;
+  letter-spacing: 0.02em;
+  text-decoration: none;
+  white-space: nowrap;
+}
+
+.product-navigation-links {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 6px 16px;
+}
+
+.product-navigation-links a,
+.product-navigation-unavailable {
+  color: #4a6370;
+  font-size: 13px;
+  font-weight: 700;
+  text-decoration: none;
+}
+
+.product-navigation-links a:hover,
+.product-navigation-links a:focus-visible {
+  color: #174f78;
+  text-decoration: underline;
+  text-underline-offset: 3px;
+}
+
+.product-navigation-unavailable {
+  color: #8d9aa2;
+  cursor: not-allowed;
+}
+
 button,
 input,
 select {
@@ -188,6 +234,13 @@ dd {
 
   .dashboard-shell {
     padding: 18px;
+  }
+
+  .product-navigation {
+    align-items: flex-start;
+    flex-direction: column;
+    gap: 8px;
+    padding: 12px 18px;
   }
 }
 
@@ -997,6 +1050,87 @@ dd {
 
 .station-summary-metrics-table td:first-child {
   color: #183746;
+  font-weight: 800;
+}
+
+.line-flow-summary-heading {
+  align-items: end;
+}
+
+.line-flow-summary-status {
+  display: grid;
+  justify-items: end;
+  gap: 6px;
+  color: #536a76;
+  font-size: 13px;
+  line-height: 1.35;
+  text-align: right;
+}
+
+.line-flow-summary-status strong {
+  color: #2f6749;
+  font-size: 14px;
+}
+
+.line-flow-summary-status strong[data-status="FAIL"] {
+  color: #8a4c18;
+}
+
+.station-summary-flow-table {
+  min-width: 680px;
+}
+
+.station-summary-flow-table th[scope="row"] {
+  color: #183746;
+  font-weight: 800;
+  text-align: left;
+}
+
+.station-summary-flow-table td,
+.station-summary-flow-table th[scope="col"] {
+  white-space: nowrap;
+}
+
+.line-flow-summary-footnote {
+  margin: 0;
+  color: #60717c;
+  font-size: 12px;
+  line-height: 1.45;
+}
+
+.station-summary-secondary-detail {
+  border: 1px solid #d4dee5;
+  border-radius: 10px;
+  padding: 14px 18px;
+  background: #f8fafb;
+}
+
+.station-summary-secondary-detail summary {
+  color: #315a6b;
+  cursor: pointer;
+  font-size: 13px;
+  font-weight: 800;
+}
+
+.station-summary-secondary-detail-content {
+  display: grid;
+  gap: 14px;
+  margin-top: 14px;
+}
+
+.station-summary-secondary-detail-content .station-summary-panel {
+  box-shadow: none;
+}
+
+.station-summary-diagnostics-detail {
+  display: grid;
+  gap: 12px;
+}
+
+.station-summary-diagnostics-detail summary {
+  color: #526b78;
+  cursor: pointer;
+  font-size: 12px;
   font-weight: 800;
 }
 

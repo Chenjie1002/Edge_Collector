@@ -2,6 +2,8 @@ import { cleanup, render, screen } from "@testing-library/react";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import StationSummaryPage, { StationSummaryPageView } from "../page";
 import { fetchStationSummary } from "../../../lib/stationSummary/apiClient";
+import { fetchLineSummary } from "../../../lib/stationSummary/lineSummaryApi";
+import type { LineSummary } from "../../../lib/stationSummary/lineSummarySchema";
 import {
   resolveTrustedAcceptedEventsApiOrigin,
   type TrustedAcceptedEventsApiOrigin,
@@ -10,6 +12,10 @@ import { fetchTrustedScopeCatalog } from "../../../lib/stationSummary/scopeCatal
 
 vi.mock("../../../lib/stationSummary/apiClient", () => ({
   fetchStationSummary: vi.fn(),
+}));
+
+vi.mock("../../../lib/stationSummary/lineSummaryApi", () => ({
+  fetchLineSummary: vi.fn(),
 }));
 
 vi.mock("../../../lib/stationSummary/scopeCatalog", () => ({
@@ -34,12 +40,33 @@ const catalog = {
     {
       lineId: "LINE_001",
       name: "Demo Assembly Line Runtime",
-      stations: [{ stationId: "WS01", name: "Screw Station", stationOrder: 1 }],
+      stations: [
+        { stationId: "WS01", name: "Screw Station", stationOrder: 1 },
+        { stationId: "WS02", name: "EOL Test Station", stationOrder: 2 },
+        { stationId: "WS03", name: "Pack Station", stationOrder: 3 },
+      ],
     },
   ],
 } as const;
 
 const trustedTestApiOrigin: TrustedAcceptedEventsApiOrigin = "https://api.example.test" as TrustedAcceptedEventsApiOrigin;
+
+const lineSummary: LineSummary = {
+  contractVersion: "production-line-summary/v1",
+  scope: {
+    lineId: "LINE_001",
+    startTime: "2026-07-05T00:00:00Z",
+    endTime: "2026-07-05T08:00:00Z",
+    cohortBasis: "terminal_completed",
+  },
+  topology: { entryStationId: "WS01", terminalStationId: "WS03", stations: ["WS01", "WS02", "WS03"] },
+  cohort: { unitCount: 3, reconciliationStatus: "PASS", errors: [] },
+  stations: [
+    { stationId: "WS01", total: 3, ok: 2, nok: 1, newNok: 1, skipped: 0, processed: 3, reconciliationStatus: "PASS", evidenceCount: 3, missingUnitCount: 0, duplicateUnitCount: 0, invalidRecordCount: 0, resultCompatibility: "native_nok_process_status_split" },
+    { stationId: "WS02", total: 3, ok: 2, nok: 1, newNok: 0, skipped: 1, processed: 2, reconciliationStatus: "PASS", evidenceCount: 3, missingUnitCount: 0, duplicateUnitCount: 0, invalidRecordCount: 0, resultCompatibility: "native_nok_process_status_split" },
+    { stationId: "WS03", total: 3, ok: 2, nok: 1, newNok: 0, skipped: 1, processed: 2, reconciliationStatus: "PASS", evidenceCount: 3, missingUnitCount: 0, duplicateUnitCount: 0, invalidRecordCount: 0, resultCompatibility: "native_nok_process_status_split" },
+  ],
+};
 
 describe("station summary page", () => {
   it("renders loading without prior production values", () => {
@@ -53,30 +80,80 @@ describe("station summary page", () => {
       />,
     );
 
-    const main = screen.getByRole("main");
-    expect(main.classList.contains("dashboard-shell")).toBe(true);
-    expect(main.classList.contains("station-summary-shell")).toBe(true);
+    expect(screen.getByRole("main").classList.contains("station-summary-shell")).toBe(true);
     expect(screen.getByRole("heading", { level: 1, name: "Station Summary" })).toBeTruthy();
-    expect(screen.getByText(/Trusted production view for one station and time window/i)).toBeTruthy();
-    expect(screen.getByText("Loading station summary.")).toBeTruthy();
-    expect(screen.getByText(/Prior station values are hidden/i)).toBeTruthy();
-    expect(screen.queryByLabelText("Trusted Quality route summary")).toBeNull();
+    expect(screen.getByText(/whole selected line/i)).toBeTruthy();
     expect(screen.queryByLabelText("Trusted Process Metrics route")).toBeNull();
   });
 
-  it("rejects a partial query before resolving the origin or fetching either route", async () => {
-    render(await StationSummaryPage({ searchParams: { line_id: "LINE_001", station_id: "WS01" } }));
+  it("rejects a partial line query before resolving the origin or fetching production data", async () => {
+    render(await StationSummaryPage({ searchParams: { line_id: "LINE_001" } }));
 
     expect(screen.getByText("INVALID_QUERY")).toBeTruthy();
-    expect(fetchStationSummary).not.toHaveBeenCalled();
+    expect(fetchLineSummary).not.toHaveBeenCalled();
     expect(resolveTrustedAcceptedEventsApiOrigin).not.toHaveBeenCalled();
   });
 
-  it("presents an unconfigured trusted API as a fail-closed error before fetching", async () => {
-    vi.mocked(resolveTrustedAcceptedEventsApiOrigin).mockReturnValue({
-      ok: false,
-      code: "ORIGIN_MISSING",
-      message: "Accepted events service is not configured.",
+  it("loads only the trusted catalog on an empty URL and renders whole-line idle controls", async () => {
+    vi.mocked(resolveTrustedAcceptedEventsApiOrigin).mockReturnValue({ ok: true, origin: trustedTestApiOrigin });
+    vi.mocked(fetchTrustedScopeCatalog).mockResolvedValue({ ok: true, catalog });
+
+    render(await StationSummaryPage({ searchParams: {} }));
+
+    expect(screen.getByRole("status").textContent).toContain("Select line and apply");
+    expect((screen.getByLabelText("Line") as HTMLSelectElement).value).toBe("LINE_001");
+    expect((screen.getByLabelText("Station detail (optional)") as HTMLSelectElement).value).toBe("");
+    expect(fetchLineSummary).not.toHaveBeenCalled();
+    expect(fetchStationSummary).not.toHaveBeenCalled();
+  });
+
+  it("validates the selected line against the trusted catalog before the line-summary route", async () => {
+    vi.mocked(resolveTrustedAcceptedEventsApiOrigin).mockReturnValue({ ok: true, origin: trustedTestApiOrigin });
+    vi.mocked(fetchTrustedScopeCatalog).mockResolvedValue({ ok: true, catalog });
+
+    render(
+      await StationSummaryPage({
+        searchParams: {
+          line_id: "LINE_UNKNOWN",
+          start_time: "2026-07-05T00:00:00+08:00",
+          end_time: "2026-07-05T08:00:00+08:00",
+        },
+      }),
+    );
+
+    expect(screen.getByText("INVALID_QUERY")).toBeTruthy();
+    expect(screen.queryByText("LINE_UNKNOWN")).toBeNull();
+    expect(fetchLineSummary).not.toHaveBeenCalled();
+  });
+
+  it("renders the whole-line route in order without requiring a station detail query", async () => {
+    vi.mocked(resolveTrustedAcceptedEventsApiOrigin).mockReturnValue({ ok: true, origin: trustedTestApiOrigin });
+    vi.mocked(fetchTrustedScopeCatalog).mockResolvedValue({ ok: true, catalog });
+    vi.mocked(fetchLineSummary).mockResolvedValue({ ok: true, summary: lineSummary });
+    const query = {
+      lineId: "LINE_001",
+      startTime: "2026-07-05T00:00:00+08:00",
+      endTime: "2026-07-05T08:00:00+08:00",
+    };
+
+    render(await StationSummaryPage({ searchParams: { line_id: query.lineId, start_time: query.startTime, end_time: query.endTime } }));
+
+    expect(fetchLineSummary).toHaveBeenCalledWith(query, trustedTestApiOrigin);
+    expect(fetchStationSummary).not.toHaveBeenCalled();
+    expect(screen.getByText("Completed cohort at terminal: 3")).toBeTruthy();
+    expect(screen.getByText("Route conservation: PASS")).toBeTruthy();
+    expect(screen.getAllByRole("rowheader").map((cell) => cell.textContent)).toEqual(["WS01", "WS02", "WS03"]);
+    expect(screen.queryByText("Trusted Process Metrics fixed matrix")).toBeNull();
+  });
+
+  it("keeps developer contract metadata behind a collapsed Data diagnostics disclosure", async () => {
+    vi.mocked(resolveTrustedAcceptedEventsApiOrigin).mockReturnValue({ ok: true, origin: trustedTestApiOrigin });
+    vi.mocked(fetchTrustedScopeCatalog).mockResolvedValue({ ok: true, catalog });
+    vi.mocked(fetchLineSummary).mockResolvedValue({ ok: true, summary: lineSummary });
+    vi.mocked(fetchStationSummary).mockResolvedValue({
+      ok: true,
+      quality: { ok: false, kind: "unavailable", message: "Quality source unavailable." },
+      processMetrics: { ok: false, kind: "unavailable", message: "Process Metrics source unavailable." },
     });
 
     render(
@@ -90,93 +167,9 @@ describe("station summary page", () => {
       }),
     );
 
-    const alert = screen.getByRole("alert");
-    expect(alert.classList.contains("state-error")).toBe(true);
-    expect(screen.getByRole("heading", { level: 2, name: "Data source not configured" })).toBeTruthy();
-    expect(screen.getByText(/trusted API is not configured/i)).toBeTruthy();
-    expect(screen.getByText(/No fallback or fabricated production values are shown/i)).toBeTruthy();
-    expect(screen.queryByText("EMPTY")).toBeNull();
-    expect(screen.queryByLabelText("Trusted Quality route summary")).toBeNull();
-    expect(screen.queryByLabelText("Trusted Process Metrics route")).toBeNull();
-    expect(resolveTrustedAcceptedEventsApiOrigin).toHaveBeenCalledTimes(1);
-    expect(fetchTrustedScopeCatalog).not.toHaveBeenCalled();
-    expect(fetchStationSummary).not.toHaveBeenCalled();
-  });
-
-  it("loads only the trusted catalog on an empty URL and renders idle without production requests", async () => {
-    vi.mocked(resolveTrustedAcceptedEventsApiOrigin).mockReturnValue({ ok: true, origin: trustedTestApiOrigin });
-    vi.mocked(fetchTrustedScopeCatalog).mockResolvedValue({ ok: true, catalog });
-
-    render(await StationSummaryPage({ searchParams: {} }));
-
-    expect(screen.getByRole("status").textContent).toContain("Select scope and apply");
-    expect((screen.getByLabelText("Line") as HTMLSelectElement).value).toBe("LINE_001");
-    expect((screen.getByLabelText("Station / WS") as HTMLSelectElement).value).toBe("WS01");
-    expect(fetchTrustedScopeCatalog).toHaveBeenCalledTimes(1);
-    expect(fetchStationSummary).not.toHaveBeenCalled();
-  });
-
-  it("reports catalog failure without URL option injection or production requests", async () => {
-    vi.mocked(resolveTrustedAcceptedEventsApiOrigin).mockReturnValue({ ok: true, origin: trustedTestApiOrigin });
-    vi.mocked(fetchTrustedScopeCatalog).mockResolvedValue({ ok: false, kind: "unavailable", message: "Scope catalog unavailable" });
-
-    render(
-      await StationSummaryPage({
-        searchParams: {
-          line_id: "LINE_UNKNOWN",
-          station_id: "WS_UNKNOWN",
-          start_time: "2026-07-05T00:00:00+08:00",
-          end_time: "2026-07-05T08:00:00+08:00",
-        },
-      }),
-    );
-
-    expect(screen.getByRole("alert").textContent).toContain("Scope catalog unavailable");
-    expect(screen.queryByText("LINE_UNKNOWN")).toBeNull();
-    expect(screen.queryByText("WS_UNKNOWN")).toBeNull();
-    expect(fetchStationSummary).not.toHaveBeenCalled();
-  });
-
-  it("rejects unknown URL scope after catalog validation and before trusted data routes", async () => {
-    vi.mocked(resolveTrustedAcceptedEventsApiOrigin).mockReturnValue({ ok: true, origin: trustedTestApiOrigin });
-    vi.mocked(fetchTrustedScopeCatalog).mockResolvedValue({ ok: true, catalog });
-
-    render(
-      await StationSummaryPage({
-        searchParams: {
-          line_id: "LINE_UNKNOWN",
-          station_id: "WS_UNKNOWN",
-          start_time: "2026-07-05T00:00:00+08:00",
-          end_time: "2026-07-05T08:00:00+08:00",
-        },
-      }),
-    );
-
-    expect(screen.getByText("INVALID_QUERY")).toBeTruthy();
-    expect(screen.queryByText("LINE_UNKNOWN")).toBeNull();
-    expect(screen.queryByText("WS_UNKNOWN")).toBeNull();
-    expect((screen.getByLabelText("Line") as HTMLSelectElement).value).toBe("LINE_001");
-    expect(fetchStationSummary).not.toHaveBeenCalled();
-  });
-
-  it("validates catalog membership before continuing to the existing trusted summary routes", async () => {
-    vi.mocked(resolveTrustedAcceptedEventsApiOrigin).mockReturnValue({ ok: true, origin: trustedTestApiOrigin });
-    vi.mocked(fetchTrustedScopeCatalog).mockResolvedValue({ ok: true, catalog });
-    vi.mocked(fetchStationSummary).mockResolvedValue({
-      ok: true,
-      quality: { ok: false, kind: "unavailable", message: "Quality source unavailable." },
-      processMetrics: { ok: false, kind: "unavailable", message: "Process Metrics source unavailable." },
-    });
-    const query = {
-      lineId: "LINE_001",
-      stationId: "WS01",
-      startTime: "2026-07-05T00:00:00+08:00",
-      endTime: "2026-07-05T08:00:00+08:00",
-    };
-
-    render(await StationSummaryPage({ searchParams: { line_id: query.lineId, station_id: query.stationId, start_time: query.startTime, end_time: query.endTime } }));
-
-    expect(fetchStationSummary).toHaveBeenCalledTimes(1);
-    expect(fetchStationSummary).toHaveBeenCalledWith(query, "https://api.example.test");
+    const diagnosticsSummary = screen.getByText("Data diagnostics");
+    const diagnostics = diagnosticsSummary.closest("details");
+    expect(diagnostics?.open).toBe(false);
+    expect(screen.getByText("Bounded authority matrix")).toBeTruthy();
   });
 });
