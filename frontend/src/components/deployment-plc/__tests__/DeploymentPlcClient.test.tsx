@@ -158,4 +158,50 @@ describe("PLC deployment configuration page", () => {
 
     expect(await screen.findByText(/port must be between 1 and 65535/i)).toBeTruthy();
   });
+
+  it("activates a saved candidate and makes the collector restart boundary explicit", async () => {
+    const fetchMock = vi.fn((url: string, init?: RequestInit) => {
+      if (url.endsWith("/active")) return Promise.resolve(new Response(JSON.stringify(active), { status: 200 }));
+      if (url.endsWith("/line-options")) return Promise.resolve(new Response(JSON.stringify({ items: lineOptions }), { status: 200 }));
+      if (url.endsWith("/candidates") && init?.method === "POST") {
+        return Promise.resolve(new Response(JSON.stringify({
+          candidate_id: "candidate-001",
+          created_at: "2026-08-16T01:00:00Z",
+          status: "NOT ACTIVE / REQUIRES CONTROLLED ACTIVATION",
+          candidate_hash: "sha256:candidate",
+          active_mapping_hash: "sha256:active",
+          validation_state: "VALID",
+          candidate: { ...active.plc, line_config: "demo_3_station.yaml" },
+          line: lineOptions[0],
+          last_connection_test: null,
+          retrieval_path: "/api/v2/deployment/plc/candidates/candidate-001"
+        }), { status: 200 }));
+      }
+      if (url.endsWith("/candidates/candidate-001/activate") && init?.method === "POST") {
+        return Promise.resolve(new Response(JSON.stringify({
+          activation_id: "activation-001",
+          candidate_id: "candidate-001",
+          previous_active_mapping_hash: "sha256:active",
+          active_mapping_hash: "sha256:activated",
+          changed_fields: ["connection_timeout_ms"],
+          status: "ACTIVATED_RESTART_REQUIRED",
+          fresh_connection_test: { status: "CONNECTED_AND_READABLE", read_only: true, writes_performed: false, operations: ["connect", "db_read", "disconnect"] },
+          writes_performed: false,
+          rollback_available: true
+        }), { status: 200 }));
+      }
+      return Promise.resolve(new Response(JSON.stringify({}), { status: 200 }));
+    });
+    vi.stubGlobal("fetch", fetchMock);
+
+    render(<DeploymentPlcClient />);
+    await screen.findByRole("heading", { level: 1, name: "PLC Deployment Configuration" });
+    screen.getByRole("button", { name: "Save candidate" }).click();
+
+    expect(await screen.findByRole("button", { name: /Activate Candidate/i })).toBeTruthy();
+    screen.getByRole("button", { name: /Activate Candidate/i }).click();
+
+    expect(await screen.findByText(/COLLECTOR_RESTART_REQUIRED/i)).toBeTruthy();
+    expect(screen.getByText(/config mutation only; PLC writes remain disabled/i)).toBeTruthy();
+  });
 });

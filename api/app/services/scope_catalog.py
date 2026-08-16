@@ -1,11 +1,12 @@
 from __future__ import annotations
 
-import hashlib
-import stat
 from pathlib import Path
 from typing import Any
 
-import yaml
+from common.runtime_mapping import (
+    EffectiveMappingUnavailable,
+    read_effective_mapping,
+)
 
 
 DEFAULT_MAPPING_PATH = Path("/app/config/mapping.yaml")
@@ -48,25 +49,31 @@ def read_mapping_document(
 ) -> tuple[dict[str, Any], str]:
     """Read the active mapping once with the same identity checks as scope-options."""
     try:
-        path = Path(mapping_path)
-        path_stat = path.lstat()
-        if not stat.S_ISREG(path_stat.st_mode) or stat.S_ISLNK(path_stat.st_mode):
-            _unavailable("mapping path is not a regular file")
-
-        raw_bytes = path.read_bytes()
-        content_sha256 = hashlib.sha256(raw_bytes).hexdigest()
-        document = yaml.safe_load(raw_bytes.decode("utf-8"))
-        root = _required_mapping(document, "mapping root")
-        return root, content_sha256
+        document = read_effective_mapping(mapping_path)
+        return document.root, document.content_sha256
+    except EffectiveMappingUnavailable as exc:
+        raise ScopeCatalogUnavailable(str(exc)) from exc
     except ScopeCatalogUnavailable:
         raise
     except Exception as exc:
         raise ScopeCatalogUnavailable("scope catalog is unavailable") from exc
 
 
+def read_effective_mapping_document(
+    mapping_path: Path = DEFAULT_MAPPING_PATH,
+) -> tuple[dict[str, Any], str, str]:
+    try:
+        document = read_effective_mapping(mapping_path)
+        return document.root, document.content_sha256, document.source
+    except EffectiveMappingUnavailable as exc:
+        raise ScopeCatalogUnavailable(str(exc)) from exc
+    except Exception as exc:
+        raise ScopeCatalogUnavailable("scope catalog is unavailable") from exc
+
+
 def load_scope_catalog(mapping_path: Path = DEFAULT_MAPPING_PATH) -> dict[str, object]:
     try:
-        root, content_sha256 = read_mapping_document(mapping_path)
+        root, content_sha256, effective_source = read_effective_mapping_document(mapping_path)
 
         authoritative_source = _required_text(
             root.get("authoritative_source"),
@@ -157,7 +164,7 @@ def load_scope_catalog(mapping_path: Path = DEFAULT_MAPPING_PATH) -> dict[str, o
             "contract_version": "production-scope-options/v1",
             "authority": {
                 "kind": "active_runtime_mapping",
-                "source": authoritative_source,
+                "source": effective_source if effective_source == "active/mapping.yaml" else authoritative_source,
                 "config_version": config_version,
                 "content_sha256": f"sha256:{content_sha256}",
             },

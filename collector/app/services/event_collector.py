@@ -13,7 +13,9 @@ from pathlib import Path
 from zoneinfo import ZoneInfo
 
 import snap7
+from snap7.type import Parameter
 
+from common.runtime_mapping import resolve_effective_mapping_path
 from app.plc import EdgeMapping, ReadPlan, build_read_plans, decode_read_plan, load_edge_mapping
 from app.plc.mapping import StationMapping
 from app.services.reliability import CounterDecision, classify_counter, validate_plc_boot_id
@@ -79,8 +81,8 @@ class EventCollectorWorker:
         self,
         *,
         dsn: str,
-        host: str,
-        port: int,
+        host: str | None = None,
+        port: int | None = None,
         startup_context: CollectorStartupContext,
         mapping_path: str = "/app/config/mapping.yaml",
     ) -> None:
@@ -88,9 +90,9 @@ class EventCollectorWorker:
             raise ValueError("mandatory startup context is missing")
         self.collector_main_started_at_utc, self.process_pid = startup_context.consume()
         self.dsn = dsn
-        self.host = host
-        self.port = port
-        self.mapping: EdgeMapping = load_edge_mapping(mapping_path)
+        del host, port
+        effective_mapping_path = resolve_effective_mapping_path(mapping_path).path
+        self.mapping: EdgeMapping = load_edge_mapping(str(effective_mapping_path))
         self._validate_loaded_mapping_identity()
         if len(self.mapping.plcs) != 1:
             raise ValueError("PLC selection is missing or ambiguous")
@@ -105,8 +107,12 @@ class EventCollectorWorker:
         self.line_id = self.resolved_config_snapshot.line_id
         if self.routing_line_id != self.line_id:
             raise ValueError("selected PLC routing line_id does not match canonical line_id")
-        self.rack = int(self.plc.get("rack", 0))
-        self.slot = int(self.plc.get("slot", 1))
+        self.host = self._required_plc_text("host")
+        self.port = self._required_plc_int("port")
+        self.rack = self._required_plc_int("rack")
+        self.slot = self._required_plc_int("slot")
+        self.connection_timeout_ms = self._required_plc_int("connection_timeout_ms")
+        self.poll_interval_ms = self._required_plc_int("poll_interval_ms")
         self.timezone = ZoneInfo(self.mapping.timezone)
         self.resolved_config_registry = InMemoryResolvedConfigRegistry(
             {self.resolved_config_snapshot.config_hash: self.resolved_config_snapshot}
@@ -217,7 +223,7 @@ class EventCollectorWorker:
             raise ValueError("runtime-loaded record must be one line")
         logger.info(f"collector_runtime_loaded_json={serialized}")
 
-    def run_forever(self, poll_interval_ms: int = 500) -> None:
+    def run_forever(self) -> None:
         self.storage = Storage(self.dsn)
         logger.info(
             "event collector started host=%s port=%s stations=%s",
@@ -232,7 +238,7 @@ class EventCollectorWorker:
                 logger.exception("event collector loop failed")
                 self._disconnect()
                 time.sleep(3)
-            time.sleep(poll_interval_ms / 1000)
+            time.sleep(getattr(self, "poll_interval_ms", 500) / 1000)
 
     def poll_once(self) -> None:
         try:
@@ -578,6 +584,14 @@ class EventCollectorWorker:
     def _ensure_connected(self) -> None:
         if self.client.get_connected():
             return
+        connection_timeout_ms = getattr(
+            self,
+            "connection_timeout_ms",
+            self.plc.get("connection_timeout_ms", 3000),
+        )
+        set_param = getattr(self.client, "set_param", None)
+        if callable(set_param):
+            set_param(Parameter.RecvTimeout, connection_timeout_ms)
         self.client.connect(self.host, self.rack, self.slot, tcp_port=self.port)
 
     def _disconnect(self) -> None:
@@ -589,3 +603,17 @@ class EventCollectorWorker:
     def _code_label(self, table: str, value: object) -> str:
         table_map = self.mapping.code_tables.get(table, {})
         return str(table_map.get(int(value or 0), value or "UNKNOWN"))
+
+    def _required_plc_text(self, field: str) -> str:
+        value = self.plc.get(field)
+        if not isinstance(value, str) or not value.strip():
+            raise ValueError(f"selected PLC field {field} is missing or empty")
+        return value.strip()
+
+    def _required_plc_int(self, field: str) -> int:
+        value = self.plc.get(field)
+        if type(value) is not int or (
+            field in {"port", "connection_timeout_ms", "poll_interval_ms"} and value <= 0
+        ):
+            raise ValueError(f"selected PLC field {field} is invalid")
+        return value

@@ -28,14 +28,12 @@ def main() -> None:
     interval_ms = int(config.get("collector", {}).get("polling_interval_ms", 1000))
     source_type = config.get("collector", {}).get("source_type", "simulator")
     if source_type == "snap7":
-        source = Snap7Source(snap7_host(), snap7_port())
+        source = Snap7Source()
     else:
         source = SimulatorSource(simulator_url())
     if event_collector_enabled():
         event_worker = EventCollectorWorker(
             dsn=database_url(),
-            host=snap7_host(),
-            port=snap7_port(),
             startup_context=startup_context,
         )
         threading.Thread(

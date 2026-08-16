@@ -28,6 +28,22 @@ export type ActiveDeploymentConfig = {
   };
   active_station_count: number;
   active_station_ids: string[];
+  activation: ActivationRecord | null;
+  rollback_available: boolean;
+};
+
+export type ActivationRecord = {
+  activation_id: string;
+  candidate_id: string;
+  previous_active_mapping_hash: string;
+  active_mapping_hash: string;
+  changed_fields: string[];
+  status: "ACTIVATED_RESTART_REQUIRED" | "ROLLED_BACK";
+  backup_path: string;
+  activation_record_path: string;
+  fresh_connection_test: Pick<ConnectionTestResult, "status" | "read_only" | "writes_performed" | "operations">;
+  writes_performed: false;
+  rollback_available: boolean;
 };
 
 export type LineOption = {
@@ -86,6 +102,28 @@ export type SavedCandidate = {
   retrieval_path: string;
 };
 
+export type ActivationResult = {
+  activation_id: string;
+  candidate_id: string;
+  previous_active_mapping_hash: string;
+  active_mapping_hash: string;
+  changed_fields: string[];
+  status: "ACTIVATED_RESTART_REQUIRED";
+  fresh_connection_test: Pick<ConnectionTestResult, "status" | "read_only" | "writes_performed" | "operations">;
+  writes_performed: false;
+  rollback_available: boolean;
+  backup_path?: string;
+  activation_record_path?: string;
+};
+
+export type ActivationError = {
+  status: "STALE_CANDIDATE" | "FRESH_TEST_FAILED" | "CANDIDATE_NOT_READY" | "UNSUPPORTED_TOPOLOGY" | "CANDIDATE_IDENTITY_MISMATCH";
+  candidate_id: string;
+  writes_performed: false;
+  fresh_connection_test?: ConnectionTestResult;
+  message?: string;
+};
+
 export type DeploymentOverviewResult =
   | { ok: true; active: ActiveDeploymentConfig; lineOptions: LineOption[] }
   | { ok: false; message: string };
@@ -112,7 +150,7 @@ export async function fetchDeploymentOverview(fetchImpl: typeof fetch = fetch): 
   }
 }
 export async function postDeployment<T>(
-  action: "validate" | "test-connection" | "candidates",
+  action: "validate" | "test-connection" | "candidates" | `candidates/${string}/activate` | `activations/${string}/rollback`,
   payload: Record<string, unknown>,
   fetchImpl: typeof fetch = fetch
 ): Promise<{ ok: true; value: T } | { ok: false; message: string; value?: T }> {

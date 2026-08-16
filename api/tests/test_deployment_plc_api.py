@@ -1,9 +1,12 @@
 from __future__ import annotations
 
 import hashlib
+import copy
 from pathlib import Path
 
+import pytest
 from fastapi.testclient import TestClient
+import yaml
 
 from app.services import deployment_plc
 from app.main import app
@@ -236,3 +239,186 @@ def test_candidate_route_retrieves_saved_artifact_without_active_mutation(
     assert retrieved.status_code == 200
     assert retrieved.json()["candidate_id"] == candidate_id
     assert retrieved.json()["status"] == "NOT ACTIVE / REQUIRES CONTROLLED ACTIVATION"
+
+
+def _write_active_overlay(root: Path, baseline: Path, **plc_overrides: object) -> Path:
+    document = yaml.safe_load(baseline.read_text(encoding="utf-8"))
+    document["plcs"][0].update(plc_overrides)
+    destination = root / "active" / "mapping.yaml"
+    destination.parent.mkdir(parents=True, exist_ok=True)
+    destination.write_text(yaml.safe_dump(document, sort_keys=False), encoding="utf-8")
+    return destination
+
+
+def test_valid_active_overlay_becomes_effective_and_reports_overlay_authority(tmp_path: Path) -> None:
+    baseline = Path("config/mapping.yaml")
+    overlay = _write_active_overlay(tmp_path, baseline, connection_timeout_ms=2500)
+
+    result = deployment_plc.load_active_deployment_config(
+        mapping_path=baseline,
+        store_path=tmp_path,
+    )
+
+    assert result["plc"]["connection_timeout_ms"] == 2500
+    assert result["authority"]["source"] == "active/mapping.yaml"
+    assert result["authority"]["content_sha256"] == f"sha256:{hashlib.sha256(overlay.read_bytes()).hexdigest()}"
+
+
+def test_invalid_active_overlay_fails_closed_instead_of_falling_back(tmp_path: Path) -> None:
+    destination = tmp_path / "active" / "mapping.yaml"
+    destination.parent.mkdir(parents=True, exist_ok=True)
+    destination.write_text("plcs: [", encoding="utf-8")
+
+    try:
+        deployment_plc.load_active_deployment_config(
+            mapping_path=Path("config/mapping.yaml"),
+            store_path=tmp_path,
+        )
+    except deployment_plc.DeploymentConfigUnavailable as exc:
+        assert "active mapping" in str(exc)
+    else:
+        raise AssertionError("invalid active overlay must fail closed")
+
+
+def test_activation_requires_fresh_server_test_and_does_not_mutate_on_failure(tmp_path: Path) -> None:
+    baseline = Path("config/mapping.yaml")
+    saved = deployment_plc.save_candidate(
+        candidate_payload(
+            host="s7-plc-sim",
+            connection_timeout_ms=2500,
+            last_connection_test={
+                "status": "CONNECTED_AND_READABLE",
+                "read_only": True,
+                "writes_performed": False,
+            },
+        ),
+        mapping_path=baseline,
+        store_path=tmp_path,
+    )
+    before = hashlib.sha256(baseline.read_bytes()).hexdigest()
+    fake = ReadOnlyClient(failure=TimeoutError("timed out"))
+
+    result = deployment_plc.activate_candidate(
+        saved["candidate_id"],
+        mapping_path=baseline,
+        store_path=tmp_path,
+        client_factory=lambda: fake,
+    )
+
+    assert result["status"] == "FRESH_TEST_FAILED"
+    assert result["fresh_connection_test"]["status"] == "TIMEOUT"
+    assert result["writes_performed"] is False
+    assert not (tmp_path / "active" / "mapping.yaml").exists()
+    assert hashlib.sha256(baseline.read_bytes()).hexdigest() == before
+
+
+def test_activation_overlays_only_connectivity_fields_and_rollback_restores_previous_mapping(
+    tmp_path: Path,
+) -> None:
+    baseline = Path("config/mapping.yaml")
+    saved = deployment_plc.save_candidate(
+        candidate_payload(
+            host="s7-plc-sim",
+            port=1102,
+            rack=0,
+            slot=1,
+            connection_timeout_ms=2500,
+            poll_interval_ms=500,
+        ),
+        mapping_path=baseline,
+        store_path=tmp_path,
+    )
+    fake = ReadOnlyClient()
+    baseline_document = yaml.safe_load(baseline.read_text(encoding="utf-8"))
+    baseline_hash = hashlib.sha256(baseline.read_bytes()).hexdigest()
+
+    activated = deployment_plc.activate_candidate(
+        saved["candidate_id"],
+        mapping_path=baseline,
+        store_path=tmp_path,
+        client_factory=lambda: fake,
+    )
+
+    active_path = tmp_path / "active" / "mapping.yaml"
+    active_document = yaml.safe_load(active_path.read_text(encoding="utf-8"))
+    expected_document = copy.deepcopy(baseline_document)
+    expected_document["plcs"][0].update(
+        {
+            "connection_timeout_ms": 2500,
+        }
+    )
+    for key in set(baseline_document["plcs"][0]) - {
+        "host",
+        "port",
+        "rack",
+        "slot",
+        "connection_timeout_ms",
+        "poll_interval_ms",
+    }:
+        assert active_document["plcs"][0][key] == expected_document["plcs"][0][key]
+    baseline_without_plc_fields = copy.deepcopy(baseline_document)
+    active_without_plc_fields = copy.deepcopy(active_document)
+    for document in (baseline_without_plc_fields, active_without_plc_fields):
+        for field in (
+            "host",
+            "port",
+            "rack",
+            "slot",
+            "connection_timeout_ms",
+            "poll_interval_ms",
+        ):
+            document["plcs"][0].pop(field, None)
+    assert active_without_plc_fields == baseline_without_plc_fields
+    assert activated["active_mapping_hash"] != f"sha256:{baseline_hash}"
+    assert activated["changed_fields"] == ["connection_timeout_ms"]
+    assert Path(activated["backup_path"]).is_file()
+    assert Path(activated["activation_record_path"]).is_file()
+    assert hashlib.sha256(baseline.read_bytes()).hexdigest() == baseline_hash
+
+    rolled_back = deployment_plc.rollback_activation(
+        activated["activation_id"],
+        mapping_path=baseline,
+        store_path=tmp_path,
+    )
+
+    assert rolled_back["status"] == "ROLLED_BACK"
+    assert rolled_back["active_mapping_hash"] == f"sha256:{baseline_hash}"
+    assert not active_path.exists()
+
+
+def test_stale_candidate_is_rejected_before_fresh_test_or_mutation(tmp_path: Path) -> None:
+    baseline = Path("config/mapping.yaml")
+    saved = deployment_plc.save_candidate(
+        candidate_payload(host="s7-plc-sim"),
+        mapping_path=baseline,
+        store_path=tmp_path,
+    )
+    _write_active_overlay(tmp_path, baseline, connection_timeout_ms=2500)
+    fake = ReadOnlyClient()
+
+    result = deployment_plc.activate_candidate(
+        saved["candidate_id"],
+        mapping_path=baseline,
+        store_path=tmp_path,
+        client_factory=lambda: fake,
+    )
+
+    assert result["status"] == "STALE_CANDIDATE"
+    assert fake.calls == []
+
+
+def test_active_overlay_and_candidate_artifacts_reject_symlinks(tmp_path: Path) -> None:
+    active = tmp_path / "active" / "mapping.yaml"
+    active.parent.mkdir(parents=True, exist_ok=True)
+    active.symlink_to(Path("config/mapping.yaml").resolve())
+    with pytest.raises(deployment_plc.DeploymentConfigUnavailable):
+        deployment_plc.load_active_deployment_config(
+            mapping_path=Path("config/mapping.yaml"),
+            store_path=tmp_path,
+        )
+
+    candidate = tmp_path / "candidates" / "candidate-link.json"
+    candidate.parent.mkdir(parents=True, exist_ok=True)
+    candidate.symlink_to(Path("config/mapping.yaml").resolve())
+    with pytest.raises(deployment_plc.DeploymentConfigUnavailable):
+        deployment_plc.load_candidate("candidate-link", store_path=tmp_path)

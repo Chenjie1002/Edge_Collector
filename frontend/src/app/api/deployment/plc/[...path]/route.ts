@@ -9,7 +9,11 @@ function isAllowedPath(method: string, path: string[]): boolean {
     return path.length === 1 && (path[0] === "active" || path[0] === "line-options") ||
       path.length === 2 && path[0] === "candidates" && /^[A-Za-z0-9_-]{1,64}$/.test(path[1]);
   }
-  return method === "POST" && path.length === 1 && ["validate", "test-connection", "candidates"].includes(path[0]);
+  return method === "POST" && (
+    path.length === 1 && ["validate", "test-connection", "candidates"].includes(path[0]) ||
+    path.length === 3 && path[0] === "candidates" && path[2] === "activate" && /^[A-Za-z0-9_-]{1,64}$/.test(path[1]) ||
+    path.length === 3 && path[0] === "activations" && path[2] === "rollback" && /^[A-Za-z0-9_-]{1,64}$/.test(path[1])
+  );
 }
 
 async function proxy(request: NextRequest, context: RouteContext): Promise<NextResponse> {

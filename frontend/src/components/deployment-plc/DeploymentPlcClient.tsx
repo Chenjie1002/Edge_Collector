@@ -6,6 +6,8 @@ import {
   fetchDeploymentOverview,
   postDeployment,
   type ActiveDeploymentConfig,
+  type ActivationError,
+  type ActivationResult,
   type ConnectionTestResult,
   type DeploymentCandidate,
   type DeploymentValidation,
@@ -42,7 +44,9 @@ export function DeploymentPlcClient() {
   const [validation, setValidation] = useState<DeploymentValidation | null>(null);
   const [connectionTest, setConnectionTest] = useState<ConnectionTestResult | null>(null);
   const [saved, setSaved] = useState<SavedCandidate | null>(null);
-  const [busy, setBusy] = useState<"validate" | "test" | "save" | null>(null);
+  const [activation, setActivation] = useState<ActivationResult | null>(null);
+  const [activationError, setActivationError] = useState<ActivationError | null>(null);
+  const [busy, setBusy] = useState<"validate" | "test" | "save" | "activate" | "rollback" | null>(null);
 
   useEffect(() => {
     let cancelled = false;
@@ -85,6 +89,8 @@ export function DeploymentPlcClient() {
     setValidation(null);
     setConnectionTest(null);
     setSaved(null);
+    setActivation(null);
+    setActivationError(null);
   }
 
   async function validate() {
@@ -134,6 +140,46 @@ export function DeploymentPlcClient() {
     }
     setPageError(null);
     setSaved(result.value);
+    setActivation(null);
+    setActivationError(null);
+  }
+
+  async function refreshActive() {
+    const result = await fetchDeploymentOverview();
+    if (result.ok) {
+      setActive(result.active);
+      setLineOptions(result.lineOptions);
+    }
+  }
+
+  async function activateSavedCandidate() {
+    if (!saved) return;
+    setBusy("activate");
+    const result = await postDeployment<ActivationResult | ActivationError>(`candidates/${saved.candidate_id}/activate`, {});
+    setBusy(null);
+    if (!result.ok) {
+      setActivationError(result.value as ActivationError | undefined ?? null);
+      setPageError(result.message);
+      return;
+    }
+    setPageError(null);
+    setActivationError(null);
+    setActivation(result.value as ActivationResult);
+    await refreshActive();
+  }
+
+  async function rollbackActive() {
+    if (!activation) return;
+    setBusy("rollback");
+    const result = await postDeployment<ActivationResult>(`activations/${activation.activation_id}/rollback`, {});
+    setBusy(null);
+    if (!result.ok) {
+      setPageError(result.message);
+      return;
+    }
+    setActivation(null);
+    setPageError(null);
+    await refreshActive();
   }
 
   if (loading) {
@@ -163,7 +209,7 @@ export function DeploymentPlcClient() {
         <div className="deployment-policy" aria-label="PLC deployment safety policy">
           <span>Active is read-only</span>
           <span>Test Connection is read-only</span>
-          <span>No Apply / Restart in R2</span>
+          <span>Collector lifecycle is operator-controlled</span>
         </div>
       </header>
 
@@ -238,7 +284,9 @@ export function DeploymentPlcClient() {
         </ul>
       </section>
 
-      {saved ? <section className="deployment-panel deployment-saved-panel" aria-labelledby="saved-heading"><p className="deployment-eyebrow">SAVED CANDIDATE</p><h2 id="saved-heading">{saved.status}</h2><p>Candidate {saved.candidate_id} is stored separately from the active mapping and requires controlled activation before it can affect Collector behavior.</p><a href={`/api/deployment/plc/candidates/${saved.candidate_id}`}>Export / retrieve candidate JSON</a></section> : null}
+      {saved ? <section className="deployment-panel deployment-saved-panel" aria-labelledby="saved-heading"><p className="deployment-eyebrow">SAVED CANDIDATE</p><h2 id="saved-heading">{saved.status}</h2><p>Candidate {saved.candidate_id} is stored separately from the active mapping and requires controlled activation before it can affect Collector behavior.</p><p className="deployment-help">Confirm: activation changes the effective Active config only; it performs no PLC write (`writes_performed=false`). Collector reload remains a fixed host-operator action.</p><div className="deployment-actions"><a href={`/api/deployment/plc/candidates/${saved.candidate_id}`}>Export / retrieve candidate JSON</a>{saved.validation_state === "VALID" && saved.line.ready_to_activate ? <button type="button" onClick={() => void activateSavedCandidate()} disabled={busy !== null}>{busy === "activate" ? "Activating…" : "Activate Candidate"}</button> : null}</div></section> : null}
+      {activationError ? <section className="deployment-panel" role="alert"><p className="deployment-eyebrow">ACTIVATION BLOCKED</p><h2>{activationError.status}</h2><p>{activationError.message ?? "The Candidate was not activated and the Active config was not changed."}</p>{activationError.fresh_connection_test ? <p>Fresh Test Connection: {activationError.fresh_connection_test.status} · PLC writes: {activationError.fresh_connection_test.writes_performed ? "YES" : "NO"}</p> : null}</section> : null}
+      {activation ? <section className="deployment-panel deployment-saved-panel" aria-labelledby="activation-heading"><p className="deployment-eyebrow">ACTIVATION RESULT</p><h2 id="activation-heading">{activation.status}</h2><p>Active mapping changed only in the authorized connectivity fields: {activation.changed_fields.join(", ") || "none"}.</p><p>Active hash: <code>{activation.active_mapping_hash}</code> · previous hash: <code>{activation.previous_active_mapping_hash}</code></p><p>Fresh Test Connection: <strong>{activation.fresh_connection_test.status}</strong> · config mutation only; PLC writes remain disabled (`writes_performed=false`).</p><p>COLLECTOR_RESTART_REQUIRED — run the fixed Collector-only recreate under the host operator boundary, then refresh Active Mapping.</p>{activation.rollback_available ? <button type="button" className="deployment-secondary-action" onClick={() => void rollbackActive()} disabled={busy !== null}>{busy === "rollback" ? "Rolling back…" : "Rollback active mapping"}</button> : null}</section> : null}
     </main>
   );
 }

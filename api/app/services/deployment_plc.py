@@ -1,14 +1,19 @@
 from __future__ import annotations
 
 import json
+import hashlib
 import os
 import re
+import stat
+import tempfile
 import uuid
+from copy import deepcopy
 from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any, Callable
 
 import snap7
+import yaml
 from snap7.type import Parameter
 
 from common.line_config import (
@@ -20,9 +25,7 @@ from common.line_config import (
     load_line_config,
     parse_deployment_candidate,
 )
-
-from app.services.scope_catalog import ScopeCatalogUnavailable, read_mapping_document
-
+from common.runtime_mapping import EffectiveMappingUnavailable, read_effective_mapping
 
 _SERVICE_PATH = Path(__file__).resolve()
 PROJECT_ROOT = (
@@ -35,6 +38,15 @@ DEFAULT_LINES_PATH = PROJECT_ROOT / "config" / "lines"
 DEFAULT_STORE_PATH = PROJECT_ROOT / "data" / "deployment-config"
 
 _CANDIDATE_ID = re.compile(r"^[A-Za-z0-9_-]{1,64}$")
+_ACTIVATION_ID = re.compile(r"^[A-Za-z0-9_-]{1,64}$")
+CONNECTIVITY_FIELDS = (
+    "host",
+    "port",
+    "rack",
+    "slot",
+    "connection_timeout_ms",
+    "poll_interval_ms",
+)
 
 
 class DeploymentConfigUnavailable(Exception):
@@ -43,8 +55,12 @@ class DeploymentConfigUnavailable(Exception):
 
 def load_active_deployment_config(
     mapping_path: Path = DEFAULT_MAPPING_PATH,
+    store_path: Path | None = None,
 ) -> dict[str, object]:
-    root, content_sha256 = _read_active_mapping(mapping_path)
+    root, content_sha256, source, _path, _used_overlay = _read_active_mapping(
+        mapping_path,
+        store_path=store_path,
+    )
     plcs = root.get("plcs")
     if not isinstance(plcs, list) or not plcs or not isinstance(plcs[0], dict):
         raise DeploymentConfigUnavailable("active mapping has no PLC configuration")
@@ -64,10 +80,14 @@ def load_active_deployment_config(
     if not active_station_ids:
         raise DeploymentConfigUnavailable("active mapping has no enabled stations")
 
+    activation = _load_active_activation(
+        store_path=store_path,
+        active_mapping_hash=f"sha256:{content_sha256}",
+    )
     return {
         "authority": {
             "kind": "active_runtime_mapping",
-            "source": _required_text(root.get("authoritative_source"), "authoritative_source"),
+            "source": source,
             "config_version": _required_text(root.get("config_version"), "config_version"),
             "content_sha256": f"sha256:{content_sha256}",
         },
@@ -86,14 +106,17 @@ def load_active_deployment_config(
         },
         "active_station_count": len(active_station_ids),
         "active_station_ids": active_station_ids,
+        "activation": activation,
+        "rollback_available": activation is not None,
     }
 
 
 def load_line_options(
     lines_path: Path = DEFAULT_LINES_PATH,
     mapping_path: Path = DEFAULT_MAPPING_PATH,
+    store_path: Path | None = None,
 ) -> dict[str, object]:
-    active = load_active_deployment_config(mapping_path)
+    active = load_active_deployment_config(mapping_path, store_path=store_path)
     items: list[dict[str, object]] = []
     for line_path in sorted(lines_path.glob("*.yaml")):
         if line_path.is_symlink() or not line_path.is_file():
@@ -115,8 +138,9 @@ def validate_candidate(
     *,
     mapping_path: Path = DEFAULT_MAPPING_PATH,
     lines_path: Path = DEFAULT_LINES_PATH,
+    store_path: Path | None = None,
 ) -> dict[str, object]:
-    active = load_active_deployment_config(mapping_path)
+    active = load_active_deployment_config(mapping_path, store_path=store_path)
     candidate, errors = parse_deployment_candidate(raw)
     base: dict[str, object] = {
         "validation_state": "INVALID",
@@ -170,9 +194,15 @@ def test_connection(
     *,
     mapping_path: Path = DEFAULT_MAPPING_PATH,
     lines_path: Path = DEFAULT_LINES_PATH,
+    store_path: Path | None = None,
     client_factory: Callable[[], Any] | None = None,
 ) -> dict[str, object]:
-    validation = validate_candidate(raw, mapping_path=mapping_path, lines_path=lines_path)
+    validation = validate_candidate(
+        raw,
+        mapping_path=mapping_path,
+        lines_path=lines_path,
+        store_path=store_path,
+    )
     if validation["errors"]:
         return {
             **validation,
@@ -239,7 +269,12 @@ def save_candidate(
     lines_path: Path = DEFAULT_LINES_PATH,
     store_path: Path | None = None,
 ) -> dict[str, object]:
-    validation = validate_candidate(raw, mapping_path=mapping_path, lines_path=lines_path)
+    validation = validate_candidate(
+        raw,
+        mapping_path=mapping_path,
+        lines_path=lines_path,
+        store_path=store_path,
+    )
     if validation["errors"]:
         return validation
 
@@ -256,12 +291,9 @@ def save_candidate(
         "line": validation["line"],
         "last_connection_test": _safe_test_result(raw.get("last_connection_test")),
     }
-    root = store_path or Path(os.environ.get("DEPLOYMENT_CONFIG_DIR", DEFAULT_STORE_PATH))
-    root.mkdir(parents=True, exist_ok=True)
-    destination = root / f"{candidate_id}.json"
-    with destination.open("x", encoding="utf-8") as handle:
-        json.dump(document, handle, ensure_ascii=False, sort_keys=True, indent=2)
-        handle.write("\n")
+    root = _store_root(store_path)
+    destination = _candidate_path(root, candidate_id)
+    _write_new_json(destination, document)
     return {
         **document,
         "retrieval_path": f"/api/v2/deployment/plc/candidates/{candidate_id}",
@@ -271,23 +303,462 @@ def save_candidate(
 def load_candidate(candidate_id: str, *, store_path: Path | None = None) -> dict[str, object]:
     if not _CANDIDATE_ID.fullmatch(candidate_id):
         raise DeploymentConfigUnavailable("candidate id is invalid")
-    root = store_path or Path(os.environ.get("DEPLOYMENT_CONFIG_DIR", DEFAULT_STORE_PATH))
-    path = root / f"{candidate_id}.json"
+    root = _store_root(store_path)
+    path = _candidate_path(root, candidate_id)
     try:
-        with path.open(encoding="utf-8") as handle:
-            document = json.load(handle)
-    except (OSError, ValueError) as exc:
+        document = _read_json(path)
+    except (OSError, ValueError, DeploymentConfigUnavailable) as exc:
         raise DeploymentConfigUnavailable("candidate is not available") from exc
     if not isinstance(document, dict) or document.get("candidate_id") != candidate_id:
         raise DeploymentConfigUnavailable("candidate document is invalid")
     return document
 
 
-def _read_active_mapping(mapping_path: Path) -> tuple[dict[str, Any], str]:
+def activate_candidate(
+    candidate_id: str,
+    *,
+    mapping_path: Path = DEFAULT_MAPPING_PATH,
+    lines_path: Path = DEFAULT_LINES_PATH,
+    store_path: Path | None = None,
+    client_factory: Callable[[], Any] | None = None,
+) -> dict[str, object]:
+    candidate = load_candidate(candidate_id, store_path=store_path)
+    current_root, current_hash, current_source, current_path, current_used_overlay = _read_active_mapping(
+        mapping_path,
+        store_path=store_path,
+    )
+    previous_active_mapping_hash = f"sha256:{current_hash}"
+    if candidate.get("active_mapping_hash") != previous_active_mapping_hash:
+        return {
+            "status": "STALE_CANDIDATE",
+            "candidate_id": candidate_id,
+            "previous_active_mapping_hash": previous_active_mapping_hash,
+            "writes_performed": False,
+            "message": "Saved Candidate was created against a different effective active mapping.",
+        }
+
+    candidate_payload = candidate.get("candidate")
+    if not isinstance(candidate_payload, dict):
+        raise DeploymentConfigUnavailable("saved candidate payload is invalid")
+    validation = validate_candidate(
+        candidate_payload,
+        mapping_path=mapping_path,
+        lines_path=lines_path,
+        store_path=store_path,
+    )
+    if validation.get("errors") or validation.get("ready_to_activate") is not True:
+        return {
+            "status": "CANDIDATE_NOT_READY",
+            "candidate_id": candidate_id,
+            "previous_active_mapping_hash": previous_active_mapping_hash,
+            "validation": validation,
+            "writes_performed": False,
+        }
+    if validation.get("active_mapping_hash") != previous_active_mapping_hash:
+        return {
+            "status": "STALE_CANDIDATE",
+            "candidate_id": candidate_id,
+            "previous_active_mapping_hash": previous_active_mapping_hash,
+            "writes_performed": False,
+            "message": "Effective active mapping changed while the Candidate was being checked.",
+        }
+    if candidate.get("candidate_hash") != validation.get("candidate_hash"):
+        return {
+            "status": "CANDIDATE_IDENTITY_MISMATCH",
+            "candidate_id": candidate_id,
+            "previous_active_mapping_hash": previous_active_mapping_hash,
+            "writes_performed": False,
+            "message": "Saved Candidate content does not match its recorded identity.",
+        }
+    selected_line = validation.get("line")
+    if (
+        not isinstance(selected_line, dict)
+        or selected_line.get("active") is not True
+        or selected_line.get("station_count") != 3
+        or selected_line.get("plc_count") != 1
+    ):
+        return {
+            "status": "UNSUPPORTED_TOPOLOGY",
+            "candidate_id": candidate_id,
+            "previous_active_mapping_hash": previous_active_mapping_hash,
+            "writes_performed": False,
+            "message": "Only the current supported 3WS single-PLC topology can be activated.",
+        }
+
+    fresh_connection_test = test_connection(
+        candidate_payload,
+        mapping_path=mapping_path,
+        lines_path=lines_path,
+        store_path=store_path,
+        client_factory=client_factory,
+    )
+    if (
+        fresh_connection_test.get("status") != "CONNECTED_AND_READABLE"
+        or fresh_connection_test.get("read_only") is not True
+        or fresh_connection_test.get("writes_performed") is not False
+    ):
+        return {
+            "status": "FRESH_TEST_FAILED",
+            "candidate_id": candidate_id,
+            "previous_active_mapping_hash": previous_active_mapping_hash,
+            "fresh_connection_test": fresh_connection_test,
+            "writes_performed": False,
+        }
+
+    latest_root, latest_hash, latest_source, latest_path, latest_used_overlay = _read_active_mapping(
+        mapping_path,
+        store_path=store_path,
+    )
+    if latest_hash != current_hash:
+        return {
+            "status": "STALE_CANDIDATE",
+            "candidate_id": candidate_id,
+            "previous_active_mapping_hash": f"sha256:{latest_hash}",
+            "fresh_connection_test": fresh_connection_test,
+            "writes_performed": False,
+            "message": "Effective active mapping changed before activation write.",
+        }
+
+    active_document, changed_fields = _overlay_connectivity_fields(
+        latest_root,
+        _candidate_from_validated(validation),
+    )
+    if _without_connectivity_fields(active_document) != _without_connectivity_fields(latest_root):
+        raise DeploymentConfigUnavailable("activation would change non-connectivity mapping fields")
+    active_bytes = _dump_yaml(active_document)
+    activation_id = uuid.uuid4().hex
+    root = _store_root(store_path)
+    active_path = root / "active" / "mapping.yaml"
+    backup_path = root / "backups" / f"{activation_id}.yaml"
+    activation_record_path = root / "activations" / f"{activation_id}.json"
+    active_record_path = root / "active" / "activation.json"
+    previous_bytes = latest_path.read_bytes()
+    active_mapping_hash = f"sha256:{hashlib.sha256(active_bytes).hexdigest()}"
+    record: dict[str, object] = {
+        "activation_id": activation_id,
+        "candidate_id": candidate_id,
+        "candidate_hash": candidate["candidate_hash"],
+        "created_at": datetime.now(timezone.utc).isoformat(),
+        "status": "ACTIVATED_RESTART_REQUIRED",
+        "previous_active_mapping_hash": previous_active_mapping_hash,
+        "previous_active_mapping_source": current_source,
+        "previous_active_mapping_path": str(current_path),
+        "previous_used_overlay": current_used_overlay,
+        "active_mapping_hash": active_mapping_hash,
+        "active_mapping_source": "active/mapping.yaml",
+        "active_mapping_path": str(active_path),
+        "changed_fields": changed_fields,
+        "backup_path": str(backup_path),
+        "activation_record_path": str(activation_record_path),
+        "fresh_connection_test": fresh_connection_test,
+        "writes_performed": False,
+        "rollback_available": True,
+    }
     try:
-        return read_mapping_document(mapping_path)
-    except ScopeCatalogUnavailable as exc:
+        _atomic_write_bytes(backup_path, previous_bytes)
+        _atomic_write_bytes(active_path, active_bytes)
+        readback = read_effective_mapping(
+            mapping_path,
+            deployment_config_dir=root,
+        )
+        if (
+            not readback.used_overlay
+            or readback.content_sha256 != active_mapping_hash.removeprefix("sha256:")
+            or _without_connectivity_fields(readback.root) != _without_connectivity_fields(latest_root)
+        ):
+            raise DeploymentConfigUnavailable("active mapping readback identity verification failed")
+        _atomic_write_json(activation_record_path, record)
+        _atomic_write_json(active_record_path, record)
+    except Exception as exc:
+        try:
+            _restore_previous_mapping(
+                mapping_path=mapping_path,
+                store_root=root,
+                previous_bytes=previous_bytes,
+                previous_used_overlay=latest_used_overlay,
+            )
+        except Exception as restore_exc:
+            raise DeploymentConfigUnavailable(
+                f"activation failed and previous mapping restore failed: {restore_exc}"
+            ) from exc
+        raise DeploymentConfigUnavailable("activation failed before a durable activation record") from exc
+
+    return record
+
+
+def rollback_activation(
+    activation_id: str,
+    *,
+    mapping_path: Path = DEFAULT_MAPPING_PATH,
+    store_path: Path | None = None,
+) -> dict[str, object]:
+    if not _ACTIVATION_ID.fullmatch(activation_id):
+        raise DeploymentConfigUnavailable("activation id is invalid")
+    root = _store_root(store_path)
+    record_path = root / "activations" / f"{activation_id}.json"
+    record = _read_json(record_path)
+    if not isinstance(record, dict) or record.get("activation_id") != activation_id:
+        raise DeploymentConfigUnavailable("activation record is invalid")
+    if record.get("status") != "ACTIVATED_RESTART_REQUIRED":
+        raise DeploymentConfigUnavailable("activation is not rollbackable")
+
+    current_root, current_hash, _source, _path, _used_overlay = _read_active_mapping(
+        mapping_path,
+        store_path=store_path,
+    )
+    if f"sha256:{current_hash}" != record.get("active_mapping_hash"):
+        return {
+            "status": "ROLLBACK_BLOCKED_ACTIVE_MAPPING_CHANGED",
+            "activation_id": activation_id,
+            "writes_performed": False,
+        }
+    backup_path = root / "backups" / f"{activation_id}.yaml"
+    backup_bytes = _read_regular_bytes(backup_path, "activation backup")
+    previous_hash = hashlib.sha256(backup_bytes).hexdigest()
+    if f"sha256:{previous_hash}" != record.get("previous_active_mapping_hash"):
+        raise DeploymentConfigUnavailable("activation backup identity does not match record")
+
+    try:
+        _restore_previous_mapping(
+            mapping_path=mapping_path,
+            store_root=root,
+            previous_bytes=backup_bytes,
+            previous_used_overlay=record.get("previous_used_overlay") is True,
+        )
+        restored_root, restored_hash, _restored_source, _restored_path, _restored_overlay = _read_active_mapping(
+            mapping_path,
+            store_path=store_path,
+        )
+        if restored_hash != previous_hash or not isinstance(restored_root, dict):
+            raise DeploymentConfigUnavailable("rollback readback identity verification failed")
+        rolled_back_at = datetime.now(timezone.utc).isoformat()
+        record = {
+            **record,
+            "status": "ROLLED_BACK",
+            "rolled_back_at": rolled_back_at,
+            "rollback_available": False,
+            "active_mapping_hash": f"sha256:{restored_hash}",
+            "writes_performed": False,
+        }
+        _atomic_write_json(record_path, record)
+        _remove_exact_file(root / "active" / "activation.json")
+    except Exception as exc:
+        raise DeploymentConfigUnavailable("rollback failed") from exc
+    return record
+
+
+def _overlay_connectivity_fields(
+    mapping: dict[str, Any],
+    candidate: PlcDeploymentCandidate,
+) -> tuple[dict[str, Any], list[str]]:
+    document = deepcopy(mapping)
+    plcs = document.get("plcs")
+    if not isinstance(plcs, list) or len(plcs) != 1 or not isinstance(plcs[0], dict):
+        raise DeploymentConfigUnavailable("active mapping PLC selection is ambiguous")
+    plc = plcs[0]
+    values = {
+        "host": candidate.host,
+        "port": candidate.port,
+        "rack": candidate.rack,
+        "slot": candidate.slot,
+        "connection_timeout_ms": candidate.connection_timeout_ms,
+        "poll_interval_ms": candidate.poll_interval_ms,
+    }
+    changed_fields = [field for field in CONNECTIVITY_FIELDS if plc.get(field) != values[field]]
+    plc.update(values)
+    return document, changed_fields
+
+
+def _without_connectivity_fields(mapping: dict[str, Any]) -> dict[str, Any]:
+    document = deepcopy(mapping)
+    plcs = document.get("plcs")
+    if isinstance(plcs, list):
+        for plc in plcs:
+            if isinstance(plc, dict):
+                for field in CONNECTIVITY_FIELDS:
+                    plc.pop(field, None)
+    return document
+
+
+def _dump_yaml(document: dict[str, Any]) -> bytes:
+    return yaml.safe_dump(document, sort_keys=False).encode("utf-8")
+
+
+def _read_active_mapping(
+    mapping_path: Path,
+    *,
+    store_path: Path | None = None,
+) -> tuple[dict[str, Any], str, str, Path, bool]:
+    try:
+        document = read_effective_mapping(
+            mapping_path,
+            deployment_config_dir=_store_root(store_path),
+        )
+        return (
+            document.root,
+            document.content_sha256,
+            document.source,
+            document.path,
+            document.used_overlay,
+        )
+    except EffectiveMappingUnavailable as exc:
         raise DeploymentConfigUnavailable("active mapping is not available") from exc
+
+
+def _store_root(store_path: Path | None) -> Path:
+    root = Path(store_path) if store_path is not None else Path(
+        os.environ.get("DEPLOYMENT_CONFIG_DIR", DEFAULT_STORE_PATH)
+    )
+    try:
+        root_stat = root.lstat()
+    except FileNotFoundError:
+        return root
+    except OSError as exc:
+        raise DeploymentConfigUnavailable("deployment-config store cannot be inspected") from exc
+    if stat.S_ISLNK(root_stat.st_mode) or not stat.S_ISDIR(root_stat.st_mode):
+        raise DeploymentConfigUnavailable("deployment-config store must be a directory")
+    return root
+
+
+def _candidate_path(root: Path, candidate_id: str) -> Path:
+    return root / "candidates" / f"{candidate_id}.json"
+
+
+def _write_new_json(destination: Path, document: dict[str, object]) -> None:
+    try:
+        destination.lstat()
+    except FileNotFoundError:
+        pass
+    else:
+        raise DeploymentConfigUnavailable("destination already exists")
+    _atomic_write_json(destination, document)
+
+
+def _read_json(path: Path) -> object:
+    raw_bytes = _read_regular_bytes(path, "deployment-config artifact")
+    try:
+        return json.loads(raw_bytes.decode("utf-8"))
+    except (UnicodeDecodeError, ValueError) as exc:
+        raise DeploymentConfigUnavailable("deployment-config JSON is invalid") from exc
+
+
+def _read_regular_bytes(path: Path, label: str) -> bytes:
+    try:
+        path_stat = path.lstat()
+    except OSError as exc:
+        raise DeploymentConfigUnavailable(f"{label} is not available") from exc
+    if stat.S_ISLNK(path_stat.st_mode) or not stat.S_ISREG(path_stat.st_mode):
+        raise DeploymentConfigUnavailable(f"{label} must be a regular file")
+    try:
+        return path.read_bytes()
+    except OSError as exc:
+        raise DeploymentConfigUnavailable(f"{label} cannot be read") from exc
+
+
+def _atomic_write_json(destination: Path, document: dict[str, object]) -> None:
+    raw = json.dumps(document, ensure_ascii=False, sort_keys=True, indent=2).encode("utf-8") + b"\n"
+    _atomic_write_bytes(destination, raw)
+
+
+def _atomic_write_bytes(destination: Path, raw_bytes: bytes) -> None:
+    _ensure_directory(destination.parent)
+    try:
+        destination_stat = destination.lstat()
+    except FileNotFoundError:
+        destination_stat = None
+    except OSError as exc:
+        raise DeploymentConfigUnavailable("activation destination cannot be inspected") from exc
+    if destination_stat is not None and stat.S_ISLNK(destination_stat.st_mode):
+        raise DeploymentConfigUnavailable("activation destination must not be a symlink")
+    temporary_path: Path | None = None
+    try:
+        descriptor, temporary_name = tempfile.mkstemp(
+            prefix=f".{destination.name}.",
+            dir=str(destination.parent),
+        )
+        temporary_path = Path(temporary_name)
+        with os.fdopen(descriptor, "wb") as handle:
+            handle.write(raw_bytes)
+            handle.flush()
+            os.fsync(handle.fileno())
+        os.replace(temporary_path, destination)
+        temporary_path = None
+        try:
+            directory_descriptor = os.open(destination.parent, os.O_RDONLY)
+            try:
+                os.fsync(directory_descriptor)
+            finally:
+                os.close(directory_descriptor)
+        except OSError:
+            pass
+    except OSError as exc:
+        raise DeploymentConfigUnavailable("durable activation write failed") from exc
+    finally:
+        if temporary_path is not None:
+            try:
+                temporary_path.unlink()
+            except FileNotFoundError:
+                pass
+
+
+def _ensure_directory(path: Path) -> None:
+    try:
+        path.mkdir(parents=True, exist_ok=True)
+        path_stat = path.lstat()
+    except OSError as exc:
+        raise DeploymentConfigUnavailable("deployment-config directory cannot be created") from exc
+    if stat.S_ISLNK(path_stat.st_mode) or not stat.S_ISDIR(path_stat.st_mode):
+        raise DeploymentConfigUnavailable("deployment-config directory must be a real directory")
+
+
+def _remove_exact_file(path: Path) -> None:
+    try:
+        path_stat = path.lstat()
+    except FileNotFoundError:
+        return
+    except OSError as exc:
+        raise DeploymentConfigUnavailable("activation artifact cannot be inspected") from exc
+    if stat.S_ISLNK(path_stat.st_mode) or not stat.S_ISREG(path_stat.st_mode):
+        raise DeploymentConfigUnavailable("activation artifact must be a regular file")
+    try:
+        path.unlink()
+    except OSError as exc:
+        raise DeploymentConfigUnavailable("activation artifact cannot be removed") from exc
+
+
+def _restore_previous_mapping(
+    *,
+    mapping_path: Path,
+    store_root: Path,
+    previous_bytes: bytes,
+    previous_used_overlay: bool,
+) -> None:
+    del mapping_path
+    active_path = store_root / "active" / "mapping.yaml"
+    if previous_used_overlay:
+        _atomic_write_bytes(active_path, previous_bytes)
+    else:
+        _remove_exact_file(active_path)
+
+
+def _load_active_activation(
+    *,
+    store_path: Path | None,
+    active_mapping_hash: str,
+) -> dict[str, object] | None:
+    path = _store_root(store_path) / "active" / "activation.json"
+    try:
+        path.lstat()
+    except FileNotFoundError:
+        return None
+    document = _read_json(path)
+    if not isinstance(document, dict):
+        raise DeploymentConfigUnavailable("active activation metadata is invalid")
+    if document.get("status") != "ACTIVATED_RESTART_REQUIRED":
+        return None
+    if document.get("active_mapping_hash") != active_mapping_hash:
+        raise DeploymentConfigUnavailable("active activation metadata does not match mapping identity")
+    return document
 
 
 def _line_option(config: LineConfig, file_name: str, active_line_id: object) -> dict[str, object]:
