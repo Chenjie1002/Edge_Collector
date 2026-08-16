@@ -51,7 +51,10 @@ function parseCatalog(value: unknown): TrustedScopeCatalog {
 
   if (!isPlainObject(value.authority)) throw new Error("invalid scope catalog authority");
   exactKeys(value.authority, ["kind", "source", "config_version", "content_sha256"], "scope catalog authority");
-  if (value.authority.kind !== "active_runtime_mapping" || value.authority.source !== "config/mapping.yaml") {
+  if (
+    value.authority.kind !== "active_runtime_mapping" ||
+    !["config/mapping.yaml", "active/mapping.yaml"].includes(String(value.authority.source))
+  ) {
     throw new Error("invalid scope catalog authority source");
   }
   const configVersion = nonBlankString(value.authority.config_version, "scope catalog config_version");

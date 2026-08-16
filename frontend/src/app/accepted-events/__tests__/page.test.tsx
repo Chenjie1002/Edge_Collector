@@ -6,6 +6,7 @@ import AcceptedEventsPage, { AcceptedEventsPageView } from "../page";
 import { fetchAcceptedStationEvents } from "../../../lib/acceptedStationEvents/apiClient";
 import { resolveTrustedAcceptedEventsApiOrigin } from "../../../lib/acceptedStationEvents/apiOrigin";
 import type { AcceptedStationEventsEnvelope } from "../../../lib/acceptedStationEvents/schema";
+import { fetchTrustedScopeCatalog, type TrustedScopeCatalog } from "../../../lib/stationSummary/scopeCatalog";
 import { toAcceptedEventsViewModel } from "../../../lib/acceptedStationEvents/viewModel";
 
 vi.mock("../../../lib/acceptedStationEvents/apiClient", () => ({
@@ -21,11 +22,16 @@ vi.mock("../../../lib/acceptedStationEvents/apiOrigin", async (importOriginal) =
   return { ...actual, resolveTrustedAcceptedEventsApiOrigin: vi.fn(() => success) };
 });
 
+vi.mock("../../../lib/stationSummary/scopeCatalog", () => ({
+  fetchTrustedScopeCatalog: vi.fn()
+}));
+
 afterEach(() => {
   vi.restoreAllMocks();
   cleanup();
   vi.mocked(fetchAcceptedStationEvents).mockReset();
   vi.mocked(resolveTrustedAcceptedEventsApiOrigin).mockReset();
+  vi.mocked(fetchTrustedScopeCatalog).mockReset();
 });
 
 const readyQuery = {
@@ -33,6 +39,19 @@ const readyQuery = {
   startTime: "2026-07-05T00:00:00Z",
   endTime: "2026-07-05T08:00:00Z",
   limit: 50
+};
+
+const trustedScopeCatalog: TrustedScopeCatalog = {
+  contractVersion: "production-scope-options/v1",
+  timezone: "Asia/Shanghai",
+  utcOffset: "+08:00",
+  lines: [
+    {
+      lineId: "LINE_001",
+      name: "Phase-1 Demo Assembly Line",
+      stations: [{ stationId: "WS01", name: "WS01", stationOrder: 1 }]
+    }
+  ]
 };
 
 const staleProductionValues = [
@@ -326,6 +345,26 @@ describe("accepted events page", () => {
     expect(screen.getByText("error")).toBeTruthy();
     expect(screen.getByText("distinct client error message")).toBeTruthy();
     expectPriorProductionTruthToBeRemoved();
+  });
+
+  it("uses the trusted current scope for a direct Dashboard entry", async () => {
+    vi.mocked(resolveTrustedAcceptedEventsApiOrigin).mockReturnValue(await trustedResolution());
+    vi.mocked(fetchTrustedScopeCatalog).mockResolvedValue({ ok: true, catalog: trustedScopeCatalog });
+    vi.mocked(fetchAcceptedStationEvents).mockResolvedValue({
+      ok: true,
+      envelope: readyEnvelope("dashboard-entry-profile")
+    });
+
+    render(await AcceptedEventsPage({ searchParams: {} }));
+
+    expect(screen.getByRole("table")).toBeTruthy();
+    expect(screen.queryByText("invalid-query")).toBeNull();
+    expect(fetchTrustedScopeCatalog).toHaveBeenCalledTimes(1);
+    const acceptedFetchMock = vi.mocked(fetchAcceptedStationEvents);
+    expect(acceptedFetchMock).toHaveBeenCalledTimes(1);
+    expect(acceptedFetchMock.mock.calls[0]?.[0]).toMatchObject({ lineId: "LINE_001", limit: 50 });
+    expect(acceptedFetchMock.mock.calls[0]?.[0]?.startTime).toMatch(/T\d{2}:\d{2}:00\+08:00$/);
+    expect(acceptedFetchMock.mock.calls[0]?.[0]?.endTime).toMatch(/T\d{2}:\d{2}:00\+08:00$/);
   });
 
   it("renders source unavailable as a non-ready page without production surfaces", async () => {

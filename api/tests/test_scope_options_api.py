@@ -297,6 +297,19 @@ def test_service_requires_exact_authoritative_source(tmp_path: Path) -> None:
     assert_unavailable(path)
 
 
+def test_service_accepts_line_config_authoritative_source_for_active_projection(
+    tmp_path: Path,
+) -> None:
+    mapping = valid_mapping()
+    mapping["authoritative_source"] = "config/lines/demo_3_station.yaml"
+    path = tmp_path / "mapping.yaml"
+    write_mapping(path, mapping)
+
+    result = load_catalog(path)
+
+    assert result["authority"]["source"] == "config/lines/demo_3_station.yaml"
+
+
 @pytest.mark.parametrize(
     ("field", "value"),
     [

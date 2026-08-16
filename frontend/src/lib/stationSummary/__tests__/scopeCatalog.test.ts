@@ -64,6 +64,17 @@ describe("fetchTrustedScopeCatalog", () => {
     });
   });
 
+  it("accepts the active mapping authority source returned by the live overlay", async () => {
+    const activeCatalog = {
+      ...structuredClone(catalogDto),
+      authority: { ...catalogDto.authority, source: "active/mapping.yaml" },
+    };
+
+    const result = await fetchTrustedScopeCatalog("https://api.example.test", async () => new Response(JSON.stringify(activeCatalog), { status: 200 }));
+
+    expect(result.ok).toBe(true);
+  });
+
   it("rejects extra authority fields without exposing the response", async () => {
     const malformed = structuredClone(catalogDto) as Record<string, unknown>;
     malformed.authority = { ...catalogDto.authority, unexpected: "no" };

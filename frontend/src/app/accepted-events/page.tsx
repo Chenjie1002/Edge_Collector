@@ -8,6 +8,8 @@ import { fetchAcceptedStationEvents } from "../../lib/acceptedStationEvents/apiC
 import { resolveTrustedAcceptedEventsApiOrigin } from "../../lib/acceptedStationEvents/apiOrigin";
 import { validateAcceptedStationEventsQuery, type AcceptedStationEventsQuery } from "../../lib/acceptedStationEvents/query";
 import { toAcceptedEventsViewModel, type AcceptedEventsViewModel } from "../../lib/acceptedStationEvents/viewModel";
+import { fetchTrustedScopeCatalog } from "../../lib/stationSummary/scopeCatalog";
+import { localMinuteToOffsetIso, quickRangeAt } from "../../lib/stationSummary/timeWindow";
 
 type SearchParams = Record<string, string | string[] | undefined>;
 
@@ -76,13 +78,43 @@ export default async function AcceptedEventsPage({
   searchParams?: SearchParams | Promise<SearchParams>;
 }) {
   const resolvedSearchParams = searchParams ? await searchParams : {};
-  const query = queryFromSearchParams(resolvedSearchParams);
+  const hasExplicitQuery = Object.keys(resolvedSearchParams).length > 0;
+  let query: AcceptedStationEventsQuery;
+  let resolution: ReturnType<typeof resolveTrustedAcceptedEventsApiOrigin> | undefined;
+
+  if (!hasExplicitQuery) {
+    resolution = resolveTrustedAcceptedEventsApiOrigin();
+    if (!resolution.ok) {
+      return <AcceptedEventsPageView state={{ kind: "error", message: "The trusted API is not configured. No fallback or fabricated production values are shown." }} />;
+    }
+
+    const catalogResult = await fetchTrustedScopeCatalog(resolution.origin);
+    if (!catalogResult.ok) {
+      return <AcceptedEventsPageView state={{ kind: "unavailable", message: "The trusted scope catalog could not be loaded. No URL-provided options or production values are shown." }} />;
+    }
+
+    const activeLine = catalogResult.catalog.lines[0];
+    if (!activeLine) {
+      return <AcceptedEventsPageView state={{ kind: "unavailable", message: "The trusted scope catalog did not provide an active line." }} />;
+    }
+
+    const window = quickRangeAt(new Date(), 8);
+    query = {
+      lineId: activeLine.lineId,
+      startTime: localMinuteToOffsetIso(window.startLocal, catalogResult.catalog.utcOffset),
+      endTime: localMinuteToOffsetIso(window.endLocal, catalogResult.catalog.utcOffset),
+      limit: DEFAULT_LIMIT
+    };
+  } else {
+    query = queryFromSearchParams(resolvedSearchParams);
+  }
+
   const validation = validateAcceptedStationEventsQuery(query);
   if (!validation.ok) {
     return <AcceptedEventsPageView state={{ kind: "invalid-query", message: validation.reason }} />;
   }
 
-  const resolution = resolveTrustedAcceptedEventsApiOrigin();
+  resolution ??= resolveTrustedAcceptedEventsApiOrigin();
   if (!resolution.ok) {
     return <AcceptedEventsPageView state={{ kind: "error", message: resolution.message }} />;
   }

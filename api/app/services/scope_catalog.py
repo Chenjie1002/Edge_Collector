@@ -44,6 +44,15 @@ def _required_positive_int(value: object, field_name: str) -> int:
     return value
 
 
+def _supported_authoritative_source(value: str) -> bool:
+    if value == "config/mapping.yaml":
+        return True
+    if not value.startswith("config/lines/"):
+        return False
+    filename = value.removeprefix("config/lines/")
+    return bool(filename) and "/" not in filename and filename.endswith(".yaml")
+
+
 def read_mapping_document(
     mapping_path: Path = DEFAULT_MAPPING_PATH,
 ) -> tuple[dict[str, Any], str]:
@@ -79,7 +88,7 @@ def load_scope_catalog(mapping_path: Path = DEFAULT_MAPPING_PATH) -> dict[str, o
             root.get("authoritative_source"),
             "authoritative_source",
         )
-        if authoritative_source != "config/mapping.yaml":
+        if not _supported_authoritative_source(authoritative_source):
             _unavailable("authoritative_source is unsupported")
 
         config_version = _required_text(
