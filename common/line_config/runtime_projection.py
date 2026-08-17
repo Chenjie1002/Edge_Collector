@@ -167,6 +167,33 @@ def compile_runtime_mapping(
     }
     if debug_contract is not None:
         contract = debug_contract_from_candidate(debug_contract)
+        selected_ids = _debug_scope_station_ids(contract, route_ids)
+        station_by_id = {station.station_id: station for station in ordered_stations}
+        selected_stations = [station_by_id.get(station_id) for station_id in selected_ids]
+        if any(station is None for station in selected_stations):
+            raise RuntimeProjectionError(
+                "debug contract scope references a station outside the selected line"
+            )
+        selected_config_stations = [station for station in selected_stations if station is not None]
+        document["base_topology"] = {
+            "line_id": config.line_id,
+            "entry_station_id": config.route_graph.entry_station_id,
+            "terminal_station_id": config.route_graph.terminal_station_id,
+            "station_ids": copy.deepcopy(route_ids),
+            "edges": copy.deepcopy(edges),
+        }
+        document["decoder_registry"] = {
+            "snapshot_id": registry.snapshot_id,
+            "content_hash": _decoder_registry_content_hash(registry, selected_config_stations),
+        }
+        document["runtime_defaults"] = {
+            **document["runtime_defaults"],
+            "source_namespace": (
+                f"vplc-db{min(db_by_station[station_id] for station_id in selected_ids)}-"
+                f"db{max(db_by_station[station_id] for station_id in selected_ids)}"
+            ),
+        }
+        document["code_tables"] = _code_tables(config, registry, selected_ids)
         _apply_debug_contract(document, contract)
         document["debug_contract"] = copy.deepcopy(contract)
         document["debug_contract_hash"] = f"sha256:{debug_contract_content_hash(contract)}"
@@ -183,7 +210,7 @@ def _apply_debug_contract(
     raw_stations = contract.get("stations")
     if not isinstance(raw_stations, list):
         raise RuntimeProjectionError("debug contract stations must be a list")
-    by_station = {
+    contract_by_station = {
         str(item.get("station_id")): item
         for item in raw_stations
         if isinstance(item, Mapping)
@@ -191,15 +218,27 @@ def _apply_debug_contract(
     raw_documents = document.get("stations")
     if not isinstance(raw_documents, list):
         raise RuntimeProjectionError("runtime projection has no station documents")
-    for station in raw_documents:
-        if not isinstance(station, dict):
-            raise RuntimeProjectionError("runtime projection station document is invalid")
-        station_id = str(station.get("station_id", ""))
-        selected = by_station.get(station_id)
-        if selected is None:
+    base_station_ids = [
+        str(station.get("station_id", ""))
+        for station in raw_documents
+        if isinstance(station, Mapping)
+    ]
+    runtime_by_station = {
+        str(item.get("station_id")): item
+        for item in raw_documents
+        if isinstance(item, Mapping)
+    }
+    selected_ids = _debug_scope_station_ids(contract, base_station_ids)
+    selected_documents: list[dict[str, object]] = []
+    for ordinal, station_id in enumerate(selected_ids, start=1):
+        source_station = runtime_by_station.get(station_id)
+        if not isinstance(source_station, Mapping):
             raise RuntimeProjectionError(
                 f"debug contract does not define runtime station {station_id}"
             )
+        station = copy.deepcopy(dict(source_station))
+        selected = contract_by_station.get(station_id)
+        assert selected is not None
         db_number = selected.get("db_number")
         read_start = selected.get("read_start")
         read_length = selected.get("read_length")
@@ -256,6 +295,8 @@ def _apply_debug_contract(
                 f"debug contract has no read_done field for runtime station {station_id}"
             )
         station["db_number"] = db_number
+        station["station_order"] = ordinal
+        station["upstream_station_id"] = selected_ids[ordinal - 2] if ordinal > 1 else None
         station["source_namespace"] = f"vplc-db{db_number}"
         station["debug_read_start"] = read_start
         station["debug_read_length"] = read_length
@@ -267,7 +308,46 @@ def _apply_debug_contract(
         # executable without changing Collector source.
         station["payload"] = all_fields
         station["db_read_layout"] = sorted(all_fields)
+        selected_documents.append(station)
+    if not selected_documents:
+        raise RuntimeProjectionError("debug contract scope must select at least one runtime station")
+    edges = [
+        {
+            "from_station_id": from_station,
+            "to_station_id": to_station,
+        }
+        for from_station, to_station in zip(selected_ids, selected_ids[1:])
+    ]
+    document["stations"] = selected_documents
+    document["entry_station_id"] = selected_ids[0]
+    document["terminal_station_id"] = selected_ids[-1]
+    document["topology"] = {
+        "entry_station_id": selected_ids[0],
+        "terminal_station_id": selected_ids[-1],
+        "station_ids": copy.deepcopy(selected_ids),
+        "edges": copy.deepcopy(edges),
+    }
+    document["route_graph"] = edges
+    document["debug_scope"] = {"station_ids": copy.deepcopy(selected_ids)}
     document["station_template"] = {"header": {}}
+
+
+def _debug_scope_station_ids(
+    contract: Mapping[str, object],
+    fallback_station_ids: list[str],
+) -> list[str]:
+    raw_scope = contract.get("debug_scope")
+    if isinstance(raw_scope, Mapping):
+        raw_scope = raw_scope.get("station_ids")
+    if not isinstance(raw_scope, list) or not raw_scope:
+        return list(fallback_station_ids)
+    selected_ids = [str(item) for item in raw_scope]
+    if len(set(selected_ids)) != len(selected_ids):
+        raise RuntimeProjectionError("debug contract scope contains duplicate stations")
+    fallback_order = {station_id: index for index, station_id in enumerate(fallback_station_ids)}
+    if any(station_id not in fallback_order for station_id in selected_ids):
+        raise RuntimeProjectionError("debug contract scope references an unknown station")
+    return sorted(selected_ids, key=lambda station_id: fallback_order[station_id])
 
 
 def _validate_runtime_scope(config: LineConfig):

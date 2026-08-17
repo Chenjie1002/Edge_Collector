@@ -21,6 +21,7 @@ from app.services.resolved_config_registry import (
 )
 from common.line_config import (
     compile_runtime_mapping,
+    debug_contract_from_candidate,
     debug_contract_from_mapping,
     load_line_config,
 )
@@ -127,13 +128,20 @@ class TrackingSnap7Client:
         self.client.disconnect()
 
 
-def _projected_mapping():
+def _projected_mapping(*, scope_station_ids: tuple[str, ...] | None = ("WS03",)):
     active_root = yaml.safe_load(
         (PROJECT_ROOT / "data/deployment-config/active/mapping.yaml").read_text(
             encoding="utf-8"
         )
     )
     contract = debug_contract_from_mapping(active_root)
+    if scope_station_ids is not None:
+        contract = debug_contract_from_candidate(
+            {
+                **contract,
+                "debug_scope": {"station_ids": list(scope_station_ids)},
+            }
+        )
     line_config = load_line_config(PROJECT_ROOT / "config/lines/demo_3_station.yaml")
     projection = compile_runtime_mapping(
         line_config,
@@ -150,7 +158,7 @@ def _projected_mapping():
     )
     mapping = parse_edge_mapping(projection.document)
     plans = {plan.scope: plan for plan in build_read_plans(mapping)}
-    return mapping, plans, contract
+    return mapping, plans, contract, projection.document["base_topology"], projection.document["debug_scope"]
 
 
 def _build_worker(mapping, plans, storage, client):
@@ -181,25 +189,30 @@ def _build_worker(mapping, plans, storage, client):
 
 
 class FieldDebugCandidateReadDoneTest(unittest.TestCase):
-    def _run_fixture(self, *, fail_persist: bool = False):
-        mapping, plans, contract = _projected_mapping()
+    def _run_fixture(
+        self,
+        *,
+        fail_persist: bool = False,
+        scope_station_ids: tuple[str, ...] | None = ("WS03",),
+    ):
+        mapping, plans, contract, base_topology, debug_scope = _projected_mapping(scope_station_ids=scope_station_ids)
         runtime_db = bytearray(64)
         util.set_int(runtime_db, 0, 1)
         util.set_dint(runtime_db, 4, 11)
         util.set_dint(runtime_db, 8, 2)
         set_s7_string(runtime_db, 12, BOOT_ID, 36)
 
-        station_dbs = {number: bytearray(512) for number in (101, 102, 103)}
-        ws01 = station_dbs[101]
-        util.set_int(ws01, 0, 1)
-        util.set_dint(ws01, 2, 1)
-        util.set_bool(ws01, 6, 0, True)
-        util.set_bool(ws01, 6, 3, True)
-        util.set_dint(ws01, 8, 1782448800)
-        util.set_dint(ws01, 12, 1782448830)
-        util.set_int(ws01, 16, 1)
-        set_s7_string(ws01, 40, "SUB-000001", 40)
-        set_s7_string(ws01, 200, "U-20260618-000001", 48)
+        station_dbs = {103: bytearray(512)}
+        ws03 = station_dbs[103]
+        util.set_int(ws03, 0, 1)
+        util.set_dint(ws03, 2, 1)
+        util.set_bool(ws03, 6, 0, True)
+        util.set_bool(ws03, 6, 3, True)
+        util.set_dint(ws03, 8, 1782448800)
+        util.set_dint(ws03, 12, 1782448830)
+        util.set_int(ws03, 16, 1)
+        set_s7_string(ws03, 40, "SUB-000001", 40)
+        set_s7_string(ws03, 200, "U-20260618-000001", 48)
 
         port = free_port()
         server = snap7.server.Server()
@@ -219,35 +232,42 @@ class FieldDebugCandidateReadDoneTest(unittest.TestCase):
             worker._disconnect()
             server.stop()
             server.destroy()
-        return mapping, plans, contract, storage, client
+        return mapping, plans, contract, base_topology, debug_scope, storage, client
 
     def test_candidate_projection_is_consumed_and_read_done_follows_commit(self) -> None:
-        mapping, plans, contract, storage, client = self._run_fixture()
+        mapping, plans, contract, base_topology, debug_scope, storage, client = self._run_fixture()
 
-        read_done = next(
-            field
-            for field in mapping.stations[0].fields
-            if field.name == "read_done"
-        )
+        read_done = next(field for field in mapping.stations[0].fields if field.name == "read_done")
         allowlist = next(
             entry
             for entry in contract["write_allowlist"]["edge_to_plc"]
-            if entry["station_id"] == "WS01"
+            if entry["station_id"] == "WS03"
         )
-        self.assertEqual("DB101.DBX6.1", read_done.address.raw)
+        self.assertEqual("DB103.DBX6.1", read_done.address.raw)
         self.assertEqual(read_done.address.raw, allowlist["address"])
-        self.assertEqual(("WS01", 0, 346), (plans["WS01"].scope, plans["WS01"].read_start, plans["WS01"].read_size))
+        self.assertEqual([entry["station_id"] for entry in contract["write_allowlist"]["edge_to_plc"]], ["WS03"])
+        self.assertEqual(base_topology["station_ids"], ["WS01", "WS02", "WS03"])
+        self.assertEqual(base_topology["entry_station_id"], "WS01")
+        self.assertEqual(base_topology["terminal_station_id"], "WS03")
+        self.assertEqual(debug_scope, {"station_ids": ["WS03"]})
+        self.assertEqual([station.station_id for station in mapping.stations], ["WS03"])
+        self.assertEqual(mapping.runtime_snapshot.entry_station_id, "WS03")
+        self.assertEqual(mapping.runtime_snapshot.terminal_station_id, "WS03")
+        self.assertEqual(mapping.runtime_snapshot.route_graph, ())
+        self.assertEqual(("WS03", 0, 346), (plans["WS03"].scope, plans["WS03"].read_start, plans["WS03"].read_size))
+        self.assertEqual([plan.scope for plan in plans.values()], ["line", "WS03"])
+        self.assertEqual([(db, start, size) for db, start, size in client.reads], [(104, 0, 53), (103, 0, 346)])
         self.assertEqual(1, len(storage.persisted))
         self.assertEqual(1, len(storage.accepted_facts))
         self.assertEqual(1, storage.ack_ok)
-        self.assertEqual([(101, 6, b"\x0b")], client.writes)
+        self.assertEqual([(103, 6, b"\x0b")], client.writes)
         self.assertEqual(
             ["begin", "accepted_fact", "persist_cycle", "commit", "ack_write", "ack_ok"],
             storage.events,
         )
 
     def test_storage_failure_never_emits_read_done_write(self) -> None:
-        _mapping, _plans, _contract, storage, client = self._run_fixture(fail_persist=True)
+        _mapping, _plans, _contract, _base_topology, _debug_scope, storage, client = self._run_fixture(fail_persist=True)
 
         self.assertEqual([], client.writes)
         self.assertEqual(0, storage.ack_ok)

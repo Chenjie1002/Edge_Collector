@@ -11,6 +11,7 @@ import {
   type ConnectionTestResult,
   type ConfirmationState,
   type DebugContract,
+  type DebugScope,
   type DebugSignal,
   type DebugStation,
   type DeploymentCandidate,
@@ -27,6 +28,7 @@ const emptyCandidate: DeploymentCandidate = {
   connection_timeout_ms: 3000,
   poll_interval_ms: 500,
   line_config: "demo_3_station.yaml",
+  debug_scope: { station_ids: [] },
   stations: [],
   write_allowlist: {
     mode: "READ_DONE_ONLY",
@@ -43,6 +45,7 @@ const confirmationStates: ConfirmationState[] = ["PLANNED", "CONFIRMED"];
 function emptyDebugContract(): DebugContract {
   return {
     schema_version: "plc-debug-contract/v1",
+    debug_scope: { station_ids: [] },
     stations: [],
     write_allowlist: {
       mode: "READ_DONE_ONLY",
@@ -58,6 +61,11 @@ function emptyDebugContract(): DebugContract {
 function cloneDebugContract(contract?: DebugContract): DebugContract {
   if (!contract) return emptyDebugContract();
   return JSON.parse(JSON.stringify(contract)) as DebugContract;
+}
+
+function scopeIds(contract?: DebugContract): string[] {
+  const scope: DebugScope | undefined = contract?.debug_scope;
+  return scope?.station_ids ?? contract?.stations.map((station) => station.station_id) ?? [];
 }
 
 type ConnectionField = "host" | "port" | "rack" | "slot" | "connection_timeout_ms" | "poll_interval_ms" | "line_config";
@@ -96,6 +104,7 @@ export function DeploymentPlcClient() {
       }
       setActive(result.active);
       setLineOptions(result.lineOptions);
+      const initialContract = cloneDebugContract(result.active.debug_contract);
       setCandidate({
         host: result.active.plc.host,
         port: result.active.plc.port,
@@ -104,8 +113,9 @@ export function DeploymentPlcClient() {
         connection_timeout_ms: result.active.plc.connection_timeout_ms,
         poll_interval_ms: result.active.plc.poll_interval_ms,
         line_config: result.lineOptions.find((option) => option.active)?.file_name ?? "demo_3_station.yaml",
-        stations: cloneDebugContract(result.active.debug_contract).stations,
-        write_allowlist: cloneDebugContract(result.active.debug_contract).write_allowlist
+        debug_scope: { station_ids: scopeIds(initialContract) },
+        stations: initialContract.stations,
+        write_allowlist: initialContract.write_allowlist
       });
     });
     return () => {
@@ -118,19 +128,91 @@ export function DeploymentPlcClient() {
     [candidate.line_config, lineOptions]
   );
   const activeContract = cloneDebugContract(active?.debug_contract);
+  const enabledStationIds = useMemo(() => {
+    if (selectedLine?.station_ids?.length) return selectedLine.station_ids;
+    if (selectedLine?.active || candidate.line_config === active?.line_id) return active?.active_station_ids ?? [];
+    return candidate.debug_scope.station_ids;
+  }, [active?.active_station_ids, active?.line_id, candidate.debug_scope.station_ids, candidate.line_config, selectedLine]);
+  const selectedScopeIds = candidate.debug_scope.station_ids;
+  const fullScopeSelected = enabledStationIds.length > 0
+    && selectedScopeIds.length === enabledStationIds.length
+    && enabledStationIds.every((stationId) => selectedScopeIds.includes(stationId));
 
   function updateField(field: ConnectionField, value: string) {
-    setCandidate((current) => ({
-      ...current,
-      [field]: ["port", "rack", "slot", "connection_timeout_ms", "poll_interval_ms"].includes(field)
-        ? Number(value)
-        : value
-    }));
+    setCandidate((current) => {
+      const next = {
+        ...current,
+        [field]: ["port", "rack", "slot", "connection_timeout_ms", "poll_interval_ms"].includes(field)
+          ? Number(value)
+          : value
+      };
+      if (field === "line_config") {
+        const nextLine = lineOptions.find((option) => option.file_name === value);
+        const nextIds = nextLine?.station_ids ?? [];
+        if (nextIds.length) {
+          next.debug_scope = { station_ids: nextIds };
+          next.stations = current.stations.filter((station) => nextIds.includes(station.station_id));
+          next.write_allowlist = {
+            ...current.write_allowlist,
+            edge_to_plc: current.write_allowlist.edge_to_plc.filter((entry) => nextIds.includes(entry.station_id))
+          };
+        }
+      }
+      return next;
+    });
+    clearCandidateResults();
+  }
+
+  function clearCandidateResults() {
     setValidation(null);
     setConnectionTest(null);
     setSaved(null);
     setActivation(null);
     setActivationError(null);
+  }
+
+  function updateScope(stationId: string, selected: boolean) {
+    setCandidate((current) => {
+      const currentIds = current.debug_scope.station_ids;
+      const nextIds = selected
+        ? [...currentIds, stationId]
+        : currentIds.filter((item) => item !== stationId);
+      const orderedIds = enabledStationIds.filter((item) => nextIds.includes(item));
+      const activeStation = activeContract.stations.find((station) => station.station_id === stationId);
+      const existingStation = current.stations.find((station) => station.station_id === stationId);
+      const nextStations = current.stations.filter((station) => orderedIds.includes(station.station_id));
+      if (selected && !existingStation && activeStation) {
+        nextStations.push(JSON.parse(JSON.stringify(activeStation)) as DebugStation);
+      }
+      nextStations.sort((left, right) => orderedIds.indexOf(left.station_id) - orderedIds.indexOf(right.station_id));
+      const nextAllowlist = {
+        ...current.write_allowlist,
+        edge_to_plc: current.write_allowlist.edge_to_plc.filter((entry) => orderedIds.includes(entry.station_id))
+      };
+      if (selected && activeStation && !nextAllowlist.edge_to_plc.some((entry) => entry.station_id === stationId)) {
+        const readDone = activeStation.signals.find((signal) => signal.field_name === "read_done");
+        if (readDone) {
+          nextAllowlist.edge_to_plc.push({
+            station_id: stationId,
+            field_name: "read_done",
+            address: readDone.address,
+            type: readDone.type,
+            direction: "EDGE_TO_PLC",
+            confirmation_state: readDone.confirmation_state
+          });
+        }
+      }
+      return {
+        ...current,
+        debug_scope: { station_ids: orderedIds },
+        stations: nextStations,
+        write_allowlist: {
+          ...nextAllowlist,
+          edge_to_plc: nextAllowlist.edge_to_plc.sort((left, right) => orderedIds.indexOf(left.station_id) - orderedIds.indexOf(right.station_id))
+        }
+      };
+    });
+    clearCandidateResults();
   }
 
   function updateStation(index: number, patch: Partial<DebugStation>) {
@@ -217,7 +299,10 @@ export function DeploymentPlcClient() {
             message: connectionTest.message,
             read_only: connectionTest.read_only,
             writes_performed: connectionTest.writes_performed,
-            operations: connectionTest.operations
+            operations: connectionTest.operations,
+            probed_station_ids: connectionTest.probed_station_ids,
+            probed_ranges: connectionTest.probed_ranges,
+            read_bytes: connectionTest.read_bytes
           }
         : null
     });
@@ -380,7 +465,31 @@ export function DeploymentPlcClient() {
             {lineOptions.map((option) => <option key={option.file_name} value={option.file_name}>{option.file_name} · {option.capability_label}</option>)}
           </select></label>
         </div>
-        {selectedLine ? <p className="deployment-help"><strong>{selectedLine.capability_label}</strong> · {selectedLine.station_count} stations / {selectedLine.plc_count} PLC{selectedLine.plc_count === 1 ? "" : "s"}. {selectedLine.ready_to_activate ? "This is the current R2 supported topology." : "This can be inspected and validated, but cannot be marked ready-to-activate in R2."}</p> : null}
+        {selectedLine ? <p className="deployment-help"><strong>{selectedLine.capability_label}</strong> · {selectedLine.station_count} stations / {selectedLine.plc_count} PLC{selectedLine.plc_count === 1 ? "" : "s"}. {selectedLine.ready_to_activate && fullScopeSelected ? "This is the current full-line supported topology." : selectedLine.ready_to_activate ? "The base line is supported, but the selected Debug Pilot scope is not full-line activation-ready." : "This can be inspected and validated, but cannot be marked ready-to-activate in the current runtime boundary."}</p> : null}
+        <div className="deployment-scope-panel" aria-label="Debug Pilot station scope">
+          <div>
+            <p className="deployment-eyebrow">DEBUG PILOT SCOPE</p>
+            <strong>Debug Pilot Scope: {selectedScopeIds.length} / {enabledStationIds.length}</strong>
+            <p className="deployment-help">Select only the stations needed for this local debug run. Unselected stations are not part of the effective candidate mapping.</p>
+          </div>
+          <div className="deployment-scope-options">
+            {enabledStationIds.map((stationId) => (
+              <label key={stationId}>
+                <input
+                  type="checkbox"
+                  aria-label={`Debug Pilot ${stationId}`}
+                  checked={selectedScopeIds.includes(stationId)}
+                  onChange={(event) => updateScope(stationId, event.target.checked)}
+                />
+                {stationId}
+              </label>
+            ))}
+          </div>
+          <div className="deployment-readiness-grid" aria-label="Candidate readiness">
+            <span>Debug Ready: <strong>{validation ? (validation.debug_ready ? "READY" : "NOT READY") : "NOT VALIDATED"}</strong></span>
+            <span>Full-line activation: <strong>{fullScopeSelected ? "REQUIRES FULL VALIDATION" : "NOT READY"}</strong></span>
+          </div>
+        </div>
         <div className="deployment-contract-editor" aria-labelledby="candidate-contract-heading">
           <div className="deployment-contract-card-heading">
             <div>
@@ -392,7 +501,7 @@ export function DeploymentPlcClient() {
           <p className="deployment-write-policy"><strong>Write allowlist:</strong> Read_Done only. The disabled write categories below cannot be enabled by this FV1A contract.</p>
           {candidate.stations.length ? (
             <div className="deployment-contract-list">
-              {candidate.stations.map((station, stationIndex) => (
+            {candidate.stations.map((station, stationIndex) => selectedScopeIds.includes(station.station_id) ? (
                 <div className="deployment-contract-card" key={`candidate-${station.station_id}`}>
                   <div className="deployment-contract-card-heading">
                     <div>
@@ -425,7 +534,7 @@ export function DeploymentPlcClient() {
                     </table>
                   </div>
                 </div>
-              ))}
+              ) : null)}
             </div>
           ) : <p className="deployment-inline-error">No candidate station mappings are available. Load an Active contract from the API before saving.</p>}
           <div className="deployment-write-allowlist" aria-label="Candidate write allowlist">
@@ -448,13 +557,17 @@ export function DeploymentPlcClient() {
       <section className="deployment-two-column">
         <section className="deployment-panel" aria-labelledby="validation-heading">
           <div className="deployment-panel-heading"><h2 id="validation-heading">Validation</h2><span className="deployment-status">{validation?.validation_state ?? "Not run"}</span></div>
+          {validation ? <div className="deployment-readiness-grid" aria-label="Validation readiness">
+            <span>Debug Ready: <strong>{validation.debug_ready ? "READY" : "NOT READY"}</strong></span>
+            <span>Full-line activation: <strong>{validation.ready_to_activate ? "READY" : "NOT READY"}</strong></span>
+          </div> : null}
           {validation?.errors.length ? <ul className="deployment-errors">{validation.errors.map((error) => <li key={`${error.field}-${error.message}`}><strong>{error.field}</strong>: {error.message}</li>)}</ul> : <p>{validation ? (validation.ready_to_activate ? "Candidate fields and the selected line configuration are valid." : validation.warnings[0]?.message ?? "Configuration is valid but not ready for the current runtime boundary.") : "Run validation before saving a candidate."}</p>}
           {validation?.candidate_hash ? <p className="deployment-hash">Candidate hash: {validation.candidate_hash}</p> : null}
         </section>
 
         <section className="deployment-panel" aria-labelledby="connection-heading">
           <div className="deployment-panel-heading"><h2 id="connection-heading">Test Result</h2><span className="deployment-status deployment-status-readonly">Read-only</span></div>
-          {connectionTest ? <div className="deployment-test-result" role="status"><strong>{connectionTest.status}</strong><p>{connectionTest.message}</p><p>Operations: {connectionTest.operations.join(" → ")}</p><p>PLC writes performed: <strong>{connectionTest.writes_performed ? "YES" : "NO"}</strong></p></div> : <p>Use Test Connection to attempt a bounded session and runtime DB read. No write, ACK, control bit, or mode change is performed.</p>}
+          {connectionTest ? <div className="deployment-test-result" role="status"><strong>{connectionTest.status}</strong><p>{connectionTest.message}</p><p>Probed stations: {connectionTest.probed_station_ids?.join(", ") || "none"}</p><p>Operations: {connectionTest.operations.join(" → ")}</p><p>PLC writes performed: <strong>{connectionTest.writes_performed ? "YES" : "NO"}</strong></p></div> : <p>Use Test Connection to attempt bounded reads of the selected station DB/ranges. No write, ACK, control bit, or mode change is performed.</p>}
         </section>
       </section>
 
@@ -468,7 +581,7 @@ export function DeploymentPlcClient() {
         </ul>
       </section>
 
-      {saved ? <section className="deployment-panel deployment-saved-panel" aria-labelledby="saved-heading"><p className="deployment-eyebrow">SAVED CANDIDATE</p><h2 id="saved-heading">{saved.status}</h2><p>Candidate {saved.candidate_id} is stored separately from the active mapping and requires controlled activation before it can affect Collector behavior.</p><p className="deployment-help">Confirm: activation changes the effective Active config only; it performs no PLC write (`writes_performed=false`). Collector reload remains a fixed host-operator action.</p><div className="deployment-actions"><a href={`/api/deployment/plc/candidates/${saved.candidate_id}`}>Export / retrieve candidate JSON</a>{saved.validation_state === "VALID" && saved.line.ready_to_activate ? <button type="button" onClick={() => void activateSavedCandidate()} disabled={busy !== null}>{busy === "activate" ? "Activating…" : "Activate Candidate"}</button> : null}</div></section> : null}
+      {saved ? <section className="deployment-panel deployment-saved-panel" aria-labelledby="saved-heading"><p className="deployment-eyebrow">SAVED CANDIDATE</p><h2 id="saved-heading">{saved.status}</h2><p>Candidate {saved.candidate_id} is stored separately from the active mapping. A partial Debug Pilot candidate remains debug-only and cannot affect the full-line Collector configuration.</p><p className="deployment-help">Confirm: activation changes the effective Active config only; it performs no PLC write (`writes_performed=false`). Collector reload remains a fixed host-operator action.</p><div className="deployment-actions"><a href={`/api/deployment/plc/candidates/${saved.candidate_id}`}>Export / retrieve candidate JSON</a>{saved.validation_state === "VALID" && (saved.ready_to_activate ?? saved.line.ready_to_activate) ? <button type="button" onClick={() => void activateSavedCandidate()} disabled={busy !== null}>{busy === "activate" ? "Activating…" : "Activate Candidate"}</button> : null}</div></section> : null}
       {activationError ? <section className="deployment-panel" role="alert"><p className="deployment-eyebrow">ACTIVATION BLOCKED</p><h2>{activationError.status}</h2><p>{activationError.message ?? "The Candidate was not activated and the Active config was not changed."}</p>{activationError.fresh_connection_test ? <p>Fresh Test Connection: {activationError.fresh_connection_test.status} · PLC writes: {activationError.fresh_connection_test.writes_performed ? "YES" : "NO"}</p> : null}</section> : null}
       {activation ? <section className="deployment-panel deployment-saved-panel" aria-labelledby="activation-heading"><p className="deployment-eyebrow">ACTIVATION RESULT</p><h2 id="activation-heading">{activation.status}</h2><p>Active mapping changed only in the authorized connectivity fields: {activation.changed_fields.join(", ") || "none"}.</p><p>Active hash: <code>{activation.active_mapping_hash}</code> · previous hash: <code>{activation.previous_active_mapping_hash}</code></p><p>Fresh Test Connection: <strong>{activation.fresh_connection_test.status}</strong> · config mutation only; PLC writes remain disabled (`writes_performed=false`).</p><p>COLLECTOR_RESTART_REQUIRED — run the fixed Collector-only recreate under the host operator boundary, then refresh Active Mapping.</p>{activation.rollback_available ? <button type="button" className="deployment-secondary-action" onClick={() => void rollbackActive()} disabled={busy !== null}>{busy === "rollback" ? "Rolling back…" : "Rollback active mapping"}</button> : null}</section> : null}
     </main>

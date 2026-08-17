@@ -404,6 +404,56 @@ dd {
   font-size: 13px;
 }
 
+.deployment-scope-panel {
+  display: grid;
+  gap: 12px;
+  margin-top: 16px;
+  border: 1px solid #b9cbd4;
+  border-radius: 7px;
+  padding: 14px;
+  background: #f5fafc;
+  color: #183746;
+}
+
+.deployment-scope-options {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 9px;
+}
+
+.deployment-scope-options label,
+.deployment-readiness-grid span {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  color: #425866;
+  font-size: 12px;
+  font-weight: 800;
+}
+
+.deployment-scope-options label {
+  border: 1px solid #b9cbd4;
+  border-radius: 999px;
+  padding: 6px 9px;
+  background: #ffffff;
+}
+
+.deployment-scope-options input {
+  accent-color: #1b5c78;
+}
+
+.deployment-readiness-grid {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 14px;
+  border-top: 1px solid #d8e4ea;
+  padding-top: 10px;
+}
+
+.deployment-readiness-grid strong {
+  color: #1b5c78;
+}
+
 .deployment-actions {
   display: flex;
   flex-wrap: wrap;

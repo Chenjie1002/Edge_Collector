@@ -90,6 +90,7 @@ def test_valid_candidate_is_ready_without_changing_active_mapping() -> None:
     assert response.status_code == 200
     payload = response.json()
     assert payload["validation_state"] == "VALID"
+    assert payload["debug_ready"] is True
     assert payload["ready_to_activate"] is True
     assert payload["candidate_hash"].startswith("sha256:")
     assert payload["active_mapping_hash"].startswith("sha256:")
@@ -98,7 +99,89 @@ def test_valid_candidate_is_ready_without_changing_active_mapping() -> None:
     assert payload["candidate"]["stations"][0]["confirmation_state"] == "PLANNED"
     assert payload["candidate"]["write_allowlist"]["mode"] == "READ_DONE_ONLY"
     assert payload["candidate"]["write_allowlist"]["parameter_writes_enabled"] is False
+    assert payload["candidate"]["debug_scope"]["station_ids"] == ["WS01", "WS02", "WS03"]
     assert any(signal["address"] == "DB101.DBX6.1" for signal in payload["candidate"]["stations"][0]["signals"])
+
+
+def test_ws03_only_debug_scope_is_valid_debug_ready_but_not_activation_ready() -> None:
+    response = client.post(
+        "/api/v2/deployment/plc/validate",
+        json=candidate_payload(debug_scope={"station_ids": ["WS03"]}),
+    )
+
+    assert response.status_code == 200
+    payload = response.json()
+    assert payload["validation_state"] == "VALID"
+    assert payload["debug_ready"] is True
+    assert payload["ready_to_activate"] is False
+    assert payload["debug_scope"] == {"station_ids": ["WS03"]}
+    assert [station["station_id"] for station in payload["candidate"]["stations"]] == ["WS03"]
+    assert [entry["station_id"] for entry in payload["candidate"]["write_allowlist"]["edge_to_plc"]] == ["WS03"]
+    assert payload["line"]["ready_to_activate"] is False
+    assert payload["base_topology"]["station_ids"] == ["WS01", "WS02", "WS03"]
+    assert "Debug Pilot scope: `WS03` (1 / 3)" in payload["engineering_export"]
+
+
+def test_ws03_only_payload_need_not_include_unselected_station_configuration() -> None:
+    seeded = client.post(
+        "/api/v2/deployment/plc/validate",
+        json=candidate_payload(debug_scope={"station_ids": ["WS03"]}),
+    ).json()["candidate"]
+    response = client.post(
+        "/api/v2/deployment/plc/validate",
+        json=candidate_payload(
+            debug_scope={"station_ids": ["WS03"]},
+            stations=seeded["stations"],
+            write_allowlist=seeded["write_allowlist"],
+        ),
+    )
+
+    assert response.status_code == 200
+    assert [station["station_id"] for station in response.json()["candidate"]["stations"]] == ["WS03"]
+
+
+@pytest.mark.parametrize(
+    "scope, expected_message",
+    [
+        ({"station_ids": []}, "at least one station"),
+        ({"station_ids": ["WS99"]}, "unknown or disabled"),
+        ({"station_ids": ["WS03", "WS03"]}, "unique"),
+    ],
+)
+def test_invalid_debug_scope_fails_closed(scope: dict[str, object], expected_message: str) -> None:
+    response = client.post(
+        "/api/v2/deployment/plc/validate",
+        json=candidate_payload(debug_scope=scope),
+    )
+
+    assert response.status_code == 422
+    assert any(
+        item["field"].startswith("debug_scope") and expected_message in item["message"]
+        for item in response.json()["errors"]
+    )
+
+
+def test_debug_scope_changes_candidate_identity_and_selected_effective_content() -> None:
+    full = client.post("/api/v2/deployment/plc/validate", json=candidate_payload()).json()
+    partial = client.post(
+        "/api/v2/deployment/plc/validate",
+        json=candidate_payload(debug_scope={"station_ids": ["WS03"]}),
+    ).json()
+
+    assert partial["candidate_hash"] != full["candidate_hash"]
+    assert partial["debug_contract_hash"] != full["debug_contract_hash"]
+    assert "DB101.DBX6.1" not in partial["engineering_export"]
+    assert "DB103.DBX6.1" in partial["engineering_export"]
+    reordered_scope = client.post(
+        "/api/v2/deployment/plc/validate",
+        json=candidate_payload(debug_scope={"station_ids": ["WS03", "WS01"]}),
+    ).json()
+    canonical_scope = client.post(
+        "/api/v2/deployment/plc/validate",
+        json=candidate_payload(debug_scope={"station_ids": ["WS01", "WS03"]}),
+    ).json()
+    assert reordered_scope["candidate"]["debug_scope"] == {"station_ids": ["WS01", "WS03"]}
+    assert reordered_scope["candidate_hash"] == canonical_scope["candidate_hash"]
 
 
 def test_invalid_candidate_returns_field_level_errors() -> None:
@@ -261,8 +344,32 @@ def test_read_only_test_connection_connects_reads_and_disconnects_without_write(
     assert result["status"] == "CONNECTED_AND_READABLE"
     assert result["read_only"] is True
     assert result["writes_performed"] is False
-    assert result["operations"] == ["connect", "db_read", "disconnect"]
-    assert [call[0] for call in fake.calls] == ["set_param", "connect", "db_read", "disconnect"]
+    assert result["operations"] == ["connect", "db_read", "db_read", "db_read", "disconnect"]
+    assert result["probed_station_ids"] == ["WS01", "WS02", "WS03"]
+    assert result["probed_ranges"] == [
+        {"station_id": "WS01", "db_number": 101, "read_start": 0, "read_length": 344},
+        {"station_id": "WS02", "db_number": 102, "read_start": 0, "read_length": 344},
+        {"station_id": "WS03", "db_number": 103, "read_start": 0, "read_length": 344},
+    ]
+    assert [call[0] for call in fake.calls] == ["set_param", "connect", "db_read", "db_read", "db_read", "disconnect"]
+
+
+def test_partial_test_connection_reads_only_selected_station_range() -> None:
+    fake = ReadOnlyClient()
+
+    result = deployment_plc.test_connection(
+        candidate_payload(debug_scope={"station_ids": ["WS03"]}),
+        client_factory=lambda: fake,
+    )
+
+    assert result["status"] == "CONNECTED_AND_READABLE"
+    assert result["debug_ready"] is True
+    assert result["ready_to_activate"] is False
+    assert result["probed_station_ids"] == ["WS03"]
+    assert result["probed_ranges"] == [
+        {"station_id": "WS03", "db_number": 103, "read_start": 0, "read_length": 344}
+    ]
+    assert [call for call in fake.calls if call[0] == "db_read"] == [("db_read", (103, 0, 344))]
 
 
 def test_connection_failure_is_safe_and_still_disconnects() -> None:
@@ -303,6 +410,26 @@ def test_candidate_save_and_load_leave_active_mapping_bytes_unchanged(tmp_path: 
     assert loaded["engineering_export"] == saved["engineering_export"]
     assert before == after
     assert hashlib.sha256(active_mapping_path.read_bytes()).hexdigest() == active_before
+
+
+def test_partial_candidate_save_load_persists_scope_without_activation_ready_label(
+    tmp_path: Path,
+) -> None:
+    saved = deployment_plc.save_candidate(
+        candidate_payload(debug_scope={"station_ids": ["WS03"]}),
+        store_path=tmp_path,
+    )
+    loaded = deployment_plc.load_candidate(saved["candidate_id"], store_path=tmp_path)
+
+    assert saved["debug_ready"] is True
+    assert saved["ready_to_activate"] is False
+    assert saved["status"] == "NOT ACTIVE / DEBUG PILOT ONLY / FULL-LINE ACTIVATION NOT READY"
+    assert loaded["debug_scope"] == {"station_ids": ["WS03"]}
+    assert loaded["candidate"]["debug_scope"] == {"station_ids": ["WS03"]}
+    assert [station["station_id"] for station in loaded["candidate"]["stations"]] == ["WS03"]
+    assert [entry["station_id"] for entry in loaded["candidate"]["write_allowlist"]["edge_to_plc"]] == ["WS03"]
+    assert "Base line/topology" in loaded["engineering_export"]
+    assert "Debug Pilot scope: `WS03` (1 / 3)" in loaded["engineering_export"]
 
 
 def test_candidate_route_retrieves_saved_artifact_without_active_mutation(
@@ -389,6 +516,32 @@ def test_activation_requires_fresh_server_test_and_does_not_mutate_on_failure(tm
     assert result["writes_performed"] is False
     assert not (tmp_path / "active" / "mapping.yaml").exists()
     assert hashlib.sha256(baseline.read_bytes()).hexdigest() == before
+
+
+def test_partial_candidate_activation_is_fail_closed_before_plc_test(tmp_path: Path) -> None:
+    baseline = Path("config/mapping.yaml")
+    saved = deployment_plc.save_candidate(
+        candidate_payload(
+            host="s7-plc-sim",
+            debug_scope={"station_ids": ["WS03"]},
+        ),
+        mapping_path=baseline,
+        store_path=tmp_path,
+    )
+    fake = ReadOnlyClient()
+
+    result = deployment_plc.activate_candidate(
+        saved["candidate_id"],
+        mapping_path=baseline,
+        store_path=tmp_path,
+        client_factory=lambda: fake,
+    )
+
+    assert result["status"] == "CANDIDATE_NOT_READY"
+    assert "Partial Debug Pilot scope" in result["message"]
+    assert result["writes_performed"] is False
+    assert fake.calls == []
+    assert not (tmp_path / "active" / "mapping.yaml").exists()
 
 
 def test_activation_overlays_only_connectivity_fields_and_rollback_restores_previous_mapping(

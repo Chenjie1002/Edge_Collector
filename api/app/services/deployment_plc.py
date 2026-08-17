@@ -95,6 +95,7 @@ def load_active_deployment_config(
         active_mapping_hash=f"sha256:{content_sha256}",
     )
     debug_contract = debug_contract_from_mapping(root)
+    base_topology = _mapping_topology(root, active_station_ids)
     return {
         "authority": {
             "kind": "active_runtime_mapping",
@@ -123,7 +124,12 @@ def load_active_deployment_config(
         "debug_contract": debug_contract,
         "debug_contract_hash": f"sha256:{debug_contract_content_hash(debug_contract)}",
         "engineering_rows": engineering_rows(debug_contract),
-        "engineering_export": engineering_export(debug_contract),
+        "engineering_export": engineering_export(
+            debug_contract,
+            base_topology=base_topology,
+        ),
+        "debug_scope": debug_contract.get("debug_scope"),
+        "base_topology": base_topology,
         "activation": activation,
         "rollback_available": activation is not None,
     }
@@ -157,6 +163,7 @@ def load_line_options(
                 config,
                 line_path.name,
                 active["line_id"],
+                station_ids=_line_station_ids(config),
                 projection=projection,
                 projection_error=projection_error,
             )
@@ -177,6 +184,7 @@ def validate_candidate(
     candidate, errors = parse_deployment_candidate(raw)
     base: dict[str, object] = {
         "validation_state": "INVALID",
+        "debug_ready": False,
         "ready_to_activate": False,
         "errors": errors,
         "warnings": [],
@@ -204,11 +212,7 @@ def validate_candidate(
         candidate_to_connectivity(candidate),
         line_config_source=str(line_path.relative_to(PROJECT_ROOT)),
     )
-    expected_station_ids = [
-        station.station_id
-        for station in line_config.stations
-        if station.station_enabled
-    ]
+    expected_station_ids = _line_station_ids(line_config)
     raw_has_contract = bool(raw.get("stations")) or bool(
         isinstance(raw.get("debug_contract"), dict)
         and raw.get("debug_contract", {}).get("stations")
@@ -263,13 +267,19 @@ def validate_candidate(
         line_config,
         candidate.line_config,
         active["line_id"],
+        station_ids=expected_station_ids,
         projection=projection,
         projection_error=projection_error,
     )
     content_hash = debug_candidate_content_hash(parsed_debug_candidate, line_config.config_hash)
+    base_topology = _line_topology(line_config)
+    scope_ids = list(parsed_debug_candidate.get("debug_scope", {}).get("station_ids", []))
+    full_scope = scope_ids == expected_station_ids
+    debug_ready = projection is not None
     result: dict[str, object] = {
         **base,
         "validation_state": "VALID",
+        "debug_ready": debug_ready,
         "errors": [],
         "candidate": debug_candidate_to_dict(parsed_debug_candidate),
         "candidate_hash": f"sha256:{content_hash}",
@@ -277,10 +287,13 @@ def validate_candidate(
         "line_config_hash": f"sha256:{line_config.config_hash}",
         "projection_hash": projection.projection_hash if projection else None,
         "line": option,
+        "debug_scope": {"station_ids": scope_ids},
+        "base_topology": base_topology,
         "engineering_rows": engineering_rows(parsed_debug_candidate),
         "engineering_export": engineering_export(
             parsed_debug_candidate,
             candidate_hash=f"sha256:{content_hash}",
+            base_topology=base_topology,
         ),
     }
     if projection is None:
@@ -295,7 +308,11 @@ def validate_candidate(
             }
         ]
     else:
-        result["ready_to_activate"] = True
+        result["ready_to_activate"] = full_scope
+        result["line"] = {
+            **option,
+            "ready_to_activate": full_scope,
+        }
     return result
 
 
@@ -321,22 +338,30 @@ def test_connection(
             "writes_performed": False,
             "operations": [],
         }
-    if validation["ready_to_activate"] is not True:
+    if validation.get("debug_ready") is not True:
         return {
             **validation,
             "status": "CONFIG_NOT_RUNTIME_SUPPORTED",
             "read_only": True,
             "writes_performed": False,
             "operations": [],
-        }
+    }
 
     candidate = _candidate_from_validated(validation)
-    line_config = load_line_config(
-        _line_path(lines_path, candidate.line_config)
-    )
-    runtime_db = line_config.plcs[0].runtime_db
+    candidate_payload = validation.get("candidate")
+    if not isinstance(candidate_payload, dict) or not isinstance(candidate_payload.get("stations"), list):
+        return {
+            **validation,
+            "status": "INVALID_CONFIGURATION",
+            "read_only": True,
+            "writes_performed": False,
+            "operations": [],
+        }
     client = (client_factory or snap7.client.Client)()
-    operations = ["connect", "db_read", "disconnect"]
+    operations = ["connect"]
+    probed_station_ids: list[str] = []
+    probed_ranges: list[dict[str, int | str]] = []
+    read_bytes = 0
     try:
         client.set_param(Parameter.RecvTimeout, candidate.connection_timeout_ms)
         client.connect(
@@ -345,16 +370,36 @@ def test_connection(
             candidate.slot,
             tcp_port=candidate.port,
         )
-        data = client.db_read(runtime_db, 0, 16)
+        for station in candidate_payload["stations"]:
+            if not isinstance(station, dict):
+                raise DeploymentConfigUnavailable("validated station mapping is invalid")
+            station_id = str(station["station_id"])
+            db_number = int(station["db_number"])
+            read_start = int(station["read_start"])
+            read_length = int(station["read_length"])
+            client.db_read(db_number, read_start, read_length)
+            operations.append("db_read")
+            probed_station_ids.append(station_id)
+            probed_ranges.append(
+                {
+                    "station_id": station_id,
+                    "db_number": db_number,
+                    "read_start": read_start,
+                    "read_length": read_length,
+                }
+            )
+            read_bytes += read_length
+        operations.append("disconnect")
         return {
             **validation,
             "status": "CONNECTED_AND_READABLE",
             "read_only": True,
             "writes_performed": False,
             "operations": operations,
-            "runtime_db": runtime_db,
-            "read_bytes": len(data),
-            "message": "Read-only connection and bounded runtime probe succeeded.",
+            "probed_station_ids": probed_station_ids,
+            "probed_ranges": probed_ranges,
+            "read_bytes": read_bytes,
+            "message": "Read-only connection and selected-station bounded reads succeeded.",
         }
     except Exception as exc:
         return {
@@ -363,6 +408,8 @@ def test_connection(
             "read_only": True,
             "writes_performed": False,
             "operations": operations,
+            "probed_station_ids": probed_station_ids,
+            "probed_ranges": probed_ranges,
             "message": _connection_failure_message(exc),
         }
     finally:
@@ -390,15 +437,25 @@ def save_candidate(
 
     candidate_id = uuid.uuid4().hex
     created_at = datetime.now(timezone.utc).isoformat()
+    ready_to_activate = validation.get("ready_to_activate") is True
+    status = (
+        "NOT ACTIVE / REQUIRES CONTROLLED ACTIVATION"
+        if ready_to_activate
+        else "NOT ACTIVE / DEBUG PILOT ONLY / FULL-LINE ACTIVATION NOT READY"
+    )
     document = {
         "candidate_id": candidate_id,
         "created_at": created_at,
-        "status": "NOT ACTIVE / REQUIRES CONTROLLED ACTIVATION",
+        "status": status,
         "candidate_hash": validation["candidate_hash"],
         "line_config_hash": validation.get("line_config_hash"),
         "projection_hash": validation.get("projection_hash"),
         "active_mapping_hash": validation["active_mapping_hash"],
         "validation_state": validation["validation_state"],
+        "debug_ready": validation.get("debug_ready") is True,
+        "ready_to_activate": ready_to_activate,
+        "debug_scope": validation.get("debug_scope"),
+        "base_topology": validation.get("base_topology"),
         "candidate": validation["candidate"],
         "line": validation["line"],
         "debug_contract_hash": validation.get("debug_contract_hash"),
@@ -462,12 +519,16 @@ def activate_candidate(
         store_path=store_path,
     )
     if validation.get("errors") or validation.get("ready_to_activate") is not True:
+        message = "Saved Candidate is not full-line activation-ready."
+        if validation.get("debug_ready") is True:
+            message = "Partial Debug Pilot scope is debug-ready but cannot be activated as the full line."
         return {
             "status": "CANDIDATE_NOT_READY",
             "candidate_id": candidate_id,
             "previous_active_mapping_hash": previous_active_mapping_hash,
             "validation": validation,
             "writes_performed": False,
+            "message": message,
         }
     if validation.get("active_mapping_hash") != previous_active_mapping_hash:
         return {
@@ -981,11 +1042,100 @@ def _projection_changed_fields(
     return changed_fields
 
 
+def _line_station_ids(config: LineConfig) -> list[str]:
+    enabled = {
+        station.station_id
+        for station in config.stations
+        if station.station_enabled
+    }
+    successors = {
+        edge.from_station_id: edge.to_station_id
+        for edge in config.route_graph.edges
+        if edge.from_station_id in enabled and edge.to_station_id in enabled
+    }
+    ordered: list[str] = []
+    current = config.route_graph.entry_station_id
+    while current in enabled and current not in ordered:
+        ordered.append(current)
+        current = successors.get(current)
+        if current is None:
+            break
+    if set(ordered) == enabled:
+        return ordered
+    return [
+        station.station_id
+        for station in sorted(
+            (item for item in config.stations if item.station_enabled),
+            key=lambda item: (item.station_order, item.station_id),
+        )
+    ]
+
+
+def _line_topology(config: LineConfig) -> dict[str, object]:
+    station_ids = _line_station_ids(config)
+    return {
+        "line_id": config.line_id,
+        "entry_station_id": config.route_graph.entry_station_id,
+        "terminal_station_id": config.route_graph.terminal_station_id,
+        "station_ids": station_ids,
+        "edges": [
+            {
+                "from_station_id": edge.from_station_id,
+                "to_station_id": edge.to_station_id,
+            }
+            for edge in config.route_graph.edges
+        ],
+    }
+
+
+def _mapping_topology(root: dict[str, Any], fallback_station_ids: list[str]) -> dict[str, object]:
+    topology = root.get("topology") if isinstance(root.get("topology"), dict) else {}
+    raw_station_ids = topology.get("station_ids")
+    if not isinstance(raw_station_ids, list) or not raw_station_ids:
+        raw_station_ids = [
+            station.get("station_id")
+            for station in root.get("stations", [])
+            if isinstance(station, dict) and station.get("station_id")
+        ]
+    station_ids = [str(item) for item in raw_station_ids if item]
+    if not station_ids:
+        station_ids = list(fallback_station_ids)
+    raw_edges = topology.get("edges")
+    if not isinstance(raw_edges, list):
+        raw_edges = root.get("route_graph", [])
+    edges = [
+        {
+            "from_station_id": str(edge.get("from_station_id")),
+            "to_station_id": str(edge.get("to_station_id")),
+        }
+        for edge in raw_edges
+        if isinstance(edge, dict)
+        and edge.get("from_station_id")
+        and edge.get("to_station_id")
+    ]
+    return {
+        "line_id": str(root.get("line_id", "")),
+        "entry_station_id": str(
+            root.get("entry_station_id")
+            or topology.get("entry_station_id")
+            or station_ids[0]
+        ),
+        "terminal_station_id": str(
+            root.get("terminal_station_id")
+            or topology.get("terminal_station_id")
+            or station_ids[-1]
+        ),
+        "station_ids": station_ids,
+        "edges": edges,
+    }
+
+
 def _line_option(
     config: LineConfig,
     file_name: str,
     active_line_id: object,
     *,
+    station_ids: list[str] | None = None,
     projection: RuntimeMappingProjection | None = None,
     projection_error: RuntimeProjectionError | None = None,
 ) -> dict[str, object]:
@@ -1017,6 +1167,7 @@ def _line_option(
         "line_id": config.line_id,
         "name": config.name,
         "station_count": station_count,
+        "station_ids": station_ids or _line_station_ids(config),
         "plc_count": plc_count,
         "config_hash": f"sha256:{config.config_hash}",
         "line_config_hash": f"sha256:{config.config_hash}",
@@ -1082,6 +1233,15 @@ def _connection_failure_message(exc: Exception) -> str:
 def _safe_test_result(value: object) -> dict[str, object] | None:
     if not isinstance(value, dict):
         return None
-    allowed = {"status", "message", "read_only", "writes_performed", "operations"}
+    allowed = {
+        "status",
+        "message",
+        "read_only",
+        "writes_performed",
+        "operations",
+        "probed_station_ids",
+        "probed_ranges",
+        "read_bytes",
+    }
     result = {key: value[key] for key in sorted(allowed) if key in value}
     return result if result else None

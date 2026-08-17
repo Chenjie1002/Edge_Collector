@@ -203,6 +203,51 @@ describe("PLC deployment configuration page", () => {
     expect(savedBody.write_allowlist.mode).toBe("READ_DONE_ONLY");
   });
 
+  it("supports a WS03-only debug pilot without presenting full-line activation readiness", async () => {
+    const fetchMock = vi.fn((url: string, init?: RequestInit) => {
+      if (url.endsWith("/active")) return Promise.resolve(new Response(JSON.stringify(active), { status: 200 }));
+      if (url.endsWith("/line-options")) return Promise.resolve(new Response(JSON.stringify({ items: lineOptions }), { status: 200 }));
+      if (url.endsWith("/validate") && init?.method === "POST") {
+        return Promise.resolve(new Response(JSON.stringify({
+          validation_state: "VALID",
+          debug_ready: true,
+          ready_to_activate: false,
+          active_mapping_hash: "sha256:active",
+          debug_scope: { station_ids: ["WS03"] },
+          errors: [],
+          warnings: []
+        }), { status: 200 }));
+      }
+      return Promise.resolve(new Response(JSON.stringify({}), { status: 200 }));
+    });
+    vi.stubGlobal("fetch", fetchMock);
+
+    render(<DeploymentPlcClient />);
+    await screen.findByRole("heading", { level: 1, name: "PLC Deployment Configuration" });
+
+    fireEvent.click(screen.getByLabelText("Debug Pilot WS01"));
+    fireEvent.click(screen.getByLabelText("Debug Pilot WS02"));
+
+    expect(screen.getByText("Debug Pilot Scope: 1 / 3")).toBeTruthy();
+    expect(screen.getAllByText(/Full-line activation:/).length).toBeGreaterThan(0);
+    expect(screen.queryByLabelText("WS01 DB number")).toBeNull();
+    expect(screen.queryByLabelText("WS02 DB number")).toBeNull();
+    expect((screen.getByLabelText("WS03 DB number") as HTMLInputElement).value).toBe("103");
+
+    screen.getByRole("button", { name: "Validate candidate" }).click();
+    expect((await screen.findAllByText(/Debug Ready:/)).length).toBeGreaterThan(0);
+    expect(screen.getAllByText(/Full-line activation:/).length).toBeGreaterThan(0);
+    const validateCall = fetchMock.mock.calls.find(([url, request]) => url.endsWith("/validate") && request?.method === "POST");
+    expect(validateCall).toBeTruthy();
+    const body = JSON.parse(String(validateCall?.[1]?.body));
+    expect(body.debug_scope).toEqual({ station_ids: ["WS03"] });
+    expect(body.stations.map((station: { station_id: string }) => station.station_id)).toEqual(["WS03"]);
+
+    fireEvent.click(screen.getByLabelText("Debug Pilot WS01"));
+    fireEvent.click(screen.getByLabelText("Debug Pilot WS02"));
+    expect(screen.getByText("Debug Pilot Scope: 3 / 3")).toBeTruthy();
+  });
+
   it("renders field-level validation errors returned by the API", async () => {
     vi.stubGlobal(
       "fetch",

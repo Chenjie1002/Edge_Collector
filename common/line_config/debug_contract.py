@@ -63,6 +63,7 @@ def normalize_debug_candidate(
     raw: Mapping[str, Any],
     *,
     seed_contract: Mapping[str, Any] | None = None,
+    expected_station_ids: Sequence[str] | None = None,
 ) -> dict[str, Any]:
     """Return a canonical candidate shell before field-level validation.
 
@@ -88,10 +89,10 @@ def normalize_debug_candidate(
     }
     nested = raw.get("debug_contract")
     if isinstance(nested, Mapping):
-        for key in ("stations", "write_allowlist"):
+        for key in ("debug_scope", "stations", "write_allowlist"):
             if key in nested and key not in raw:
                 candidate[key] = copy.deepcopy(nested[key])
-    for key in ("stations", "write_allowlist"):
+    for key in ("debug_scope", "stations", "write_allowlist"):
         if key in raw:
             candidate[key] = copy.deepcopy(raw[key])
     if "stations" not in candidate and seed_contract is not None:
@@ -100,6 +101,40 @@ def normalize_debug_candidate(
         candidate["write_allowlist"] = copy.deepcopy(
             seed_contract.get("write_allowlist", _default_write_allowlist([]))
         )
+    explicit_scope = "debug_scope" in candidate
+    if explicit_scope:
+        scope_ids = _scope_station_ids(candidate.get("debug_scope"))
+    elif expected_station_ids is not None:
+        scope_ids = [str(item) for item in expected_station_ids]
+    elif isinstance(seed_contract, Mapping):
+        scope_ids = _scope_station_ids(seed_contract.get("debug_scope"))
+        if not scope_ids:
+            scope_ids = _station_ids_from_contract(seed_contract)
+    else:
+        scope_ids = _station_ids_from_contract(candidate)
+    candidate["debug_scope"] = {"station_ids": copy.deepcopy(scope_ids)}
+    if explicit_scope and isinstance(candidate.get("stations"), list):
+        station_by_id = {
+            str(item.get("station_id")): item
+            for item in candidate["stations"]
+            if isinstance(item, Mapping) and item.get("station_id") is not None
+        }
+        candidate["stations"] = [
+            copy.deepcopy(station_by_id[station_id])
+            for station_id in scope_ids
+            if isinstance(station_id, str) and station_id in station_by_id
+        ]
+    if explicit_scope and isinstance(candidate.get("write_allowlist"), Mapping):
+        allowlist = copy.deepcopy(dict(candidate["write_allowlist"]))
+        entries = allowlist.get("edge_to_plc")
+        if isinstance(entries, list):
+            selected = set(scope_ids)
+            allowlist["edge_to_plc"] = [
+                entry
+                for entry in entries
+                if isinstance(entry, Mapping) and str(entry.get("station_id")) in selected
+            ]
+        candidate["write_allowlist"] = allowlist
     candidate["stations"] = _normalize_station_list(candidate.get("stations"))
     candidate["write_allowlist"] = _normalize_write_allowlist(
         candidate.get("write_allowlist"),
@@ -114,11 +149,22 @@ def parse_debug_candidate(
     expected_station_ids: Sequence[str] | None = None,
     seed_contract: Mapping[str, Any] | None = None,
 ) -> tuple[dict[str, Any] | None, list[FieldError]]:
-    candidate = normalize_debug_candidate(raw, seed_contract=seed_contract)
+    candidate = normalize_debug_candidate(
+        raw,
+        seed_contract=seed_contract,
+        expected_station_ids=expected_station_ids,
+    )
     errors: list[FieldError] = []
     _validate_connection_shape(candidate, errors)
 
-    expected = {str(item) for item in expected_station_ids or ()}
+    expected_order = [str(item) for item in expected_station_ids or ()]
+    scope_ids, scope_errors = _canonical_debug_scope(
+        candidate.get("debug_scope"),
+        expected_order if expected_station_ids is not None else None,
+    )
+    errors.extend(scope_errors)
+    candidate["debug_scope"] = {"station_ids": scope_ids}
+    selected_scope = set(scope_ids)
     stations = candidate.get("stations")
     if not isinstance(stations, list) or not stations:
         errors.append({"field": "stations", "message": "At least one debug station mapping is required."})
@@ -255,11 +301,18 @@ def parse_debug_candidate(
         errors.append({"field": "stations", "message": "Station identity is duplicated."})
     if len(set(station_dbs)) != len(station_dbs):
         errors.append({"field": "stations", "message": "Station DB number is duplicated."})
-    if expected and set(station_ids) != expected:
+    if set(station_ids) != selected_scope:
         errors.append(
             {
                 "field": "stations",
-                "message": "Debug stations must exactly match the enabled stations in the selected line configuration.",
+                "message": "Debug stations must exactly match the selected Debug Pilot scope.",
+            }
+        )
+    if expected_station_ids is not None and not selected_scope.issubset(set(expected_order)):
+        errors.append(
+            {
+                "field": "debug_scope.station_ids",
+                "message": "Debug scope contains an unknown or disabled station.",
             }
         )
 
@@ -353,20 +406,27 @@ def debug_contract_from_mapping(mapping: Mapping[str, Any]) -> dict[str, Any]:
                 "signals": sorted(signals, key=lambda item: (str(item["field_name"]), str(item["address"]))),
             }
         )
+    station_ids = [str(station["station_id"]) for station in stations]
     allowlist = _default_write_allowlist(stations)
     return {
         "schema_version": "plc-debug-contract/v1",
+        "debug_scope": {"station_ids": station_ids},
         "stations": stations,
         "write_allowlist": allowlist,
     }
 
 
 def debug_contract_from_candidate(candidate: Mapping[str, Any]) -> dict[str, Any]:
-    return {
-        "schema_version": "plc-debug-contract/v1",
-        "stations": copy.deepcopy(candidate.get("stations", [])),
-        "write_allowlist": copy.deepcopy(candidate.get("write_allowlist", _default_write_allowlist([]))),
-    }
+    return _canonical_contract(
+        {
+            "schema_version": "plc-debug-contract/v1",
+            "debug_scope": copy.deepcopy(candidate.get("debug_scope")),
+            "stations": copy.deepcopy(candidate.get("stations", [])),
+            "write_allowlist": copy.deepcopy(
+                candidate.get("write_allowlist", _default_write_allowlist([]))
+            ),
+        }
+    )
 
 
 def debug_contract_to_dict(candidate: Mapping[str, Any]) -> dict[str, Any]:
@@ -428,8 +488,15 @@ def engineering_rows(candidate: Mapping[str, Any]) -> list[dict[str, Any]]:
     return rows
 
 
-def engineering_export(candidate: Mapping[str, Any], *, candidate_hash: str | None = None) -> str:
+def engineering_export(
+    candidate: Mapping[str, Any],
+    *,
+    candidate_hash: str | None = None,
+    base_topology: Mapping[str, Any] | None = None,
+) -> str:
     contract = _canonical_contract(candidate)
+    topology = _export_topology(base_topology, contract)
+    scope_ids = contract["debug_scope"]["station_ids"]
     lines = [
         "# PLC Debug Communication Contract",
         "",
@@ -437,6 +504,8 @@ def engineering_export(candidate: Mapping[str, Any], *, candidate_hash: str | No
         f"- Contract hash: `sha256:{debug_contract_content_hash(contract)}`",
         f"- Candidate hash: `{candidate_hash or '(computed after line-config binding)'}`",
         "- Candidate state: separate from Active; persistence does not activate Collector configuration.",
+        f"- Base line/topology: `{topology['line_id']}` / `{topology['entry_station_id']} -> {topology['terminal_station_id']}` / stations `{', '.join(topology['station_ids'])}`",
+        f"- Debug Pilot scope: `{', '.join(scope_ids)}` ({len(scope_ids)} / {len(topology['station_ids'])})",
         "",
         "## Write allowlist",
         "",
@@ -673,6 +742,7 @@ def _default_write_allowlist(stations: Sequence[Any]) -> dict[str, Any]:
 
 
 def _canonical_candidate(candidate: Mapping[str, Any]) -> dict[str, Any]:
+    contract = _canonical_contract(candidate)
     result = {
         key: copy.deepcopy(candidate.get(key))
         for key in (
@@ -686,14 +756,23 @@ def _canonical_candidate(candidate: Mapping[str, Any]) -> dict[str, Any]:
         )
         if key in candidate
     }
-    result["stations"] = _canonical_contract(candidate).get("stations", [])
-    result["write_allowlist"] = _canonical_contract(candidate).get("write_allowlist", _default_write_allowlist([]))
+    result["debug_scope"] = copy.deepcopy(contract.get("debug_scope", {"station_ids": []}))
+    result["stations"] = contract.get("stations", [])
+    result["write_allowlist"] = contract.get("write_allowlist", _default_write_allowlist([]))
     return result
 
 
 def _canonical_contract(contract: Mapping[str, Any]) -> dict[str, Any]:
     raw_stations = contract.get("stations", [])
     stations = [copy.deepcopy(item) for item in raw_stations if isinstance(item, Mapping)] if isinstance(raw_stations, list) else []
+    raw_scope_ids = _scope_station_ids(contract.get("debug_scope"))
+    if raw_scope_ids:
+        selected_ids = set(raw_scope_ids)
+        stations = [
+            station
+            for station in stations
+            if str(station.get("station_id", "")) in selected_ids
+        ]
     for station in stations:
         station.pop("status", None)
         station["confirmation_state"] = str(station.get("confirmation_state", "PLANNED")).upper()
@@ -707,16 +786,25 @@ def _canonical_contract(contract: Mapping[str, Any]) -> dict[str, Any]:
             signal["direction"] = _normalize_direction(signal.get("direction"), str(signal.get("field_name", ""))) or signal.get("direction")
         station["signals"].sort(key=lambda item: (str(item.get("field_name", "")), str(item.get("address", ""))))
     stations.sort(key=lambda item: (_as_int(item.get("station_order"), 2**31 - 1), str(item.get("station_id", ""))))
+    station_ids = [str(station.get("station_id", "")) for station in stations]
+    station_order = {station_id: index for index, station_id in enumerate(station_ids)}
+    scope_ids = raw_scope_ids or station_ids
+    scope_ids = sorted(
+        {str(station_id) for station_id in scope_ids},
+        key=lambda station_id: (station_order.get(station_id, 2**31 - 1), station_id),
+    )
     allowlist = copy.deepcopy(contract.get("write_allowlist", _default_write_allowlist(stations)))
     if not isinstance(allowlist, dict):
         allowlist = _default_write_allowlist(stations)
     allowlist.setdefault("mode", WRITE_MODE)
     allowlist.setdefault("edge_to_plc", [])
+    selected_scope = set(scope_ids)
     for field in WRITE_DISABLED_FIELDS:
         allowlist.setdefault(field, False)
     if isinstance(allowlist.get("edge_to_plc"), list):
         allowlist["edge_to_plc"] = [
             copy.deepcopy(item) for item in allowlist["edge_to_plc"] if isinstance(item, Mapping)
+            and str(item.get("station_id", "")) in selected_scope
         ]
         allowlist["edge_to_plc"].sort(key=lambda item: (str(item.get("station_id", "")), str(item.get("field_name", "")), str(item.get("address", ""))))
         for entry in allowlist["edge_to_plc"]:
@@ -724,8 +812,106 @@ def _canonical_contract(contract: Mapping[str, Any]) -> dict[str, Any]:
             entry["confirmation_state"] = str(entry.get("confirmation_state", "PLANNED")).upper()
     return {
         "schema_version": str(contract.get("schema_version", "plc-debug-contract/v1")),
+        "debug_scope": {"station_ids": scope_ids},
         "stations": stations,
         "write_allowlist": allowlist,
+    }
+
+
+def _scope_station_ids(value: object) -> list[Any]:
+    if isinstance(value, Mapping):
+        value = value.get("station_ids")
+    if not isinstance(value, list):
+        return []
+    return copy.deepcopy(value)
+
+
+def _station_ids_from_contract(contract: Mapping[str, Any]) -> list[str]:
+    stations = contract.get("stations", [])
+    if not isinstance(stations, list):
+        return []
+    ordered = [item for item in stations if isinstance(item, Mapping)]
+    ordered.sort(
+        key=lambda item: (
+            _as_int(item.get("station_order"), 2**31 - 1),
+            str(item.get("station_id", "")),
+        )
+    )
+    return [str(item.get("station_id", "")) for item in ordered if item.get("station_id")]
+
+
+def _canonical_debug_scope(
+    value: object,
+    expected_station_ids: Sequence[str] | None,
+) -> tuple[list[str], list[FieldError]]:
+    raw_ids = _scope_station_ids(value)
+    errors: list[FieldError] = []
+    if not raw_ids:
+        errors.append(
+            {
+                "field": "debug_scope.station_ids",
+                "message": "Debug Pilot scope must select at least one station.",
+            }
+        )
+    seen: set[str] = set()
+    valid_ids: list[str] = []
+    expected = [str(item) for item in expected_station_ids] if expected_station_ids is not None else []
+    expected_set = set(expected)
+    for index, raw_id in enumerate(raw_ids):
+        if not isinstance(raw_id, str) or not raw_id.strip():
+            errors.append(
+                {
+                    "field": f"debug_scope.station_ids[{index}]",
+                    "message": "Debug scope station IDs must be non-empty text.",
+                }
+            )
+            continue
+        station_id = raw_id.strip()
+        if station_id in seen:
+            errors.append(
+                {
+                    "field": f"debug_scope.station_ids[{index}]",
+                    "message": "Debug scope station IDs must be unique.",
+                }
+            )
+            continue
+        seen.add(station_id)
+        if expected_station_ids is not None and station_id not in expected_set:
+            errors.append(
+                {
+                    "field": f"debug_scope.station_ids[{index}]",
+                    "message": f"Debug scope station is unknown or disabled: {station_id}.",
+                }
+            )
+            continue
+        valid_ids.append(station_id)
+    if expected_station_ids is not None:
+        canonical = [station_id for station_id in expected if station_id in seen and station_id in expected_set]
+    else:
+        canonical = sorted(valid_ids)
+    return canonical, errors
+
+
+def _export_topology(
+    base_topology: Mapping[str, Any] | None,
+    contract: Mapping[str, Any],
+) -> dict[str, Any]:
+    station_ids = _station_ids_from_contract(contract)
+    if isinstance(base_topology, Mapping):
+        raw_station_ids = base_topology.get("station_ids")
+        if isinstance(raw_station_ids, list) and raw_station_ids:
+            station_ids = [str(item) for item in raw_station_ids]
+        return {
+            "line_id": str(base_topology.get("line_id", "(selected line)")),
+            "entry_station_id": str(base_topology.get("entry_station_id", station_ids[0] if station_ids else "(none)")),
+            "terminal_station_id": str(base_topology.get("terminal_station_id", station_ids[-1] if station_ids else "(none)")),
+            "station_ids": station_ids,
+        }
+    return {
+        "line_id": "(selected line)",
+        "entry_station_id": station_ids[0] if station_ids else "(none)",
+        "terminal_station_id": station_ids[-1] if station_ids else "(none)",
+        "station_ids": station_ids,
     }
 
 

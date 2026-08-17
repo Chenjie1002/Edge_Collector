@@ -1,5 +1,17 @@
 export type ConfirmationState = "PLANNED" | "CONFIRMED";
 
+export type DebugScope = {
+  station_ids: string[];
+};
+
+export type BaseTopology = {
+  line_id: string;
+  entry_station_id: string;
+  terminal_station_id: string;
+  station_ids: string[];
+  edges?: Array<{ from_station_id: string; to_station_id: string }>;
+};
+
 export type DebugSignal = {
   field_name: string;
   address: string;
@@ -41,6 +53,7 @@ export type DebugWriteAllowlist = {
 
 export type DebugContract = {
   schema_version?: "plc-debug-contract/v1";
+  debug_scope?: DebugScope;
   stations: DebugStation[];
   write_allowlist: DebugWriteAllowlist;
 };
@@ -53,6 +66,7 @@ export type DeploymentCandidate = {
   connection_timeout_ms: number;
   poll_interval_ms: number;
   line_config: string;
+  debug_scope: DebugScope;
   stations: DebugStation[];
   write_allowlist: DebugWriteAllowlist;
 };
@@ -78,6 +92,8 @@ export type ActiveDeploymentConfig = {
   active_station_count: number;
   active_station_ids: string[];
   debug_contract?: DebugContract;
+  debug_scope?: DebugScope;
+  base_topology?: BaseTopology;
   debug_contract_hash?: string;
   engineering_rows?: Array<Record<string, unknown>>;
   engineering_export?: string;
@@ -104,6 +120,7 @@ export type LineOption = {
   line_id: string;
   name: string;
   station_count: number;
+  station_ids?: string[];
   plc_count: number;
   config_hash: string;
   capability:
@@ -117,12 +134,15 @@ export type LineOption = {
 
 export type DeploymentValidation = {
   validation_state: "VALID" | "VALID_RUNTIME_NOT_SUPPORTED" | "INVALID";
+  debug_ready: boolean;
   ready_to_activate: boolean;
   errors: Array<{ field: string; message: string }>;
   warnings: Array<{ field: string; message: string }>;
   active_mapping_hash: string;
   candidate_hash?: string;
   candidate?: DeploymentCandidate;
+  debug_scope?: DebugScope;
+  base_topology?: BaseTopology;
   debug_contract_hash?: string;
   engineering_rows?: Array<Record<string, unknown>>;
   engineering_export?: string;
@@ -143,21 +163,32 @@ export type ConnectionTestResult = DeploymentValidation & {
   operations: string[];
   message?: string;
   read_bytes?: number;
+  probed_station_ids?: string[];
+  probed_ranges?: Array<{
+    station_id: string;
+    db_number: number;
+    read_start: number;
+    read_length: number;
+  }>;
 };
 
 export type SavedCandidate = {
   candidate_id: string;
   created_at: string;
-  status: "NOT ACTIVE / REQUIRES CONTROLLED ACTIVATION";
+  status: "NOT ACTIVE / REQUIRES CONTROLLED ACTIVATION" | "NOT ACTIVE / DEBUG PILOT ONLY / FULL-LINE ACTIVATION NOT READY";
   candidate_hash: string;
   active_mapping_hash: string;
   validation_state: DeploymentValidation["validation_state"];
+  debug_ready?: boolean;
+  ready_to_activate?: boolean;
+  debug_scope?: DebugScope;
+  base_topology?: BaseTopology;
   candidate: DeploymentCandidate;
   debug_contract_hash?: string;
   engineering_rows?: Array<Record<string, unknown>>;
   engineering_export?: string;
   line: LineOption;
-  last_connection_test: Pick<ConnectionTestResult, "status" | "message" | "read_only" | "writes_performed" | "operations"> | null;
+  last_connection_test: Pick<ConnectionTestResult, "status" | "message" | "read_only" | "writes_performed" | "operations" | "probed_station_ids" | "probed_ranges" | "read_bytes"> | null;
   retrieval_path: string;
 };
 
