@@ -1,0 +1,225 @@
+# FV1B-A-R1: Wyse 3040 linux/amd64 Debug Bundle bound to source HEAD 6d4f41365120677e73ce80290b2417ce6da4971e.
+services:
+  postgres:
+    image: postgres:16@sha256:56f243d2355bad7d2016b1e78b80da8ac9e7967b766be2bfbff84fe85ffa30bc
+    platform: linux/amd64
+    pull_policy: missing
+    container_name: edge-mes-wyse-postgres
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: ${POSTGRES_DB:-edge_mes}
+      POSTGRES_USER: ${POSTGRES_USER:-edge_mes}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-edge_mes_password}
+      TZ: Asia/Shanghai
+    volumes:
+      - ./data/postgres:/var/lib/postgresql/data
+      - ./db/init:/docker-entrypoint-initdb.d:ro
+    ports:
+      - "5432:5432"
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-edge_mes} -d ${POSTGRES_DB:-edge_mes}"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+
+  simulator:
+    image: edge-mes-demo-simulator:fv1b-a-r1-amd64
+    platform: linux/amd64
+    pull_policy: never
+    container_name: edge-mes-wyse-simulator
+    restart: unless-stopped
+    environment:
+      TZ: Asia/Shanghai
+    volumes:
+      - ./config:/app/config:ro
+    ports:
+      - "8100:8100"
+
+  s7-plc-sim:
+    image: edge-mes-demo-s7-plc-sim:fv1b-a-r1-amd64
+    platform: linux/amd64
+    pull_policy: never
+    container_name: edge-mes-wyse-s7-plc-sim
+    restart: unless-stopped
+    environment:
+      TZ: Asia/Shanghai
+      SIMULATOR_URL: http://simulator:8100
+      S7_PORT: "1102"
+      VPLC_CONTROL_PORT: "8200"
+      VPLC_CONFIG_PATH: /app/config/vplc.yaml
+      VPLC_MAPPING_PATH: /app/data/deployment-config/active/mapping.yaml
+      VPLC_PROFILE: ${VPLC_PROFILE:-normal}
+      VPLC_SERIAL_START: ${VPLC_SERIAL_START:-0}
+      VPLC_ACK_DEADLINE_SECONDS: "10"
+      VPLC_RUNTIME_STATE_PATH: /app/data/vplc_runtime.json
+      DATABASE_URL: "${DATABASE_URL:-postgresql://edge_mes:edge_mes_password@postgres:5432/edge_mes}"
+    volumes:
+      - ./config:/app/config:ro
+      - ./data/deployment-config:/app/data/deployment-config:ro
+      - ./data/vplc:/app/data
+    ports:
+      - "1102:1102"
+      - "8200:8200"
+    depends_on:
+      simulator:
+        condition: service_started
+      postgres:
+        condition: service_healthy
+
+  collector:
+    image: edge-mes-demo-collector:fv1b-a-r1-amd64
+    platform: linux/amd64
+    pull_policy: never
+    container_name: edge-mes-wyse-collector
+    restart: unless-stopped
+    environment:
+      TZ: Asia/Shanghai
+      DATABASE_URL: "${DATABASE_URL:-postgresql://edge_mes:edge_mes_password@postgres:5432/edge_mes}"
+      SIMULATOR_URL: http://simulator:8100
+    volumes:
+      - ./config:/app/config:ro
+      - ./data/deployment-config:/app/data/deployment-config:ro
+    depends_on:
+      postgres:
+        condition: service_healthy
+      s7-plc-sim:
+        condition: service_started
+
+  api:
+    image: edge-mes-demo-api:fv1b-a-r1-amd64
+    platform: linux/amd64
+    pull_policy: never
+    container_name: edge-mes-wyse-api
+    restart: unless-stopped
+    environment:
+      TZ: Asia/Shanghai
+      DATABASE_URL: "${DATABASE_URL:-postgresql://edge_mes:edge_mes_password@postgres:5432/edge_mes}"
+    volumes:
+      - ./config:/app/config:ro
+      - ./data/deployment-config:/app/data/deployment-config
+    ports:
+      - "8000:8000"
+    depends_on:
+      postgres:
+        condition: service_healthy
+
+  dashboard:
+    image: edge-mes-demo-dashboard:fv1b-a-r1-amd64
+    platform: linux/amd64
+    pull_policy: never
+    container_name: edge-mes-wyse-dashboard
+    restart: "on-failure:5"
+    environment:
+      TZ: Asia/Shanghai
+      NODE_ENV: production
+      HOSTNAME: 0.0.0.0
+      PORT: "3000"
+      EDGE_MES_DASHBOARD_API_ORIGIN: http://api:8000
+      EDGE_MES_DASHBOARD_API_ORIGIN_PROFILE: container
+      EDGE_MES_DASHBOARD_TRACE_ORIGIN: ${EDGE_MES_DASHBOARD_TRACE_ORIGIN:-http://127.0.0.1:8000}
+      EDGE_MES_DASHBOARD_VPLC_ORIGIN: ${EDGE_MES_DASHBOARD_VPLC_ORIGIN:-http://127.0.0.1:8200}
+    ports:
+      - "3001:3000"
+    depends_on:
+      api:
+        condition: service_started
+    healthcheck:
+      test:
+        - CMD
+        - node
+        - -e
+        - fetch('http://127.0.0.1:3000/health').then(r=>{if(!r.ok)process.exit(1)}).catch(()=>process.exit(1))
+      interval: 10s
+      timeout: 3s
+      retries: 10
+      start_period: 20s
+
+  grafana:
+    image: grafana/grafana:latest@sha256:e27e68cfd5795c1bea54950766078a02e84dfa3bafe0a4d0e5382f713dfd8e4e
+    platform: linux/amd64
+    pull_policy: missing
+    container_name: edge-mes-wyse-grafana
+    restart: unless-stopped
+    user: "0:0"
+    environment:
+      TZ: Asia/Shanghai
+      GF_SECURITY_ADMIN_USER: ${GRAFANA_ADMIN_USER:-admin}
+      GF_SECURITY_ADMIN_PASSWORD: ${GRAFANA_ADMIN_PASSWORD:-admin}
+      GF_USERS_DEFAULT_THEME: light
+      GF_AUTH_ANONYMOUS_ENABLED: "true"
+      GF_AUTH_ANONYMOUS_ORG_ROLE: Viewer
+      GF_PLUGINS_PREINSTALL_DISABLED: "true"
+      GF_PLUGINS_PLUGIN_ADMIN_ENABLED: "false"
+    entrypoint:
+      - /bin/sh
+      - -c
+      - |
+        set -e
+        if ! grep -q "grafana-custom-font.css" /usr/share/grafana/public/views/index.html; then
+          sed -i 's#</head>#<link rel="stylesheet" href="public/custom/grafana-custom-font.css"></head>#' /usr/share/grafana/public/views/index.html
+        fi
+        exec /run.sh
+    volumes:
+      - ./data/grafana:/var/lib/grafana
+      - ./config/grafana:/etc/grafana/provisioning:ro
+      - ./config/grafana/custom:/usr/share/grafana/public/custom:ro
+    ports:
+      - "3000:3000"
+    depends_on:
+      postgres:
+        condition: service_healthy
+
+  prometheus:
+    image: prom/prometheus:latest@sha256:1147c92841726a6fef55fe6124491d6f85480f8de204f7d420304ca5bbd0a8f7
+    platform: linux/amd64
+    pull_policy: missing
+    container_name: edge-mes-wyse-prometheus
+    restart: unless-stopped
+    user: "0:0"
+    environment:
+      TZ: Asia/Shanghai
+    command:
+      - "--config.file=/etc/prometheus/prometheus.yml"
+      - "--storage.tsdb.path=/prometheus"
+      - "--storage.tsdb.retention.time=30d"
+      - "--web.enable-lifecycle"
+    volumes:
+      - ./config/prometheus:/etc/prometheus:ro
+      - ./data/prometheus:/prometheus
+    ports:
+      - "9090:9090"
+
+  node-exporter:
+    image: prom/node-exporter:latest@sha256:da83fae85603c4e47e6c68369a7d746e2dda683dc35ea2e234b4f171e0d92798
+    platform: linux/amd64
+    pull_policy: missing
+    container_name: edge-mes-wyse-node-exporter
+    restart: unless-stopped
+    pid: host
+    command:
+      - "--path.procfs=/host/proc"
+      - "--path.sysfs=/host/sys"
+      - "--path.rootfs=/rootfs"
+      - "--collector.filesystem.mount-points-exclude=^/(sys|proc|dev|host|etc)($$|/)"
+    volumes:
+      - "${WYSE_HOST_PROC_PATH:-/proc}:/host/proc:ro"
+      - "${WYSE_HOST_SYS_PATH:-/sys}:/host/sys:ro"
+      - "${WYSE_HOST_ROOT_PATH:-/}:/rootfs:ro,rslave"
+    ports:
+      - "9100:9100"
+
+  sync-worker:
+    image: edge-mes-demo-sync-worker:fv1b-a-r1-amd64
+    platform: linux/amd64
+    pull_policy: never
+    container_name: edge-mes-wyse-sync-worker
+    restart: unless-stopped
+    environment:
+      TZ: Asia/Shanghai
+      DATABASE_URL: "${DATABASE_URL:-postgresql://edge_mes:edge_mes_password@postgres:5432/edge_mes}"
+      SYNC_MOCK_MODE: "true"
+    volumes:
+      - ./config:/app/config:ro
+    depends_on:
+      postgres:
+        condition: service_healthy
