@@ -185,6 +185,14 @@ def test_trace_page_renders_station_ids_from_response_not_fixed_three_station_li
     assert "Object.keys(data.stations || {})" in trace.TRACE_HTML
 
 
+def test_trace_page_back_link_derives_dashboard_from_current_browser_host() -> None:
+    assert "返回 Edge MES" in trace.TRACE_HTML
+    assert "window.location.hostname" in trace.TRACE_HTML
+    assert ":3001/" in trace.TRACE_HTML
+    assert "127.0.0.1" not in trace.TRACE_HTML
+    assert "10.0.0.218" not in trace.TRACE_HTML
+
+
 def test_trace_page_places_recent_records_before_one_continuous_selected_unit_trace() -> None:
     recent_index = trace.TRACE_HTML.index('id="recentPanel"')
     selected_index = trace.TRACE_HTML.index('id="selectedTrace"')

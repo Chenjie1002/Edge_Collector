@@ -52,6 +52,19 @@ NOK_CODES = {
 }
 
 SIMULATION_SPEED_MULTIPLIERS = (1.0, 2.0, 5.0, 10.0, 20.0)
+DEFAULT_BUFFER_CAPACITY = 1
+MIN_BUFFER_CAPACITY = 1
+MAX_BUFFER_CAPACITY = 100
+
+
+def _validate_buffer_capacity(value: object) -> int:
+    if type(value) is not int:
+        raise ValueError("buffer capacity must be an integer")
+    if not MIN_BUFFER_CAPACITY <= value <= MAX_BUFFER_CAPACITY:
+        raise ValueError(
+            f"buffer capacity must be between {MIN_BUFFER_CAPACITY} and {MAX_BUFFER_CAPACITY}"
+        )
+    return value
 
 
 @dataclass
@@ -166,6 +179,9 @@ class ThreeStationPipeline:
         self.on_counter_reset = on_counter_reset
         self.serial_no = 0
         self.completed_quantity = 0
+        self.terminal_completed_total = 0
+        self.terminal_ok_count = 0
+        self.terminal_nok_count = 0
         self.external_running = True
         self.q12: deque[Part] = deque()
         self.q23: deque[Part] = deque()
@@ -278,8 +294,10 @@ class ThreeStationPipeline:
             if result == RESULT_OK:
                 part.route_state = ROUTE_COMPLETED_OK
                 self.completed_quantity += 1
+                self._record_terminal_completion(ok=True)
             else:
                 part.route_state = ROUTE_COMPLETED_NOK
+                self._record_terminal_completion(ok=False)
                 if not part.reject_id:
                     part.reject_id = f"NG-{part.serial_no:06d}"
                 if result == RESULT_NOK and process_status == PROCESS_PROCESSED and nok_codes:
@@ -312,6 +330,13 @@ class ThreeStationPipeline:
         station.last_dmc = dmc
         station.last_end_time = now
         station.current_job = None
+
+    def _record_terminal_completion(self, *, ok: bool) -> None:
+        self.terminal_completed_total += 1
+        if ok:
+            self.terminal_ok_count += 1
+        else:
+            self.terminal_nok_count += 1
 
     def _handle_ack(self, station: StationState, db: bytearray, now_mono: float) -> None:
         payload_ready = util.get_bool(db, 6, 0)
@@ -478,6 +503,9 @@ class ThreeStationPipeline:
             "require_ack": self.require_ack,
             "serial_no": self.serial_no,
             "completed_quantity": self.completed_quantity,
+            "terminal_completed_total": self.terminal_completed_total,
+            "terminal_ok_count": self.terminal_ok_count,
+            "terminal_nok_count": self.terminal_nok_count,
             "topology": {
                 "station_count": 3,
                 "entry_station_id": "WS01",
@@ -711,6 +739,9 @@ class ThreeStationPipeline:
             self.on_counter_reset()
         self.serial_no = 0
         self.completed_quantity = 0
+        self.terminal_completed_total = 0
+        self.terminal_ok_count = 0
+        self.terminal_nok_count = 0
         self.q12.clear()
         self.q23.clear()
         for station in self.stations.values():
@@ -965,6 +996,7 @@ class SingleLinearRoutePipeline(ThreeStationPipeline):
         self.edge_queues: dict[tuple[str, str], deque[Part]] = {
             edge: deque() for edge in self.topology.edges
         }
+        self.buffer_capacities = self._initial_buffer_capacities()
         self.q12 = self.edge_queues.get(("WS01", "WS02"), deque())
         self.q23 = self.edge_queues.get(("WS02", "WS03"), deque())
         self.nok_codes_by_station = {
@@ -981,6 +1013,26 @@ class SingleLinearRoutePipeline(ThreeStationPipeline):
             for station_id, metadata in self.station_metadata.items()
         }
         self.event_history: list[dict[str, object]] = []
+
+    def _initial_buffer_capacities(self) -> dict[tuple[str, str], int]:
+        capacities: dict[tuple[str, str], int] = {}
+        raw_buffers = self._mapping.get("buffers")
+        if isinstance(raw_buffers, list):
+            for item in raw_buffers:
+                if not isinstance(item, Mapping):
+                    continue
+                edge = (str(item.get("from_station_id")), str(item.get("to_station_id")))
+                if edge not in self.topology.edges:
+                    continue
+                if edge in capacities:
+                    raise ValueError(f"duplicate buffer configuration for {edge[0]}->{edge[1]}")
+                capacities[edge] = _validate_buffer_capacity(
+                    item.get("capacity", DEFAULT_BUFFER_CAPACITY)
+                )
+        return {
+            edge: capacities.get(edge, DEFAULT_BUFFER_CAPACITY)
+            for edge in self.topology.edges
+        }
 
     @classmethod
     def from_mapping(cls, mapping: Mapping[str, object], **kwargs: object) -> "SingleLinearRoutePipeline":
@@ -1052,10 +1104,24 @@ class SingleLinearRoutePipeline(ThreeStationPipeline):
             if queue:
                 self._start_station(station, queue.popleft(), now, now_mono)
 
+    def _can_start(self, station: StationState, db: bytearray) -> bool:
+        if not super()._can_start(station, db):
+            return False
+        successor = self.topology.successor.get(station.station_id)
+        if successor is None:
+            return True
+        edge = (station.station_id, successor)
+        return len(self.edge_queues[edge]) < self.buffer_capacities[edge]
+
     def _finish_job(self, station: StationState, db: bytearray, now: datetime) -> None:
         job = station.current_job
         if not job:
             return
+        successor = self.topology.successor.get(station.station_id)
+        if successor is not None:
+            edge = (station.station_id, successor)
+            if len(self.edge_queues[edge]) >= self.buffer_capacities[edge]:
+                return
         station.cycle_counter += 1
         part = job.part
         result, nok_codes, process_status, skip_reason = self._result_for(station.station_id, part)
@@ -1081,12 +1147,13 @@ class SingleLinearRoutePipeline(ThreeStationPipeline):
             if result == RESULT_OK and part.route_state != ROUTE_BYPASSING:
                 part.route_state = ROUTE_COMPLETED_OK
                 self.completed_quantity += 1
+                self._record_terminal_completion(ok=True)
             else:
                 part.route_state = ROUTE_COMPLETED_NOK
+                self._record_terminal_completion(ok=False)
                 if not part.reject_id:
                     part.reject_id = f"NG-{part.serial_no:06d}"
         else:
-            successor = self.topology.successor.get(station_id)
             if successor is not None:
                 self.edge_queues[(station_id, successor)].append(part)
 
@@ -1224,6 +1291,69 @@ class SingleLinearRoutePipeline(ThreeStationPipeline):
         elif template == "generic_status_v1":
             util.set_int(db, 100, 1)
 
+    def update_station(
+        self,
+        station_id: str,
+        params: dict,
+        *,
+        audit_context: dict[str, object] | None = None,
+    ) -> dict:
+        if "downstream_buffer_capacity" not in params:
+            return super().update_station(station_id, params, audit_context=audit_context)
+
+        station = self._station_or_raise(station_id)
+        successor = self.topology.successor.get(station.station_id)
+        if successor is None:
+            raise ValueError(f"{station.station_id} has no downstream buffer")
+        edge = (station.station_id, successor)
+        capacity = _validate_buffer_capacity(params["downstream_buffer_capacity"])
+        current_wip = len(self.edge_queues[edge])
+        previous = self.buffer_capacities[edge]
+        context = {
+            "reason": "downstream buffer capacity update",
+            "actor": "system",
+            "client_ip": None,
+            "request_id": None,
+            "source": "INTERNAL",
+            "plc_boot_id": None,
+            **(audit_context or {}),
+        }
+        if capacity < current_wip:
+            message = f"buffer capacity {capacity} is below current WIP {current_wip}"
+            self._record_parameter_change(
+                station.station_id,
+                "downstream_buffer_capacity",
+                previous,
+                capacity,
+                context,
+                accepted=False,
+                rejection_reason=message,
+            )
+            raise ValueError(message)
+
+        remaining_params = dict(params)
+        remaining_params.pop("downstream_buffer_capacity")
+        if remaining_params:
+            super().update_station(
+                station_id,
+                remaining_params,
+                audit_context=audit_context,
+            )
+        self.buffer_capacities[edge] = capacity
+        self._record_parameter_change(
+            station.station_id,
+            "downstream_buffer_capacity",
+            previous,
+            capacity,
+            context,
+            accepted=True,
+        )
+        self.record_parameter_snapshot(
+            "runtime_update",
+            plc_boot_id=str(context.get("plc_boot_id") or "") or None,
+        )
+        return self.snapshot()
+
     def force_nok(
         self,
         station_id: str,
@@ -1252,6 +1382,9 @@ class SingleLinearRoutePipeline(ThreeStationPipeline):
             self.on_counter_reset()
         self.serial_no = 0
         self.completed_quantity = 0
+        self.terminal_completed_total = 0
+        self.terminal_ok_count = 0
+        self.terminal_nok_count = 0
         self.event_history.clear()
         for queue in self.edge_queues.values():
             queue.clear()
@@ -1297,7 +1430,16 @@ class SingleLinearRoutePipeline(ThreeStationPipeline):
                 "from_station_id": left,
                 "to_station_id": right,
                 "wip": len(queue),
-                "status": "WAITING" if queue else "EMPTY",
+                "capacity": self.buffer_capacities[(left, right)],
+                "status": (
+                    "EMPTY"
+                    if not queue
+                    else "FULL"
+                    if len(queue) == self.buffer_capacities[(left, right)]
+                    else "WAITING"
+                    if len(queue) < self.buffer_capacities[(left, right)]
+                    else "OVER_CAPACITY"
+                ),
                 "waiting_unit_id": queue[0].unit_id if queue else None,
                 "waiting_dmc": queue[0].child_dmc if queue else None,
             }

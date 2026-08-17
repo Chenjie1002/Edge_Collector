@@ -10,7 +10,7 @@ from fastapi.testclient import TestClient
 
 from app.control_api import CONTROL_HTML
 from app.control_api import create_control_app
-from app.pipeline import Part, StationJob, ThreeStationPipeline
+from app.pipeline import Part, SingleLinearRoutePipeline, StationJob, ThreeStationPipeline
 from app.runtime_config import load_runtime_config
 
 
@@ -28,9 +28,93 @@ def test_control_page_renders_station_and_nok_capabilities_from_state() -> None:
     assert "Effective speed / 生效倍率" in CONTROL_HTML
     assert "simulationSpeed" in CONTROL_HTML
     assert "simulationSpeedApplied" in CONTROL_HTML
+    assert "downstream_buffer_capacity" in CONTROL_HTML
+    assert "buffer.capacity" in CONTROL_HTML
+    assert "WIP <strong>${buffer.wip || 0} / ${buffer.capacity ?? \"-\"}</strong>" in CONTROL_HTML
     assert "draft-status" in CONTROL_HTML
     assert "setTimeout(pollState" in CONTROL_HTML
     assert "setInterval" not in CONTROL_HTML
+
+
+def test_control_page_back_link_derives_dashboard_from_current_browser_host() -> None:
+    assert "返回 Edge MES" in CONTROL_HTML
+    assert "window.location.hostname" in CONTROL_HTML
+    assert ":3001/" in CONTROL_HTML
+    assert "127.0.0.1" not in CONTROL_HTML
+    assert "10.0.0.218" not in CONTROL_HTML
+
+
+def _linear_mapping() -> dict[str, object]:
+    station_ids = ["WS01", "WS02", "WS03"]
+    return {
+        "line_id": "LINE_TEST",
+        "entry_station_id": "WS01",
+        "terminal_station_id": "WS03",
+        "route_graph": [
+            {"from_station_id": left, "to_station_id": right}
+            for left, right in zip(station_ids, station_ids[1:])
+        ],
+        "execution_profile": {"mode": "normal", "cycle_scale": 1.0},
+        "stations": [
+            {
+                "station_id": station_id,
+                "station_order": index,
+                "db_number": 100 + index,
+                "cycle_time_s": 1.0,
+                "jitter_s": 0.0,
+                "nok_rate": 0.0,
+                "payload_template": "generic_status_v1",
+                "nok_codes": [11001],
+            }
+            for index, station_id in enumerate(station_ids, start=1)
+        ],
+    }
+
+
+def test_buffer_capacity_endpoint_applies_audits_and_rejects_unsafe_lowering() -> None:
+    audit = _AuditRecorder()
+    pipeline = SingleLinearRoutePipeline.from_mapping(_linear_mapping(), audit_recorder=audit)
+    client = TestClient(create_control_app(pipeline, threading.RLock()))
+
+    response = client.post(
+        "/vplc/stations/WS01",
+        json={"downstream_buffer_capacity": 2, "reason": "operator buffer tuning"},
+    )
+
+    assert response.status_code == 200
+    assert response.json()["buffers"][0]["capacity"] == 2
+    assert client.get("/vplc/state").json()["buffers"][0]["capacity"] == 2
+    assert audit.changes[-1]["parameter_name"] == "downstream_buffer_capacity"
+    assert audit.changes[-1]["old_value"] == 1
+    assert audit.changes[-1]["new_value"] == 2
+
+    pipeline.edge_queues[("WS01", "WS02")].extend(
+        [
+            Part(serial_no=1, unit_id="U-1", child_dmc="SUB-1"),
+            Part(serial_no=2, unit_id="U-2", child_dmc="SUB-2"),
+        ]
+    )
+    lowering = client.post(
+        "/vplc/stations/WS01",
+        json={"downstream_buffer_capacity": 1, "reason": "unsafe lower buffer"},
+    )
+    assert lowering.status_code == 400
+    assert "current WIP" in lowering.json()["detail"]
+    assert len(pipeline.edge_queues[("WS01", "WS02")]) == 2
+    assert client.get("/vplc/state").json()["buffers"][0]["capacity"] == 2
+
+
+def test_buffer_capacity_endpoint_rejects_invalid_integer_bounds() -> None:
+    pipeline = SingleLinearRoutePipeline.from_mapping(_linear_mapping())
+    client = TestClient(create_control_app(pipeline, threading.RLock()))
+
+    for invalid in (0, -1, 101, 1.5, "2"):
+        response = client.post(
+            "/vplc/stations/WS01",
+            json={"downstream_buffer_capacity": invalid, "reason": "invalid buffer test"},
+        )
+        assert response.status_code in (400, 422), invalid
+    assert client.get("/vplc/state").json()["buffers"][0]["capacity"] == 1
 
 
 class _AuditRecorder:
@@ -255,8 +339,8 @@ def test_control_page_runtime_preserves_focused_and_dirty_inputs_and_sends_three
         }
 
         const staticIds = [
-          "lineState", "lineHint", "scale", "profileHint", "serial", "completed",
-          "serialHint", "completedHint", "wipLabel", "wip12", "wipHint", "planHint",
+        "lineState", "lineHint", "scale", "profileHint", "serial", "completed",
+        "terminalOk", "terminalNok", "serialHint", "completedHint", "wipLabel", "wip12", "wipHint", "planHint",
           "lineFlow", "rawJson", "updatedAt", "stationRows",
         ];
         const elements = new Map(staticIds.map((id) => [id, new FakeElement(id)]));
@@ -562,8 +646,8 @@ def test_control_page_polling_keeps_editable_nodes_selection_and_mode_semantics(
         }
 
         const staticIds = [
-          "lineState", "lineHint", "scale", "profileHint", "serial", "completed",
-          "serialHint", "completedHint", "wipLabel", "wip12", "wipHint", "planHint",
+        "lineState", "lineHint", "scale", "profileHint", "serial", "completed",
+        "terminalOk", "terminalNok", "serialHint", "completedHint", "wipLabel", "wip12", "wipHint", "planHint",
           "planMode", "continuousPlanHint", "durationPlanField", "quantityPlanField",
           "shiftsPlanField", "durationHours", "quantityTarget", "shiftCount", "shiftHours",
           "startPlanButton", "planRunningState", "lineFlow", "rawJson", "updatedAt", "stationRows",
@@ -645,9 +729,10 @@ def test_control_page_polling_keeps_editable_nodes_selection_and_mode_semantics(
           buffers: [{
             from_station_id: "WS01",
             to_station_id: "WS02",
-            wip,
-            status: wip ? "WAITING" : "EMPTY",
-            waiting_unit_id: wip ? "U-WAITING" : null,
+                wip,
+                status: wip ? "WAITING" : "EMPTY",
+                capacity: 1,
+                waiting_unit_id: wip ? "U-WAITING" : null,
             waiting_dmc: wip ? "DMC-WAITING" : null,
           }],
           line: {
@@ -752,7 +837,7 @@ def test_control_page_polling_keeps_editable_nodes_selection_and_mode_semantics(
         }
             if (document.getElementById("WS01-status").textContent !== "RUNNING") throw new Error("live station status did not update");
             if (!document.getElementById("lineFlow").innerHTML.includes("30%")) throw new Error("live cycle progress did not update");
-            if (!document.getElementById("lineFlow").innerHTML.includes("WIP <strong>2</strong>")) throw new Error("live buffer state did not update");
+            if (!document.getElementById("lineFlow").innerHTML.includes("WIP <strong>2 / 1</strong>")) throw new Error("live buffer state did not update");
             if (!document.getElementById("lineFlow").innerHTML.includes("1×")) throw new Error("effective speed is missing from line flow");
 
         if (typeof context.clearPlanDrafts !== "function") throw new Error("plan draft reset contract missing");

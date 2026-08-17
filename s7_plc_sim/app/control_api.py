@@ -5,7 +5,7 @@ import uuid
 
 from fastapi import FastAPI, HTTPException, Request
 from fastapi.responses import HTMLResponse
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, Field, StrictInt
 
 from app.pipeline import ThreeStationPipeline
 
@@ -14,6 +14,7 @@ class StationUpdateRequest(BaseModel):
     base_cycle_s: float | None = Field(default=None, ge=1, le=300)
     jitter_s: float | None = Field(default=None, ge=0, le=60)
     nok_rate: float | None = Field(default=None, ge=0, le=1)
+    downstream_buffer_capacity: StrictInt | None = Field(default=None, ge=1, le=100)
     paused: bool | None = None
     reason: str = Field(min_length=1, max_length=500)
 
@@ -190,8 +191,10 @@ CONTROL_HTML = """
       border-bottom: 1px solid var(--line); background: var(--surface);
     }
     h1 { margin: 0; font-size: 19px; font-weight: 750; letter-spacing: 0; }
+    a.product-back { color: var(--blue); text-decoration: none; font-weight: 700; white-space: nowrap; }
+    a.product-back:hover { text-decoration: underline; }
     main { width: min(1320px, calc(100vw - 28px)); margin: 18px auto 28px; display: grid; gap: 14px; }
-    .topline { display: grid; grid-template-columns: repeat(5, minmax(0, 1fr)); gap: 12px; }
+    .topline { display: grid; grid-template-columns: repeat(7, minmax(0, 1fr)); gap: 12px; }
     .tile, .panel { background: var(--surface); border: 1px solid var(--line); border-radius: 8px; }
     .tile { padding: 14px 16px; min-height: 90px; }
     .label { color: var(--muted); font-size: 12px; margin-bottom: 8px; }
@@ -246,7 +249,7 @@ CONTROL_HTML = """
     .station-card-title { display: flex; align-items: center; gap: 10px; font-size: 16px; font-weight: 760; }
     .station-live-meta { display: grid; grid-template-columns: repeat(4, minmax(90px, 1fr)); gap: 8px 14px; color: var(--muted); font-size: 12px; }
     .station-live-meta strong { display: block; margin-top: 3px; color: var(--text); font-size: 13px; overflow-wrap: anywhere; }
-    .station-groups { display: grid; grid-template-columns: 1.1fr 1.35fr 1.25fr 1.2fr; gap: 10px; }
+    .station-groups { display: grid; grid-template-columns: repeat(5, minmax(0, 1fr)); gap: 10px; }
     .control-group { min-width: 0; padding: 10px; border: 1px solid var(--line); border-radius: 7px; background: var(--surface); }
     .control-group h3 { margin: 0 0 9px; color: var(--muted); font-size: 12px; font-weight: 750; }
     .control-fields { display: grid; gap: 8px; }
@@ -288,6 +291,7 @@ CONTROL_HTML = """
   <header>
     <h1>V-PLC 控制台</h1>
     <div class="actions">
+      <a class="product-back" id="productBack" href="/">← 返回 Edge MES</a>
       <button onclick="loadState()">刷新</button>
       <button class="danger" onclick="resetPipeline()">重置 WIP / Counter</button>
     </div>
@@ -297,7 +301,9 @@ CONTROL_HTML = """
       <div class="tile"><div class="label">整线状态</div><div class="value" id="lineState">-</div><div class="hint" id="lineHint">-</div></div>
       <div class="tile"><div class="label">Profile / 模拟倍率</div><div class="value" id="scale">-</div><div class="hint" id="profileHint">1.0 表示真实 30s 左右节拍</div></div>
       <div class="tile"><div class="label">总序号</div><div class="value" id="serial">-</div><div class="hint" id="serialHint">入口站投入件累计</div></div>
-      <div class="tile"><div class="label">完成件数</div><div class="value" id="completed">-</div><div class="hint" id="completedHint">终点站 OK 下线累计</div></div>
+      <div class="tile"><div class="label">终点完成</div><div class="value" id="completed">-</div><div class="hint" id="completedHint">OK + NOK terminal completion</div></div>
+      <div class="tile"><div class="label">OK</div><div class="value" id="terminalOk">-</div><div class="hint">终点合格累计</div></div>
+      <div class="tile"><div class="label">NOK</div><div class="value" id="terminalNok">-</div><div class="hint">终点不合格累计</div></div>
       <div class="tile"><div class="label" id="wipLabel">首段 WIP</div><div class="value" id="wip12">-</div><div class="hint" id="wipHint">-</div></div>
     </section>
     <section class="panel">
@@ -465,13 +471,13 @@ CONTROL_HTML = """
     }
 
     function clearStationDrafts(stationId) {
-      ["base_cycle_s", "jitter_s", "nok_rate"].forEach(field => {
+      ["base_cycle_s", "jitter_s", "nok_rate", "downstream_buffer_capacity"].forEach(field => {
         const key = stationId + ":" + field;
         protectedInputValues.delete(key);
         dirtyInputKeys.delete(key);
       });
       editableControls().forEach(control => {
-        if (control.dataset.station === stationId && ["base_cycle_s", "jitter_s", "nok_rate"].includes(control.dataset.field)) {
+        if (control.dataset.station === stationId && ["base_cycle_s", "jitter_s", "nok_rate", "downstream_buffer_capacity"].includes(control.dataset.field)) {
           control.dataset.dirty = "false";
         }
       });
@@ -611,11 +617,12 @@ CONTROL_HTML = """
           const next = stationIds[index + 1];
           const buffer = buffers.get(`${id}->${next}`) || { from_station_id: id, to_station_id: next, wip: state.wip?.[`${id}_to_${next}`] || 0, status: "EMPTY", waiting_unit_id: null, waiting_dmc: null };
           parts.push(`<div class="flow-arrow">→</div>`);
+          const bufferStatus = buffer.status || (buffer.wip ? "WAITING" : "EMPTY");
           parts.push(`<article class="flow-node buffer">
-            <div class="flow-node-head"><span class="flow-node-title">Buffer</span><span class="status ${buffer.wip ? "hold" : "ok"}">${buffer.status || (buffer.wip ? "WAITING" : "EMPTY")}</span></div>
+            <div class="flow-node-head"><span class="flow-node-title">Buffer</span><span class="status ${bufferStatus === "FULL" ? "hold" : (buffer.wip ? "hold" : "ok")}">${bufferStatus}</span></div>
             <div class="flow-meta">
               <span>${buffer.from_station_id} → ${buffer.to_station_id}</span>
-              <span>WIP <strong>${buffer.wip || 0}</strong></span>
+              <span>WIP <strong>${buffer.wip || 0} / ${buffer.capacity ?? "-"}</strong></span>
               <span>Waiting Unit <strong class="code">${buffer.waiting_unit_id || "-"}</strong></span>
               <span>DMC <strong class="code">${buffer.waiting_dmc || "-"}</strong></span>
             </div>
@@ -630,7 +637,7 @@ CONTROL_HTML = """
       return (station.allow_force === false ? "disabled:" : "enabled:") + (station.nok_codes || []).join(",");
     }
 
-    function stationRowHtml(id, station) {
+    function stationRowHtml(id, station, buffer) {
       return `
         <article class="station-card" data-station-row="${id}">
           <div class="station-card-head">
@@ -670,6 +677,16 @@ CONTROL_HTML = """
                 </label>
               </div>
             </section>
+            ${buffer ? `<section class="control-group">
+              <h3>Downstream Buffer</h3>
+              <div class="control-fields">
+                <div class="readonly">To station: <strong class="code">${buffer.to_station_id}</strong></div>
+                <label class="field-label">Capacity
+                  <input id="${id}-buffer-capacity" data-station="${id}" data-field="downstream_buffer_capacity"${inputDirtyAttribute(id, "downstream_buffer_capacity")} type="number" min="1" max="100" step="1" value="${buffer.capacity ?? 1}" onfocus="rememberInput(this)" oninput="markInputDirty(this)">
+                  <span class="field-note">WIP ${buffer.wip || 0} / ${buffer.capacity ?? 1} · 1..100</span>
+                </label>
+              </div>
+            </section>` : ""}
             <section class="control-group">
               <h3>Forced NOK</h3>
               <div class="control-fields">
@@ -695,7 +712,7 @@ CONTROL_HTML = """
         </article>`;
     }
 
-    function updateStationRow(id, station, state) {
+    function updateStationRow(id, station, state, buffer) {
       if (!station) return;
       const cycle = station.current_cycle;
       const progress = cycle ? Number(cycle.progress_percent || 0) : 0;
@@ -722,6 +739,8 @@ CONTROL_HTML = """
       updateEditableValue(baseInput, station.base_cycle_s.toFixed(1));
       updateEditableValue(jitterInput, station.jitter_s.toFixed(1));
       updateEditableValue(nokInput, station.nok_rate.toFixed(3));
+      const bufferInput = document.getElementById(id + "-buffer-capacity");
+      updateEditableValue(bufferInput, buffer?.capacity ?? 1);
 
       const codeSelect = document.getElementById(id + "-nok-code");
       if (codeSelect && !controlIsProtected(codeSelect)) {
@@ -747,12 +766,13 @@ CONTROL_HTML = """
     function renderStationRows(state) {
       const rowHost = document.getElementById("stationRows");
       if (!rowHost) return;
+      const downstreamBuffers = new Map((state.buffers || []).map(buffer => [buffer.from_station_id, buffer]));
       const topologyKey = stations.join("|");
       if (rowHost.dataset.topologyKey !== topologyKey) {
-        rowHost.innerHTML = stations.map(id => stationRowHtml(id, state.stations[id])).join("");
+        rowHost.innerHTML = stations.map(id => stationRowHtml(id, state.stations[id], downstreamBuffers.get(id))).join("");
         rowHost.dataset.topologyKey = topologyKey;
       }
-      stations.forEach(id => updateStationRow(id, state.stations[id], state));
+      stations.forEach(id => updateStationRow(id, state.stations[id], state, downstreamBuffers.get(id)));
     }
 
     function renderPlanMode(mode) {
@@ -832,9 +852,14 @@ CONTROL_HTML = """
       const speedDraftStatus = document.getElementById("simulationSpeedDraftStatus");
       if (speedDraftStatus && (!speedControl || !isControlDirty(speedControl))) speedDraftStatus.hidden = true;
       document.getElementById("serial").textContent = state.serial_no;
-      document.getElementById("completed").textContent = state.completed_quantity;
+      const terminalCompleted = state.terminal_completed_total ?? state.completed_quantity ?? 0;
+      const terminalOk = state.terminal_ok_count ?? state.completed_quantity ?? 0;
+      const terminalNok = state.terminal_nok_count ?? 0;
+      document.getElementById("completed").textContent = terminalCompleted;
+      document.getElementById("terminalOk").textContent = terminalOk;
+      document.getElementById("terminalNok").textContent = terminalNok;
       document.getElementById("serialHint").textContent = `${topology.entry_station_id || "入口站"} 投入件累计`;
-      document.getElementById("completedHint").textContent = `${topology.terminal_station_id || "终点站"} OK 下线累计`;
+      document.getElementById("completedHint").textContent = `${topology.terminal_station_id || "终点站"} 终点完成 = OK ${terminalOk} + NOK ${terminalNok}`;
       document.getElementById("wipLabel").textContent = wipEntries[0]?.label || "首段 WIP";
       document.getElementById("wip12").textContent = wipEntries[0]?.value || 0;
       document.getElementById("wipHint").textContent = wipEntries.slice(1).map(item => `${item.label}: ${item.value}`).join(" / ") || "无中间边";
@@ -870,6 +895,8 @@ CONTROL_HTML = """
         nok_rate: Number(document.getElementById(`${id}-nok`).value),
         reason,
       };
+      const capacityInput = document.getElementById(`${id}-buffer-capacity`);
+      if (capacityInput) payload.downstream_buffer_capacity = Number(capacityInput.value);
       const nextState = await api(`/vplc/stations/${id}`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
@@ -938,6 +965,13 @@ CONTROL_HTML = """
       currentState = await api("/vplc/production/stop", { method: "POST" });
       render(currentState);
     }
+
+    function dashboardUrl() {
+      const protocol = window.location.protocol === "https:" ? "https:" : "http:";
+      return protocol + "//" + window.location.hostname + ":3001/";
+    }
+    const productBack = document.getElementById("productBack");
+    if (productBack && typeof window !== "undefined") productBack.href = dashboardUrl();
 
     async function pollState() {
       try { await loadState(); } finally { setTimeout(pollState, 1000); }

@@ -760,6 +760,8 @@ TRACE_HTML = f"""
     * {{ box-sizing: border-box; }}
     body {{ margin: 0; background: var(--bg); color: var(--text); font-size: 14px; }}
     header {{ height: 64px; padding: 0 24px; display: flex; align-items: center; justify-content: space-between; background: var(--surface); border-bottom: 1px solid var(--line); }}
+    a.product-back {{ color: var(--blue); text-decoration: none; font-weight: 700; white-space: nowrap; }}
+    a.product-back:hover {{ text-decoration: underline; }}
     h1 {{ margin: 0; font-size: 19px; }}
     main {{ width: min(1240px, calc(100vw - 28px)); margin: 18px auto 28px; display: grid; gap: 14px; }}
     .panel {{ background: var(--surface); border: 1px solid var(--line); border-radius: 8px; padding: 16px; }}
@@ -809,7 +811,10 @@ TRACE_HTML = f"""
 <body>
   <header>
     <h1>动态生产追溯</h1>
-    <a href="/docs" target="_blank">API Docs</a>
+    <div style="display:flex;align-items:center;gap:16px">
+      <a class="product-back" id="productBack" href="/">← 返回 Edge MES</a>
+      <a href="/docs" target="_blank">API Docs</a>
+    </div>
   </header>
   <main>
     <section class="panel">
@@ -880,6 +885,12 @@ TRACE_HTML = f"""
       }}
       return String(value);
     }}
+    function dashboardUrl() {{
+      const protocol = window.location.protocol === "https:" ? "https:" : "http:";
+      return protocol + "//" + window.location.hostname + ":3001/";
+    }}
+    const productBack = document.getElementById("productBack");
+    if (productBack && typeof window !== "undefined") productBack.href = dashboardUrl();
     function processEntries(id, row) {{
       const payload = row?.payload || {{}};
       const preferred = id === "WS01"

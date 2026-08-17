@@ -4,12 +4,14 @@ from datetime import datetime
 from pathlib import Path
 import time
 
+import pytest
 from snap7 import util
 
 from app.pipeline import (
     PROCESS_SKIPPED,
     RESULT_OK,
     RESULT_NOK,
+    ROUTE_BYPASSING,
     ROUTE_COMPLETED_NOK,
     Part,
     StationJob,
@@ -107,7 +109,8 @@ def test_snapshot_exposes_real_buffer_identity_and_current_cycle_progress() -> N
         "from_station_id": "WS01",
         "to_station_id": "WS02",
         "wip": 1,
-        "status": "WAITING",
+        "capacity": 1,
+        "status": "FULL",
         "waiting_unit_id": "U-000101",
         "waiting_dmc": "SUB-000101",
     }
@@ -201,3 +204,163 @@ def test_single_linear_route_mid_route_nok_preserves_origin_and_skips_downstream
     assert by_station["WS10"]["result"] == RESULT_NOK
     assert by_station["WS10"]["route_state"] == ROUTE_COMPLETED_NOK
     assert pipeline.completed_quantity == 0
+
+
+def test_terminal_counters_conserve_ok_nok_and_reset_for_inherited_nok() -> None:
+    pipeline = SingleLinearRoutePipeline.from_mapping(_mapping10(), scale=0.05)
+    terminal = pipeline.stations["WS10"]
+    db = bytearray(512)
+
+    terminal.current_job = StationJob(
+        part=Part(serial_no=1, unit_id="U-OK", child_dmc="SUB-OK"),
+        started_at=datetime.now(),
+        finish_monotonic=time.monotonic() - 1,
+        cycle_time_s=1.0,
+    )
+    pipeline._finish_job(terminal, db, datetime.now())
+
+    pipeline.force_nok("WS10", 11001, audit_context={"reason": "counter test"})
+    terminal.current_job = StationJob(
+        part=Part(serial_no=2, unit_id="U-DIRECT-NOK", child_dmc="SUB-DIRECT-NOK"),
+        started_at=datetime.now(),
+        finish_monotonic=time.monotonic() - 1,
+        cycle_time_s=1.0,
+    )
+    pipeline._finish_job(terminal, db, datetime.now())
+
+    inherited = Part(
+        serial_no=3,
+        unit_id="U-INHERITED-NOK",
+        child_dmc="SUB-INHERITED-NOK",
+        route_state=ROUTE_BYPASSING,
+        defect_origin_station="WS05",
+        defect_code=11001,
+    )
+    terminal.current_job = StationJob(
+        part=inherited,
+        started_at=datetime.now(),
+        finish_monotonic=time.monotonic() - 1,
+        cycle_time_s=1.0,
+    )
+    pipeline._finish_job(terminal, db, datetime.now())
+
+    state = pipeline.snapshot()
+    assert state["terminal_completed_total"] == 3
+    assert state["terminal_ok_count"] == 1
+    assert state["terminal_nok_count"] == 2
+    assert state["terminal_completed_total"] == state["terminal_ok_count"] + state["terminal_nok_count"]
+    assert state["completed_quantity"] == 1
+
+    reset_state = pipeline.reset()
+    assert reset_state["terminal_completed_total"] == 0
+    assert reset_state["terminal_ok_count"] == 0
+    assert reset_state["terminal_nok_count"] == 0
+
+
+def test_quantity_plan_still_stops_on_qualified_ok_not_terminal_nok() -> None:
+    pipeline = SingleLinearRoutePipeline.from_mapping(_mapping10(), scale=0.05)
+    pipeline.start_plan({"mode": "quantity", "quantity": 1})
+    terminal = pipeline.stations["WS10"]
+    db = bytearray(512)
+
+    pipeline.force_nok("WS10", 11001, audit_context={"reason": "plan semantics test"})
+    terminal.current_job = StationJob(
+        part=Part(serial_no=1, unit_id="U-NOK", child_dmc="SUB-NOK"),
+        started_at=datetime.now(),
+        finish_monotonic=time.monotonic() - 1,
+        cycle_time_s=1.0,
+    )
+    pipeline._finish_job(terminal, db, datetime.now())
+    pipeline._update_plan(time.monotonic())
+
+    assert pipeline.completed_quantity == 0
+    assert pipeline.terminal_completed_total == 1
+    assert pipeline.plan.active is True
+
+    terminal.current_job = StationJob(
+        part=Part(serial_no=2, unit_id="U-OK-2", child_dmc="SUB-OK-2"),
+        started_at=datetime.now(),
+        finish_monotonic=time.monotonic() - 1,
+        cycle_time_s=1.0,
+    )
+    pipeline._finish_job(terminal, db, datetime.now())
+    pipeline._update_plan(time.monotonic())
+
+    assert pipeline.completed_quantity == 1
+    assert pipeline.terminal_completed_total == 2
+    assert pipeline.plan.active is False
+    assert pipeline.plan.stop_reason == "target_quantity_reached"
+
+
+def test_linear_buffers_default_to_one_and_pause_applies_backpressure() -> None:
+    pipeline = SingleLinearRoutePipeline.from_mapping(_mapping10(), scale=0.05)
+    assert {edge: pipeline.buffer_capacities[edge] for edge in pipeline.topology.edges} == {
+        edge: 1 for edge in pipeline.topology.edges
+    }
+    pipeline.update_station("WS02", {"paused": True}, audit_context={"reason": "buffer test"})
+    dbs = {station.db_number: bytearray(512) for station in pipeline.stations.values()}
+
+    _run_until(pipeline, dbs, lambda: len(pipeline.edge_queues[("WS01", "WS02")]) == 1)
+    serial_at_full = pipeline.serial_no
+    for _ in range(12):
+        _ack_ready_payloads(dbs)
+        pipeline.tick(dbs, True)
+        time.sleep(0.01)
+
+    state = pipeline.snapshot()
+    assert state["buffers"][0]["wip"] == 1
+    assert state["buffers"][0]["capacity"] == 1
+    assert state["buffers"][0]["status"] == "FULL"
+    assert pipeline.serial_no == serial_at_full
+
+    pipeline.update_station("WS02", {"paused": False}, audit_context={"reason": "buffer resume"})
+    _run_until(pipeline, dbs, lambda: pipeline.stations["WS02"].cycle_counter >= 1)
+    assert len(pipeline.edge_queues[("WS01", "WS02")]) <= 1
+
+
+def test_linear_buffer_capacity_two_allows_two_without_overflow() -> None:
+    pipeline = SingleLinearRoutePipeline.from_mapping(_mapping10(), scale=0.05)
+    pipeline.update_station(
+        "WS01",
+        {"downstream_buffer_capacity": 2},
+        audit_context={"reason": "capacity two test"},
+    )
+    pipeline.update_station("WS02", {"paused": True}, audit_context={"reason": "capacity two test"})
+    dbs = {station.db_number: bytearray(512) for station in pipeline.stations.values()}
+
+    _run_until(pipeline, dbs, lambda: len(pipeline.edge_queues[("WS01", "WS02")]) == 2)
+    for _ in range(12):
+        _ack_ready_payloads(dbs)
+        pipeline.tick(dbs, True)
+        time.sleep(0.01)
+
+    state = pipeline.snapshot()
+    assert state["buffers"][0]["wip"] == 2
+    assert state["buffers"][0]["capacity"] == 2
+    assert state["buffers"][0]["status"] == "FULL"
+
+
+def test_lowering_buffer_capacity_below_wip_fails_closed_without_deleting_parts() -> None:
+    pipeline = SingleLinearRoutePipeline.from_mapping(_mapping10(), scale=0.05)
+    pipeline.update_station(
+        "WS01",
+        {"downstream_buffer_capacity": 2},
+        audit_context={"reason": "capacity lower-bound test"},
+    )
+    queue = pipeline.edge_queues[("WS01", "WS02")]
+    queue.extend(
+        [
+            Part(serial_no=1, unit_id="U-1", child_dmc="SUB-1"),
+            Part(serial_no=2, unit_id="U-2", child_dmc="SUB-2"),
+        ]
+    )
+
+    with pytest.raises(ValueError, match="current WIP"):
+        pipeline.update_station(
+            "WS01",
+            {"downstream_buffer_capacity": 1},
+            audit_context={"reason": "capacity lower-bound test"},
+        )
+
+    assert len(queue) == 2
+    assert pipeline.buffer_capacities[("WS01", "WS02")] == 2
