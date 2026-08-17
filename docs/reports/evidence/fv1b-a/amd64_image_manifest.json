@@ -1,0 +1,171 @@
+{
+  "schema": "fv1b-a-amd64-image-manifest/v1",
+  "task_identity": {
+    "path": "docs/thread_handoff/pm_task_20260817T0212Z_fv1b-a_wyse_amd64_branch_packaging.md",
+    "bytes": 22312,
+    "sha256": "90c4b1832d2c77fa0b243b9522451fb1e06c0c03f824b162c311682578fdd56a"
+  },
+  "source": {
+    "branch": "main",
+    "head": "efdd3decb0901ad79ce8e401327438c5b684b5dd",
+    "origin_main": "6226bf3fb716880a176f9eb642b8139cef3255a6",
+    "ahead": 22,
+    "behind": 0,
+    "build_platform": "linux/amd64",
+    "host_architecture": "arm64",
+    "docker_server_architecture": "aarch64",
+    "buildx_builder": "colima",
+    "buildx_supported_platforms": [
+      "linux/386",
+      "linux/amd64",
+      "linux/amd64/v2",
+      "linux/arm64"
+    ]
+  },
+  "platform_boundary": {
+    "official_mainline_platform": "RASPBERRY_PI_ARM64",
+    "fv1b_platform": "WYSE3040_AMD64_DEBUG_BRANCH_ONLY",
+    "x86_formal_product_line": "NOT_AUTHORIZED"
+  },
+  "protected_root_compose": {
+    "path": "docker-compose.yml",
+    "bytes": 6191,
+    "sha256": "5e7009a5870919313c4355dd8af7e6f92194b62307bc74d0030f43a47719e483"
+  },
+  "images": [
+    {
+      "logical_service": "api",
+      "kind": "project-built",
+      "compose_image": "edge-mes-demo-api:fv1b-a-amd64",
+      "tag": "fv1b-a-amd64",
+      "dockerfile": "api/Dockerfile",
+      "build_context": ".",
+      "os": "linux",
+      "architecture": "amd64",
+      "image_id": "sha256:3502d5547f60452b7d39112565194eb59a929cd7ff373984f8fc9c052fdec8a1",
+      "build_result": "PASS",
+      "created_at": "2026-08-17T10:33:29.482985391+08:00"
+    },
+    {
+      "logical_service": "collector",
+      "kind": "project-built",
+      "compose_image": "edge-mes-demo-collector:fv1b-a-amd64",
+      "tag": "fv1b-a-amd64",
+      "dockerfile": "collector/Dockerfile",
+      "build_context": ".",
+      "os": "linux",
+      "architecture": "amd64",
+      "image_id": "sha256:b610997b45275a936d187501deae8b0401311db82addea3e9f4b811102f2458f",
+      "build_result": "PASS",
+      "created_at": "2026-08-17T10:34:11.422337065+08:00"
+    },
+    {
+      "logical_service": "dashboard",
+      "kind": "project-built",
+      "compose_image": "edge-mes-demo-dashboard:fv1b-a-amd64",
+      "tag": "fv1b-a-amd64",
+      "dockerfile": "frontend/Dockerfile",
+      "build_context": "frontend",
+      "os": "linux",
+      "architecture": "amd64",
+      "image_id": "sha256:d73b87e2bf348bfe5b31ad8d29f12880383f3bf597e3ad89d74d7bf52d912d37",
+      "build_result": "PASS",
+      "created_at": "2026-08-17T10:38:39.963435570+08:00"
+    },
+    {
+      "logical_service": "grafana",
+      "kind": "upstream",
+      "compose_image": "grafana/grafana:latest@sha256:e27e68cfd5795c1bea54950766078a02e84dfa3bafe0a4d0e5382f713dfd8e4e",
+      "registry_ref": "docker.io/grafana/grafana:latest",
+      "registry_index_digest": "sha256:ab5cb380e3ff3172d6c8bd2e7cfd31cce977d2881b260e1f5bc089bf0b759b43",
+      "registry_variant_digest": "sha256:e27e68cfd5795c1bea54950766078a02e84dfa3bafe0a4d0e5382f713dfd8e4e",
+      "amd64_variant_present": true,
+      "os": "linux",
+      "architecture": "amd64",
+      "image_id": "sha256:e27e68cfd5795c1bea54950766078a02e84dfa3bafe0a4d0e5382f713dfd8e4e",
+      "pull_result": "PASS",
+      "created_at": "2026-08-07T00:43:24Z"
+    },
+    {
+      "logical_service": "node-exporter",
+      "kind": "upstream",
+      "compose_image": "prom/node-exporter:latest@sha256:da83fae85603c4e47e6c68369a7d746e2dda683dc35ea2e234b4f171e0d92798",
+      "registry_ref": "docker.io/prom/node-exporter:latest",
+      "registry_index_digest": "sha256:1b4e4438faca4dd7e001dd445d161a4a2091b0fededa84093b3a8dfeae1f1be0",
+      "registry_variant_digest": "sha256:da83fae85603c4e47e6c68369a7d746e2dda683dc35ea2e234b4f171e0d92798",
+      "amd64_variant_present": true,
+      "os": "linux",
+      "architecture": "amd64",
+      "image_id": "sha256:da83fae85603c4e47e6c68369a7d746e2dda683dc35ea2e234b4f171e0d92798",
+      "pull_result": "PASS",
+      "created_at": "2026-07-14T12:11:16.849376637Z"
+    },
+    {
+      "logical_service": "postgres",
+      "kind": "upstream",
+      "compose_image": "postgres:16@sha256:56f243d2355bad7d2016b1e78b80da8ac9e7967b766be2bfbff84fe85ffa30bc",
+      "registry_ref": "docker.io/library/postgres:16",
+      "registry_index_digest": "sha256:e17e86066e5ef83e0952a9347f5c792b7ece00972e2aa787a6986f471b3dd3d5",
+      "registry_variant_digest": "sha256:56f243d2355bad7d2016b1e78b80da8ac9e7967b766be2bfbff84fe85ffa30bc",
+      "amd64_variant_present": true,
+      "os": "linux",
+      "architecture": "amd64",
+      "image_id": "sha256:56f243d2355bad7d2016b1e78b80da8ac9e7967b766be2bfbff84fe85ffa30bc",
+      "pull_result": "PASS",
+      "created_at": "2026-08-13T19:16:08.705640299Z"
+    },
+    {
+      "logical_service": "prometheus",
+      "kind": "upstream",
+      "compose_image": "prom/prometheus:latest@sha256:1147c92841726a6fef55fe6124491d6f85480f8de204f7d420304ca5bbd0a8f7",
+      "registry_ref": "docker.io/prom/prometheus:latest",
+      "registry_index_digest": "sha256:508729e0e2d18e11fd742a5a5ca70e557b940a93948c3c95fd0123a6fd538b69",
+      "registry_variant_digest": "sha256:1147c92841726a6fef55fe6124491d6f85480f8de204f7d420304ca5bbd0a8f7",
+      "amd64_variant_present": true,
+      "os": "linux",
+      "architecture": "amd64",
+      "image_id": "sha256:1147c92841726a6fef55fe6124491d6f85480f8de204f7d420304ca5bbd0a8f7",
+      "pull_result": "PASS",
+      "created_at": "2026-07-30T12:01:58.514082203Z"
+    },
+    {
+      "logical_service": "s7-plc-sim",
+      "kind": "project-built",
+      "compose_image": "edge-mes-demo-s7-plc-sim:fv1b-a-amd64",
+      "tag": "fv1b-a-amd64",
+      "dockerfile": "s7_plc_sim/Dockerfile",
+      "build_context": "s7_plc_sim",
+      "os": "linux",
+      "architecture": "amd64",
+      "image_id": "sha256:6fcab39778d7f0667593e88f9c7eb6fceab6935bffb7ef507adc7f87a77823f1",
+      "build_result": "PASS",
+      "created_at": "2026-08-17T10:36:07.567492192+08:00"
+    },
+    {
+      "logical_service": "simulator",
+      "kind": "project-built",
+      "compose_image": "edge-mes-demo-simulator:fv1b-a-amd64",
+      "tag": "fv1b-a-amd64",
+      "dockerfile": "simulator/Dockerfile",
+      "build_context": "simulator",
+      "os": "linux",
+      "architecture": "amd64",
+      "image_id": "sha256:72b8e0cd642bd6b4ecad3978821abdb11229f48a82acfbc96396b76d4a8690ef",
+      "build_result": "PASS",
+      "created_at": "2026-08-17T10:35:08.364574374+08:00"
+    },
+    {
+      "logical_service": "sync-worker",
+      "kind": "project-built",
+      "compose_image": "edge-mes-demo-sync-worker:fv1b-a-amd64",
+      "tag": "fv1b-a-amd64",
+      "dockerfile": "sync_worker/Dockerfile",
+      "build_context": "sync_worker",
+      "os": "linux",
+      "architecture": "amd64",
+      "image_id": "sha256:635d0f87b774a89db745a1f9a7da7586f83df615888e8350e05313de349efad1",
+      "build_result": "PASS",
+      "created_at": "2026-08-17T10:36:39.610829244+08:00"
+    }
+  ]
+}
