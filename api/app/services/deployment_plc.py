@@ -17,15 +17,22 @@ import yaml
 from snap7.type import Parameter
 
 from common.line_config import (
+    debug_candidate_content_hash,
+    debug_candidate_to_dict,
+    debug_contract_content_hash,
+    debug_contract_from_candidate,
+    debug_contract_from_mapping,
+    engineering_export,
+    engineering_rows,
+    normalize_debug_candidate,
     LineConfig,
     LineConfigError,
     PlcDeploymentCandidate,
-    candidate_content_hash,
-    candidate_to_dict,
     compile_runtime_mapping,
     default_runtime_layout_registry,
     load_line_config,
     parse_deployment_candidate,
+    parse_debug_candidate,
 )
 from common.line_config.runtime_projection import RuntimeMappingProjection, RuntimeProjectionError
 from common.runtime_mapping import EffectiveMappingUnavailable, read_effective_mapping
@@ -87,6 +94,7 @@ def load_active_deployment_config(
         store_path=store_path,
         active_mapping_hash=f"sha256:{content_sha256}",
     )
+    debug_contract = debug_contract_from_mapping(root)
     return {
         "authority": {
             "kind": "active_runtime_mapping",
@@ -112,6 +120,10 @@ def load_active_deployment_config(
         "entry_station_id": root.get("entry_station_id"),
         "terminal_station_id": root.get("terminal_station_id"),
         "active_projection_hash": root.get("projection_hash"),
+        "debug_contract": debug_contract,
+        "debug_contract_hash": f"sha256:{debug_contract_content_hash(debug_contract)}",
+        "engineering_rows": engineering_rows(debug_contract),
+        "engineering_export": engineering_export(debug_contract),
         "activation": activation,
         "rollback_available": activation is not None,
     }
@@ -187,11 +199,66 @@ def validate_candidate(
             ],
         }
 
-    projection, projection_error = _try_compile_projection(
+    base_projection, base_projection_error = _try_compile_projection(
         line_config,
         candidate_to_connectivity(candidate),
         line_config_source=str(line_path.relative_to(PROJECT_ROOT)),
     )
+    expected_station_ids = [
+        station.station_id
+        for station in line_config.stations
+        if station.station_enabled
+    ]
+    raw_has_contract = bool(raw.get("stations")) or bool(
+        isinstance(raw.get("debug_contract"), dict)
+        and raw.get("debug_contract", {}).get("stations")
+    )
+    normalized_raw = {
+        **raw,
+        **candidate_to_connectivity(candidate),
+        "line_config": candidate.line_config,
+    }
+    if base_projection is not None:
+        active_contract = active.get("debug_contract")
+        if (
+            isinstance(active_contract, dict)
+            and [
+                str(item.get("station_id"))
+                for item in active_contract.get("stations", [])
+                if isinstance(item, dict)
+            ]
+            == expected_station_ids
+            and not raw_has_contract
+        ):
+            seed_contract = active_contract
+        else:
+            seed_contract = debug_contract_from_mapping(base_projection.document)
+        parsed_debug_candidate, debug_errors = parse_debug_candidate(
+            normalized_raw,
+            expected_station_ids=expected_station_ids,
+            seed_contract=seed_contract,
+        )
+        if parsed_debug_candidate is None:
+            return {**base, "errors": debug_errors}
+        debug_contract = debug_contract_from_candidate(parsed_debug_candidate)
+        projection, projection_error = _try_compile_projection(
+            line_config,
+            candidate_to_connectivity(candidate),
+            line_config_source=str(line_path.relative_to(PROJECT_ROOT)),
+            debug_contract=debug_contract,
+        )
+    else:
+        # Preserve the legacy line-option behavior for a valid but currently
+        # unsupported topology such as the multi-PLC 20WS configuration.  A
+        # 3WS contract remains the only executable FV1A proof surface; the
+        # unsupported option is never marked ready to activate.
+        parsed_debug_candidate = normalize_debug_candidate(
+            normalized_raw,
+            seed_contract=active.get("debug_contract"),
+        )
+        debug_contract = debug_contract_from_candidate(parsed_debug_candidate)
+        projection = None
+        projection_error = base_projection_error
     option = _line_option(
         line_config,
         candidate.line_config,
@@ -199,16 +266,22 @@ def validate_candidate(
         projection=projection,
         projection_error=projection_error,
     )
-    content_hash = candidate_content_hash(candidate, line_config.config_hash)
+    content_hash = debug_candidate_content_hash(parsed_debug_candidate, line_config.config_hash)
     result: dict[str, object] = {
         **base,
         "validation_state": "VALID",
         "errors": [],
-        "candidate": candidate_to_dict(candidate),
+        "candidate": debug_candidate_to_dict(parsed_debug_candidate),
         "candidate_hash": f"sha256:{content_hash}",
+        "debug_contract_hash": f"sha256:{debug_contract_content_hash(debug_contract)}",
         "line_config_hash": f"sha256:{line_config.config_hash}",
         "projection_hash": projection.projection_hash if projection else None,
         "line": option,
+        "engineering_rows": engineering_rows(parsed_debug_candidate),
+        "engineering_export": engineering_export(
+            parsed_debug_candidate,
+            candidate_hash=f"sha256:{content_hash}",
+        ),
     }
     if projection is None:
         result["validation_state"] = "VALID_RUNTIME_NOT_SUPPORTED"
@@ -328,6 +401,9 @@ def save_candidate(
         "validation_state": validation["validation_state"],
         "candidate": validation["candidate"],
         "line": validation["line"],
+        "debug_contract_hash": validation.get("debug_contract_hash"),
+        "engineering_rows": validation.get("engineering_rows", []),
+        "engineering_export": validation.get("engineering_export", ""),
         "last_connection_test": _safe_test_result(raw.get("last_connection_test")),
     }
     root = _store_root(store_path)
@@ -477,6 +553,7 @@ def activate_candidate(
         candidate_to_connectivity(candidate_object),
         default_runtime_layout_registry(),
         line_config_source=str(line_path.relative_to(PROJECT_ROOT)),
+        debug_contract=debug_contract_from_candidate(candidate_payload),
     )
     if (
         candidate.get("projection_hash") is not None
@@ -850,6 +927,7 @@ def _try_compile_projection(
     connectivity: dict[str, object],
     *,
     line_config_source: str,
+    debug_contract: dict[str, object] | None = None,
 ) -> tuple[RuntimeMappingProjection | None, RuntimeProjectionError | None]:
     try:
         return (
@@ -858,6 +936,7 @@ def _try_compile_projection(
                 connectivity,
                 default_runtime_layout_registry(),
                 line_config_source=line_config_source,
+                debug_contract=debug_contract,
             ),
             None,
         )

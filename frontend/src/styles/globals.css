@@ -514,6 +514,170 @@ dd {
   font-weight: 800;
 }
 
+.deployment-contract-editor {
+  display: grid;
+  gap: 14px;
+  margin-top: 22px;
+  border-top: 1px solid #e2e9ee;
+  padding-top: 18px;
+}
+
+.deployment-contract-list {
+  display: grid;
+  gap: 14px;
+}
+
+.deployment-contract-card {
+  display: grid;
+  gap: 12px;
+  border: 1px solid #d8e1e7;
+  border-radius: 7px;
+  padding: 14px;
+  background: #fbfdfe;
+}
+
+.deployment-contract-card-heading {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 14px;
+}
+
+.deployment-contract-card-heading h3,
+.deployment-contract-card-heading h4 {
+  margin: 0;
+  color: #183746;
+}
+
+.deployment-contract-card-heading p {
+  margin: 4px 0 0;
+}
+
+.deployment-contract-range,
+.deployment-write-policy {
+  margin: 0 !important;
+  color: #425866 !important;
+  font-size: 13px;
+  line-height: 1.5;
+}
+
+.deployment-write-policy {
+  border-left: 3px solid #d3a85c;
+  padding-left: 10px;
+}
+
+.deployment-contract-range-grid {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 10px;
+}
+
+.deployment-contract-range-grid label,
+.deployment-compact-field {
+  display: grid;
+  gap: 5px;
+  color: #4d5b68;
+  font-size: 12px;
+  font-weight: 800;
+}
+
+.deployment-contract-range-grid input,
+.deployment-compact-field select,
+.deployment-contract-edit-table input,
+.deployment-contract-edit-table select {
+  min-height: 34px;
+  border: 1px solid #b9c7d1;
+  border-radius: 5px;
+  padding: 6px 8px;
+  background: #ffffff;
+  color: #15202b;
+  font-size: 12px;
+}
+
+.deployment-table-scroll {
+  overflow-x: auto;
+}
+
+.deployment-contract-table {
+  width: 100%;
+  min-width: 720px;
+  border-collapse: collapse;
+  color: #314754;
+  font-size: 12px;
+}
+
+.deployment-contract-table caption {
+  padding-bottom: 7px;
+  color: #53616f;
+  font-size: 12px;
+  font-weight: 800;
+  text-align: left;
+}
+
+.deployment-contract-table th,
+.deployment-contract-table td {
+  border-bottom: 1px solid #e2e9ee;
+  padding: 7px 8px;
+  text-align: left;
+  vertical-align: top;
+}
+
+.deployment-contract-table thead th {
+  background: #f1f5f8;
+  color: #425866;
+  font-size: 11px;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+}
+
+.deployment-contract-table code {
+  color: #183746;
+  font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+  font-size: 11px;
+  white-space: nowrap;
+}
+
+.deployment-contract-edit-table td {
+  min-width: 118px;
+}
+
+.deployment-contract-edit-table td:nth-child(2) {
+  min-width: 155px;
+}
+
+.deployment-contract-edit-table td:nth-child(5) {
+  min-width: 180px;
+}
+
+.deployment-contract-edit-table td:nth-child(5) input {
+  display: block;
+  width: 100%;
+  margin-bottom: 5px;
+}
+
+.deployment-contract-edit-table small {
+  display: block;
+  margin-top: 5px;
+  color: #7f5b15;
+  font-weight: 800;
+}
+
+.deployment-write-allowlist {
+  display: grid;
+  gap: 7px;
+  border: 1px solid #d3a85c;
+  border-radius: 6px;
+  padding: 12px;
+  background: #fffaf0;
+  color: #6f531d;
+  font-size: 12px;
+}
+
+.deployment-write-allowlist label {
+  color: #53616f;
+  font-weight: 700;
+}
+
 @media (max-width: 840px) {
   .deployment-header,
   .deployment-panel-heading {
@@ -531,6 +695,14 @@ dd {
 
   .deployment-line-field {
     grid-column: auto;
+  }
+
+  .deployment-contract-range-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .deployment-contract-card-heading {
+    display: grid;
   }
 }
 

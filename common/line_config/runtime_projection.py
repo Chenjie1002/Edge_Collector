@@ -7,6 +7,10 @@ import re
 from collections.abc import Mapping
 from typing import Any
 
+from .debug_contract import (
+    debug_contract_content_hash,
+    debug_contract_from_candidate,
+)
 from .models import LineConfig, StationConfig
 from .runtime_layout import RuntimeLayoutRegistry, default_runtime_layout_registry
 
@@ -35,6 +39,7 @@ def compile_runtime_mapping(
     layout_registry: RuntimeLayoutRegistry | None = None,
     *,
     line_config_source: str | None = None,
+    debug_contract: Mapping[str, object] | None = None,
 ) -> RuntimeMappingProjection:
     registry = layout_registry or default_runtime_layout_registry()
     plc = _validate_runtime_scope(config)
@@ -160,10 +165,109 @@ def compile_runtime_mapping(
             "edit_policy": "projection_owned",
         },
     }
+    if debug_contract is not None:
+        contract = debug_contract_from_candidate(debug_contract)
+        _apply_debug_contract(document, contract)
+        document["debug_contract"] = copy.deepcopy(contract)
+        document["debug_contract_hash"] = f"sha256:{debug_contract_content_hash(contract)}"
     projection_digest = _canonical_hash(document)
     projection_hash = f"sha256:{projection_digest}"
     document["projection_hash"] = projection_hash
     return RuntimeMappingProjection(document, projection_hash, line_config_hash)
+
+
+def _apply_debug_contract(
+    document: dict[str, object],
+    contract: Mapping[str, object],
+) -> None:
+    raw_stations = contract.get("stations")
+    if not isinstance(raw_stations, list):
+        raise RuntimeProjectionError("debug contract stations must be a list")
+    by_station = {
+        str(item.get("station_id")): item
+        for item in raw_stations
+        if isinstance(item, Mapping)
+    }
+    raw_documents = document.get("stations")
+    if not isinstance(raw_documents, list):
+        raise RuntimeProjectionError("runtime projection has no station documents")
+    for station in raw_documents:
+        if not isinstance(station, dict):
+            raise RuntimeProjectionError("runtime projection station document is invalid")
+        station_id = str(station.get("station_id", ""))
+        selected = by_station.get(station_id)
+        if selected is None:
+            raise RuntimeProjectionError(
+                f"debug contract does not define runtime station {station_id}"
+            )
+        db_number = selected.get("db_number")
+        read_start = selected.get("read_start")
+        read_length = selected.get("read_length")
+        if type(db_number) is not int or type(read_start) is not int or type(read_length) is not int:
+            raise RuntimeProjectionError(
+                f"debug contract range is invalid for runtime station {station_id}"
+            )
+        signals = selected.get("signals")
+        if not isinstance(signals, list) or not signals:
+            raise RuntimeProjectionError(
+                f"debug contract has no signals for runtime station {station_id}"
+            )
+        header: dict[str, dict[str, object]] = {}
+        payload: dict[str, dict[str, object]] = {}
+        all_fields: dict[str, dict[str, object]] = {}
+        for signal in signals:
+            if not isinstance(signal, Mapping):
+                raise RuntimeProjectionError(
+                    f"debug contract signal is invalid for runtime station {station_id}"
+                )
+            field_name = str(signal.get("field_name", ""))
+            address = str(signal.get("address", ""))
+            data_type = str(signal.get("type", ""))
+            direction = str(signal.get("direction", "PLC_TO_EDGE"))
+            if direction == "EDGE_TO_PLC" and field_name != "read_done":
+                raise RuntimeProjectionError(
+                    "debug contract permits only read_done as an Edge-to-PLC field"
+                )
+            runtime_direction = {
+                "PLC_TO_EDGE": "read",
+                "READ_WRITE": "read_write",
+                "EDGE_TO_PLC": "read_write",
+            }.get(direction)
+            if runtime_direction is None:
+                raise RuntimeProjectionError(
+                    f"debug contract direction is invalid for {field_name}"
+                )
+            field: dict[str, object] = {
+                "address": address,
+                "type": data_type,
+                "direction": runtime_direction,
+                "required": bool(signal.get("required", True)),
+            }
+            if signal.get("max_length") is not None:
+                field["max_length"] = signal.get("max_length")
+            all_fields[field_name] = field
+            group = str(signal.get("group", "header"))
+            if group == "payload":
+                payload[field_name] = field
+            else:
+                header[field_name] = field
+        if "read_done" not in all_fields:
+            raise RuntimeProjectionError(
+                f"debug contract has no read_done field for runtime station {station_id}"
+            )
+        station["db_number"] = db_number
+        station["source_namespace"] = f"vplc-db{db_number}"
+        station["debug_read_start"] = read_start
+        station["debug_read_length"] = read_length
+        station["effective_read_size_bytes"] = read_length
+        station["header"] = header
+        # The current Collector mapping loader consumes the shared
+        # station_template plus each station payload.  Keeping the complete
+        # candidate field set in the station payload makes per-station edits
+        # executable without changing Collector source.
+        station["payload"] = all_fields
+        station["db_read_layout"] = sorted(all_fields)
+    document["station_template"] = {"header": {}}
 
 
 def _validate_runtime_scope(config: LineConfig):

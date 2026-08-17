@@ -7,6 +7,21 @@ from .deployment import (
     candidate_to_dict,
     parse_deployment_candidate,
 )
+from .debug_contract import (
+    CONFIRMATION_STATES,
+    WRITE_MODE,
+    DebugContractError,
+    debug_candidate_content_hash,
+    debug_candidate_to_dict,
+    debug_contract_content_hash,
+    debug_contract_from_candidate,
+    debug_contract_from_mapping,
+    debug_contract_to_dict,
+    engineering_export,
+    engineering_rows,
+    normalize_debug_candidate,
+    parse_debug_candidate,
+)
 from .models import (
     BufferConfig,
     CycleProfile,
@@ -41,6 +56,7 @@ from .validator import validate_line_config
 
 __all__ = [
     "BufferConfig",
+    "CONFIRMATION_STATES",
     "PlcDeploymentCandidate",
     "CycleProfile",
     "DbMapping",
@@ -69,7 +85,19 @@ __all__ = [
     "RuntimeLayoutRegistry",
     "RuntimeMappingProjection",
     "RuntimeProjectionError",
+    "WRITE_MODE",
+    "DebugContractError",
     "compile_runtime_mapping",
     "default_runtime_layout_registry",
+    "debug_candidate_content_hash",
+    "debug_candidate_to_dict",
+    "debug_contract_content_hash",
+    "debug_contract_from_candidate",
+    "debug_contract_from_mapping",
+    "debug_contract_to_dict",
+    "engineering_export",
+    "engineering_rows",
+    "normalize_debug_candidate",
+    "parse_debug_candidate",
     "validate_line_config",
 ]

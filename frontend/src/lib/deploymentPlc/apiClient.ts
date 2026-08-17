@@ -1,3 +1,50 @@
+export type ConfirmationState = "PLANNED" | "CONFIRMED";
+
+export type DebugSignal = {
+  field_name: string;
+  address: string;
+  type: string;
+  direction: "PLC_TO_EDGE" | "READ_WRITE" | "EDGE_TO_PLC";
+  group?: "header" | "payload";
+  unit?: string;
+  description?: string;
+  max_length?: number;
+  required?: boolean;
+  confirmation_state: ConfirmationState;
+};
+
+export type DebugStation = {
+  station_id: string;
+  db_number: number;
+  station_order?: number;
+  read_start: number;
+  read_length: number;
+  confirmation_state: ConfirmationState;
+  signals: DebugSignal[];
+};
+
+export type DebugWriteAllowlist = {
+  mode: "READ_DONE_ONLY";
+  edge_to_plc: Array<{
+    station_id: string;
+    field_name: "read_done";
+    address: string;
+    type: string;
+    direction: "EDGE_TO_PLC";
+    confirmation_state: ConfirmationState;
+  }>;
+  parameter_writes_enabled: false;
+  machine_control_writes_enabled: false;
+  safety_writes_enabled: false;
+  arbitrary_db_writes_enabled: false;
+};
+
+export type DebugContract = {
+  schema_version?: "plc-debug-contract/v1";
+  stations: DebugStation[];
+  write_allowlist: DebugWriteAllowlist;
+};
+
 export type DeploymentCandidate = {
   host: string;
   port: number;
@@ -6,6 +53,8 @@ export type DeploymentCandidate = {
   connection_timeout_ms: number;
   poll_interval_ms: number;
   line_config: string;
+  stations: DebugStation[];
+  write_allowlist: DebugWriteAllowlist;
 };
 
 export type ActiveDeploymentConfig = {
@@ -28,6 +77,10 @@ export type ActiveDeploymentConfig = {
   };
   active_station_count: number;
   active_station_ids: string[];
+  debug_contract?: DebugContract;
+  debug_contract_hash?: string;
+  engineering_rows?: Array<Record<string, unknown>>;
+  engineering_export?: string;
   activation: ActivationRecord | null;
   rollback_available: boolean;
 };
@@ -70,6 +123,9 @@ export type DeploymentValidation = {
   active_mapping_hash: string;
   candidate_hash?: string;
   candidate?: DeploymentCandidate;
+  debug_contract_hash?: string;
+  engineering_rows?: Array<Record<string, unknown>>;
+  engineering_export?: string;
   line?: LineOption;
 };
 
@@ -97,6 +153,9 @@ export type SavedCandidate = {
   active_mapping_hash: string;
   validation_state: DeploymentValidation["validation_state"];
   candidate: DeploymentCandidate;
+  debug_contract_hash?: string;
+  engineering_rows?: Array<Record<string, unknown>>;
+  engineering_export?: string;
   line: LineOption;
   last_connection_test: Pick<ConnectionTestResult, "status" | "message" | "read_only" | "writes_performed" | "operations"> | null;
   retrieval_path: string;

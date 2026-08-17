@@ -35,7 +35,7 @@ def test_active_deployment_config_projects_current_mapping() -> None:
     payload = response.json()
     assert payload["authority"]["kind"] == "active_runtime_mapping"
     assert payload["authority"]["source"] in {"config/mapping.yaml", "active/mapping.yaml"}
-    assert payload["authority"]["config_version"] == "2026.06.26-slice-a"
+    assert payload["authority"]["config_version"] == "2026.06.20-demo3-v1"
     assert payload["authority"]["content_sha256"].startswith("sha256:")
     assert payload["line_id"] == "LINE_001"
     assert payload["plc"]["plc_id"] == "PLC_001"
@@ -46,6 +46,14 @@ def test_active_deployment_config_projects_current_mapping() -> None:
     assert payload["plc"]["connection_timeout_ms"] in {2500, 3000}
     assert payload["plc"]["poll_interval_ms"] == 500
     assert payload["active_station_ids"] == ["WS01", "WS02", "WS03"]
+    assert payload["debug_contract"]["write_allowlist"]["mode"] == "READ_DONE_ONLY"
+    assert payload["debug_contract"]["write_allowlist"]["edge_to_plc"]
+    assert payload["debug_contract"]["write_allowlist"]["edge_to_plc"][0]["field_name"] == "read_done"
+    assert any(
+        row["address"] == "DB101.DBX6.1" and row["write_semantic"] == "Read_Done only"
+        for row in payload["engineering_rows"]
+    )
+    assert "DB101.DBX6.1" in payload["engineering_export"]
 
 
 def test_line_options_classify_valid_configs_without_overclaiming_runtime() -> None:
@@ -86,6 +94,11 @@ def test_valid_candidate_is_ready_without_changing_active_mapping() -> None:
     assert payload["candidate_hash"].startswith("sha256:")
     assert payload["active_mapping_hash"].startswith("sha256:")
     assert payload["candidate_hash"] != payload["active_mapping_hash"]
+    assert len(payload["candidate"]["stations"]) == 3
+    assert payload["candidate"]["stations"][0]["confirmation_state"] == "PLANNED"
+    assert payload["candidate"]["write_allowlist"]["mode"] == "READ_DONE_ONLY"
+    assert payload["candidate"]["write_allowlist"]["parameter_writes_enabled"] is False
+    assert any(signal["address"] == "DB101.DBX6.1" for signal in payload["candidate"]["stations"][0]["signals"])
 
 
 def test_invalid_candidate_returns_field_level_errors() -> None:
@@ -164,6 +177,53 @@ def test_candidate_identity_is_deterministic_for_same_semantic_content() -> None
     assert changed["candidate_hash"] != first["candidate_hash"]
 
 
+def test_debug_contract_hash_is_order_independent_but_changes_for_semantic_edits() -> None:
+    first = client.post("/api/v2/deployment/plc/validate", json=candidate_payload()).json()
+    candidate = copy.deepcopy(first["candidate"])
+    candidate["stations"] = list(reversed(candidate["stations"]))
+    for station in candidate["stations"]:
+        station["signals"] = list(reversed(station["signals"]))
+    reordered = client.post("/api/v2/deployment/plc/validate", json=candidate).json()
+
+    assert reordered["candidate_hash"] == first["candidate_hash"]
+    changed = copy.deepcopy(first["candidate"])
+    changed["stations"][0]["signals"][0]["confirmation_state"] = "CONFIRMED"
+    changed_response = client.post("/api/v2/deployment/plc/validate", json=changed)
+    assert changed_response.status_code == 200
+    assert changed_response.json()["candidate_hash"] != first["candidate_hash"]
+
+
+def test_malformed_debug_address_fails_closed() -> None:
+    first = client.post("/api/v2/deployment/plc/validate", json=candidate_payload()).json()
+    malformed = copy.deepcopy(first["candidate"])
+    malformed["stations"][0]["signals"][0]["address"] = "DB101.DBQ999"
+
+    response = client.post("/api/v2/deployment/plc/validate", json=malformed)
+
+    assert response.status_code == 422
+    assert any(item["field"].endswith(".address") for item in response.json()["errors"])
+
+
+def test_extra_edge_to_plc_write_is_rejected() -> None:
+    first = client.post("/api/v2/deployment/plc/validate", json=candidate_payload()).json()
+    invalid = copy.deepcopy(first["candidate"])
+    invalid["write_allowlist"]["edge_to_plc"].append(
+        {
+            "station_id": "WS01",
+            "field_name": "machine_control",
+            "address": "DB101.DBW16",
+            "type": "word",
+            "direction": "EDGE_TO_PLC",
+            "confirmation_state": "PLANNED",
+        }
+    )
+
+    response = client.post("/api/v2/deployment/plc/validate", json=invalid)
+
+    assert response.status_code == 422
+    assert any("only allowed Edge-to-PLC" in item["message"] for item in response.json()["errors"])
+
+
 class ReadOnlyClient:
     def __init__(self, *, failure: Exception | None = None) -> None:
         self.failure = failure
@@ -221,7 +281,9 @@ def test_connection_failure_is_safe_and_still_disconnects() -> None:
 
 def test_candidate_save_and_load_leave_active_mapping_bytes_unchanged(tmp_path: Path) -> None:
     mapping_path = Path("config/mapping.yaml")
+    active_mapping_path = Path("data/deployment-config/active/mapping.yaml")
     before = hashlib.sha256(mapping_path.read_bytes()).hexdigest()
+    active_before = hashlib.sha256(active_mapping_path.read_bytes()).hexdigest()
 
     saved = deployment_plc.save_candidate(
         candidate_payload(last_connection_test={"status": "CONNECTED_AND_READABLE", "read_only": True}),
@@ -236,7 +298,11 @@ def test_candidate_save_and_load_leave_active_mapping_bytes_unchanged(tmp_path: 
         "read_only": True,
         "status": "CONNECTED_AND_READABLE",
     }
+    assert loaded["candidate"]["stations"] == saved["candidate"]["stations"]
+    assert loaded["candidate"]["write_allowlist"] == saved["candidate"]["write_allowlist"]
+    assert loaded["engineering_export"] == saved["engineering_export"]
     assert before == after
+    assert hashlib.sha256(active_mapping_path.read_bytes()).hexdigest() == active_before
 
 
 def test_candidate_route_retrieves_saved_artifact_without_active_mutation(
