@@ -36,6 +36,44 @@ def test_control_page_renders_station_and_nok_capabilities_from_state() -> None:
     assert "setInterval" not in CONTROL_HTML
 
 
+def test_control_page_distinguishes_waiting_transfer_from_running() -> None:
+    assert "WAITING_TRANSFER" in CONTROL_HTML
+    assert "station.status_reason" in CONTROL_HTML
+    assert "station.waiting_transfer" in CONTROL_HTML
+
+    script = CONTROL_HTML.split("<script>", 1)[1].rsplit("</script>", 1)[0]
+    node_program = textwrap.dedent(
+        """
+        (() => {
+          const vm = require("node:vm");
+          const source = __SOURCE__;
+          const document = { getElementById: () => null, querySelectorAll: () => [] };
+          const context = {
+            console,
+            document,
+            window: { location: { protocol: "http:", hostname: "localhost" } },
+            fetch: () => new Promise(() => {}),
+            setTimeout: () => 0,
+          };
+          vm.runInNewContext(source, context);
+          const station = {
+            status: "WAITING_TRANSFER",
+            waiting_transfer: true,
+            status_reason: "downstream buffer full / waiting transfer",
+            paused: false,
+            current_dmc: "SUB-HELD",
+            payload_ready: false,
+          };
+          if (context.statusText(station) !== "WAITING_TRANSFER") throw new Error("waiting transfer status was hidden as running");
+          if (context.statusClass(station) !== "hold") throw new Error("waiting transfer status is not a hold state");
+          process.stdout.write("CONTROL_WAITING_TRANSFER_OK\\n");
+        })();
+        """
+    ).replace("__SOURCE__", json.dumps(script))
+    result = subprocess.run(["node", "-"], input=node_program, text=True, capture_output=True, check=False)
+    assert result.returncode == 0, result.stdout + result.stderr
+
+
 def test_control_page_back_link_derives_dashboard_from_current_browser_host() -> None:
     assert "返回 Edge MES" in CONTROL_HTML
     assert "window.location.hostname" in CONTROL_HTML

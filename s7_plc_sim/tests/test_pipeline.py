@@ -14,6 +14,7 @@ from app.pipeline import (
     ROUTE_BYPASSING,
     ROUTE_COMPLETED_NOK,
     Part,
+    STATUS_BLOCKED,
     StationJob,
     ThreeStationPipeline,
     SingleLinearRoutePipeline,
@@ -121,6 +122,88 @@ def test_snapshot_exposes_real_buffer_identity_and_current_cycle_progress() -> N
     assert 9.0 <= current_cycle["remaining_seconds"] <= 10.0
     assert 49.0 <= current_cycle["progress_percent"] <= 55.0
     assert current_cycle["elapsed_seconds"] > 9.0
+
+
+def test_full_buffer_does_not_preblock_idle_upstream_station_start() -> None:
+    pipeline = SingleLinearRoutePipeline.from_mapping(_mapping10(), scale=0.05)
+    pipeline.update_station("WS02", {"paused": True}, audit_context={"reason": "buffer start test"})
+    queue = pipeline.edge_queues[("WS01", "WS02")]
+    queue.append(Part(serial_no=101, unit_id="U-BUFFER", child_dmc="SUB-BUFFER"))
+    dbs = {station.db_number: bytearray(512) for station in pipeline.stations.values()}
+
+    pipeline._start_jobs(datetime.now(), time.monotonic(), dbs)
+
+    current_job = pipeline.stations["WS01"].current_job
+    assert current_job is not None
+    assert current_job.part.unit_id != "U-BUFFER"
+    assert len(queue) == 1
+    assert pipeline.snapshot()["buffers"][0]["wip"] == 1
+
+
+def test_completed_part_waits_at_station_when_full_without_repeating_side_effects() -> None:
+    pipeline = SingleLinearRoutePipeline.from_mapping(_mapping10(), scale=0.05)
+    pipeline.update_station("WS02", {"paused": True}, audit_context={"reason": "buffer hold test"})
+    queue = pipeline.edge_queues[("WS01", "WS02")]
+    queue.append(Part(serial_no=101, unit_id="U-BUFFER", child_dmc="SUB-BUFFER"))
+    held = Part(serial_no=102, unit_id="U-HELD", child_dmc="SUB-HELD")
+    pipeline.stations["WS01"].current_job = StationJob(
+        part=held,
+        started_at=datetime.now(),
+        finish_monotonic=time.monotonic() - 1,
+        cycle_time_s=1.0,
+    )
+    pipeline.force_nok("WS01", 11001, audit_context={"reason": "buffer hold test"})
+    dbs = {station.db_number: bytearray(512) for station in pipeline.stations.values()}
+
+    for _ in range(3):
+        pipeline.tick(dbs, True)
+
+    state = pipeline.snapshot()
+    station_state = state["stations"]["WS01"]
+    assert len(queue) == 1
+    assert pipeline.stations["WS01"].current_job is not None
+    assert pipeline.stations["WS01"].current_job.part.unit_id == "U-HELD"
+    assert pipeline.stations["WS01"].cycle_counter == 0
+    assert pipeline.event_history == []
+    assert pipeline.terminal_completed_total == 0
+    assert list(pipeline.stations["WS01"].forced_nok_queue) == [11001]
+    assert station_state["status"] == "WAITING_TRANSFER"
+    assert station_state["waiting_transfer"] is True
+    assert station_state["status_reason"] == "downstream buffer full / waiting transfer"
+    assert station_state["current_cycle"]["unit_id"] == "U-HELD"
+    assert station_state["current_cycle"]["progress_percent"] == 100.0
+    assert util.get_int(dbs[pipeline.stations["WS01"].db_number], 0) == STATUS_BLOCKED
+
+
+def test_held_part_transfers_after_downstream_consumes_without_duplication() -> None:
+    pipeline = SingleLinearRoutePipeline.from_mapping(_mapping10(), scale=0.05)
+    pipeline.update_station("WS02", {"paused": True}, audit_context={"reason": "buffer release test"})
+    queue = pipeline.edge_queues[("WS01", "WS02")]
+    queue.append(Part(serial_no=101, unit_id="U-BUFFER", child_dmc="SUB-BUFFER"))
+    held = Part(serial_no=102, unit_id="U-HELD", child_dmc="SUB-HELD")
+    pipeline.stations["WS01"].current_job = StationJob(
+        part=held,
+        started_at=datetime.now(),
+        finish_monotonic=time.monotonic() - 1,
+        cycle_time_s=1.0,
+    )
+    dbs = {station.db_number: bytearray(512) for station in pipeline.stations.values()}
+    for _ in range(2):
+        pipeline.tick(dbs, True)
+
+    pipeline.update_station("WS02", {"paused": False}, audit_context={"reason": "buffer release test"})
+    max_wip = len(queue)
+    pipeline.tick(dbs, True)
+    max_wip = max(max_wip, len(queue))
+
+    assert pipeline.stations["WS02"].current_job is not None
+    assert pipeline.stations["WS02"].current_job.part.unit_id == "U-BUFFER"
+    assert pipeline.stations["WS01"].current_job is None
+    assert len(queue) == 1
+    assert queue[0].unit_id == "U-HELD"
+    assert max_wip <= 1
+    assert [event["unit_id"] for event in pipeline.event_history] == ["U-HELD"]
+
 
 
 def test_runtime_update_keeps_inflight_sample_and_changes_next_job_timing() -> None:
@@ -292,7 +375,7 @@ def test_quantity_plan_still_stops_on_qualified_ok_not_terminal_nok() -> None:
     assert pipeline.plan.stop_reason == "target_quantity_reached"
 
 
-def test_linear_buffers_default_to_one_and_pause_applies_backpressure() -> None:
+def test_linear_buffers_default_to_one_allows_one_extra_cycle_then_waits() -> None:
     pipeline = SingleLinearRoutePipeline.from_mapping(_mapping10(), scale=0.05)
     assert {edge: pipeline.buffer_capacities[edge] for edge in pipeline.topology.edges} == {
         edge: 1 for edge in pipeline.topology.edges
@@ -302,20 +385,32 @@ def test_linear_buffers_default_to_one_and_pause_applies_backpressure() -> None:
 
     _run_until(pipeline, dbs, lambda: len(pipeline.edge_queues[("WS01", "WS02")]) == 1)
     serial_at_full = pipeline.serial_no
+    _run_until(
+        pipeline,
+        dbs,
+        lambda: pipeline.snapshot()["stations"]["WS01"]["status"] == "WAITING_TRANSFER",
+    )
+    held_unit_id = pipeline.stations["WS01"].current_job.part.unit_id
+    max_wip = len(pipeline.edge_queues[("WS01", "WS02")])
     for _ in range(12):
         _ack_ready_payloads(dbs)
         pipeline.tick(dbs, True)
+        max_wip = max(max_wip, len(pipeline.edge_queues[("WS01", "WS02")]))
         time.sleep(0.01)
 
     state = pipeline.snapshot()
     assert state["buffers"][0]["wip"] == 1
     assert state["buffers"][0]["capacity"] == 1
     assert state["buffers"][0]["status"] == "FULL"
-    assert pipeline.serial_no == serial_at_full
+    assert pipeline.serial_no == serial_at_full + 1
+    assert pipeline.stations["WS01"].current_job is not None
+    assert pipeline.stations["WS01"].current_job.part.unit_id == held_unit_id
+    assert max_wip <= 1
 
     pipeline.update_station("WS02", {"paused": False}, audit_context={"reason": "buffer resume"})
     _run_until(pipeline, dbs, lambda: pipeline.stations["WS02"].cycle_counter >= 1)
     assert len(pipeline.edge_queues[("WS01", "WS02")]) <= 1
+    assert any(event["unit_id"] == held_unit_id for event in pipeline.event_history)
 
 
 def test_linear_buffer_capacity_two_allows_two_without_overflow() -> None:
@@ -329,15 +424,26 @@ def test_linear_buffer_capacity_two_allows_two_without_overflow() -> None:
     dbs = {station.db_number: bytearray(512) for station in pipeline.stations.values()}
 
     _run_until(pipeline, dbs, lambda: len(pipeline.edge_queues[("WS01", "WS02")]) == 2)
+    _run_until(
+        pipeline,
+        dbs,
+        lambda: pipeline.snapshot()["stations"]["WS01"]["status"] == "WAITING_TRANSFER",
+    )
+    max_wip = len(pipeline.edge_queues[("WS01", "WS02")])
     for _ in range(12):
         _ack_ready_payloads(dbs)
         pipeline.tick(dbs, True)
+        max_wip = max(max_wip, len(pipeline.edge_queues[("WS01", "WS02")]))
         time.sleep(0.01)
 
     state = pipeline.snapshot()
     assert state["buffers"][0]["wip"] == 2
     assert state["buffers"][0]["capacity"] == 2
     assert state["buffers"][0]["status"] == "FULL"
+    assert pipeline.serial_no == 3
+    assert pipeline.stations["WS01"].current_job is not None
+    assert pipeline.stations["WS01"].current_job.part.serial_no == 3
+    assert max_wip <= 2
 
 
 def test_lowering_buffer_capacity_below_wip_fails_closed_without_deleting_parts() -> None:

@@ -558,6 +558,7 @@ CONTROL_HTML = """
     }
 
     function statusClass(station) {
+      if (station.status === "WAITING_TRANSFER" || station.waiting_transfer) return "hold";
       if (station.paused) return "bad";
       if (station.current_dmc) return "run";
       if (station.payload_ready) return "hold";
@@ -565,6 +566,7 @@ CONTROL_HTML = """
     }
 
     function statusText(station) {
+      if (station.status === "WAITING_TRANSFER" || station.waiting_transfer) return "WAITING_TRANSFER";
       if (station.paused) return "PAUSED";
       if (station.current_dmc) return "RUNNING";
       if (station.payload_ready) return "READY";
@@ -607,6 +609,7 @@ CONTROL_HTML = """
             <span>Current Unit <strong class="code">${cycle?.unit_id || "-"}</strong></span>
             <span>DMC <strong class="code">${cycle?.dmc || station.current_dmc || "-"}</strong></span>
             <span>Cycle <strong>${cycle ? `${cycle.elapsed_seconds.toFixed(1)} / ${cycle.planned_cycle_seconds.toFixed(1)} s` : "Idle"}</strong></span>
+            ${station.status_reason ? `<span>Reason <strong>${station.status_reason}</strong></span>` : ""}
             <span>Applied base / jitter <strong>${Number(station.base_cycle_s || 0).toFixed(1)} / ${Number(station.jitter_s || 0).toFixed(1)} s</strong></span>
             <span>Applied NOK rate <strong>${(Number(station.nok_rate || 0) * 100).toFixed(1)}%</strong></span>
           </div>
@@ -726,7 +729,8 @@ CONTROL_HTML = """
       setText(id + "-current-dmc", station.current_dmc || "-");
       setText(id + "-last-dmc", (station.last_dmc || "-") + " " + resultText(station.last_result));
       setText(id + "-current-unit", cycle?.unit_id || "-");
-      setText(id + "-cycle-progress", cycle ? progress.toFixed(0) + "% · " + cycle.remaining_seconds.toFixed(1) + " s remaining" : "等待下一件");
+      const cycleProgressText = cycle ? progress.toFixed(0) + "% · " + cycle.remaining_seconds.toFixed(1) + " s remaining" : "等待下一件";
+      setText(id + "-cycle-progress", station.waiting_transfer ? cycleProgressText + " · waiting transfer" : cycleProgressText);
       setText(id + "-pending-nok", station.pending_forced_nok_count || 0);
 
       const canEdit = state.allow_runtime_cycle_edit !== false;

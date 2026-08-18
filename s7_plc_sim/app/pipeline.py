@@ -55,6 +55,8 @@ SIMULATION_SPEED_MULTIPLIERS = (1.0, 2.0, 5.0, 10.0, 20.0)
 DEFAULT_BUFFER_CAPACITY = 1
 MIN_BUFFER_CAPACITY = 1
 MAX_BUFFER_CAPACITY = 100
+WAITING_TRANSFER_STATUS = "WAITING_TRANSFER"
+WAITING_TRANSFER_REASON = "downstream buffer full / waiting transfer"
 
 
 def _validate_buffer_capacity(value: object) -> int:
@@ -1104,14 +1106,47 @@ class SingleLinearRoutePipeline(ThreeStationPipeline):
             if queue:
                 self._start_station(station, queue.popleft(), now, now_mono)
 
-    def _can_start(self, station: StationState, db: bytearray) -> bool:
-        if not super()._can_start(station, db):
-            return False
+    def _is_waiting_for_transfer(
+        self,
+        station: StationState,
+        now_mono: float | None = None,
+    ) -> bool:
+        job = station.current_job
         successor = self.topology.successor.get(station.station_id)
-        if successor is None:
-            return True
+        if job is None or successor is None:
+            return False
         edge = (station.station_id, successor)
-        return len(self.edge_queues[edge]) < self.buffer_capacities[edge]
+        current_mono = time.monotonic() if now_mono is None else now_mono
+        return (
+            current_mono >= job.finish_monotonic
+            and len(self.edge_queues[edge]) >= self.buffer_capacities[edge]
+        )
+
+    def _write_waiting_transfer(self, station: StationState, db: bytearray, job: StationJob) -> None:
+        write_station_header(
+            db,
+            station_status=STATUS_BLOCKED,
+            cycle_counter=station.cycle_counter,
+            payload_ready=False,
+            ack_timeout=False,
+            cycle_valid=False,
+            plc_start_time=job.started_at,
+            plc_end_time=None,
+            result=RESULT_UNKNOWN,
+            nok_codes=[],
+            alarm_code=0,
+            downtime_type=0,
+            pallet_id_numeric=job.part.serial_no,
+            station_dmc=job.part.child_dmc,
+        )
+        self._write_station_context(
+            db,
+            station,
+            job.part,
+            PROCESS_UNKNOWN,
+            SKIP_NONE,
+            clear_terminal_ids=False,
+        )
 
     def _finish_job(self, station: StationState, db: bytearray, now: datetime) -> None:
         job = station.current_job
@@ -1121,6 +1156,7 @@ class SingleLinearRoutePipeline(ThreeStationPipeline):
         if successor is not None:
             edge = (station.station_id, successor)
             if len(self.edge_queues[edge]) >= self.buffer_capacities[edge]:
+                self._write_waiting_transfer(station, db, job)
                 return
         station.cycle_counter += 1
         part = job.part
@@ -1402,6 +1438,7 @@ class SingleLinearRoutePipeline(ThreeStationPipeline):
         return self.snapshot()
 
     def snapshot(self) -> dict:
+        now_mono = time.monotonic()
         state = super().snapshot()
         state["topology"] = {
             "station_count": len(self.topology.station_ids),
@@ -1447,6 +1484,30 @@ class SingleLinearRoutePipeline(ThreeStationPipeline):
         ]
         for station_id, station_state in state["stations"].items():
             metadata = self.station_metadata[station_id]
+            station = self.stations[station_id]
+            waiting_transfer = self._is_waiting_for_transfer(station, now_mono)
+            if waiting_transfer:
+                status = WAITING_TRANSFER_STATUS
+                status_reason = WAITING_TRANSFER_REASON
+            elif station.paused:
+                status = "PAUSED"
+                status_reason = "station paused"
+            elif station.current_job:
+                status = "RUNNING"
+                status_reason = ""
+            elif station.payload_ready_since is not None:
+                status = "READY"
+                status_reason = "payload ready / awaiting ACK"
+            else:
+                predecessor = self.topology.predecessor.get(station_id)
+                status = (
+                    "WAITING"
+                    if self.plan.active
+                    and predecessor
+                    and not self.edge_queues[(predecessor, station_id)]
+                    else "IDLE"
+                )
+                status_reason = ""
             station_state.update(
                 {
                     "station_order": self.topology.station_ids.index(station_id) + 1,
@@ -1456,6 +1517,9 @@ class SingleLinearRoutePipeline(ThreeStationPipeline):
                     "nok_template": metadata.get("nok_template"),
                     "allow_force": self.allow_force_by_station.get(station_id, True),
                     "nok_codes": sorted(self.nok_codes_by_station.get(station_id, set())),
+                    "status": status,
+                    "status_reason": status_reason,
+                    "waiting_transfer": waiting_transfer,
                 }
             )
         return state
