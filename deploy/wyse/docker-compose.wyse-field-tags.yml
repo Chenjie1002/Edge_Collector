@@ -1,0 +1,18 @@
+services:
+  simulator:
+    image: edge-mes-demo-simulator:${WYSE_SIMULATOR_TAG:-fv1b-a-r1-amd64}
+
+  s7-plc-sim:
+    image: edge-mes-demo-s7-plc-sim:${WYSE_S7_PLC_SIM_TAG:-fv1b-a-r1-amd64}
+
+  collector:
+    image: edge-mes-demo-collector:${WYSE_COLLECTOR_TAG:-fv1b-a-r1-amd64}
+
+  api:
+    image: edge-mes-demo-api:${WYSE_API_TAG:-fv1b-a-r1-amd64}
+
+  dashboard:
+    image: edge-mes-demo-dashboard:${WYSE_DASHBOARD_TAG:-fv1b-a-r1-amd64}
+
+  sync-worker:
+    image: edge-mes-demo-sync-worker:${WYSE_SYNC_WORKER_TAG:-fv1b-a-r1-amd64}
